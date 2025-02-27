@@ -61,26 +61,39 @@ export class WorkspaceFolderManager implements Disposable {
                     }
                 }
             }),
-            window.onDidChangeActiveTextEditor((editor) => {
-                this.setIsActiveFileInActiveProject(editor);
+            window.onDidChangeActiveTextEditor(() => {
+                this.setIsActiveFileInActiveProject();
+            }),
+            window.onDidChangeActiveNotebookEditor(() => {
+                this.setIsActiveFileInActiveProject();
             }),
             this.onDidChangeActiveProjectFolder(() => {
-                this.setIsActiveFileInActiveProject(window.activeTextEditor);
+                this.setIsActiveFileInActiveProject();
             })
         );
 
-        this.setIsActiveFileInActiveProject(window.activeTextEditor);
+        this.setIsActiveFileInActiveProject();
     }
 
-    private setIsActiveFileInActiveProject(activeEditor?: TextEditor) {
+    private setIsActiveFileInActiveProject() {
+        if (this.activeProjectUri === undefined) {
+            this.customWhenContext.setIsActiveFileInActiveWorkspace(false);
+            return;
+        }
+        const activeEditor = window.activeTextEditor;
         const isActiveFileInActiveWorkspace =
-            this.activeProjectUri !== undefined &&
             activeEditor !== undefined &&
             activeEditor.document.uri.fsPath.startsWith(
+                this.activeProjectUri.fsPath
+            );
+        const activeNotebookEditor = window.activeNotebookEditor;
+        const isActiveNotebookInActiveWorkspace =
+            activeNotebookEditor !== undefined &&
+            activeNotebookEditor.notebook.uri.fsPath.startsWith(
                 this.activeProjectUri?.fsPath
             );
         this.customWhenContext.setIsActiveFileInActiveWorkspace(
-            isActiveFileInActiveWorkspace
+            isActiveFileInActiveWorkspace || isActiveNotebookInActiveWorkspace
         );
     }
 
