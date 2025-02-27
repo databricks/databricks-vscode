@@ -420,12 +420,13 @@
                     "name": "Configuration"
                 },
                 {
-                    "id": "databricksDocsView",
-                    "name": "Documentation"
+                    "id": "clusterView",
+                    "when": "databricks.feature.views.cluster",
+                    "name": "Clusters"
                 },
                 {
                     "id": "dabsResourceExplorerView",
-                    "name": "Bundle Resource Explorer",
+                    "name": "Bundle Resources",
                     "visibility": "visible",
                     "when": "databricks.context.bundle.isTargetSet"
                 },
@@ -438,12 +439,11 @@
                 {
                     "id": "workspaceFsView",
                     "name": "Workspace explorer",
-                    "when": "config.databricks.sync.destinationType == workspace && databricks.feature.views.workspace"
+                    "when": "databricks.feature.views.workspace"
                 },
                 {
-                    "id": "clusterView",
-                    "when": "databricks.feature.views.cluster",
-                    "name": "Clusters"
+                    "id": "databricksDocsView",
+                    "name": "Documentation"
                 }
             ]
         },
