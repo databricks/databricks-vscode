@@ -426,7 +426,7 @@
                 },
                 {
                     "id": "dabsResourceExplorerView",
-                    "name": "Bundle Resources",
+                    "name": "Bundle Resource Explorer",
                     "visibility": "visible",
                     "when": "databricks.context.bundle.isTargetSet"
                 },
