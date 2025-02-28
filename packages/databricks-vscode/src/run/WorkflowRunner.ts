@@ -19,6 +19,8 @@ import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWra
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 import {Events, Telemetry} from "../telemetry";
 import {ComputeType, WorkflowTaskType} from "../telemetry/constants";
+import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {Loggers} from "../logger";
 
 export class WorkflowRunner implements Disposable {
     private panels = new Map<string, WorkflowOutputPanel>();
@@ -209,7 +211,16 @@ export class WorkflowRunner implements Disposable {
                 recordRun({success: true, taskType, computeType});
             }
         } catch (e: unknown) {
+            this.handleRunError(panel, e);
+            recordRun({success: false, taskType, computeType});
+        }
+    }
+
+    private handleRunError(panel: WorkflowOutputPanel, e: unknown) {
+        const logger = NamedLogger.getOrCreate(Loggers.Extension);
+        try {
             if (e instanceof ApiError) {
+                logger.error("API error while running workflow:", e.message);
                 panel.showError({
                     message: e.message,
                     stack:
@@ -219,11 +230,15 @@ export class WorkflowRunner implements Disposable {
                 });
                 panel.showStdoutResult(e.response.logs || "");
             } else {
+                logger.error("Unexpected error while running workflow:", e);
                 panel.showError({
-                    message: (e as any).message,
+                    message:
+                        (e as any)?.message || "An unknown error occurred.",
                 });
             }
-            recordRun({success: false, taskType, computeType});
+        } catch (e) {
+            // We can get here if posting a message to the webview throws an error (e.g. if it's closed)
+            logger.error("Workflow error handling failed:", e);
         }
     }
 }
