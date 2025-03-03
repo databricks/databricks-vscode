@@ -158,6 +158,8 @@ describe("Bundle Variables", async function () {
             | CustomTreeSection
             | undefined;
         assert(section);
+        await (await section.elem).click();
+
         await waitForTreeItems(section, 5_000);
 
         const action = await section.getAction(

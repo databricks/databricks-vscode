@@ -15,6 +15,7 @@ const ViewSectionTypes = [
     "WORKSPACE EXPLORER",
     "BUNDLE RESOURCE EXPLORER",
     "BUNDLE VARIABLES",
+    "DOCUMENTATION",
 ] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
 
@@ -73,7 +74,6 @@ export async function getViewSection(
     }
 
     await section!.expand();
-    await (await section!.elem).click();
     return section;
 }
 

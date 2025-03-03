@@ -23,7 +23,7 @@ export class DatabricksWorkspace {
 
     get workspaceFsRoot(): RemoteUri {
         return new RemoteUri(
-            Uri.from({scheme: "wsfs", path: `/Users/${this.userName}/.ide`})
+            Uri.from({scheme: "wsfs", path: `/Users/${this.userName}`})
         );
     }
 

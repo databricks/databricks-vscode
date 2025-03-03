@@ -154,6 +154,19 @@
                 padding: 10px;
                 width: 220px;
             }
+
+            #compute-section #serverless-compute {
+                display: none;
+            }
+            #compute-section #run-cluster {
+                display: block;
+            }
+            #compute-section.serverless #serverless-compute {
+                display: block;
+            }
+            #compute-section.serverless #run-cluster {
+                display: none;
+            }
         </style>
 
         <script
@@ -213,12 +226,13 @@
                             <vscode-link id="run-id" href="#">N/A</vscode-link>
                         </span>
                     </li>
-                    <li>
+                    <li id="compute-section">
                         <span class="label">Compute:</span>
                         <span class="value" aria-label="cluster">
-                            <vscode-link id="run-cluster" href="#"
-                                >N/A</vscode-link
-                            >
+                            <vscode-link id="run-cluster" href="#">
+                                N/A
+                            </vscode-link>
+                            <span id="serverless-compute">Serverless</span>
                         </span>
                     </li>
                     <li>
@@ -307,7 +321,16 @@
                         .getElementById("run-cluster")
                         .setAttribute("href", details.clusterUrl);
                     document.getElementById("run-cluster").innerText =
-                        details.serverless ? "Serverless" : details.clusterId;
+                        details.clusterId;
+                    if (details.serverless) {
+                        document
+                            .getElementById("compute-section")
+                            .classList.add("serverless");
+                    } else {
+                        document
+                            .getElementById("compute-section")
+                            .classList.remove("serverless");
+                    }
 
                     document.getElementById("run-started").innerText =
                         details.started;
