@@ -74,7 +74,6 @@ export async function getViewSection(
     }
 
     await section!.expand();
-    await (await section!.elem).click();
     return section;
 }
 
