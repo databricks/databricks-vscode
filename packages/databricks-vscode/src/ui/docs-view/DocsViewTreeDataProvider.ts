@@ -67,7 +67,7 @@ export class DocsViewTreeDataProvider
             {
                 label: "Configure your project",
                 path: "dev-tools/vscode-ext/configure",
-                type: "conriguration_guide",
+                type: "configuration_guide",
             },
             {
                 label: "Work with Databricks Asset Bundles",
