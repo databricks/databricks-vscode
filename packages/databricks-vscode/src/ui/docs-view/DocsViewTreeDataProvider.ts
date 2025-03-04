@@ -4,7 +4,6 @@ import {
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
-    Uri,
 } from "vscode";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
@@ -57,52 +56,66 @@ export class DocsViewTreeDataProvider
 
         const items: DocsTreeItem[] = [quickStartItem];
 
-        const baseUrl = "https://docs.databricks.com/";
-        const docLinks = [
+        const baseUrl = "https://docs.databricks.com";
+        const guides = [
             {
                 label: "Setup authentication",
                 path: "dev-tools/vscode-ext/authentication",
+                type: "auth_guide",
             },
             {
                 label: "Configure your project",
                 path: "dev-tools/vscode-ext/configure",
+                type: "configuration_guide",
             },
             {
                 label: "Work with Databricks Asset Bundles",
                 path: "dev-tools/vscode-ext/bundles",
+                type: "bundles_guide",
             },
             {
                 label: "Run files on a cluster",
                 path: "dev-tools/vscode-ext/run",
+                type: "run_files_guide",
             },
             {
                 label: "Run files with Databricks Connect",
                 path: "dev-tools/vscode-ext/databricks-connect",
+                type: "dbconnect_guide",
             },
             {
                 label: "Run notebooks cell by cell",
                 path: "dev-tools/vscode-ext/notebooks",
+                type: "notebooks_guide",
             },
             {
                 label: "Run tests on a cluster",
                 path: "dev-tools/vscode-ext/pytest",
+                type: "pytest_guide",
             },
             {
                 label: "Explore extension settings",
                 path: "dev-tools/vscode-ext/settings",
+                type: "settings_guide",
             },
             {
                 label: "Troubleshoot problems",
                 path: "dev-tools/vscode-ext/troubleshooting",
+                type: "troubleshooting_guide",
             },
         ];
-        for (const doc of docLinks) {
-            const item = new TreeItem(doc.label, TreeItemCollapsibleState.None);
+        for (const guide of guides) {
+            const item = new TreeItem(
+                guide.label,
+                TreeItemCollapsibleState.None
+            );
             item.iconPath = new ThemeIcon("link");
             item.command = {
-                command: "vscode.open",
+                command: "databricks.utils.openExternal",
                 title: "Open URL",
-                arguments: [Uri.parse(`${baseUrl}${doc.path}`)],
+                arguments: [
+                    {url: `${baseUrl}/${guide.path}`, type: guide.type},
+                ],
             };
             items.push(item);
         }

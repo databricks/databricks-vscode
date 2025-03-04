@@ -852,7 +852,7 @@ export async function activate(
     });
 
     // Utils
-    const utilCommands = new UtilsCommands.UtilsCommands();
+    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
     context.subscriptions.push(
         telemetry.registerCommand(
             "databricks.utils.openExternal",

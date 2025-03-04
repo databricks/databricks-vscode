@@ -554,6 +554,7 @@ async function collectTokenForPatAuth(
     if (token === "Create a new Personal Access Token") {
         commands.executeCommand("databricks.utils.openExternal", {
             url: `${host.toString()}settings/user/developer/access-tokens`,
+            type: "pat_settings_page",
         });
         return collectTokenForPatAuth(host, input, step, totalSteps);
     }

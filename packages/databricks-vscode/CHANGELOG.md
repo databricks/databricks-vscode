@@ -1,3 +1,14 @@
+# Release: v2.8.0
+
+## packages/databricks-vscode
+
+## (2025-03-04)
+
+-   Add Documentation panel
+-   Ensure run button is visibilite for notebook editors
+-   Properly terminate debug session if the workflow webview was closed
+-   Update Databricks CLI to v0.242.0
+
 # Release: v2.7.0
 
 ## packages/databricks-vscode
