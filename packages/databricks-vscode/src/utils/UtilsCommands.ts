@@ -1,8 +1,11 @@
 import {Disposable, window, env} from "vscode";
 import {openExternal} from "./urlUtils";
+import {Events, Telemetry} from "../telemetry";
 
 export class UtilsCommands implements Disposable {
     private disposables: Disposable[] = [];
+
+    constructor(private telemetry: Telemetry) {}
 
     openExternalCommand() {
         return async (value: any | undefined) => {
@@ -19,6 +22,11 @@ export class UtilsCommands implements Disposable {
                     "Databricks: Can't open external link. No URL found."
                 );
                 return;
+            }
+            if (value.type !== undefined) {
+                this.telemetry.recordEvent(Events.OPEN_RESOURCE_EXTERNALLY, {
+                    type: value.type,
+                });
             }
             await openExternal(url);
         };
