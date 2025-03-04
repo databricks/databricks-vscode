@@ -1129,7 +1129,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.241.2"
+        "version": "0.242.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
