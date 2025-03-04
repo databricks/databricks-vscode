@@ -1,3 +1,15 @@
+# Release: v2.8.0
+
+## packages/databricks-vscode
+
+## (2025-03-04)
+
+-   Add Documentation view (#1579) ([e47593d](https://github.com/databricks/databricks-vscode/commit/e47593d)), closes [#1579](https://github.com/databricks/databricks-vscode/issues/1579)
+-   Don't show "Serverless" as a link in the workflow webview (#1583) ([0edad31](https://github.com/databricks/databricks-vscode/commit/0edad31)), closes [#1583](https://github.com/databricks/databricks-vscode/issues/1583)
+-   Fix bugs in run button visibility (#1581) ([6dac866](https://github.com/databricks/databricks-vscode/commit/6dac866)), closes [#1581](https://github.com/databricks/databricks-vscode/issues/1581)
+-   Properly terminate debug session if the workflow's webview panel is closed (#1584) ([ea91e71](https://github.com/databricks/databricks-vscode/commit/ea91e71)), closes [#1584](https://github.com/databricks/databricks-vscode/issues/1584)
+-   Update Databricks CLI to v0.242.0 (#1582) ([b65c540](https://github.com/databricks/databricks-vscode/commit/b65c540)), closes [#1582](https://github.com/databricks/databricks-vscode/issues/1582)
+
 # Release: v2.7.0
 
 ## packages/databricks-vscode
