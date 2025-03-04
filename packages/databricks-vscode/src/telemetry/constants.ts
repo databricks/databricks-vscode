@@ -23,6 +23,7 @@ export enum Events {
     COMPUTE_SELECTED = "computeSelected",
     WORKFLOW_RUN = "workflowRun",
     DBCONNECT_RUN = "dbconnectRun",
+    OPEN_RESOURCE_EXTERNALLY = "openResourceExternally",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -198,6 +199,14 @@ export class EventTypes {
         comment: "A Databricks Connect debug run",
         computeType: {
             comment: "The type of the compute",
+        },
+    };
+    [Events.OPEN_RESOURCE_EXTERNALLY]: EventType<{
+        type: string;
+    }> = {
+        comment: "An external resource URL was opened",
+        type: {
+            comment: "The resource type",
         },
     };
 }
