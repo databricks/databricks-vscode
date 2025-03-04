@@ -27,7 +27,6 @@ export class UtilsCommands implements Disposable {
                 this.telemetry.recordEvent(Events.OPEN_RESOURCE_EXTERNALLY, {
                     type: value.type,
                 });
-                console.log("Tracked external resource", value.type);
             }
             await openExternal(url);
         };
