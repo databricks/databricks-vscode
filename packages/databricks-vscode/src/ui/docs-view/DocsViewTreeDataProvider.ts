@@ -4,7 +4,6 @@ import {
     TreeDataProvider,
     TreeItem,
     TreeItemCollapsibleState,
-    Uri,
 } from "vscode";
 import {logging} from "@databricks/databricks-sdk";
 import {Loggers} from "../../logger";
