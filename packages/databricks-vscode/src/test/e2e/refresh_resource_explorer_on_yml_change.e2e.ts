@@ -90,7 +90,7 @@ describe("Automatically refresh resource explorer", async function () {
             async () => {
                 const job = await getResourceViewItem(
                     resourceExplorerView,
-                    "Workflows",
+                    "Jobs",
                     jobDef.name!
                 );
                 return job !== undefined;

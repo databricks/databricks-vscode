@@ -20,7 +20,7 @@ function humaniseResourceType(type: BundleResourceExplorerTreeNode["type"]) {
         case "pipelines":
             return "Pipelines";
         case "jobs":
-            return "Workflows";
+            return "Jobs";
         default:
             return capitalize(type).replace(/_/g, " ");
     }
