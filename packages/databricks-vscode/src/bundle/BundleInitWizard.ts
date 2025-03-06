@@ -134,6 +134,26 @@ export class BundleInitWizard {
         parentFolder: Uri,
         authProvider: AuthProvider
     ) {
+        const terminalDidClosePromise = new Promise<void>((resolve) => {
+            const closeEvent = window.onDidCloseTerminal((t) => {
+                if (t === terminal) {
+                    closeEvent.dispose();
+                    resolve();
+                }
+            });
+        });
+        const terminalDidOpenPromise = new Promise<void>((resolve) => {
+            const openEvent = window.onDidOpenTerminal((t) => {
+                if (t === terminal) {
+                    openEvent.dispose();
+                    // Python extension can insert env-setup text into newly opened terminals. It doesn't break our init wizard, but if it happens after we insert our command in the terminal,
+                    // then on a step where the wizard asks you to select a template, the search input will be populated with a string from the python extension, and you'll have to remove it to proceed.
+                    // Haven't found a reliable way to detect (or avoid) this behavior (other than spawning a terminal with a custom PTY, but making it work for the init wizard is non trivial).
+                    // Waiting for half a second to let the python extension do its thing...
+                    setTimeout(() => resolve(), 500);
+                }
+            });
+        });
         const terminal = window.createTerminal({
             name: "Databricks Project Init",
             isTransient: true,
@@ -151,6 +171,7 @@ export class BundleInitWizard {
             // in the current workspace root or while traversing up the folder structure.
             cwd: tmpdir(),
         });
+        await terminalDidOpenPromise;
         const args = [
             "bundle",
             "init",
@@ -162,15 +183,7 @@ export class BundleInitWizard {
         terminal.sendText(
             `${initialPrompt}; ${this.cli.escapedCliPath} ${args}; ${finalPrompt}`
         );
-        return new Promise<void>((resolve) => {
-            const closeEvent = window.onDidCloseTerminal(async (t) => {
-                if (t !== terminal) {
-                    return;
-                }
-                closeEvent.dispose();
-                resolve();
-            });
-        });
+        return terminalDidClosePromise;
     }
 
     private async promptForParentFolder(
