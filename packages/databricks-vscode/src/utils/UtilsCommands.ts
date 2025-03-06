@@ -1,4 +1,12 @@
-import {Disposable, window, env} from "vscode";
+import {
+    Disposable,
+    window,
+    env,
+    Location,
+    workspace,
+    Selection,
+    TextEditorRevealType,
+} from "vscode";
 import {openExternal} from "./urlUtils";
 import {Events, Telemetry} from "../telemetry";
 
@@ -29,6 +37,26 @@ export class UtilsCommands implements Disposable {
                 });
             }
             await openExternal(url);
+        };
+    }
+
+    openSourceLocation() {
+        return async (value: any | undefined) => {
+            const location: Location | undefined = value?.sourceLocation;
+            if (location === undefined) {
+                window.showErrorMessage(
+                    "Databricks: Can't open source location. No URL found."
+                );
+                return;
+            }
+
+            const doc = await workspace.openTextDocument(location.uri);
+            const editor = await window.showTextDocument(doc);
+            editor.selection = new Selection(
+                location.range.start,
+                location.range.end
+            );
+            editor.revealRange(location.range, TextEditorRevealType.InCenter);
         };
     }
 

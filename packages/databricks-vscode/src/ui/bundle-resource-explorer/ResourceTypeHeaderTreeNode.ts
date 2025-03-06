@@ -116,6 +116,7 @@ export class ResourceTypeHeaderTreeNode
         }
 
         const unknownResourceGroups = UnknownResourceTreeNode.getRootGroups(
+            connectionManager,
             bundleRemoteState,
             KNOWN_RESOURCE_TYPES
         );
