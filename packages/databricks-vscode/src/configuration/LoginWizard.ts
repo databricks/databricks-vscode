@@ -134,8 +134,6 @@ export class LoginWizard {
     }
 
     private async getProfileQuickPickItems() {
-        const items: Array<AuthTypeQuickPickItem> = [];
-
         const profiles = (await this.getProfiles())
             .filter((profile) => {
                 return profile.host?.hostname === this.state.host!.hostname;
@@ -143,10 +141,10 @@ export class LoginWizard {
             .map((profile) => {
                 const humanisedAuthType = humaniseSdkAuthType(profile.authType);
                 const detail = humanisedAuthType
-                    ? `Authenticate using ${humaniseSdkAuthType(
+                    ? `Select existing profile and authenticate using ${humaniseSdkAuthType(
                           profile.authType
                       )}`
-                    : `Authenticate using profile ${profile.name}`;
+                    : `Select existing profile and authenticate`;
 
                 return {
                     label: profile.name,
@@ -155,28 +153,20 @@ export class LoginWizard {
                     profile: profile.name,
                 };
             });
-
-        if (profiles.length !== 0) {
-            items.push(
-                {
-                    label: "Existing Databricks CLI Profiles",
-                    kind: QuickPickItemKind.Separator,
-                },
-                ...profiles
-            );
-        }
-        return items;
+        return profiles;
     }
+
     private async selectAuthMethod(
         input: MultiStepInput
     ): Promise<InputStep | void> {
         const items: Array<AuthTypeQuickPickItem> = [];
-        items.push(...(await this.getProfileQuickPickItems()));
+        const profileItems = await this.getProfileQuickPickItems();
+        items.push(...profileItems);
 
         const availableAuthMethods = authMethodsForHostname(this.state.host!);
-        if (availableAuthMethods.length !== 0) {
+        if (availableAuthMethods.length !== 0 && profileItems.length !== 0) {
             items.push({
-                label: "Create New Databricks CLI Profile",
+                label: "",
                 kind: QuickPickItemKind.Separator,
             });
         }
@@ -201,7 +191,9 @@ export class LoginWizard {
 
                 case "databricks-cli":
                     items.push({
-                        label: "OAuth (user to machine)",
+                        label:
+                            "OAuth" +
+                            (profileItems.length === 0 ? " (recommended)" : ""),
                         detail: "Create a profile and authenticate using OAuth",
                         authType: "databricks-cli",
                     });
@@ -439,9 +431,9 @@ function humaniseSdkAuthType(sdkAuthType: string) {
         case "google-id":
             return "Google Service Account";
         case "databricks-cli":
-            return "OAuth (User to Machine)";
+            return "OAuth";
         case "oauth-m2m":
-            return "OAuth (Machine to Machine)";
+            return "OAuth M2M (Machine to Machine)";
         default:
             return sdkAuthType;
     }
