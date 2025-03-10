@@ -111,7 +111,7 @@ describe("Bundle in a sub folder", async function () {
                 async () => {
                     const job = await getResourceViewItem(
                         resourceExplorerView,
-                        "Workflows",
+                        "Jobs",
                         jobs[folder].name!
                     );
                     return job !== undefined;
