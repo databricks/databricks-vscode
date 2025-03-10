@@ -3,7 +3,7 @@ import {CustomTreeSection} from "wdio-vscode-service";
 
 export async function getResourceViewItem(
     resourceExplorer: CustomTreeSection,
-    resourceType: "Workflows" | "Pipelines",
+    resourceType: "Jobs" | "Pipelines",
     resourceName: string
 ) {
     const jobs = await resourceExplorer.openItem(resourceType);
@@ -21,7 +21,7 @@ export async function geTaskViewItem(
 ) {
     const tasks = await getResourceSubItems(
         resourceExplorerView,
-        "Workflows",
+        "Jobs",
         resourceName,
         "Tasks"
     );
@@ -34,7 +34,7 @@ export async function geTaskViewItem(
 
 export async function getResourceSubItems(
     resourceExplorerView: CustomTreeSection,
-    resourceType: "Workflows" | "Pipelines",
+    resourceType: "Jobs" | "Pipelines",
     resourceName: string,
     ...subItemNames: string[]
 ) {
@@ -56,8 +56,8 @@ export async function getResourceSubItems(
 
 export async function waitForRunStatus(
     resourceExplorerView: CustomTreeSection,
-    resourceType: "Workflows" | "Pipelines",
-    resorceName: string,
+    resourceType: "Jobs" | "Pipelines",
+    resourceName: string,
     successLabel: string,
     timeout: number = 120_000
 ) {
@@ -67,10 +67,10 @@ export async function waitForRunStatus(
             const item = await getResourceViewItem(
                 resourceExplorerView,
                 resourceType,
-                resorceName
+                resourceName
             );
             if (item === undefined) {
-                console.log(`Item ${resorceName} not found`);
+                console.log(`Item ${resourceName} not found`);
                 return false;
             }
 

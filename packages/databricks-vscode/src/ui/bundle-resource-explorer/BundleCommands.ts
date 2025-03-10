@@ -226,22 +226,22 @@ export class BundleCommands implements Disposable {
                 type: "pipelines",
                 key: `pipelines.${key}`,
             }));
-            const workflows = remoteState?.resources?.jobs ?? {};
-            const workflowItems = Object.keys(workflows).map((key) => ({
+            const jobs = remoteState?.resources?.jobs ?? {};
+            const jobItems = Object.keys(jobs).map((key) => ({
                 label: key,
-                description: "Workflow",
+                description: "Job",
                 type: "jobs",
             }));
-            if (pipelineItems.length === 0 && workflowItems.length === 0) {
+            if (pipelineItems.length === 0 && jobItems.length === 0) {
                 window.showErrorMessage(
-                    "No pipelines or workflows found in the bundle."
+                    "No pipelines or jobs found in the bundle."
                 );
                 return;
             }
             const pick = await window.showQuickPick(
-                [...pipelineItems, ...workflowItems],
+                [...pipelineItems, ...jobItems],
                 {
-                    placeHolder: "Select a pipeline or workflow to run",
+                    placeHolder: "Select a pipeline or a job to run",
                 }
             );
             if (!pick) {
