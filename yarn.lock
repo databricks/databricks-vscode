@@ -294,7 +294,7 @@ __metadata:
     ini: ^4.1.2
     reflect-metadata: ^0.2.1
     semver: ^7.6.0
-  checksum: fc3186dc4dda2a06e01c8e7e20b5f76ec6d1b4379b65deb80cacfd506427f38841af890858bd3335c3ab76f8a7255c4f4ce295f6470d7d0905f236b211fa617b
+  checksum: be59ab37615aa63780fdb841cdd6199f930710d409e29233abc2c66d8e5a7ac9928497bdf2f38075970e89e6ade0d9ae37ea39efcf721bd85f0c484c535f46d0
   languageName: node
   linkType: hard
 
@@ -309,7 +309,7 @@ __metadata:
     ini: ^4.1.2
     reflect-metadata: ^0.2.1
     semver: ^7.6.0
-  checksum: fc3186dc4dda2a06e01c8e7e20b5f76ec6d1b4379b65deb80cacfd506427f38841af890858bd3335c3ab76f8a7255c4f4ce295f6470d7d0905f236b211fa617b
+  checksum: be59ab37615aa63780fdb841cdd6199f930710d409e29233abc2c66d8e5a7ac9928497bdf2f38075970e89e6ade0d9ae37ea39efcf721bd85f0c484c535f46d0
   languageName: node
   linkType: hard
 
@@ -1469,11 +1469,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^18.19.23":
-  version: 18.19.75
-  resolution: "@types/node@npm:18.19.75"
+  version: 18.19.80
+  resolution: "@types/node@npm:18.19.80"
   dependencies:
     undici-types: ~5.26.4
-  checksum: 8f780a51a2dc1d597b104a2c33a2ab175fda492defbaab2cbb5fd098124d867ebed7cda0eaf80309bba25fbd4e41b4a04c91b7f14b50547b4377a39ccf749a7c
+  checksum: 08f5be60721d6b37c96dbef9124caf1a27ae1059d7cb1029d9da7d93be25b985106b6bd27af5f65550e20b481aa1985e3d47a63ae6b178b93ac9be5272a12907
   languageName: node
   linkType: hard
 
