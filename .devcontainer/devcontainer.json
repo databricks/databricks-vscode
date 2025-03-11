@@ -4,6 +4,9 @@
     "name": "Node.js & TypeScript",
     // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
     "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+    "containerEnv": {
+        "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0"
+    },
     // Features to add to the dev container. More info: https://containers.dev/features.
     "features": {
         "ghcr.io/devcontainers/features/docker-in-docker:2": {},
@@ -15,7 +18,9 @@
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": [],
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "corepack enable yarn && corepack use yarn@3.2.1 && yarn install",
+    "postCreateCommand": "sudo corepack enable yarn && sudo corepack install && yarn install",
+    // Use 'postStartCommand' to run commands after the container is started.
+    "postStartCommand": "yarn -v",
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
