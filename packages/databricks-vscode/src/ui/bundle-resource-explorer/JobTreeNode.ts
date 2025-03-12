@@ -1,4 +1,4 @@
-import {ExtensionContext} from "vscode";
+import {ExtensionContext, Location} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {
     BundleResourceExplorerResource,
@@ -13,9 +13,21 @@ import {JobRunStatusTreeNode} from "./JobRunStatusTreeNode";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
 import {TaskTreeNode} from "./TaskTreeNode";
 import {TaskHeaderTreeNode} from "./TaskHeaderTreeNode";
+import {getSourceLocation} from "./utils/SourceLocationUtils";
 
 export class JobTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "jobs";
+
+    constructor(
+        private readonly context: ExtensionContext,
+        private readonly bundleRunStatusManager: BundleRunStatusManager,
+        private readonly connectionManager: ConnectionManager,
+        public readonly resourceKey: string,
+        public readonly data: BundleResourceExplorerResource<"jobs">,
+        private readonly locations: BundleRemoteState["__locations"],
+        public parent?: BundleResourceExplorerTreeNode
+    ) {}
+
     get url(): string | undefined {
         const host = this.connectionManager.databricksWorkspace?.host;
 
@@ -26,14 +38,13 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
         return `${host.toString()}#job/${this.data.id}`;
     }
 
-    constructor(
-        private readonly context: ExtensionContext,
-        private readonly bundleRunStatusManager: BundleRunStatusManager,
-        private readonly connectionManager: ConnectionManager,
-        public readonly resourceKey: string,
-        public readonly data: BundleResourceExplorerResource<"jobs">,
-        public parent?: BundleResourceExplorerTreeNode
-    ) {}
+    get sourceLocation(): Location | undefined {
+        return getSourceLocation(
+            this.locations,
+            this.connectionManager.projectRoot,
+            this.resourceKey
+        );
+    }
 
     get isRunning() {
         const runner = this.bundleRunStatusManager.runStatuses.get(
@@ -49,6 +60,7 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
                 resourceType: this.type,
                 running: this.isRunning,
                 hasUrl: this.url !== undefined,
+                hasSourceLocation: this.sourceLocation !== undefined,
                 cancellable: this.isRunning,
                 nodeType: this.type,
                 modifiedStatus: this.data.modified_status,
@@ -85,10 +97,11 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
                         this.connectionManager,
                         task,
                         this.resourceKey,
-                        `${this.resourceKey}.tasks.[${i}].${task.task_key}`,
+                        `${this.resourceKey}.tasks[${i}]`,
                         this,
                         this.data.id,
-                        runMonitor
+                        runMonitor,
+                        this.locations
                     );
                 }),
                 this
@@ -116,6 +129,7 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
                 connectionManager,
                 `jobs.${jobKey}`,
                 jobs[jobKey],
+                remoteStateConfig.__locations,
                 undefined
             );
         });

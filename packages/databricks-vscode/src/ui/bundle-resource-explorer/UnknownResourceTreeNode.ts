@@ -6,7 +6,9 @@ import {
 } from "./types";
 import {ContextUtils} from "./utils";
 import {DecorationUtils} from "../utils";
-import {TreeItemCollapsibleState} from "vscode";
+import {TreeItemCollapsibleState, Location} from "vscode";
+import {ConnectionManager} from "../../configuration/ConnectionManager";
+import {getSourceLocation} from "./utils/SourceLocationUtils";
 
 type UnknownResourcesMap = Map<
     BundleResourceExplorerResourceKey,
@@ -17,14 +19,24 @@ export class UnknownResourceTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "unknown_resource";
 
     constructor(
+        private readonly connectionManager: ConnectionManager,
         public readonly resourceType: BundleResourceExplorerResourceKey,
         public readonly resourceKey: string,
         public readonly data: any,
+        private readonly locations: BundleRemoteState["__locations"],
         public parent?: BundleResourceExplorerTreeNode
     ) {}
 
     get url(): string | undefined {
         return this.data.url;
+    }
+
+    get sourceLocation(): Location | undefined {
+        return getSourceLocation(
+            this.locations,
+            this.connectionManager.projectRoot,
+            `${this.resourceType}.${this.resourceKey}`
+        );
     }
 
     getTreeItem(): BundleResourceExplorerTreeItem {
@@ -42,6 +54,7 @@ export class UnknownResourceTreeNode implements BundleResourceExplorerTreeNode {
                 resourceType: this.resourceType,
                 nodeType: "unknown_resource",
                 hasUrl: this.url !== undefined,
+                hasSourceLocation: this.sourceLocation !== undefined,
                 modifiedStatus: this.data.modified_status,
             }),
             resourceUri: DecorationUtils.getModifiedStatusDecoration(
@@ -57,6 +70,7 @@ export class UnknownResourceTreeNode implements BundleResourceExplorerTreeNode {
     }
 
     static getRootGroups(
+        connectionManager: ConnectionManager,
         bundleRemoteState: BundleRemoteState,
         knownResourceTypes: readonly string[]
     ): UnknownResourcesMap {
@@ -77,9 +91,11 @@ export class UnknownResourceTreeNode implements BundleResourceExplorerTreeNode {
                     type,
                     Object.keys(resources).map((key) => {
                         return new UnknownResourceTreeNode(
+                            connectionManager,
                             type,
                             key,
-                            resources[key]
+                            resources[key],
+                            bundleRemoteState.__locations
                         );
                     })
                 );
