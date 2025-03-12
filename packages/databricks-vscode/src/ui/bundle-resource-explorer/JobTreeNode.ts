@@ -97,10 +97,11 @@ export class JobTreeNode implements BundleResourceExplorerTreeNode {
                         this.connectionManager,
                         task,
                         this.resourceKey,
-                        `${this.resourceKey}.tasks.[${i}].${task.task_key}`,
+                        `${this.resourceKey}.tasks[${i}]`,
                         this,
                         this.data.id,
-                        runMonitor
+                        runMonitor,
+                        this.locations
                     );
                 }),
                 this
