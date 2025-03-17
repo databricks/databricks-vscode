@@ -40,7 +40,7 @@ export class UtilsCommands implements Disposable {
         };
     }
 
-    openSourceLocation() {
+    goToDefinition() {
         return async (value: any | undefined) => {
             const location: Location | undefined = value?.sourceLocation;
             if (location === undefined) {

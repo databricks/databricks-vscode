@@ -1,4 +1,4 @@
-import {TreeItem} from "vscode";
+import {Location, TreeItem} from "vscode";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
 import {Resource, ResourceKey} from "../../bundle/types";
 
@@ -25,6 +25,8 @@ export interface BundleResourceExplorerTreeNode {
         | "job_run_status"
         | "task_header";
     parent?: BundleResourceExplorerTreeNode;
+    url?: string;
+    sourceLocation?: Location;
     getTreeItem(): BundleResourceExplorerTreeItem;
     getChildren():
         | BundleResourceExplorerTreeNode[]

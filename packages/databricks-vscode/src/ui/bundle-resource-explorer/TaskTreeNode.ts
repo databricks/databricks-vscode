@@ -25,9 +25,11 @@ type TaskType = keyof {
 
 export class TaskTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "task";
+
     get taskKey(): string {
         return this.data.task_key;
     }
+
     get runDetails(): jobs.RunTask | undefined {
         return this.runMonitor?.data?.tasks?.find(
             (t) => t.task_key === this.taskKey

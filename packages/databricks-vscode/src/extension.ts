@@ -860,8 +860,8 @@ export async function activate(
             utilCommands
         ),
         telemetry.registerCommand(
-            "databricks.utils.openSourceLocation",
-            utilCommands.openSourceLocation(),
+            "databricks.utils.goToDefinition",
+            utilCommands.goToDefinition(),
             utilCommands
         ),
         telemetry.registerCommand(
