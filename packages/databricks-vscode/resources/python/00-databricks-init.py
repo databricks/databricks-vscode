@@ -338,10 +338,8 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
         if len(lines) == 0:
             return lines
         
-        lines = [line for line in lines 
-                    if line.strip() != "# Databricks notebook source" and \
-                    line.strip() != "# COMMAND ----------"
-                ]
+        lines_to_ignore = ("# Databricks notebook source", "# COMMAND ----------", "# DBTITLE")
+        lines = [line for line in lines if not line.strip().startswith(lines_to_ignore)]
         lines = ''.join(lines).strip().splitlines(keepends=True)
         lines = strip_hash_magic(lines)
 
