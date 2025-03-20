@@ -314,17 +314,15 @@ export class BundleCommands implements Disposable {
     }
 
     async destroy(force = false) {
-        if ((await this.configModel.get("mode")) !== "development") {
-            const confirm = await window.showErrorMessage(
-                "Are you sure you want to destroy this bundle and all resources associated with it?",
-                {modal: true},
-                "Yes, continue",
-                "No"
-            );
+        const confirm = await window.showWarningMessage(
+            "Are you sure you want to destroy this bundle and all resources associated with it?",
+            {modal: true},
+            "Yes, continue",
+            "No"
+        );
 
-            if (confirm !== "Yes, continue") {
-                return;
-            }
+        if (confirm !== "Yes, continue") {
+            return;
         }
 
         try {
