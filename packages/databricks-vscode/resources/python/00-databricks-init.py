@@ -4,7 +4,8 @@ import json
 from typing import Any, Union, List
 import os
 import sys
-import time
+# Avoid conflicts with possible "datetime" imports (in the user code)
+import time as _time
 import shlex
 import warnings
 import tempfile
@@ -389,7 +390,7 @@ def register_spark_progress(spark, show_progress: bool):
         ) -> None:
             self._ticks = None
             self._tick = None
-            self._started = time.time()
+            self._started = _time.time()
             self._bytes_read = 0
             self._running = 0
             self.init_ui()
@@ -430,7 +431,7 @@ def register_spark_progress(spark, show_progress: bool):
         def output(self) -> None:
             if self._tick is not None and self._ticks is not None:
                 percent_complete = (self._tick / self._ticks) * 100
-                elapsed = int(time.time() - self._started)
+                elapsed = int(_time.time() - self._started)
                 scanned = self._bytes_to_string(self._bytes_read)
                 running = self._running
                 self.w_progress.value = percent_complete
@@ -447,8 +448,9 @@ def register_spark_progress(spark, show_progress: bool):
 
     class ProgressHandler:
         def __init__(self):
-            self.op_id = ""     
-
+            self.p = None
+            self.op_id = ""
+    
         def reset(self):
             self.p = Progress()
 
@@ -461,7 +463,7 @@ def register_spark_progress(spark, show_progress: bool):
             if len(stages) == 0:
                 return
             
-            if self.op_id != operation_id:
+            if self.op_id != operation_id or not self.p:
                 self.op_id = operation_id
                 self.reset()
 
