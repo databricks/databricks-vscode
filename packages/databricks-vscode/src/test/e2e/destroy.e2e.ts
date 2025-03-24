@@ -4,7 +4,6 @@ import {
     getUniqueResourceName,
     getViewSection,
     waitForLogin,
-    waitForNotification,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {Workbench} from "wdio-vscode-service";
@@ -129,14 +128,12 @@ describe("Deploy and destroy", async function () {
         assert(found, `Job ${jobName} not found in workspace`);
 
         await browser.executeWorkbench(async (vscode) => {
-            await vscode.commands.executeCommand("databricks.bundle.destroy");
+            await vscode.commands.executeCommand(
+                "databricks.bundle.destroy",
+                false, // Don't force it
+                false // Skip the modal warning dialog, as they don't work in tests
+            );
         });
-
-        console.log("Confirming bundle destruction");
-        await waitForNotification(
-            "Are you sure you want to destroy this bundle",
-            "Yes, continue"
-        );
 
         console.log("Waiting for bundle to destroy");
         // Wait for status to reach success
