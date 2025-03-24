@@ -4,6 +4,7 @@ import {
     getUniqueResourceName,
     getViewSection,
     waitForLogin,
+    waitForNotification,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {Workbench} from "wdio-vscode-service";
@@ -130,6 +131,13 @@ describe("Deploy and destroy", async function () {
         await browser.executeWorkbench(async (vscode) => {
             await vscode.commands.executeCommand("databricks.bundle.destroy");
         });
+
+        console.log("Confirming bundle destruction");
+        await waitForNotification(
+            "Are you sure you want to destroy this bundle",
+            "Yes, continue"
+        );
+
         console.log("Waiting for bundle to destroy");
         // Wait for status to reach success
         await browser.waitUntil(
