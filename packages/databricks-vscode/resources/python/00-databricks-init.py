@@ -1,10 +1,8 @@
 from contextlib import contextmanager
 from typing import Any, Union, List
-import os
-import sys
-import time as _time
 
 # prevent sum from pyskaprk.sql.functions from shadowing the builtin sum
+import sys
 builtinSum = sys.modules['builtins'].sum
 
 def logError(function_name: str, e: Union[str, Exception]):
@@ -52,6 +50,7 @@ def logErrorAndContinue(f):
 @logErrorAndContinue
 @disposable
 def load_env_from_leaf(path: str) -> bool:
+    import os
     curdir = path if os.path.isdir(path) else os.path.dirname(path)
     env_file_path = os.path.join(curdir, ".databricks", ".databricks.env")
     if os.path.exists(env_file_path):
@@ -102,6 +101,7 @@ class EnvLoader:
         self.required = required
 
     def __get__(self, instance, owner):
+        import os
         if self.env_name in os.environ:
             if self.transform is not bool:
                 return self.transform(os.environ[self.env_name])
@@ -160,6 +160,7 @@ class DatabricksMagics(Magics):
 
 
 def is_databricks_notebook(py_file: str):
+    import os
     if os.path.exists(py_file):
         with open(py_file, "r") as f:
             return "Databricks notebook source" in f.readline()
@@ -172,6 +173,7 @@ def strip_hash_magic(lines: List[str]) -> List[str]:
     return lines
 
 def convert_databricks_notebook_to_ipynb(py_file: str):
+    import os
     import json
 
     cells: List[dict[str, Any]] = [
@@ -207,6 +209,7 @@ def convert_databricks_notebook_to_ipynb(py_file: str):
     
 @contextmanager
 def databricks_notebook_exec_env(project_root: str, py_file: str):
+    import os
     import sys
     import tempfile
     old_sys_path = sys.path
@@ -332,6 +335,7 @@ def split_sql_statements(sql_string):
 @logErrorAndContinue
 @disposable
 def register_magics(cfg: LocalDatabricksNotebookConfig):
+    import os
     import warnings
 
     def warn_for_dbr_alternative(magic: str):
@@ -474,6 +478,7 @@ def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
 @logErrorAndContinue
 @disposable
 def register_spark_progress(spark, show_progress: bool):
+    import time
     try:
         import ipywidgets as widgets
     except Exception as e:
@@ -491,7 +496,7 @@ def register_spark_progress(spark, show_progress: bool):
         ) -> None:
             self._ticks = None
             self._tick = None
-            self._started = _time.time()
+            self._started = time.time()
             self._bytes_read = 0
             self._running = 0
             self.init_ui()
@@ -532,7 +537,7 @@ def register_spark_progress(spark, show_progress: bool):
         def output(self) -> None:
             if self._tick is not None and self._ticks is not None:
                 percent_complete = (self._tick / self._ticks) * 100
-                elapsed = int(_time.time() - self._started)
+                elapsed = int(time.time() - self._started)
                 scanned = self._bytes_to_string(self._bytes_read)
                 running = self._running
                 self.w_progress.value = percent_complete
@@ -577,6 +582,7 @@ def register_spark_progress(spark, show_progress: bool):
 @logErrorAndContinue
 @disposable
 def update_sys_path(notebook_config: LocalDatabricksNotebookConfig):
+    import sys
     sys.path.append(notebook_config.project_root)
 
 
@@ -591,6 +597,7 @@ def make_matplotlib_inline():
 @logErrorAndContinue
 @disposable
 def setup():
+    import os
     import sys
     print(sys.modules[__name__])
 
