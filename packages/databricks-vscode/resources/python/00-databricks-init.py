@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from typing import Any, Union, List
 import os
 import sys
-import time
+import time as _time
 
 # prevent sum from pyskaprk.sql.functions from shadowing the builtin sum
 builtinSum = sys.modules['builtins'].sum
@@ -419,7 +419,8 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                 if len(rest) == 0:
                     return lines
                 
-                filename = rest[0]
+                # Strip whitespace or possible quotes around the filename
+                filename = rest[0].strip('\'" ')
 
                 for suffix in ["", ".py", ".ipynb", ".ipy"]:
                     if os.path.exists(os.path.join(os.getcwd(), filename + suffix)):
@@ -427,7 +428,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                         break
                 
                 return [
-                    f"with databricks_notebook_exec_env('{cfg.project_root}', '{filename}') as file:\n",
+                    f"with databricks_notebook_exec_env(r'{cfg.project_root}', r'{filename}') as file:\n",
                     "\t%run -i {file} " + lines[0].partition('%run')[2].partition(filename)[2] + "\n"
                 ]
             
@@ -441,10 +442,8 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
         if len(lines) == 0:
             return lines
         
-        lines = [line for line in lines 
-                    if line.strip() != "# Databricks notebook source" and \
-                    line.strip() != "# COMMAND ----------"
-                ]
+        lines_to_ignore = ("# Databricks notebook source", "# COMMAND ----------", "# DBTITLE")
+        lines = [line for line in lines if not line.strip().startswith(lines_to_ignore)]
         lines = ''.join(lines).strip().splitlines(keepends=True)
         lines = strip_hash_magic(lines)
 
@@ -492,7 +491,7 @@ def register_spark_progress(spark, show_progress: bool):
         ) -> None:
             self._ticks = None
             self._tick = None
-            self._started = time.time()
+            self._started = _time.time()
             self._bytes_read = 0
             self._running = 0
             self.init_ui()
@@ -533,7 +532,7 @@ def register_spark_progress(spark, show_progress: bool):
         def output(self) -> None:
             if self._tick is not None and self._ticks is not None:
                 percent_complete = (self._tick / self._ticks) * 100
-                elapsed = int(time.time() - self._started)
+                elapsed = int(_time.time() - self._started)
                 scanned = self._bytes_to_string(self._bytes_read)
                 running = self._running
                 self.w_progress.value = percent_complete
@@ -550,8 +549,9 @@ def register_spark_progress(spark, show_progress: bool):
 
     class ProgressHandler:
         def __init__(self):
-            self.op_id = ""     
-
+            self.p = None
+            self.op_id = ""
+    
         def reset(self):
             self.p = Progress()
 
@@ -564,7 +564,7 @@ def register_spark_progress(spark, show_progress: bool):
             if len(stages) == 0:
                 return
             
-            if self.op_id != operation_id:
+            if self.op_id != operation_id or not self.p:
                 self.op_id = operation_id
                 self.reset()
 

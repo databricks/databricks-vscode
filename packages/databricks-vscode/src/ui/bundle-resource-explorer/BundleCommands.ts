@@ -313,16 +313,15 @@ export class BundleCommands implements Disposable {
         this.bundleRunStatusManager.cancel(treeNode.resourceKey);
     }
 
-    async destroy(force = false) {
-        if ((await this.configModel.get("mode")) !== "development") {
-            const confirm = await window.showErrorMessage(
+    async destroy(force = false, warn = true) {
+        if (warn) {
+            const choice = await window.showWarningMessage(
                 "Are you sure you want to destroy this bundle and all resources associated with it?",
                 {modal: true},
                 "Yes, continue",
                 "No"
             );
-
-            if (confirm !== "Yes, continue") {
+            if (choice !== "Yes, continue") {
                 return;
             }
         }
