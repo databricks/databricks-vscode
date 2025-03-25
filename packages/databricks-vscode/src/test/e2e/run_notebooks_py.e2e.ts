@@ -32,6 +32,7 @@ describe("Run py notebooks", async function () {
                 "# Databricks notebook source",
                 `spark.sql('SELECT "hello world"').show()`,
                 "# COMMAND ----------",
+                "# DBTITLE 1,My cell title",
                 "# MAGIC %sh pwd",
             ].join("\n")
         );
