@@ -167,6 +167,12 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.utils.goToDefinition",
+                "title": "Go to definition",
+                "icon": "$(go-to-file)",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.wsfs.refresh",
                 "title": "Refresh workspace filesystem view",
                 "icon": "$(refresh)",
@@ -581,6 +587,16 @@
                     "group": "navigation_2@0"
                 },
                 {
+                    "command": "databricks.utils.goToDefinition",
+                    "when": "viewItem =~ /^databricks.*\\.(has-source-location).*$/",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.utils.goToDefinition",
+                    "when": "viewItem =~ /^databricks.*\\.(has-source-location).*$/",
+                    "group": "navigation_2@0"
+                },
+                {
                     "command": "databricks.bundle.selectActiveProjectFolder",
                     "when": "viewItem =~ /^databricks.configuration.activeProjectFolder/ && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation_2@0"
@@ -820,6 +836,10 @@
                 },
                 {
                     "command": "databricks.utils.openExternal",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.utils.goToDefinition",
                     "when": "false"
                 },
                 {
@@ -1129,7 +1149,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.243.0"
+        "version": "0.244.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",

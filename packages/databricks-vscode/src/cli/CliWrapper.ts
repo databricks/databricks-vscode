@@ -531,6 +531,7 @@ export class CliWrapper {
             [
                 "bundle",
                 "summary",
+                "--include-locations",
                 "--target",
                 target,
                 // Forces the CLI to regenerate local terraform state and pull the remote state.
