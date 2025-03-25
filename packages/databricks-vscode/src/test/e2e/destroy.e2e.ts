@@ -128,8 +128,13 @@ describe("Deploy and destroy", async function () {
         assert(found, `Job ${jobName} not found in workspace`);
 
         await browser.executeWorkbench(async (vscode) => {
-            await vscode.commands.executeCommand("databricks.bundle.destroy");
+            await vscode.commands.executeCommand(
+                "databricks.bundle.destroy",
+                false, // Don't force it
+                false // Skip the modal warning dialog, as they don't work in tests
+            );
         });
+
         console.log("Waiting for bundle to destroy");
         // Wait for status to reach success
         await browser.waitUntil(
