@@ -4,18 +4,15 @@
 
 ## (2025-03-25)
 
--   Always show warning before destroying a bundle (#1614) ([6a38c72](https://github.com/databricks/databricks-vscode/commit/6a38c72)), closes [#1614](https://github.com/databricks/databricks-vscode/issues/1614)
--   Avoid python extension interference in the bundle init terminal (#1595) ([8310a1b](https://github.com/databricks/databricks-vscode/commit/8310a1b)), closes [#1595](https://github.com/databricks/databricks-vscode/issues/1595)
--   Bump esbuild from 0.19.9 to 0.25.0 (#1564) ([3eaf3cc](https://github.com/databricks/databricks-vscode/commit/3eaf3cc)), closes [#1564](https://github.com/databricks/databricks-vscode/issues/1564) [#3643](https://github.com/databricks/databricks-vscode/issues/3643) [#3620](https://github.com/databricks/databricks-vscode/issues/3620) [#3877](https://github.com/databricks/databricks-vscode/issues/3877) [#3933](https://github.com/databricks/databricks-vscode/issues/3933) [#3997](https://github.com/databricks/databricks-vscode/issues/3997) [#4005](https://github.com/databricks/databricks-vscode/issues/4005) [#4037](https://github.com/databricks/databricks-vscode/issues/4037) [#4038](https://github.com/databricks/databricks-vscode/issues/4038) [#3559](https://github.com/databricks/databricks-vscode/issues/3559) [#3568](https://github.com/databricks/databricks-vscode/issues/3568) [#4065](https://github.com/databricks/databricks-vscode/issues/4065) [#4028](https://github.com/databricks/databricks-vscode/issues/4028) [#4053](https://github.com/databricks/databricks-vscode/issues/4053) [#3692](https://github.com/databricks/databricks-vscode/issues/3692)
--   Fix ProgressHandler conflicts with datetime imports (#1620) ([9ebc70c](https://github.com/databricks/databricks-vscode/commit/9ebc70c)), closes [#1620](https://github.com/databricks/databricks-vscode/issues/1620) [#1618](https://github.com/databricks/databricks-vscode/issues/1618)
--   Ignore DBTITLE magic comments in .py "notebooks" (#1609) ([d533397](https://github.com/databricks/databricks-vscode/commit/d533397)), closes [#1609](https://github.com/databricks/databricks-vscode/issues/1609) [#1604](https://github.com/databricks/databricks-vscode/issues/1604)
--   Improve handling of the %run magic for local runs (#1612) ([86fc551](https://github.com/databricks/databricks-vscode/commit/86fc551)), closes [#1612](https://github.com/databricks/databricks-vscode/issues/1612) [#1611](https://github.com/databricks/databricks-vscode/issues/1611)
--   Link bundle resources to their source definitions (#1598) ([7252fe3](https://github.com/databricks/databricks-vscode/commit/7252fe3)), closes [#1598](https://github.com/databricks/databricks-vscode/issues/1598)
--   Rename workflows to jobs in the bundle explorer UI (#1591) ([d10702a](https://github.com/databricks/databricks-vscode/commit/d10702a)), closes [#1591](https://github.com/databricks/databricks-vscode/issues/1591)
--   Show error notifications after failed environment setup (#1608) ([062bc78](https://github.com/databricks/databricks-vscode/commit/062bc78)), closes [#1608](https://github.com/databricks/databricks-vscode/issues/1608) [#1601](https://github.com/databricks/databricks-vscode/issues/1601)
--   Simplify profile selection UI (#1593) ([dbbaa00](https://github.com/databricks/databricks-vscode/commit/dbbaa00)), closes [#1593](https://github.com/databricks/databricks-vscode/issues/1593)
--   Update Databricks CLI to v0.243.0 (#1594) ([24c7f1a](https://github.com/databricks/databricks-vscode/commit/24c7f1a)), closes [#1594](https://github.com/databricks/databricks-vscode/issues/1594)
--   Update Databricks CLI to v0.244.0 (#1613) ([f0ba4b4](https://github.com/databricks/databricks-vscode/commit/f0ba4b4)), closes [#1613](https://github.com/databricks/databricks-vscode/issues/1613)
+-   Link bundle resources to their source definitions
+-   Always show warnings before destroying a bundle
+-   Avoid python extension interference in the bundle-init terminal
+-   Fix ProgressHandler conflicts with datetime imports
+-   Ignore DBTITLE magic comments in .py notebooks
+-   Improve handling of the "%run" magic for local runs
+-   Show error notifications after failed environment setup
+-   Simplify profile selection UI in the auth setup flow, promote OAuth option
+-   Update Databricks CLI to v0.244.0
 
 # Release: v2.8.0
 
