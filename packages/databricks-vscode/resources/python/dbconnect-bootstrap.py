@@ -30,6 +30,8 @@ except Exception as e:
 
 # Suppress grpc warnings coming from databricks-connect with newer version of grpcio lib
 os.environ["GRPC_VERBOSITY"] = "NONE"
+# Ensures that dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get() returns the correct path
+os.environ["DATABRICKS_SOURCE_FILE"] = script
 
 project_dir = load_env_from_leaf(cur_dir)
 

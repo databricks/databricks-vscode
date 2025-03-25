@@ -1,13 +1,8 @@
 from contextlib import contextmanager
-import functools
-import json
 from typing import Any, Union, List
 import os
 import sys
 import time
-import shlex
-import warnings
-import tempfile
 
 # prevent sum from pyskaprk.sql.functions from shadowing the builtin sum
 builtinSum = sys.modules['builtins'].sum
@@ -43,6 +38,8 @@ def disposable(f):
 
 
 def logErrorAndContinue(f):
+    import functools
+
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
@@ -143,6 +140,7 @@ class DatabricksMagics(Magics):
     @needs_local_scope
     @line_magic
     def fs(self, line: str, local_ns):
+        import shlex
         args = shlex.split(line)
         if len(args) == 0:
             return
@@ -174,6 +172,8 @@ def strip_hash_magic(lines: List[str]) -> List[str]:
     return lines
 
 def convert_databricks_notebook_to_ipynb(py_file: str):
+    import json
+
     cells: List[dict[str, Any]] = [
         {
             "cell_type": "code",
@@ -208,6 +208,7 @@ def convert_databricks_notebook_to_ipynb(py_file: str):
 @contextmanager
 def databricks_notebook_exec_env(project_root: str, py_file: str):
     import sys
+    import tempfile
     old_sys_path = sys.path
     old_cwd = os.getcwd()
 
@@ -228,9 +229,111 @@ def databricks_notebook_exec_env(project_root: str, py_file: str):
         os.chdir(old_cwd)
 
 
+"""
+Splits an SQL string into individual statements using recursive descent parsing technique. 
+Handles semicolons in strings and comments. Most probably breaks in dozens of other edge cases...
+"""
+@disposable
+class SqlStatementParser:
+    def __init__(self, sql):
+        self.sql = sql
+        self.position = 0
+        self.statements = []
+        self.current = []
+    
+    def parse(self):
+        while self.position < len(self.sql):
+            char = self.peek()
+            next_char = self.peek_next()
+            if char == '-' and next_char == '-':
+                self.parse_line_comment()
+            elif char == '/' and next_char == '*':
+                self.parse_block_comment()
+            elif char == "'":
+                self.parse_string("'")
+            elif char == '"':
+                self.parse_string('"')
+            elif char == '`':
+                self.parse_string('`')
+            elif char == ';':
+                self.position += 1 # Skip the semicolon itself
+                self.add_statement()
+            else:
+                self.consume()
+        self.add_statement() # Add the last statement if there is one
+        return self.statements
+    
+    def peek(self):
+        if self.position < len(self.sql):
+            return self.sql[self.position]
+        return None
+    
+    def peek_next(self):
+        if self.position + 1 < len(self.sql):
+            return self.sql[self.position + 1]
+        return None
+    
+    def consume(self):
+        char = self.peek()
+        if char is not None:
+            self.position += 1
+            self.current.append(char)
+        return char
+    
+    def consume_next(self):
+        char, next_char = self.peek(), self.peek_next()
+        if char is not None and next_char is not None:
+            self.position += 2
+            self.current.extend([char, next_char])
+        return char, next_char
+    
+    def add_statement(self):
+        if self.current:
+            stmt = ''.join(self.current).strip()
+            if stmt:
+                self.statements.append(stmt)
+            self.current = []
+        
+    def parse_line_comment(self):
+        self.consume_next()  # Consume "--" that starts the comment
+        while self.peek() is not None:
+            if self.peek() == '\n':
+                self.consume()
+                return
+            self.consume()
+    
+    def parse_block_comment(self):
+        self.consume_next()  # Consume "/*" that starts the comment
+        while self.peek() is not None:
+            if self.peek() == '*' and self.peek_next() == '/':
+                self.consume_next()  # Consume "*/" that ends the comment
+                return
+            self.consume()
+    
+    def parse_string(self, quote_char):
+        self.consume()  # Consume the opening quote
+        while self.peek() is not None:
+            # Handle escaped quote
+            if self.peek() == '\\' and self.peek_next() == quote_char:
+                self.consume_next() # Consume the escaped quote
+            elif self.peek() == quote_char:
+                self.consume()  # Consume the closing quote
+                return
+            else:
+                self.consume()
+
+
+@logErrorAndContinue
+@disposable
+def split_sql_statements(sql_string):
+    parser = SqlStatementParser(sql_string)
+    return parser.parse()
+
 @logErrorAndContinue
 @disposable
 def register_magics(cfg: LocalDatabricksNotebookConfig):
+    import warnings
+
     def warn_for_dbr_alternative(magic: str):
         # Magics that are not supported on Databricks but work in jupyter notebooks.
         # We show a warning, prompting users to use a databricks equivalent instead.
@@ -299,14 +402,14 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
 
             if lmagic == "sql":
                 lines = lines[1:]
-                spark_string = (
-                    "global _sqldf\n"
-                    + "_sqldf = spark.sql('''"
-                    + "".join(lines).replace("'", "\\'")
-                    + "''')\n"
-                    + "_sqldf"
-                )
-                return spark_string.splitlines(keepends=True)
+                sql_string = "".join(lines)
+                statements = SqlStatementParser(sql_string).parse()
+                result_code = ["global _sqldf\n"]
+                for _, stmt in enumerate(statements):
+                    quoted_stmt = stmt.replace("'", "\\'")
+                    result_code.append(f"_sqldf = spark.sql('''{quoted_stmt}''')\n")
+                result_code.append("_sqldf")
+                return result_code
 
             if lmagic == "python":
                 return lines[1:]
@@ -485,14 +588,13 @@ def make_matplotlib_inline():
     except Exception as e:
         pass
 
-
-global _sqldf
-
-try:
+@logErrorAndContinue
+@disposable
+def setup():
     import sys
-
     print(sys.modules[__name__])
 
+    global _sqldf
     # Suppress grpc warnings coming from databricks-connect with newer version of grpcio lib
     os.environ["GRPC_VERBOSITY"] = "NONE"
 
@@ -514,8 +616,8 @@ try:
 
     for i in __disposables + ['__disposables']:
         globals().pop(i)
-    globals().pop('i')
     globals().pop('disposable')
 
-except Exception as e:
-    logError("unknown", e)
+
+if not os.environ.get("DATABRICKS_EXTENSION_UNIT_TESTS"):
+    setup()
