@@ -860,6 +860,11 @@ export async function activate(
             utilCommands
         ),
         telemetry.registerCommand(
+            "databricks.utils.goToDefinition",
+            utilCommands.goToDefinition(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
             "databricks.utils.copy",
             utilCommands.copyToClipboardCommand(),
             utilCommands
