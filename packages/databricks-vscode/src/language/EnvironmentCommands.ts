@@ -1,4 +1,4 @@
-import {window, commands, QuickPickItem} from "vscode";
+import {window, commands, QuickPickItem, ProgressLocation} from "vscode";
 import {FeatureManager} from "../feature-manager/FeatureManager";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Cluster} from "../sdk-extensions";
@@ -21,35 +21,56 @@ export class EnvironmentCommands {
         );
     }
 
-    private async _setup(stepId?: string) {
-        const state = await this.featureManager.isEnabled(
-            "environment.dependencies",
-            true
+    private async checkEnvironmentDependencies() {
+        return await window.withProgress(
+            {
+                location: ProgressLocation.Notification,
+                title: `Databricks: checking python environment`,
+            },
+            () =>
+                this.featureManager.isEnabled("environment.dependencies", true)
         );
-        for (const [, step] of state.steps) {
-            if (step.available || (stepId && step.id !== stepId)) {
-                continue;
-            }
-            if (step.action) {
-                return await step.action();
-            } else if (step.message) {
-                window.showErrorMessage(step.message);
-                return false;
+    }
+
+    private async _setup(stepId?: string) {
+        // Get the state from the cache, we will re-check the state after taking an action (e.g. asking a user to select a venv or install dbconnect).
+        let state = await this.featureManager.isEnabled(
+            "environment.dependencies"
+        );
+        for (const [, s] of state.steps) {
+            if (!s.available && (!stepId || s.id === stepId) && s.action) {
+                // Take an action of a failed step and re-check all steps state afterwards.
+                // Re-checking is important to get the up to date `state.available` value.
+                // It also fixes problems when Python extension doesn't notify us about the environment changes,
+                // and we end up being stuck with the outdated UI warnings.
+                await s.action();
+                state = await this.checkEnvironmentDependencies();
+                // All actions usually require user input (and can be cancelled), so here we stop after the first one
+                // and let users re-run the setup based on the (updated) UI state in the Python Environment panel.
+                break;
             }
         }
         if (state.available) {
             window.showInformationMessage(
                 "Python environment and Databricks Connect are set up."
             );
-            return true;
+        } else {
+            const detail = Array.from(state.steps.values())
+                .filter(
+                    (s) => !s.available && !s.optional && (s.message || s.title)
+                )
+                .map((s) => s.message || s.title)
+                .join("\n");
+            window.showErrorMessage(
+                `Failed to set up Python environment for Databricks Connect:\n${detail}`
+            );
         }
     }
 
     async refresh() {
         await window.withProgress(
             {location: {viewId: "configurationView"}},
-            () =>
-                this.featureManager.isEnabled("environment.dependencies", true)
+            () => this.checkEnvironmentDependencies()
         );
     }
 
