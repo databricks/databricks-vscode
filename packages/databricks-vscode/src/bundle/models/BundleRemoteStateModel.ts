@@ -25,6 +25,13 @@ export type BundleRemoteState = BundleTarget & {
             };
         };
     };
+    __locations?: {
+        version: number;
+        files: string[];
+        locations: {
+            [key: string]: number[][];
+        };
+    };
 };
 
 /* eslint-enable @typescript-eslint/naming-convention */

@@ -4,12 +4,19 @@ import {
     BundleResourceExplorerTreeItem,
     BundleResourceExplorerTreeNode,
 } from "./types";
-import {ExtensionContext, TreeItemCollapsibleState, ThemeIcon} from "vscode";
+import {
+    ExtensionContext,
+    TreeItemCollapsibleState,
+    ThemeIcon,
+    Location,
+} from "vscode";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {jobs} from "@databricks/databricks-sdk";
 import {TaskRunStatusTreeNode} from "./TaskRunStatusTreeNode";
 import {ContextUtils} from "./utils";
+import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";
+import {getSourceLocation} from "./utils/SourceLocationUtils";
 
 type Task = Required<BundleResourceExplorerResource<"jobs">>["tasks"][number];
 type TaskType = keyof {
@@ -18,9 +25,11 @@ type TaskType = keyof {
 
 export class TaskTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "task";
+
     get taskKey(): string {
         return this.data.task_key;
     }
+
     get runDetails(): jobs.RunTask | undefined {
         return this.runMonitor?.data?.tasks?.find(
             (t) => t.task_key === this.taskKey
@@ -37,6 +46,15 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
             this.taskKey
         }`;
     }
+
+    get sourceLocation(): Location | undefined {
+        return getSourceLocation(
+            this.locations,
+            this.connectionManager.projectRoot,
+            this.resourceKey
+        );
+    }
+
     constructor(
         private readonly context: ExtensionContext,
         private readonly connectionManager: ConnectionManager,
@@ -45,7 +63,8 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
         public readonly resourceKey: string,
         public parent: BundleResourceExplorerTreeNode,
         public readonly jobId?: string,
-        public readonly runMonitor?: JobRunStatus
+        public readonly runMonitor?: JobRunStatus,
+        private readonly locations?: BundleRemoteState["__locations"]
     ) {}
 
     private getIconPathForType(taskType: string) {
@@ -135,6 +154,7 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
                 nodeType: this.type,
                 running: this.isRunning,
                 hasUrl: this.url !== undefined,
+                hasSourceLocation: this.sourceLocation !== undefined,
                 cancellable: false,
             }),
             collapsibleState:
