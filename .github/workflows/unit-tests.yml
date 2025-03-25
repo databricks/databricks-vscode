@@ -64,10 +64,14 @@ jobs:
           run: yarn run test:cov
           working-directory: packages/databricks-vscode
 
-      - name: Setup Python
+      - name: Install Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12" # 3.13+ is not yet supported by the latest DBR
+
+      - name: Install Python dependencies
+        run: pip install ipython
+        working-directory: packages/databricks-vscode
 
       - name: Python Unit Tests
         run: yarn run test:python

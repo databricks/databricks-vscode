@@ -1180,7 +1180,7 @@
         "test:integ:sdk": "ts-mocha --type-check 'src/sdk-extensions/**/*.integ.ts'",
         "test:integ": "yarn run test:integ:extension && yarn run test:integ:sdk",
         "test:cov": "nyc yarn run test:unit",
-        "test": "yarn run test:lint && yarn run test:unit && yarn run test:python",
+        "test": "yarn run test:lint && yarn run test:unit",
         "clean": "rm -rf node_modules out .vscode-test",
         "generate-notice": "../../scripts/generate_notice.sh",
         "generate-telemetry": "ts-node ./scripts/generateTelemetry.ts"
