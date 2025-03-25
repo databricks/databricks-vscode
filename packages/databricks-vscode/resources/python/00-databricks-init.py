@@ -316,7 +316,8 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                 if len(rest) == 0:
                     return lines
                 
-                filename = rest[0]
+                # Strip whitespace or possible quotes around the filename
+                filename = rest[0].strip('\'" ')
 
                 for suffix in ["", ".py", ".ipynb", ".ipy"]:
                     if os.path.exists(os.path.join(os.getcwd(), filename + suffix)):
@@ -324,7 +325,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                         break
                 
                 return [
-                    f"with databricks_notebook_exec_env('{cfg.project_root}', '{filename}') as file:\n",
+                    f"with databricks_notebook_exec_env(r'{cfg.project_root}', r'{filename}') as file:\n",
                     "\t%run -i {file} " + lines[0].partition('%run')[2].partition(filename)[2] + "\n"
                 ]
             
