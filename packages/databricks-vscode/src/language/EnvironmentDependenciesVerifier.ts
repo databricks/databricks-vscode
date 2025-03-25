@@ -169,7 +169,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
 
     private getCurrentPythonVersionMessage(env?: ResolvedEnvironment): string {
         return env?.version && env.environment
-            ? `Current version is ${env.version.major}.${env.version.minor}.${env.version.micro}.`
+            ? `Current Python version is ${env.version.major}.${env.version.minor}.${env.version.micro}.`
             : "No active environments found.";
     }
 
@@ -211,22 +211,26 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
 
     async checkPythonEnvironment(): Promise<FeatureStepState> {
         try {
-            const dbrVersionParts =
-                this.connectionManager.cluster?.dbrVersion || [];
-            const expectedPythonVersion =
-                this.getExpectedPythonVersionMessage(dbrVersionParts);
             const env = await this.pythonExtension.pythonEnvironment;
-            const envVersionTooLow =
+            let envVersionTooLow =
                 env?.version &&
                 (env.version.major !== 3 || env.version.minor < 10);
-            const noEnvironment = !env?.environment;
-            const currentPythonVersionMessage =
-                this.getCurrentPythonVersionMessage(env);
-            if (noEnvironment || envVersionTooLow) {
+            let dbrVersion = this.connectionManager.cluster?.dbrVersion || [];
+            if (this.connectionManager.serverless) {
+                dbrVersion = [15, 1];
+                envVersionTooLow =
+                    env?.version &&
+                    (env.version.major !== 3 || env.version.minor < 11);
+            }
+            const expectedPythonVersion =
+                this.getExpectedPythonVersionMessage(dbrVersion);
+            if (!env?.environment || envVersionTooLow) {
                 return this.rejectStep(
                     "checkPythonEnvironment",
                     `Activate an environment with Python ${expectedPythonVersion}`,
-                    `Databricks Connect requires ${expectedPythonVersion}. ${currentPythonVersionMessage}`,
+                    `Databricks Connect requires Python ${expectedPythonVersion}. ${this.getCurrentPythonVersionMessage(
+                        env
+                    )}`,
                     this.selectPythonInterpreter.bind(this)
                 );
             }
@@ -235,14 +239,14 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 return this.rejectStep(
                     "checkPythonEnvironment",
                     `Activate an environment with Python ${expectedPythonVersion}`,
-                    "No python executable found",
+                    "No Python executable found.",
                     this.selectPythonInterpreter.bind(this)
                 );
             }
             const warning = this.getVersionMismatchWarning(
-                dbrVersionParts[0],
+                dbrVersion[0],
                 env,
-                currentPythonVersionMessage
+                this.getCurrentPythonVersionMessage(env)
             );
             return this.acceptStep(
                 "checkPythonEnvironment",
@@ -332,7 +336,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 return this.rejectStep(
                     "checkEnvironmentDependencies",
                     "Install databricks-connect",
-                    "databricks-connect package is not installed in the current environment",
+                    "databricks-connect package is not installed in the current environment.",
                     async (advertisement = false) =>
                         this.installer.show(advertisement)
                 );

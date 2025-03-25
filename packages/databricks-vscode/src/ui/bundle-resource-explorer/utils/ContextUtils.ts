@@ -11,6 +11,7 @@ type BundleTreeItemContext = {
     running?: boolean;
     cancellable?: boolean;
     hasUrl?: boolean;
+    hasSourceLocation?: boolean;
     hasPipelineDetails?: boolean;
     modifiedStatus?: BundleResourceModifiedStatus;
 };
@@ -41,6 +42,10 @@ export function getContextString(context: BundleTreeItemContext) {
 
     if (context.hasUrl) {
         parts.push("has-url");
+    }
+
+    if (context.hasSourceLocation) {
+        parts.push("has-source-location");
     }
 
     if (context.hasPipelineDetails) {

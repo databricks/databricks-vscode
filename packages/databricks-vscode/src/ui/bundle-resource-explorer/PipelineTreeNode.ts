@@ -7,14 +7,14 @@ import {
 import {BundleRunStatusManager} from "../../bundle/run/BundleRunStatusManager";
 import {ContextUtils} from "./utils";
 import {DecorationUtils} from "../utils";
-
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {PipelineRunStatus} from "../../bundle/run/PipelineRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {PipelineRunStatusTreeNode} from "./PipelineRunStatusTreeNode";
-import {ThemeIcon} from "vscode";
+import {ThemeIcon, Location} from "vscode";
 import {PipelineDatasetsTreeNode} from "./PipelineDatasetsTreeNode";
 import {BundlePipelinesManager} from "../../bundle/BundlePipelinesManager";
+import {getSourceLocation} from "./utils/SourceLocationUtils";
 
 export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
     readonly type = "pipelines";
@@ -28,12 +28,21 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
         return `${host.toString()}#joblist/pipelines/${this.data.id}`;
     }
 
+    get sourceLocation(): Location | undefined {
+        return getSourceLocation(
+            this.locations,
+            this.connectionManager.projectRoot,
+            this.resourceKey
+        );
+    }
+
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly bundleRunStatusManager: BundleRunStatusManager,
         private readonly pipelinesManager: BundlePipelinesManager,
         public readonly resourceKey: string,
         public readonly data: BundleResourceExplorerResource<"pipelines">,
+        private readonly locations: BundleRemoteState["__locations"],
         public parent?: BundleResourceExplorerTreeNode
     ) {}
 
@@ -51,6 +60,7 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
                 resourceType: this.type,
                 running: isRunning,
                 hasUrl: this.url !== undefined,
+                hasSourceLocation: this.sourceLocation !== undefined,
                 cancellable: isRunning,
                 nodeType: this.type,
                 modifiedStatus: this.data.modified_status,
@@ -139,6 +149,7 @@ export class PipelineTreeNode implements BundleResourceExplorerTreeNode {
                 pipelinesManager,
                 `pipelines.${pipelineKey}`,
                 pipelines[pipelineKey],
+                remoteStateConfig.__locations,
                 undefined
             );
         });
