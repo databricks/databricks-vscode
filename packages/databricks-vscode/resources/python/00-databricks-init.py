@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 from typing import Any, Union, List
 
 # prevent sum from pyskaprk.sql.functions from shadowing the builtin sum
@@ -206,7 +205,8 @@ def convert_databricks_notebook_to_ipynb(py_file: str):
         'nbformat_minor': 2
     })
 
-    
+
+from contextlib import contextmanager
 @contextmanager
 def databricks_notebook_exec_env(project_root: str, py_file: str):
     import os
@@ -236,7 +236,6 @@ def databricks_notebook_exec_env(project_root: str, py_file: str):
 Splits an SQL string into individual statements using recursive descent parsing technique. 
 Handles semicolons in strings and comments. Most probably breaks in dozens of other edge cases...
 """
-@disposable
 class SqlStatementParser:
     def __init__(self, sql):
         self.sql = sql
@@ -325,23 +324,15 @@ class SqlStatementParser:
             else:
                 self.consume()
 
-
-@logErrorAndContinue
 @disposable
-def split_sql_statements(sql_string):
-    parser = SqlStatementParser(sql_string)
-    return parser.parse()
-
-@logErrorAndContinue
-@disposable
-def register_magics(cfg: LocalDatabricksNotebookConfig):
+def create_databricks_magics_transformer(cfg: LocalDatabricksNotebookConfig):
     import os
     import warnings
 
     def warn_for_dbr_alternative(magic: str):
         # Magics that are not supported on Databricks but work in jupyter notebooks.
         # We show a warning, prompting users to use a databricks equivalent instead.
-        local_magic_dbr_alternative = {"%%sh": "%sh"}
+        local_magic_dbr_alternative = {"%%sh": "sh"}
         if magic in local_magic_dbr_alternative:
             warnings.warn(
                 "\n" + magic
@@ -353,7 +344,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
 
     def throw_if_not_supported(magic: str):
         # These are magics that are supported on dbr but not locally.
-        unsupported_dbr_magics = ["%r", "%scala"]
+        unsupported_dbr_magics = ["r", "scala"]
         if magic in unsupported_dbr_magics:
             raise NotImplementedError(
                 magic
@@ -423,8 +414,9 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                 if len(rest) == 0:
                     return lines
                 
+                raw_filename = rest[0]
                 # Strip whitespace or possible quotes around the filename
-                filename = rest[0].strip('\'" ')
+                filename = raw_filename.strip('\'" ')
 
                 for suffix in ["", ".py", ".ipynb", ".ipy"]:
                     if os.path.exists(os.path.join(os.getcwd(), filename + suffix)):
@@ -433,7 +425,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                 
                 return [
                     f"with databricks_notebook_exec_env(r'{cfg.project_root}', r'{filename}') as file:\n",
-                    "\t%run -i {file} " + lines[0].partition('%run')[2].partition(filename)[2] + "\n"
+                    "\t%run -i {file} " + lines[0].partition('%run')[2].partition(raw_filename)[2].strip() + "\n"
                 ]
             
             return lines
@@ -441,7 +433,6 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
         is_line_magic.handle = handle
         return get_line_magic(lines) is not None
         
-
     def parse_line_for_databricks_magics(lines: List[str]):
         if len(lines) == 0:
             return lines
@@ -456,10 +447,16 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                 return magic_check.handle(lines)
 
         return lines
+    
+    return parse_line_for_databricks_magics
 
+
+@logErrorAndContinue
+@disposable
+def register_magics(cfg: LocalDatabricksNotebookConfig):
     ip = get_ipython()
     ip.register_magics(DatabricksMagics)
-    ip.input_transformers_cleanup.append(parse_line_for_databricks_magics)
+    ip.input_transformers_cleanup.append(create_databricks_magics_transformer(cfg))
 
 
 @logErrorAndContinue
@@ -626,5 +623,6 @@ def setup():
     globals().pop('disposable')
 
 
+import os
 if not os.environ.get("DATABRICKS_EXTENSION_UNIT_TESTS"):
     setup()
