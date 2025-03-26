@@ -1,16 +1,7 @@
-from contextlib import contextmanager
-import functools
-import json
 from typing import Any, Union, List
-import os
-import sys
-# Avoid conflicts with possible "datetime" imports (in the user code)
-import time as _time
-import shlex
-import warnings
-import tempfile
 
 # prevent sum from pyskaprk.sql.functions from shadowing the builtin sum
+import sys
 builtinSum = sys.modules['builtins'].sum
 
 def logError(function_name: str, e: Union[str, Exception]):
@@ -44,6 +35,8 @@ def disposable(f):
 
 
 def logErrorAndContinue(f):
+    import functools
+
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
@@ -56,6 +49,7 @@ def logErrorAndContinue(f):
 @logErrorAndContinue
 @disposable
 def load_env_from_leaf(path: str) -> bool:
+    import os
     curdir = path if os.path.isdir(path) else os.path.dirname(path)
     env_file_path = os.path.join(curdir, ".databricks", ".databricks.env")
     if os.path.exists(env_file_path):
@@ -106,6 +100,7 @@ class EnvLoader:
         self.required = required
 
     def __get__(self, instance, owner):
+        import os
         if self.env_name in os.environ:
             if self.transform is not bool:
                 return self.transform(os.environ[self.env_name])
@@ -144,6 +139,7 @@ class DatabricksMagics(Magics):
     @needs_local_scope
     @line_magic
     def fs(self, line: str, local_ns):
+        import shlex
         args = shlex.split(line)
         if len(args) == 0:
             return
@@ -163,6 +159,7 @@ class DatabricksMagics(Magics):
 
 
 def is_databricks_notebook(py_file: str):
+    import os
     if os.path.exists(py_file):
         with open(py_file, "r") as f:
             return "Databricks notebook source" in f.readline()
@@ -175,6 +172,9 @@ def strip_hash_magic(lines: List[str]) -> List[str]:
     return lines
 
 def convert_databricks_notebook_to_ipynb(py_file: str):
+    import os
+    import json
+
     cells: List[dict[str, Any]] = [
         {
             "cell_type": "code",
@@ -205,10 +205,13 @@ def convert_databricks_notebook_to_ipynb(py_file: str):
         'nbformat_minor': 2
     })
 
-    
+
+from contextlib import contextmanager
 @contextmanager
 def databricks_notebook_exec_env(project_root: str, py_file: str):
+    import os
     import sys
+    import tempfile
     old_sys_path = sys.path
     old_cwd = os.getcwd()
 
@@ -229,13 +232,107 @@ def databricks_notebook_exec_env(project_root: str, py_file: str):
         os.chdir(old_cwd)
 
 
-@logErrorAndContinue
+"""
+Splits an SQL string into individual statements using recursive descent parsing technique. 
+Handles semicolons in strings and comments. Most probably breaks in dozens of other edge cases...
+"""
+class SqlStatementParser:
+    def __init__(self, sql):
+        self.sql = sql
+        self.position = 0
+        self.statements = []
+        self.current = []
+    
+    def parse(self):
+        while self.position < len(self.sql):
+            char = self.peek()
+            next_char = self.peek_next()
+            if char == '-' and next_char == '-':
+                self.parse_line_comment()
+            elif char == '/' and next_char == '*':
+                self.parse_block_comment()
+            elif char == "'":
+                self.parse_string("'")
+            elif char == '"':
+                self.parse_string('"')
+            elif char == '`':
+                self.parse_string('`')
+            elif char == ';':
+                self.position += 1 # Skip the semicolon itself
+                self.add_statement()
+            else:
+                self.consume()
+        self.add_statement() # Add the last statement if there is one
+        return self.statements
+    
+    def peek(self):
+        if self.position < len(self.sql):
+            return self.sql[self.position]
+        return None
+    
+    def peek_next(self):
+        if self.position + 1 < len(self.sql):
+            return self.sql[self.position + 1]
+        return None
+    
+    def consume(self):
+        char = self.peek()
+        if char is not None:
+            self.position += 1
+            self.current.append(char)
+        return char
+    
+    def consume_next(self):
+        char, next_char = self.peek(), self.peek_next()
+        if char is not None and next_char is not None:
+            self.position += 2
+            self.current.extend([char, next_char])
+        return char, next_char
+    
+    def add_statement(self):
+        if self.current:
+            stmt = ''.join(self.current).strip()
+            if stmt:
+                self.statements.append(stmt)
+            self.current = []
+        
+    def parse_line_comment(self):
+        self.consume_next()  # Consume "--" that starts the comment
+        while self.peek() is not None:
+            if self.peek() == '\n':
+                self.consume()
+                return
+            self.consume()
+    
+    def parse_block_comment(self):
+        self.consume_next()  # Consume "/*" that starts the comment
+        while self.peek() is not None:
+            if self.peek() == '*' and self.peek_next() == '/':
+                self.consume_next()  # Consume "*/" that ends the comment
+                return
+            self.consume()
+    
+    def parse_string(self, quote_char):
+        self.consume()  # Consume the opening quote
+        while self.peek() is not None:
+            # Handle escaped quote
+            if self.peek() == '\\' and self.peek_next() == quote_char:
+                self.consume_next() # Consume the escaped quote
+            elif self.peek() == quote_char:
+                self.consume()  # Consume the closing quote
+                return
+            else:
+                self.consume()
+
 @disposable
-def register_magics(cfg: LocalDatabricksNotebookConfig):
+def create_databricks_magics_transformer(cfg: LocalDatabricksNotebookConfig):
+    import os
+    import warnings
+
     def warn_for_dbr_alternative(magic: str):
         # Magics that are not supported on Databricks but work in jupyter notebooks.
         # We show a warning, prompting users to use a databricks equivalent instead.
-        local_magic_dbr_alternative = {"%%sh": "%sh"}
+        local_magic_dbr_alternative = {"%%sh": "sh"}
         if magic in local_magic_dbr_alternative:
             warnings.warn(
                 "\n" + magic
@@ -247,7 +344,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
 
     def throw_if_not_supported(magic: str):
         # These are magics that are supported on dbr but not locally.
-        unsupported_dbr_magics = ["%r", "%scala"]
+        unsupported_dbr_magics = ["r", "scala"]
         if magic in unsupported_dbr_magics:
             raise NotImplementedError(
                 magic
@@ -300,14 +397,14 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
 
             if lmagic == "sql":
                 lines = lines[1:]
-                spark_string = (
-                    "global _sqldf\n"
-                    + "_sqldf = spark.sql('''"
-                    + "".join(lines).replace("'", "\\'")
-                    + "''')\n"
-                    + "_sqldf"
-                )
-                return spark_string.splitlines(keepends=True)
+                sql_string = "".join(lines)
+                statements = SqlStatementParser(sql_string).parse()
+                result_code = ["global _sqldf\n"]
+                for _, stmt in enumerate(statements):
+                    quoted_stmt = stmt.replace("'", "\\'")
+                    result_code.append(f"_sqldf = spark.sql('''{quoted_stmt}''')\n")
+                result_code.append("_sqldf")
+                return result_code
 
             if lmagic == "python":
                 return lines[1:]
@@ -317,8 +414,9 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                 if len(rest) == 0:
                     return lines
                 
+                raw_filename = rest[0]
                 # Strip whitespace or possible quotes around the filename
-                filename = rest[0].strip('\'" ')
+                filename = raw_filename.strip('\'" ')
 
                 for suffix in ["", ".py", ".ipynb", ".ipy"]:
                     if os.path.exists(os.path.join(os.getcwd(), filename + suffix)):
@@ -327,7 +425,7 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                 
                 return [
                     f"with databricks_notebook_exec_env(r'{cfg.project_root}', r'{filename}') as file:\n",
-                    "\t%run -i {file} " + lines[0].partition('%run')[2].partition(filename)[2] + "\n"
+                    "\t%run -i {file} " + lines[0].partition('%run')[2].partition(raw_filename)[2].strip() + "\n"
                 ]
             
             return lines
@@ -335,7 +433,6 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
         is_line_magic.handle = handle
         return get_line_magic(lines) is not None
         
-
     def parse_line_for_databricks_magics(lines: List[str]):
         if len(lines) == 0:
             return lines
@@ -350,10 +447,16 @@ def register_magics(cfg: LocalDatabricksNotebookConfig):
                 return magic_check.handle(lines)
 
         return lines
+    
+    return parse_line_for_databricks_magics
 
+
+@logErrorAndContinue
+@disposable
+def register_magics(cfg: LocalDatabricksNotebookConfig):
     ip = get_ipython()
     ip.register_magics(DatabricksMagics)
-    ip.input_transformers_cleanup.append(parse_line_for_databricks_magics)
+    ip.input_transformers_cleanup.append(create_databricks_magics_transformer(cfg))
 
 
 @logErrorAndContinue
@@ -372,6 +475,7 @@ def register_formatters(notebook_config: LocalDatabricksNotebookConfig):
 @logErrorAndContinue
 @disposable
 def register_spark_progress(spark, show_progress: bool):
+    import time
     try:
         import ipywidgets as widgets
     except Exception as e:
@@ -389,7 +493,7 @@ def register_spark_progress(spark, show_progress: bool):
         ) -> None:
             self._ticks = None
             self._tick = None
-            self._started = _time.time()
+            self._started = time.time()
             self._bytes_read = 0
             self._running = 0
             self.init_ui()
@@ -430,7 +534,7 @@ def register_spark_progress(spark, show_progress: bool):
         def output(self) -> None:
             if self._tick is not None and self._ticks is not None:
                 percent_complete = (self._tick / self._ticks) * 100
-                elapsed = int(_time.time() - self._started)
+                elapsed = int(time.time() - self._started)
                 scanned = self._bytes_to_string(self._bytes_read)
                 running = self._running
                 self.w_progress.value = percent_complete
@@ -475,6 +579,7 @@ def register_spark_progress(spark, show_progress: bool):
 @logErrorAndContinue
 @disposable
 def update_sys_path(notebook_config: LocalDatabricksNotebookConfig):
+    import sys
     sys.path.append(notebook_config.project_root)
 
 
@@ -486,14 +591,14 @@ def make_matplotlib_inline():
     except Exception as e:
         pass
 
-
-global _sqldf
-
-try:
+@logErrorAndContinue
+@disposable
+def setup():
+    import os
     import sys
-
     print(sys.modules[__name__])
 
+    global _sqldf
     # Suppress grpc warnings coming from databricks-connect with newer version of grpcio lib
     os.environ["GRPC_VERBOSITY"] = "NONE"
 
@@ -515,8 +620,9 @@ try:
 
     for i in __disposables + ['__disposables']:
         globals().pop(i)
-    globals().pop('i')
     globals().pop('disposable')
 
-except Exception as e:
-    logError("unknown", e)
+
+import os
+if not os.environ.get("DATABRICKS_EXTENSION_UNIT_TESTS"):
+    setup()
