@@ -1174,6 +1174,7 @@
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",
+        "test:python": "DATABRICKS_EXTENSION_UNIT_TESTS=1 python -B -m unittest discover -s ./src/test/python -p '*_test.py'",
         "test:integ:prepare": "yarn run package",
         "test:integ:extension": "yarn run test:integ:prepare && wdio run src/test/e2e/wdio.conf.ts",
         "test:integ:sdk": "ts-mocha --type-check 'src/sdk-extensions/**/*.integ.ts'",
