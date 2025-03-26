@@ -46,6 +46,22 @@ describe("Run files on serverless compute", async function () {
         );
 
         await fs.writeFile(
+            path.join(nestedDir, "databricks-notebook.py"),
+            [
+                "# Databricks notebook source",
+                `spark.sql('SELECT "hello world"').show()`,
+                "# COMMAND ----------",
+                "# DBTITLE 1,My cell title",
+                "# MAGIC %sql",
+                "# MAGIC select 1 + 1;",
+                "# MAGIC select 'hello; world'",
+                "# COMMAND ----------",
+                `df = _sqldf.toPandas()`,
+                `df.to_json(os.path.join(os.getcwd(), "databricks-notebook-output.json"))`,
+            ].join("\n")
+        );
+
+        await fs.writeFile(
             path.join(nestedDir, "notebook.ipynb"),
             JSON.stringify({
                 /* eslint-disable @typescript-eslint/naming-convention */
@@ -246,6 +262,32 @@ describe("Run files on serverless compute", async function () {
                 timeout: 60_000,
                 interval: 2000,
                 timeoutMsg: "Notebook execution did not complete successfully",
+            }
+        );
+    });
+
+    it("should run a databricks notebook with dbconnect", async () => {
+        await openFile("databricks-notebook.py");
+        await executeCommandWhenAvailable("Jupyter: Run All Cells");
+
+        await browser.waitUntil(
+            async () => {
+                const output = await fs.readFile(
+                    path.join(
+                        projectDir,
+                        "nested",
+                        "databricks-notebook-output.json"
+                    ),
+                    "utf-8"
+                );
+                console.log("Databricks notebook output: ", output);
+                return output.includes("hello; world");
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg:
+                    "Databricks notebook execution did not complete successfully",
             }
         );
     });
