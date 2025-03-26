@@ -6,12 +6,14 @@
 
 -   Link bundle resources to their source definitions
 -   Always show warnings before destroying a bundle
--   Avoid python extension interference in the bundle-init terminal
--   Fix ProgressHandler conflicts with datetime imports
--   Ignore DBTITLE magic comments in .py notebooks
--   Improve handling of the "%run" magic for local runs
 -   Show error notifications after failed environment setup
 -   Simplify profile selection UI in the auth setup flow, promote OAuth option
+-   Avoid python extension interference in the bundle-init terminal
+-   Improvements for Databricks Connect integration with notebooks:
+    -   Fix ProgressHandler conflicts with datetime imports
+    -   Ignore DBTITLE magic comments in .py notebooks
+    -   Correctly escape file paths for the %run magic
+    -   Execute multiple statements in cells with %sql magic
 -   Update Databricks CLI to v0.244.0
 
 # Release: v2.8.0
