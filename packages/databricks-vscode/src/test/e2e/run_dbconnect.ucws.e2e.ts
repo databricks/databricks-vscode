@@ -19,7 +19,7 @@ async function checkOutputFile(path: string, expectedContent: string) {
     await browser.waitUntil(
         async () => {
             const fileContent = await fs.readFile(path, "utf-8");
-            console.log("Output file content: ", fileContent);
+            console.log(`"${path}" contents: `, fileContent);
             return fileContent.includes(expectedContent);
         },
         {
@@ -114,7 +114,7 @@ describe("Run files on serverless compute", async function () {
                 `df = _sqldf.toPandas()`,
                 `df.to_json(os.path.join(os.getcwd(), "databricks-notebook-output.json"))`,
                 "# COMMAND ----------",
-                "# MAGIC %run './notebook.ipynb'",
+                "# MAGIC %run './hello.py'",
             ].join("\n")
         );
 
@@ -288,7 +288,7 @@ describe("Run files on serverless compute", async function () {
         const runOutputFile = path.join(
             projectDir,
             "nested",
-            "notebook-output.json"
+            "file-output.json"
         );
         await checkOutputFile(runOutputFile, "hello world");
     });
