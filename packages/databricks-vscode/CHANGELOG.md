@@ -1,3 +1,11 @@
+# Release: v2.9.1
+
+## packages/databricks-vscode
+
+## (2025-03-27)
+
+-   Cleanup old databricks-init scripts from the ipython startup directory
+
 # Release: v2.9.0
 
 ## packages/databricks-vscode
