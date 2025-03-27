@@ -172,7 +172,10 @@ export class NotebookInitScriptManager implements Disposable {
 
         const sourceFiles = await this.sourceFiles;
         for (const file of await glob(
-            path.join(startupDir, "00-databricks-init-*.py")
+            path.join(startupDir, "00-databricks-init-*.py"),
+            // path.join will use "\" separator on windows, wbut glob always expects "/", unless we specify windowsPathsNoEscape.
+            // This means we can't use "\" to escape special chracters in the glob pattern, but we don't use any.
+            {windowsPathsNoEscape: true}
         )) {
             if (!sourceFiles.includes(path.basename(file))) {
                 await rm(file);
