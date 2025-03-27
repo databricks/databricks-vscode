@@ -15,6 +15,22 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 
+async function checkOutputFile(path: string, expectedContent: string) {
+    await browser.waitUntil(
+        async () => {
+            const fileContent = await fs.readFile(path, "utf-8");
+            console.log("Output file content: ", fileContent);
+            return fileContent.includes(expectedContent);
+        },
+        {
+            timeout: 60_000,
+            interval: 2000,
+            timeoutMsg: `Output file "${path}" did not contain "${expectedContent}"`,
+        }
+    );
+    await fs.rm(path);
+}
+
 describe("Run files on serverless compute", async function () {
     let projectDir: string;
     this.timeout(3 * 60 * 1000);
@@ -46,22 +62,6 @@ describe("Run files on serverless compute", async function () {
         );
 
         await fs.writeFile(
-            path.join(nestedDir, "databricks-notebook.py"),
-            [
-                "# Databricks notebook source",
-                `spark.sql('SELECT "hello world"').show()`,
-                "# COMMAND ----------",
-                "# DBTITLE 1,My cell title",
-                "# MAGIC %sql",
-                "# MAGIC select 1 + 1;",
-                "# MAGIC select 'hello; world'",
-                "# COMMAND ----------",
-                `df = _sqldf.toPandas()`,
-                `df.to_json(os.path.join(os.getcwd(), "databricks-notebook-output.json"))`,
-            ].join("\n")
-        );
-
-        await fs.writeFile(
             path.join(nestedDir, "notebook.ipynb"),
             JSON.stringify({
                 /* eslint-disable @typescript-eslint/naming-convention */
@@ -78,6 +78,13 @@ describe("Run files on serverless compute", async function () {
                             `df.to_json(os.path.join(os.getcwd(), "notebook-output.json"))`,
                         ],
                     },
+                    {
+                        cell_type: "code",
+                        execution_count: null,
+                        metadata: {},
+                        outputs: [],
+                        source: [`%run "./hello.py"`],
+                    },
                 ],
                 metadata: {
                     kernelspec: {
@@ -91,6 +98,24 @@ describe("Run files on serverless compute", async function () {
                 nbformat_minor: 2,
                 /* eslint-enable @typescript-eslint/naming-convention */
             })
+        );
+
+        await fs.writeFile(
+            path.join(nestedDir, "databricks-notebook.py"),
+            [
+                "# Databricks notebook source",
+                `spark.sql('SELECT "hello world"').show()`,
+                "# COMMAND ----------",
+                "# DBTITLE 1,My cell title",
+                "# MAGIC %sql",
+                "# MAGIC select 1 + 1;",
+                "# MAGIC select 'hello; world'",
+                "# COMMAND ----------",
+                `df = _sqldf.toPandas()`,
+                `df.to_json(os.path.join(os.getcwd(), "databricks-notebook-output.json"))`,
+                "# COMMAND ----------",
+                "# MAGIC %run './notebook.ipynb'",
+            ].join("\n")
         );
 
         await writeRootBundleConfig(
@@ -218,21 +243,8 @@ describe("Run files on serverless compute", async function () {
         await executeCommandWhenAvailable(
             "Databricks: Run current file with Databricks Connect"
         );
-        await browser.waitUntil(
-            async () => {
-                const fileOutput = await fs.readFile(
-                    path.join(projectDir, "file-output.json"),
-                    "utf-8"
-                );
-                console.log("File output: ", fileOutput);
-                return fileOutput.includes("hello world");
-            },
-            {
-                timeout: 60_000,
-                interval: 2000,
-                timeoutMsg: "Terminal output did not contain 'hello world'",
-            }
-        );
+        const output = path.join(projectDir, "file-output.json");
+        await checkOutputFile(output, "hello world");
     });
 
     it("should run a notebook with dbconnect", async () => {
@@ -241,54 +253,43 @@ describe("Run files on serverless compute", async function () {
 
         const kernelInput = await waitForInput();
         await kernelInput.selectQuickPick("Python Environments...");
-        console.log(
-            "Selected 'Python Environments...' option for kernel selection"
-        );
+        console.log("Selected 'Python Environments...' option");
 
         const envInput = await waitForInput();
         await envInput.selectQuickPick(".venv");
         console.log("Selected .venv environment");
 
-        await browser.waitUntil(
-            async () => {
-                const notebookOutput = await fs.readFile(
-                    path.join(projectDir, "nested", "notebook-output.json"),
-                    "utf-8"
-                );
-                console.log("Notebook output: ", notebookOutput);
-                return notebookOutput.includes("hello world");
-            },
-            {
-                timeout: 60_000,
-                interval: 2000,
-                timeoutMsg: "Notebook execution did not complete successfully",
-            }
+        const firstCellOutput = path.join(
+            projectDir,
+            "nested",
+            "notebook-output.json"
         );
+        await checkOutputFile(firstCellOutput, "hello world");
+
+        const secondCellOutput = path.join(
+            projectDir,
+            "nested",
+            "file-output.json"
+        );
+        await checkOutputFile(secondCellOutput, "hello world");
     });
 
-    it("should run a databricks notebook with dbconnect", async () => {
+    it("should run a databricks notebook with dbconnect and handle magic comments", async () => {
         await openFile("databricks-notebook.py");
         await executeCommandWhenAvailable("Jupyter: Run All Cells");
 
-        await browser.waitUntil(
-            async () => {
-                const output = await fs.readFile(
-                    path.join(
-                        projectDir,
-                        "nested",
-                        "databricks-notebook-output.json"
-                    ),
-                    "utf-8"
-                );
-                console.log("Databricks notebook output: ", output);
-                return output.includes("hello; world");
-            },
-            {
-                timeout: 60_000,
-                interval: 2000,
-                timeoutMsg:
-                    "Databricks notebook execution did not complete successfully",
-            }
+        const sqlOutputFile = path.join(
+            projectDir,
+            "nested",
+            "databricks-notebook-output.json"
         );
+        await checkOutputFile(sqlOutputFile, "hello; world");
+
+        const runOutputFile = path.join(
+            projectDir,
+            "nested",
+            "notebook-output.json"
+        );
+        await checkOutputFile(runOutputFile, "hello world");
     });
 });
