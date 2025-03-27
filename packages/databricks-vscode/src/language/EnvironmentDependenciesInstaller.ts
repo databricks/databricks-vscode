@@ -50,6 +50,12 @@ export class EnvironmentDependenciesInstaller implements Disposable {
                 version,
                 this.outputChannel
             );
+            // Required for executing notebooks with %run magic
+            await this.pythonExtension.installPackageInEnvironment(
+                "nbformat",
+                undefined,
+                this.outputChannel
+            );
         } catch (e: unknown) {
             if (e instanceof Error) {
                 window.showErrorMessage(e.message);
