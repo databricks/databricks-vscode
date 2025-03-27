@@ -4,7 +4,7 @@
 
 ## (2025-03-27)
 
--   Add e2e tests for running .py notebooks with dbconnect (#1626) ([2d50158](https://github.com/databricks/databricks-vscode/commit/2d50158)), closes [#1626](https://github.com/databricks/databricks-vscode/issues/1626) [#1624](https://github.com/databricks/databricks-vscode/issues/1624)
+-   Cleanup old databricks-init scripts from the ipython startup directory
 
 # Release: v2.9.0
 
