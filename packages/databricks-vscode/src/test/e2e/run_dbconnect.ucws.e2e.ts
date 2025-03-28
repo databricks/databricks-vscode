@@ -101,6 +101,20 @@ describe("Run files on serverless compute", async function () {
         );
 
         await fs.writeFile(
+            path.join(nestedDir, "databricks-run-notebook.py"),
+            [
+                "# Databricks notebook source",
+                "# DBTITLE 1,My cell title",
+                "# MAGIC %sql",
+                "# MAGIC select 1 + 1;",
+                "# MAGIC select 'hello run;'",
+                "# COMMAND ----------",
+                `df = _sqldf.toPandas()`,
+                `df.to_json(os.path.join(os.getcwd(), "databricks-run-notebook-output.json"))`,
+            ].join("\n")
+        );
+
+        await fs.writeFile(
             path.join(nestedDir, "databricks-notebook.py"),
             [
                 "# Databricks notebook source",
@@ -114,7 +128,7 @@ describe("Run files on serverless compute", async function () {
                 `df = _sqldf.toPandas()`,
                 `df.to_json(os.path.join(os.getcwd(), "databricks-notebook-output.json"))`,
                 "# COMMAND ----------",
-                "# MAGIC %run './hello.py'",
+                "# MAGIC %run './databricks-run-notebook.py'",
             ].join("\n")
         );
 
@@ -288,8 +302,8 @@ describe("Run files on serverless compute", async function () {
         const runOutputFile = path.join(
             projectDir,
             "nested",
-            "file-output.json"
+            "databricks-run-notebook-output.json"
         );
-        await checkOutputFile(runOutputFile, "hello world");
+        await checkOutputFile(runOutputFile, "hello run;");
     });
 });

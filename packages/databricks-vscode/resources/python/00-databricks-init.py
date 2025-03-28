@@ -221,10 +221,14 @@ def databricks_notebook_exec_env(project_root: str, py_file: str):
     try:
         if is_databricks_notebook(py_file):
             notebook = convert_databricks_notebook_to_ipynb(py_file)
-            with tempfile.NamedTemporaryFile(suffix=".ipynb") as f:
-                f.write(notebook.encode())
-                f.flush()
-                yield f.name
+            fd, temp_path = tempfile.mkstemp(suffix=".ipynb")
+            with os.fdopen(fd, 'wb') as temp_file:
+                temp_file.write(notebook.encode())
+            try:
+                yield temp_path
+            finally:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
         else:
             yield py_file
     finally:
