@@ -1,3 +1,12 @@
+# Release: v2.9.2
+
+## packages/databricks-vscode
+
+## (2025-03-31)
+
+-   Fix a windows-only bug where it was not possible to run databricks notebooks locally with the %run magic
+-   Update Databricks CLI to v0.245.0
+
 # Release: v2.9.1
 
 ## packages/databricks-vscode
