@@ -4,8 +4,8 @@
 
 ## (2025-03-31)
 
--   Fix %run magic with databricks notebooks on windows (#1628) ([21c5c24](https://github.com/databricks/databricks-vscode/commit/21c5c24)), closes [#1628](https://github.com/databricks/databricks-vscode/issues/1628) [#1624](https://github.com/databricks/databricks-vscode/issues/1624)
--   Update Databricks CLI to v0.245.0 (#1625) ([0c9b2cb](https://github.com/databricks/databricks-vscode/commit/0c9b2cb)), closes [#1625](https://github.com/databricks/databricks-vscode/issues/1625)
+-   Fix a windows-only bug where it was not possible to run databricks notebooks locally with the %run magic
+-   Update Databricks CLI to v0.245.0
 
 # Release: v2.9.1
 
