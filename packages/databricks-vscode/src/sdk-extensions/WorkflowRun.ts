@@ -51,8 +51,7 @@ export class WorkflowRun {
 
         return asWaiter(run, async (options) => {
             options = options || {};
-            options.onProgress =
-                options.onProgress || (async (newPollResponse) => {});
+            options.onProgress = options.onProgress || (async () => {});
             const {timeout, onProgress} = options;
 
             return await retry<jobs.Run>({
