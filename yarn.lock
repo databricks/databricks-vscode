@@ -340,7 +340,7 @@ __metadata:
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
-  version: 0.8.0
+  version: 0.10.0
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
   dependencies:
     "@types/ini": ^4.1.0
@@ -350,12 +350,12 @@ __metadata:
     ini: ^4.1.2
     reflect-metadata: ^0.2.1
     semver: ^7.6.0
-  checksum: be59ab37615aa63780fdb841cdd6199f930710d409e29233abc2c66d8e5a7ac9928497bdf2f38075970e89e6ade0d9ae37ea39efcf721bd85f0c484c535f46d0
+  checksum: a6bc58a26c5f07a6d55550b4513e8adcfe36aae432aab687ffc5b96a68d3d5a754b6eabe918c3cd74739bc690ba8e0f965da8deaa9a89025d8f5b4b8daec87c5
   languageName: node
   linkType: hard
 
 "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
-  version: 0.8.0
+  version: 0.10.0
   resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
   dependencies:
     "@types/ini": ^4.1.0
@@ -365,7 +365,7 @@ __metadata:
     ini: ^4.1.2
     reflect-metadata: ^0.2.1
     semver: ^7.6.0
-  checksum: be59ab37615aa63780fdb841cdd6199f930710d409e29233abc2c66d8e5a7ac9928497bdf2f38075970e89e6ade0d9ae37ea39efcf721bd85f0c484c535f46d0
+  checksum: a6bc58a26c5f07a6d55550b4513e8adcfe36aae432aab687ffc5b96a68d3d5a754b6eabe918c3cd74739bc690ba8e0f965da8deaa9a89025d8f5b4b8daec87c5
   languageName: node
   linkType: hard
 
@@ -1525,11 +1525,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^18.19.23":
-  version: 18.19.80
-  resolution: "@types/node@npm:18.19.80"
+  version: 18.19.86
+  resolution: "@types/node@npm:18.19.86"
   dependencies:
     undici-types: ~5.26.4
-  checksum: 08f5be60721d6b37c96dbef9124caf1a27ae1059d7cb1029d9da7d93be25b985106b6bd27af5f65550e20b481aa1985e3d47a63ae6b178b93ac9be5272a12907
+  checksum: 3f2352b5f8da276874cd22555931088298808d384b09d0911bfda5403a93e196c9db48254013bb349be6c069975ea1601981a1d20641867139c47f70348fb81d
   languageName: node
   linkType: hard
 
@@ -1582,9 +1582,9 @@ __metadata:
   linkType: hard
 
 "@types/semver@npm:^7.5.8":
-  version: 7.5.8
-  resolution: "@types/semver@npm:7.5.8"
-  checksum: ea6f5276f5b84c55921785a3a27a3cd37afee0111dfe2bcb3e03c31819c197c782598f17f0b150a69d453c9584cd14c4c4d7b9a55d2c5e6cacd4d66fdb3b3663
+  version: 7.7.0
+  resolution: "@types/semver@npm:7.7.0"
+  checksum: d488eaeddb23879a0a8a759bed667e1a76cb0dd4d23e3255538e24c189db387357953ca9e7a3bda2bb7f95e84cac8fe0db4fbe6b3456e893043337732d1d23cc
   languageName: node
   linkType: hard
 
@@ -2740,9 +2740,9 @@ __metadata:
   linkType: hard
 
 "bignumber.js@npm:^9.0.0":
-  version: 9.1.2
-  resolution: "bignumber.js@npm:9.1.2"
-  checksum: 582c03af77ec9cb0ebd682a373ee6c66475db94a4325f92299621d544aa4bd45cb45fd60001610e94aef8ae98a0905fa538241d9638d4422d57abbeeac6fadaf
+  version: 9.2.0
+  resolution: "bignumber.js@npm:9.2.0"
+  checksum: 0fdf63ae38d8472e15e86338ba1848c092a889ade3baccbef52304933a9dd682bcc9e1ef20ffd937ed52eb86e1f0e332dd08c7c01ba6d62f4293220007c24455
   languageName: node
   linkType: hard
 
