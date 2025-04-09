@@ -1,26 +1,15 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiClient, CancellationToken, jobs} from "@databricks/databricks-sdk";
-import {SubmitRun, SubmitTask} from "@databricks/databricks-sdk/dist/apis/jobs";
+import {
+    SubmitRun,
+    SubmitTask,
+    JobsError,
+    JobsRetriableError,
+} from "@databricks/databricks-sdk/dist/apis/jobs";
 import {Waiter} from "@databricks/databricks-sdk/dist/wait";
 import {asWaiter} from "@databricks/databricks-sdk/dist/wait";
 import {Context} from "@databricks/databricks-sdk/dist/context";
-import {
-    ApiError,
-    ApiRetriableError,
-} from "@databricks/databricks-sdk/dist/apis/apiError";
 import retry from "@databricks/databricks-sdk/dist/retries/retries";
-
-export class JobsError extends ApiError {
-    constructor(method: string, message?: string) {
-        super("Jobs", method, message);
-    }
-}
-
-export class JobsRetriableError extends ApiRetriableError {
-    constructor(method: string, message?: string) {
-        super("Jobs", method, message);
-    }
-}
 
 export class WorkflowRun {
     constructor(
@@ -39,7 +28,7 @@ export class WorkflowRun {
         );
     }
 
-    static async getRun2(
+    static async getRun(
         client: ApiClient,
         getRunRequest: jobs.GetRunRequest,
         context?: Context
@@ -57,7 +46,7 @@ export class WorkflowRun {
             return await retry<jobs.Run>({
                 timeout,
                 fn: async () => {
-                    const pollResponse = await this.getRun2(
+                    const pollResponse = await this.getRun(
                         client,
                         {
                             run_id: run.run_id!,

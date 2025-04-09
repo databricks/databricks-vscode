@@ -48,7 +48,7 @@ export class JobRunStatus extends BundleRunStatus {
         try {
             this.runState = "running";
             await (
-                await WorkflowRun.getRun2(client.apiClient, {
+                await WorkflowRun.getRun(client.apiClient, {
                     run_id: parseInt(this.runId),
                 })
             ).wait({
