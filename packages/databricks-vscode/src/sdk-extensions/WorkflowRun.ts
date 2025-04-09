@@ -1,15 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiClient, CancellationToken, jobs} from "@databricks/databricks-sdk";
-import {
-    SubmitRun,
-    SubmitTask,
-    JobsError,
-    JobsRetriableError,
-} from "@databricks/databricks-sdk/dist/apis/jobs";
-import {Waiter} from "@databricks/databricks-sdk/dist/wait";
-import {asWaiter} from "@databricks/databricks-sdk/dist/wait";
-import {Context} from "@databricks/databricks-sdk/dist/context";
-import retry from "@databricks/databricks-sdk/dist/retries/retries";
+import {SubmitRun, SubmitTask} from "@databricks/databricks-sdk/dist/apis/jobs";
 
 export class WorkflowRun {
     constructor(
@@ -26,66 +17,6 @@ export class WorkflowRun {
             client,
             await jobsService.getRun({run_id: runId})
         );
-    }
-
-    static async getRun(
-        client: ApiClient,
-        getRunRequest: jobs.GetRunRequest,
-        context?: Context
-    ): Promise<Waiter<jobs.Run, jobs.Run>> {
-        const cancellationToken = context?.cancellationToken;
-        const jobsService = new jobs.JobsService(client);
-
-        const run = await jobsService.getRun(getRunRequest, context);
-
-        return asWaiter(run, async (options) => {
-            options = options || {};
-            options.onProgress = options.onProgress || (async () => {});
-            const {timeout, onProgress} = options;
-
-            return await retry<jobs.Run>({
-                timeout,
-                fn: async () => {
-                    const pollResponse = await this.getRun(
-                        client,
-                        {
-                            run_id: run.run_id!,
-                        },
-                        context
-                    );
-                    if (cancellationToken?.isCancellationRequested) {
-                        context?.logger?.error("Jobs.getRunAndWait: cancelled");
-                        throw new JobsError("getRunAndWait", "cancelled");
-                    }
-                    await onProgress(pollResponse);
-                    const status = pollResponse.state!.life_cycle_state;
-                    const statusMessage = pollResponse.state!.state_message;
-                    switch (status) {
-                        case "TERMINATED":
-                        case "SKIPPED": {
-                            return pollResponse;
-                        }
-                        case "INTERNAL_ERROR": {
-                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                            context?.logger?.error(
-                                `Jobs.getRunAndWait: ${errorMessage}`
-                            );
-                            throw new JobsError("getRunAndWait", errorMessage);
-                        }
-                        default: {
-                            const errorMessage = `failed to reach TERMINATED or SKIPPED state, got ${status}: ${statusMessage}`;
-                            context?.logger?.error(
-                                `Jobs.getRunAndWait: retrying: ${errorMessage}`
-                            );
-                            throw new JobsRetriableError(
-                                "getRunAndWait",
-                                errorMessage
-                            );
-                        }
-                    }
-                },
-            });
-        });
     }
 
     static async submitRun(
@@ -183,6 +114,10 @@ export class WorkflowRun {
 
     get runPageUrl(): string {
         return this.details.run_page_url || "";
+    }
+
+    get run(): jobs.Run {
+        return this.details;
     }
 
     async cancel(): Promise<void> {

@@ -8,7 +8,6 @@ import {Event, EventEmitter} from "vscode";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {onError} from "../../utils/onErrorDecorator";
 import {BundleRunStatus} from "./BundleRunStatus";
-import {Time, TimeUnits} from "@databricks/databricks-sdk";
 import {WorkflowRun} from "../../sdk-extensions";
 
 export class JobRunStatus extends BundleRunStatus {
@@ -48,15 +47,10 @@ export class JobRunStatus extends BundleRunStatus {
         try {
             this.runState = "running";
             await (
-                await WorkflowRun.getRun(client.apiClient, {
-                    run_id: parseInt(this.runId),
-                })
-            ).wait({
-                timeout: new Time(48, TimeUnits.hours),
-                onProgress: async (progress) => {
-                    this.data = progress;
-                    this.onDidChangeEmitter.fire();
-                },
+                await WorkflowRun.fromId(client.apiClient, parseInt(this.runId))
+            ).wait((_, run) => {
+                this.data = run.run;
+                this.onDidChangeEmitter.fire();
             });
         } catch (e) {
             this.runState = "error";
