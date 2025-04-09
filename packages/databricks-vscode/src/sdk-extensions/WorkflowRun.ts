@@ -5,7 +5,7 @@ import {SubmitRun, SubmitTask} from "@databricks/databricks-sdk/dist/apis/jobs";
 export class WorkflowRun {
     constructor(
         readonly client: ApiClient,
-        private details: jobs.Run
+        public details: jobs.Run
     ) {}
 
     static async fromId(
