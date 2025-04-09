@@ -49,7 +49,7 @@ export class JobRunStatus extends BundleRunStatus {
             await (
                 await WorkflowRun.fromId(client.apiClient, parseInt(this.runId))
             ).wait((_, run) => {
-                this.data = run.run;
+                this.data = run.details;
                 this.onDidChangeEmitter.fire();
             });
         } catch (e) {

@@ -5,7 +5,7 @@ import {SubmitRun, SubmitTask} from "@databricks/databricks-sdk/dist/apis/jobs";
 export class WorkflowRun {
     constructor(
         readonly client: ApiClient,
-        private details: jobs.Run
+        public details: jobs.Run
     ) {}
 
     static async fromId(
@@ -114,10 +114,6 @@ export class WorkflowRun {
 
     get runPageUrl(): string {
         return this.details.run_page_url || "";
-    }
-
-    get run(): jobs.Run {
-        return this.details;
     }
 
     async cancel(): Promise<void> {
