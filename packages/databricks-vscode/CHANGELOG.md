@@ -1,3 +1,12 @@
+# Release: v2.9.3
+
+## packages/databricks-vscode
+
+## (2025-04-23)
+
+-   Add waiters for get methods as a extension (#1648) ([4267864](https://github.com/databricks/databricks-vscode/commit/4267864)), closes [#1648](https://github.com/databricks/databricks-vscode/issues/1648)
+-   Update Databricks CLI to v0.248.0 (#1657) ([7cb80c7](https://github.com/databricks/databricks-vscode/commit/7cb80c7)), closes [#1657](https://github.com/databricks/databricks-vscode/issues/1657)
+
 # Release: v2.9.2
 
 ## packages/databricks-vscode
