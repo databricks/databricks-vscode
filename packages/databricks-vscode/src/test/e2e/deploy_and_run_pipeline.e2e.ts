@@ -108,13 +108,17 @@ describe("Deploy and run pipeline", async function () {
         }
         assert(labels.includes("Start Time"), "Start Time label not found");
         assert(
-            labels.includes("Dataset 'test_view' defined as VIEW."),
+            labels.includes("Dataset 'test_view' defined as VIEW.") ||
+                labels.includes("Dataset `test_view` defined as VIEW."),
             "test_view item not found"
         );
         assert(
             labels.includes(
                 "Dataset 'test_table' defined as MATERIALIZED_VIEW."
-            ),
+            ) ||
+                labels.includes(
+                    "Dataset `test_table` defined as MATERIALIZED_VIEW."
+                ),
             "test_table item not found"
         );
     });
