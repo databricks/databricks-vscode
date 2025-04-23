@@ -1,3 +1,12 @@
+# Release: v2.9.3
+
+## packages/databricks-vscode
+
+## (2025-04-23)
+
+-   Update JS SDK
+-   Update Databricks CLI to v0.248.0
+
 # Release: v2.9.2
 
 ## packages/databricks-vscode
