@@ -1,3 +1,11 @@
+# Release: v2.9.4
+
+## packages/databricks-vscode
+
+## (2025-04-25)
+
+-   Rollback Databricks CLI to v0.245.0 to fix auth problems
+
 # Release: v2.9.3
 
 ## packages/databricks-vscode
