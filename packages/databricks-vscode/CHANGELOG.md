@@ -4,8 +4,7 @@
 
 ## (2025-04-25)
 
--   Fix pipeline e2e tests (#1667) ([ddce451](https://github.com/databricks/databricks-vscode/commit/ddce451)), closes [#1667](https://github.com/databricks/databricks-vscode/issues/1667)
--   Rollback CLI (#1669) ([738b08d](https://github.com/databricks/databricks-vscode/commit/738b08d)), closes [#1669](https://github.com/databricks/databricks-vscode/issues/1669)
+-   Rollback Databricks CLI to v0.245.0 to fix auth problems
 
 # Release: v2.9.3
 
