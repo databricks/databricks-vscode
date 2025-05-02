@@ -15,6 +15,7 @@ import * as childProcess from "node:child_process";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {execFile} from "../cli/CliWrapper";
 import fs from "node:fs";
+import path from "node:path";
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
@@ -95,6 +96,10 @@ export class MsPythonExtensionWrapper implements Disposable {
         return this.api.environments?.resolveEnvironment(env);
     }
 
+    get projectRoot() {
+        return this.workspaceFolderManager.activeProjectUri.fsPath;
+    }
+
     async runWithOutput(
         command: string,
         args: string[],
@@ -115,69 +120,62 @@ export class MsPythonExtensionWrapper implements Disposable {
         });
     }
 
-    async getLatestPackageVersion(name: string) {
-        const executable = await this.getPythonExecutable();
-        if (!executable) {
-            return;
-        }
-        const {stdout} = await execFile(
-            executable,
-            [
-                "-m",
-                "pip",
-                "index",
-                "versions",
-                name,
-                "--disable-pip-version-check",
-                "--no-python-version-warning",
-            ],
-            {shell: false}
-        );
-        const match = stdout.match(/.+\((.+)\)/);
-        if (match) {
-            return match[1];
+    async isUsingUv() {
+        try {
+            await execFile("uv", ["--version"]);
+            return fs.existsSync(path.join(this.projectRoot, "uv.lock"));
+        } catch (error) {
+            return false;
         }
     }
 
-    async getPackageDetailsFromEnvironment(
-        name: string,
-        version?: string | RegExp
-    ) {
+    private async getPipCommandAndArgs(
+        executable: string,
+        baseArgs: string[],
+        nativePipArgs: string[] = []
+    ): Promise<{command: string; args: string[]}> {
+        const isUv = await this.isUsingUv();
+        if (isUv) {
+            return {
+                command: "uv",
+                args: ["pip", ...baseArgs, "--python", executable],
+            };
+        }
+        return {
+            command: executable,
+            args: [
+                "-m",
+                "pip",
+                ...baseArgs,
+                ...nativePipArgs,
+                "--disable-pip-version-check",
+                "--no-python-version-warning",
+            ],
+        };
+    }
+
+    async getPackageDetailsFromEnvironment(name: string) {
         const executable = await this.getPythonExecutable();
         if (!executable) {
             return undefined;
         }
-        if (version === "latest") {
-            version = await this.getLatestPackageVersion(name);
-        }
 
-        const {stdout} = await execFile(
-            executable,
-            [
-                "-m",
-                "pip",
-                "list",
-                "--format",
-                "json",
-                "--disable-pip-version-check",
-                "--no-python-version-warning",
-            ],
-            {shell: false}
-        );
+        const {command, args} = await this.getPipCommandAndArgs(executable, [
+            "list",
+            "--format",
+            "json",
+        ]);
 
+        const {stdout} = await execFile(command, args, {
+            shell: false,
+        });
         const data: Array<{name: string; version: string}> = JSON.parse(stdout);
-        return data.find(
-            (item) =>
-                item.name === name &&
-                (version === undefined ||
-                    item.version.match(version) !== undefined)
-        );
+        return data.find((item) => item.name === name);
     }
 
-    async findPackageInEnvironment(name: string, version?: string | RegExp) {
+    async findPackageInEnvironment(name: string) {
         return (
-            (await this.getPackageDetailsFromEnvironment(name, version)) !==
-            undefined
+            (await this.getPackageDetailsFromEnvironment(name)) !== undefined
         );
     }
 
@@ -190,19 +188,14 @@ export class MsPythonExtensionWrapper implements Disposable {
         if (!executable) {
             throw Error("No python executable found");
         }
-        if (version === "latest") {
-            version = await this.getLatestPackageVersion(name);
-        }
-        const args = [
-            "-m",
-            "pip",
+
+        const {command, args} = await this.getPipCommandAndArgs(executable, [
             "install",
             `${name}${version ? `==${version}` : ""}`,
-            "--disable-pip-version-check",
-            "--no-python-version-warning",
-        ];
-        outputChannel?.appendLine(`Running: ${executable} ${args.join(" ")}`);
-        await this.runWithOutput(executable, args, outputChannel);
+        ]);
+
+        outputChannel?.appendLine(`Running: ${command} ${args.join(" ")}`);
+        await this.runWithOutput(command, args, outputChannel);
     }
 
     async uninstallPackageFromEnvironment(
@@ -214,17 +207,15 @@ export class MsPythonExtensionWrapper implements Disposable {
         if (!exists || !executable) {
             return;
         }
-        const args = [
-            "-m",
-            "pip",
-            "uninstall",
-            name,
-            "--disable-pip-version-check",
-            "--no-python-version-warning",
-            "-y",
-        ];
-        outputChannel?.appendLine(`Running: ${executable} ${args.join(" ")}`);
-        await this.runWithOutput(executable, args, outputChannel);
+
+        const {command, args} = await this.getPipCommandAndArgs(
+            executable,
+            ["uninstall", name],
+            ["-y"]
+        );
+
+        outputChannel?.appendLine(`Running: ${command} ${args.join(" ")}`);
+        await this.runWithOutput(command, args, outputChannel);
     }
 
     async selectPythonInterpreter() {
