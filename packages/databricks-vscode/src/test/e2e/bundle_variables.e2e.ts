@@ -120,8 +120,8 @@ describe("Bundle Variables", async function () {
             defaultValue: "default",
         });
         await assertVariableValue(section, "complexVar", {
-            value: `{"key1": "value1", "key2": 123}`,
-            defaultValue: `{"key1": "value1", "key2": 123}`,
+            value: `{"key1":"value1","key2":123}`,
+            defaultValue: `{"key1":"value1","key2":123}`,
         });
     });
 
