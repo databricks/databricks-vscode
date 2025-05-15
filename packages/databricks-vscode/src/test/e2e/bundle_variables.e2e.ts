@@ -32,6 +32,13 @@ describe("Bundle Variables", async function () {
                 varWithDefault: {
                     default: "default",
                 },
+                complexVar: {
+                    type: "complex",
+                    default: {
+                        key1: "value1",
+                        key2: 123,
+                    },
+                },
             },
             targets: {
                 dev_test: {
@@ -111,6 +118,10 @@ describe("Bundle Variables", async function () {
         await assertVariableValue(section, "varWithDefault", {
             value: "dev",
             defaultValue: "default",
+        });
+        await assertVariableValue(section, "complexVar", {
+            value: `{"key1":"value1","key2":123}`,
+            defaultValue: `{"key1":"value1","key2":123}`,
         });
     });
 
