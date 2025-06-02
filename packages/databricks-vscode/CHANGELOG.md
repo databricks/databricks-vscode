@@ -8,7 +8,6 @@
 -   Support complex variables in the extension UI
 -   Update Databricks CLI to v0.253.0
 
-
 # Release: v2.9.4
 
 ## packages/databricks-vscode
