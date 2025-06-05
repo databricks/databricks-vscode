@@ -104,9 +104,10 @@ export class DatabricksCliCheck implements Disposable {
 
     private async login(cancellationToken?: CancellationToken): Promise<void> {
         try {
+            const host = this.authProvider.host.toString().replace(/\/+$/, "");
             await execFile(
                 this.authProvider.cliPath,
-                ["auth", "login", "--host", this.authProvider.host.toString()],
+                ["auth", "login", "--host", host],
                 {},
                 cancellationToken
             );
