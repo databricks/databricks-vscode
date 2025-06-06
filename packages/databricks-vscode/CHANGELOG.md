@@ -4,20 +4,6 @@
 
 ## (2025-06-06)
 
--   Fix login flow in the databricks-cli-check by removing trailing slashes from the URL (#1700) ([553df8d](https://github.com/databricks/databricks-vscode/commit/553df8d)), closes [#1700](https://github.com/databricks/databricks-vscode/issues/1700)
--   Support complex variables in the extension UI (#1675) ([55dd5f7](https://github.com/databricks/databricks-vscode/commit/55dd5f7)), closes [#1675](https://github.com/databricks/databricks-vscode/issues/1675)
--   Update Databricks CLI to v0.251.0 (#1676) ([e5a537f](https://github.com/databricks/databricks-vscode/commit/e5a537f)), closes [#1676](https://github.com/databricks/databricks-vscode/issues/1676)
--   Update Databricks CLI to v0.252.0 (#1683) ([9d8ae37](https://github.com/databricks/databricks-vscode/commit/9d8ae37)), closes [#1683](https://github.com/databricks/databricks-vscode/issues/1683)
--   Update Databricks CLI to v0.253.0 (#1691) ([a0f8c38](https://github.com/databricks/databricks-vscode/commit/a0f8c38)), closes [#1691](https://github.com/databricks/databricks-vscode/issues/1691)
--   Update Databricks CLI to v0.254.0 (#1699) ([77667a1](https://github.com/databricks/databricks-vscode/commit/77667a1)), closes [#1699](https://github.com/databricks/databricks-vscode/issues/1699)
--   Use UV to manage venv dependencies when it's available (#1673) ([31a42e4](https://github.com/databricks/databricks-vscode/commit/31a42e4)), closes [#1673](https://github.com/databricks/databricks-vscode/issues/1673) [#1647](https://github.com/databricks/databricks-vscode/issues/1647)
-
-# Release: v2.10.0
-
-## packages/databricks-vscode
-
-## (2025-06-02)
-
 -   Use UV to manage venv dependencies when it's available
 -   Support complex variables in the extension UI
 -   Update Databricks CLI to v0.253.0
