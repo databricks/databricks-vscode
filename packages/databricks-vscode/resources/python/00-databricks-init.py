@@ -600,14 +600,15 @@ def make_matplotlib_inline():
 def setup():
     import os
     import sys
-    print(sys.modules[__name__])
 
+    if not load_env_from_leaf(os.getcwd()):
+        return
+
+    print(sys.modules[__name__])
     global _sqldf
     # Suppress grpc warnings coming from databricks-connect with newer version of grpcio lib
     os.environ["GRPC_VERBOSITY"] = "NONE"
 
-    if not load_env_from_leaf(os.getcwd()):
-        sys.exit(1)
     cfg = LocalDatabricksNotebookConfig()
 
     # disable build-in progress bar
