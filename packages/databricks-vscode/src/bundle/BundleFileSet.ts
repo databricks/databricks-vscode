@@ -14,7 +14,8 @@ const subProjectFilePattern: string = path.join("**", rootFilePattern);
 
 export async function parseBundleYaml(file: Uri) {
     const data = yaml.parse(await readFile(file.fsPath, "utf-8"), {
-        maxAliasCount: 10000,
+        // Bundles might have a lot of aliases (#1706), default 100 limit is too low
+        maxAliasCount: -1,
     });
     return data as BundleSchema;
 }
