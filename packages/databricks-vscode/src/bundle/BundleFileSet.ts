@@ -13,7 +13,9 @@ const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
 const subProjectFilePattern: string = path.join("**", rootFilePattern);
 
 export async function parseBundleYaml(file: Uri) {
-    const data = yaml.parse(await readFile(file.fsPath, "utf-8"));
+    const data = yaml.parse(await readFile(file.fsPath, "utf-8"), {
+        maxAliasCount: 10000,
+    });
     return data as BundleSchema;
 }
 
