@@ -1,11 +1,12 @@
-# Release: v2.10.0
+# Release: v2.10.1
 
 ## packages/databricks-vscode
 
-## (2025-06-02)
+## (2025-06-10)
 
 -   Use UV to manage venv dependencies when it's available
 -   Support complex variables in the extension UI
+-   Avoid sys.exit in the jupyter init scripts
 -   Update Databricks CLI to v0.253.0
 
 # Release: v2.9.4
