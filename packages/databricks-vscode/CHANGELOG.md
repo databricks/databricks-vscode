@@ -1,3 +1,14 @@
+# Release: v2.10.2
+
+## packages/databricks-vscode
+
+## (2025-07-14)
+
+-   Regenerate bundle schema (#1728) ([746905c](https://github.com/databricks/databricks-vscode/commit/746905c)), closes [#1728](https://github.com/databricks/databricks-vscode/issues/1728)
+-   Update Databricks CLI to v0.257.0 (#1723) ([1ccf0a3](https://github.com/databricks/databricks-vscode/commit/1ccf0a3)), closes [#1723](https://github.com/databricks/databricks-vscode/issues/1723)
+-   Update Databricks CLI to v0.258.0 (#1726) ([0d71dca](https://github.com/databricks/databricks-vscode/commit/0d71dca)), closes [#1726](https://github.com/databricks/databricks-vscode/issues/1726)
+-   Update Databricks CLI to v0.259.0 (#1735) ([4988af2](https://github.com/databricks/databricks-vscode/commit/4988af2)), closes [#1735](https://github.com/databricks/databricks-vscode/issues/1735)
+
 # Release: v2.10.1
 
 ## packages/databricks-vscode
