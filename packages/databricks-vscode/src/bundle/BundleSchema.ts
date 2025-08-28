@@ -14,9 +14,10 @@ export interface BundleSchema {
      */
     artifacts?: {[key: string]: ArtifactClass | string} | string;
     /**
-     * The attributes of the bundle.
+     * The bundle attributes when deploying to this target.
      */
     bundle?: BundleClass | string;
+    environments?: {[key: string]: TargetClass | string} | string;
     /**
      * Defines attributes for experimental features.
      */
@@ -27,22 +28,22 @@ export interface BundleSchema {
      */
     include?: string[] | string;
     /**
-     * Defines the permissions to apply to experiments, jobs, pipelines, and models defined in
-     * the bundle
+     * Defines a permission for a specific entity.
      */
-    permissions?: Array<PermissionClass | string> | string;
+    permissions?: Array<FluffyBundleSchem | string> | string;
     /**
      * Defines bundle deployment presets.
      */
     presets?: PresetsClass | string;
     /**
-     * Specifies information about the Databricks resources used by the bundle
+     * A Map that defines the resources for the bundle, where each key is the name of the
+     * resource, and the value is a Map that defines the resource.
      */
     resources?: ResourcesClass | string;
     /**
-     * The identity to use to run the bundle.
+     * The identity to use when running Databricks Asset Bundles workflows.
      */
-    run_as?: RunAsClass | string;
+    run_as?: BundleSchem6 | string;
     /**
      * The files and file paths to include or exclude in the bundle.
      */
@@ -59,43 +60,44 @@ export interface BundleSchema {
     /**
      * Defines the Databricks workspace for the bundle.
      */
-    workspace?: BundleSchem20 | string;
+    workspace?: BundleSchem36 | string;
+    [property: string]: any;
 }
 
 export interface ArtifactClass {
     /**
-     * An optional set of non-default build commands that you want to run locally before
-     * deployment.
-     *
-     * For Python wheel builds, the Databricks CLI assumes that it can find a local install of
-     * the Python wheel package to run builds, and it runs the command python setup.py
-     * bdist_wheel by default during each bundle deployment.
-     *
-     * To specify multiple build commands, separate each command with double-ampersand (&&)
-     * characters.
+     * An optional set of build commands to run locally before deployment.
      */
     build?: string;
     /**
-     * The executable type.
+     * Whether to patch the wheel version dynamically based on the timestamp of the whl file. If
+     * this is set to `true`, new code can be deployed without having to update the version in
+     * `setup.py` or `pyproject.toml`. This setting is only valid when `type` is set to `whl`.
+     * See [\_](/dev-tools/bundles/settings.md#bundle-syntax-mappings-artifacts).
+     */
+    dynamic_version?: boolean | string;
+    /**
+     * The executable type. Valid values are `bash`, `sh`, and `cmd`.
      */
     executable?: string;
     /**
-     * The source files for the artifact.
+     * The relative or absolute path to the built artifact files.
      */
     files?: Array<PurpleBundleSchem | string> | string;
     /**
-     * The location where the built artifact will be saved.
+     * The local path of the directory for the artifact.
      */
     path?: string;
     /**
-     * The type of the artifact.
+     * Required if the artifact is a Python wheel. The type of the artifact. Valid values are
+     * `whl` and `jar`.
      */
-    type: string;
+    type?: string;
 }
 
 export interface PurpleBundleSchem {
     /**
-     * The path of the files used to build the artifact.
+     * Required. The artifact source file.
      */
     source: string;
 }
@@ -105,6 +107,9 @@ export interface BundleClass {
      * The ID of a cluster to use to run the bundle.
      */
     cluster_id?: string;
+    /**
+     * Deprecated. The ID of the compute to use to run the bundle.
+     */
     compute_id?: string;
     /**
      * The Databricks CLI version to use for the bundle.
@@ -113,7 +118,7 @@ export interface BundleClass {
     /**
      * The definition of the bundle deployment
      */
-    deployment?: FluffyBundleSchem | string;
+    deployment?: DeploymentClass | string;
     /**
      * The Git version control details that are associated with your bundle.
      */
@@ -122,10 +127,15 @@ export interface BundleClass {
      * The name of the bundle.
      */
     name: string;
+    /**
+     * Reserved. A Universally Unique Identifier (UUID) for the bundle that uniquely identifies
+     * the bundle in internal Databricks systems. This is generated when a bundle project is
+     * initialized using a Databricks template (using the `databricks bundle init` command).
+     */
     uuid?: string;
 }
 
-export interface FluffyBundleSchem {
+export interface DeploymentClass {
     /**
      * Whether to fail on active runs. If this is set to true a deployment that is running can
      * be interrupted.
@@ -159,68 +169,66 @@ export interface GitClass {
     origin_url?: string;
 }
 
-export interface ExperimentalClass {
+export interface TargetClass {
     /**
-     * The PyDABs configuration.
+     * The artifacts to include in the target deployment.
      */
-    pydabs?: PydabsClass | string;
+    artifacts?: {[key: string]: ArtifactClass | string} | string;
     /**
-     * Configures loading of Python code defined with 'databricks-bundles' package.
+     * The bundle attributes when deploying to this target.
      */
-    python?: PythonClass | string;
+    bundle?: BundleClass | string;
     /**
-     * Whether to use a Python wheel wrapper
+     * The ID of the cluster to use for this target.
      */
-    python_wheel_wrapper?: boolean | string;
+    cluster_id?: string;
     /**
-     * The commands to run
+     * Deprecated. The ID of the compute to use for this target.
      */
-    scripts?: {[key: string]: string} | string;
+    compute_id?: string;
     /**
-     * Whether to use the legacy run_as behavior
+     * Whether this target is the default target.
      */
-    use_legacy_run_as?: boolean | string;
+    default?: boolean | string;
+    /**
+     * The Git version control settings for the target.
+     */
+    git?: GitClass | string;
+    /**
+     * The deployment mode for the target.
+     */
+    mode?: string;
+    /**
+     * The permissions for deploying and running the bundle in the target.
+     */
+    permissions?: Array<FluffyBundleSchem | string> | string;
+    /**
+     * The deployment presets for the target.
+     */
+    presets?: PresetsClass | string;
+    /**
+     * The resource definitions for the target.
+     */
+    resources?: ResourcesClass | string;
+    /**
+     * The identity to use to run the bundle.
+     */
+    run_as?: BundleSchem6 | string;
+    /**
+     * The local paths to sync to the target workspace when a bundle is run or deployed.
+     */
+    sync?: SyncClass | string;
+    /**
+     * The custom variable definitions for the target.
+     */
+    variables?: {[key: string]: any} | string;
+    /**
+     * The Databricks workspace for the target.
+     */
+    workspace?: BundleSchem36 | string;
 }
 
-export interface PydabsClass {
-    /**
-     * Whether or not PyDABs (Private Preview) is enabled
-     */
-    enabled?: boolean | string;
-    /**
-     * The PyDABs project to import to discover resources, resource generator and mutators
-     */
-    import?: string[] | string;
-    /**
-     * The Python virtual environment path
-     */
-    venv_path?: string;
-}
-
-export interface PythonClass {
-    /**
-     * Mutators contains a list of fully qualified function paths to mutator functions.
-     *
-     * Example: ["my_project.mutators:add_default_cluster"]
-     */
-    mutators: string[] | string;
-    /**
-     * Resources contains a list of fully qualified function paths to load resources
-     * defined in Python code.
-     *
-     * Example: ["my_project.resources:load_resources"]
-     */
-    resources: string[] | string;
-    /**
-     * VEnvPath is path to the virtual environment.
-     *
-     * If enabled, Python code will execute within this environment. If disabled,
-     * it defaults to using the Python interpreter available in the current shell.
-     */
-    venv_path?: string;
-}
-
-export interface PermissionClass {
+export interface FluffyBundleSchem {
     /**
      * The name of the group that has the permission set in level.
      */
@@ -240,6 +248,10 @@ export interface PermissionClass {
 }
 
 export interface PresetsClass {
+    /**
+     * Whether to enable dynamic_version on all artifacts.
+     */
+    artifacts_dynamic_version?: boolean | string;
     /**
      * The maximum concurrent runs for a job.
      */
@@ -269,51 +281,224 @@ export interface PresetsClass {
 
 export interface ResourcesClass {
     /**
-     * The cluster definitions for the bundle.
+     * The app resource defines a Databricks app.
      */
-    clusters?: {[key: string]: TentacledBundleSchem | string} | string;
+    apps?: {[key: string]: AppClass | string} | string;
     /**
-     * The dashboard definitions for the bundle.
+     * The cluster definitions for the bundle, where each key is the name of a cluster.
      */
-    dashboards?: {[key: string]: HilariousBundleSchem | string} | string;
+    clusters?: {[key: string]: IndigoBundleSchem | string} | string;
     /**
-     * The experiment definitions for the bundle.
+     * The dashboard definitions for the bundle, where each key is the name of the dashboard.
+     */
+    dashboards?: {[key: string]: MagentaBundleSchem | string} | string;
+    /**
+     * The experiment definitions for the bundle, where each key is the name of the experiment.
      */
     experiments?: {[key: string]: ExperimentClass | string} | string;
     /**
-     * The job definitions for the bundle.
+     * The job definitions for the bundle, where each key is the name of the job.
      */
-    jobs?: {[key: string]: JobClass | string} | string;
+    jobs?: {[key: string]: BundleSchem1 | string} | string;
     /**
-     * The model serving endpoint definitions for the bundle.
+     * The model serving endpoint definitions for the bundle, where each key is the name of the
+     * model serving endpoint.
      */
     model_serving_endpoints?:
         | {[key: string]: ModelServingEndpointClass | string}
         | string;
     /**
-     * The model definitions for the bundle.
+     * The model definitions for the bundle, where each key is the name of the model.
      */
     models?: {[key: string]: ModelClass | string} | string;
     /**
-     * The pipeline definitions for the bundle.
+     * The pipeline definitions for the bundle, where each key is the name of the pipeline.
      */
     pipelines?: {[key: string]: PipelineClass | string} | string;
     /**
-     * The quality monitor definitions for the bundle.
+     * The quality monitor definitions for the bundle, where each key is the name of the quality
+     * monitor.
      */
     quality_monitors?: {[key: string]: QualityMonitorClass | string} | string;
     /**
-     * The registered model definitions for the bundle.
+     * The registered model definitions for the bundle, where each key is the name of the Unity
+     * Catalog registered model.
      */
     registered_models?: {[key: string]: RegisteredModelClass | string} | string;
     /**
-     * The schema definitions for the bundle.
+     * The schema definitions for the bundle, where each key is the name of the schema.
      */
-    schemas?: {[key: string]: BundleSchem19 | string} | string;
+    schemas?: {[key: string]: BundleSchem34 | string} | string;
+    secret_scopes?: {[key: string]: SecretScopeClass | string} | string;
+    /**
+     * The volume definitions for the bundle, where each key is the name of the volume.
+     */
     volumes?: {[key: string]: VolumeClass | string} | string;
 }
 
+export interface AppClass {
+    /**
+     * The active deployment of the app. A deployment is considered active when it has been
+     * deployed
+     * to the app compute.
+     */
+    active_deployment?: ActiveDeploymentClass | string;
+    app_status?: AppStatusClass | string;
+    budget_policy_id?: string;
+    compute_status?: ComputeStatusClass | string;
+    config?: {[key: string]: any} | string;
+    /**
+     * The creation time of the app. Formatted timestamp in ISO 6801.
+     */
+    create_time?: string;
+    /**
+     * The email of the user that created the app.
+     */
+    creator?: string;
+    /**
+     * The default workspace file system path of the source code from which app deployment are
+     * created. This field tracks the workspace source code path of the last active deployment.
+     */
+    default_source_code_path?: string;
+    /**
+     * The description of the app.
+     */
+    description?: string;
+    effective_budget_policy_id?: string;
+    /**
+     * The effective api scopes granted to the user access token.
+     */
+    effective_user_api_scopes?: string[] | string;
+    /**
+     * The unique identifier of the app.
+     */
+    id?: string;
+    /**
+     * The name of the app. The name must contain only lowercase alphanumeric characters and
+     * hyphens.
+     * It must be unique within the workspace.
+     */
+    name: string;
+    oauth2_app_client_id?: string;
+    oauth2_app_integration_id?: string;
+    /**
+     * The pending deployment of the app. A deployment is considered pending when it is being
+     * prepared
+     * for deployment to the app compute.
+     */
+    pending_deployment?: ActiveDeploymentClass | string;
+    permissions?: Array<TentacledBundleSchem | string> | string;
+    /**
+     * Resources for the app.
+     */
+    resources?: Array<ResourceClass | string> | string;
+    service_principal_client_id?: string;
+    service_principal_id?: number | string;
+    service_principal_name?: string;
+    source_code_path: string;
+    /**
+     * The update time of the app. Formatted timestamp in ISO 6801.
+     */
+    update_time?: string;
+    /**
+     * The email of the user that last updated the app.
+     */
+    updater?: string;
+    /**
+     * The URL of the app once it is deployed.
+     */
+    url?: string;
+    user_api_scopes?: string[] | string;
+}
+
+export interface ActiveDeploymentClass {
+    create_time?: string;
+    creator?: string;
+    deployment_artifacts?: DeploymentArtifactsClass | string;
+    deployment_id?: string;
+    mode?: string;
+    source_code_path?: string;
+    status?: StatusClass | string;
+    update_time?: string;
+}
+
+export interface DeploymentArtifactsClass {
+    source_code_path?: string;
+}
+
+export interface StatusClass {
+    message?: string;
+    state?: string;
+}
+
+export interface AppStatusClass {
+    message?: string;
+    state?: string;
+}
+
+export interface ComputeStatusClass {
+    message?: string;
+    /**
+     * State of the app compute.
+     */
+    state?: string;
+}
+
 export interface TentacledBundleSchem {
+    group_name?: string;
+    level: string;
+    service_principal_name?: string;
+    user_name?: string;
+}
+
+export interface ResourceClass {
+    /**
+     * Description of the App Resource.
+     */
+    description?: string;
+    job?: StickyBundleSchem | string;
+    /**
+     * Name of the App Resource.
+     */
+    name: string;
+    secret?: SecretClass | string;
+    serving_endpoint?: ServingEndpointClass | string;
+    sql_warehouse?: SQLWarehouseClass | string;
+    uc_securable?: UcSecurableClass | string;
+}
+
+export interface StickyBundleSchem {
+    id: string;
+    permission: string;
+}
+
+export interface SecretClass {
+    key: string;
+    permission: string;
+    scope: string;
+}
+
+export interface ServingEndpointClass {
+    name: string;
+    permission: string;
+}
+
+export interface SQLWarehouseClass {
+    id: string;
+    permission: string;
+}
+
+export interface UcSecurableClass {
+    permission: string;
+    securable_full_name: string;
+    securable_type: string;
+}
+
+/**
+ * Contains a snapshot of the latest user specified settings that were used to create/edit
+ * the cluster.
+ */
+export interface IndigoBundleSchem {
     /**
      * When set to true, fixed and default values from the policy will be used for fields that
      * are omitted. When set to false, only fixed values from the policy will be applied.
@@ -323,7 +508,7 @@ export interface TentacledBundleSchem {
      * Parameters needed in order to automatically scale clusters up and down based on load.
      * Note: autoscaling works best with DB runtime versions 3.0 or later.
      */
-    autoscale?: StickyBundleSchem | string;
+    autoscale?: IndecentBundleSchem | string;
     /**
      * Automatically terminates the cluster after it is inactive for this time in minutes. If
      * not set,
@@ -345,8 +530,8 @@ export interface TentacledBundleSchem {
     azure_attributes?: AzureAttributesClass | string;
     /**
      * The configuration for delivering spark logs to a long-term storage destination.
-     * Two kinds of destinations (dbfs and s3) are supported. Only one destination can be
-     * specified
+     * Three kinds of destinations (DBFS, S3 and Unity Catalog volumes) are supported. Only one
+     * destination can be specified
      * for one cluster. If the conf is given, the logs will be delivered to the destination
      * every
      * `5 mins`. The destination of driver logs is `$destination/$clusterId/driver`, while
@@ -356,6 +541,7 @@ export interface TentacledBundleSchem {
     /**
      * Cluster name requested by the user. This doesn't have to be unique.
      * If not specified at creation, the cluster name will be an empty string.
+     * For job clusters, the cluster name is automatically set based on the job and job run IDs.
      */
     cluster_name?: string;
     /**
@@ -369,7 +555,7 @@ export interface TentacledBundleSchem {
      * cluster tags
      */
     custom_tags?: {[key: string]: string} | string;
-    data_security_mode?: DataSecurityMode;
+    data_security_mode?: string;
     docker_image?: DockerImageClass | string;
     /**
      * The optional ID of the instance pool for the driver of the cluster belongs.
@@ -379,9 +565,14 @@ export interface TentacledBundleSchem {
      */
     driver_instance_pool_id?: string;
     /**
-     * The node type of the Spark driver. Note that this field is optional;
-     * if unset, the driver node type will be set as the same value
+     * The node type of the Spark driver.
+     * Note that this field is optional; if unset, the driver node type will be set as the same
+     * value
      * as `node_type_id` defined above.
+     *
+     * This field, along with node_type_id, should not be set if virtual_cluster_size is set.
+     * If both driver_node_type_id, node_type_id, and virtual_cluster_size are specified,
+     * driver_node_type_id and node_type_id take precedence.
      */
     driver_node_type_id?: string;
     /**
@@ -403,8 +594,9 @@ export interface TentacledBundleSchem {
     gcp_attributes?: GcpAttributesClass | string;
     /**
      * The configuration for storing init scripts. Any number of destinations can be specified.
-     * The scripts are executed sequentially in the order provided. If `cluster_log_conf` is
-     * specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
+     * The scripts are executed sequentially in the order provided.
+     * If `cluster_log_conf` is specified, init script logs are sent to
+     * `<destination>/<cluster-ID>/init_scripts`.
      */
     init_scripts?: Array<InitScriptClass | string> | string;
     /**
@@ -412,7 +604,7 @@ export interface TentacledBundleSchem {
      */
     instance_pool_id?: string;
     /**
-     * This field can only be used with `kind`.
+     * This field can only be used when `kind = CLASSIC_PREVIEW`.
      *
      * When set to true, Databricks will automatically set single node related `custom_tags`,
      * `spark_conf`, and `num_workers`
@@ -437,12 +629,17 @@ export interface TentacledBundleSchem {
      * increase from 5 to 10 as the new nodes are provisioned.
      */
     num_workers?: number | string;
-    permissions?: Array<PermissionClass | string> | string;
+    permissions?: Array<CunningBundleSchem | string> | string;
     /**
      * The ID of the cluster policy used to create the cluster if applicable.
      */
     policy_id?: string;
-    runtime_engine?: RuntimeEngine;
+    /**
+     * If set, what the configurable throughput (in Mb/s) for the remote disk is. Currently only
+     * supported for GCP HYPERDISK_BALANCED disks.
+     */
+    remote_disk_throughput?: number | string;
+    runtime_engine?: string;
     /**
      * Single user name if data_security_mode is `SINGLE_USER`
      */
@@ -484,7 +681,12 @@ export interface TentacledBundleSchem {
      */
     ssh_public_keys?: string[] | string;
     /**
-     * This field can only be used with `kind`.
+     * If set, what the total initial volume size (in GB) of the remote disks should be.
+     * Currently only supported for GCP HYPERDISK_BALANCED disks.
+     */
+    total_initial_remote_disk_size?: number | string;
+    /**
+     * This field can only be used when `kind = CLASSIC_PREVIEW`.
      *
      * `effective_spark_version` is determined by `spark_version` (DBR release), this field
      * `use_ml_runtime`, and whether `node_type_id` is gpu node or not.
@@ -493,7 +695,7 @@ export interface TentacledBundleSchem {
     workload_type?: WorkloadTypeClass | string;
 }
 
-export interface StickyBundleSchem {
+export interface IndecentBundleSchem {
     /**
      * The maximum number of workers to which the cluster can scale up when overloaded.
      * Note that `max_workers` must be strictly greater than `min_workers`.
@@ -506,8 +708,11 @@ export interface StickyBundleSchem {
     min_workers?: number | string;
 }
 
+/**
+ * Attributes set during cluster creation which are related to Amazon Web Services.
+ */
 export interface AwsAttributesClass {
-    availability?: AwsAttributesAvailability;
+    availability?: string;
     /**
      * The number of volumes launched for each instance. Users can choose up to 10 volumes.
      * This feature is only enabled for supported node types. Legacy node types cannot specify
@@ -546,7 +751,7 @@ export interface AwsAttributesClass {
      * maximum performance of a gp2 volume with the same volume size will be used.
      */
     ebs_volume_throughput?: number | string;
-    ebs_volume_type?: EbsVolumeType;
+    ebs_volume_type?: string;
     /**
      * The first `first_on_demand` nodes of the cluster will be placed on on-demand instances.
      * If this value is greater than 0, the cluster driver node in particular will be placed on
@@ -569,8 +774,6 @@ export interface AwsAttributesClass {
      * administrator.
      *
      * This feature may only be available to certain customer plans.
-     *
-     * If this field is ommitted, we will pull in the default from the conf if it exists.
      */
     instance_profile_arn?: string;
     /**
@@ -585,9 +788,6 @@ export interface AwsAttributesClass {
      * When spot instances are requested for this cluster, only spot instances whose bid price
      * percentage matches this field will be considered.
      * Note that, for safety, we enforce this field to be no more than 10000.
-     *
-     * The default value and documentation here should be kept consistent with
-     * CommonConf.defaultSpotBidPricePercent and CommonConf.maxSpotBidPricePercent.
      */
     spot_bid_price_percent?: number | string;
     /**
@@ -600,6 +800,7 @@ export interface AwsAttributesClass {
      * If the zone specified is "auto", will try to place cluster in a zone with high
      * availability,
      * and will retry placement in a different AZ if there is not enough capacity.
+     *
      * The list of available zones as well as the default value can be found by using the
      * `List Zones` method.
      */
@@ -607,27 +808,10 @@ export interface AwsAttributesClass {
 }
 
 /**
- * Availability type used for all subsequent nodes past the `first_on_demand` ones.
- *
- * Note: If `first_on_demand` is zero, this availability type will be used for the entire
- * cluster.
+ * Attributes set during cluster creation which are related to Microsoft Azure.
  */
-export enum AwsAttributesAvailability {
-    OnDemand = "ON_DEMAND",
-    Spot = "SPOT",
-    SpotWithFallback = "SPOT_WITH_FALLBACK",
-}
-
-/**
- * The type of EBS volumes that will be launched with this cluster.
- */
-export enum EbsVolumeType {
-    GeneralPurposeSSD = "GENERAL_PURPOSE_SSD",
-    ThroughputOptimizedHDD = "THROUGHPUT_OPTIMIZED_HDD",
-}
-
 export interface AzureAttributesClass {
-    availability?: AzureAttributesAvailability;
+    availability?: string;
     /**
      * The first `first_on_demand` nodes of the cluster will be placed on on-demand instances.
      * This value should be greater than 0, to make sure the cluster driver node is placed on an
@@ -656,29 +840,20 @@ export interface AzureAttributesClass {
     spot_bid_max_price?: number | string;
 }
 
-/**
- * Availability type used for all subsequent nodes past the `first_on_demand` ones.
- * Note: If `first_on_demand` is zero (which only happens on pool clusters), this
- * availability
- * type will be used for the entire cluster.
- */
-export enum AzureAttributesAvailability {
-    OnDemandAzure = "ON_DEMAND_AZURE",
-    SpotAzure = "SPOT_AZURE",
-    SpotWithFallbackAzure = "SPOT_WITH_FALLBACK_AZURE",
-}
-
 export interface LogAnalyticsInfoClass {
     /**
-     * <needs content added>
+     * The primary key for the Azure Log Analytics agent configuration
      */
     log_analytics_primary_key?: string;
     /**
-     * <needs content added>
+     * The workspace ID for the Azure Log Analytics agent configuration
      */
     log_analytics_workspace_id?: string;
 }
 
+/**
+ * Cluster log delivery config
+ */
 export interface ClusterLogConfClass {
     /**
      * destination needs to be provided. e.g.
@@ -692,8 +867,16 @@ export interface ClusterLogConfClass {
      * `instance_profile_arn` has permission to write data to the s3 destination.
      */
     s3?: S3Class | string;
+    /**
+     * destination needs to be provided, e.g.
+     * `{ "volumes": { "destination": "/Volumes/catalog/schema/volume/cluster_log" } }`
+     */
+    volumes?: VolumesClass | string;
 }
 
+/**
+ * A storage location in DBFS
+ */
 export interface DbfsClass {
     /**
      * dbfs destination, e.g. `dbfs:/my/path`
@@ -701,6 +884,9 @@ export interface DbfsClass {
     destination: string;
 }
 
+/**
+ * A storage location in Amazon S3
+ */
 export interface S3Class {
     /**
      * (Optional) Set canned access control list for the logs, e.g. `bucket-owner-full-control`.
@@ -751,48 +937,14 @@ export interface S3Class {
 }
 
 /**
- * Data security mode decides what data governance model to use when accessing data
- * from a cluster.
- *
- * The following modes can only be used with `kind`.
- * * `DATA_SECURITY_MODE_AUTO`: Databricks will choose the most appropriate access mode
- * depending on your compute configuration.
- * * `DATA_SECURITY_MODE_STANDARD`: Alias for `USER_ISOLATION`.
- * * `DATA_SECURITY_MODE_DEDICATED`: Alias for `SINGLE_USER`.
- *
- * The following modes can be used regardless of `kind`.
- * * `NONE`: No security isolation for multiple users sharing the cluster. Data governance
- * features are not available in this mode.
- * * `SINGLE_USER`: A secure cluster that can only be exclusively used by a single user
- * specified in `single_user_name`. Most programming languages, cluster features and data
- * governance features are available in this mode.
- * * `USER_ISOLATION`: A secure cluster that can be shared by multiple users. Cluster users
- * are fully isolated so that they cannot see each other's data and credentials. Most data
- * governance features are supported in this mode. But programming languages and cluster
- * features might be limited.
- *
- * The following modes are deprecated starting with Databricks Runtime 15.0 and
- * will be removed for future Databricks Runtime versions:
- *
- * * `LEGACY_TABLE_ACL`: This mode is for users migrating from legacy Table ACL clusters.
- * * `LEGACY_PASSTHROUGH`: This mode is for users migrating from legacy Passthrough on high
- * concurrency clusters.
- * * `LEGACY_SINGLE_USER`: This mode is for users migrating from legacy Passthrough on
- * standard clusters.
- * * `LEGACY_SINGLE_USER_STANDARD`: This mode provides a way that doesn’t have UC nor
- * passthrough enabled.
+ * A storage location back by UC Volumes.
  */
-export enum DataSecurityMode {
-    DataSecurityModeAuto = "DATA_SECURITY_MODE_AUTO",
-    DataSecurityModeDedicated = "DATA_SECURITY_MODE_DEDICATED",
-    DataSecurityModeStandard = "DATA_SECURITY_MODE_STANDARD",
-    LegacyPassthrough = "LEGACY_PASSTHROUGH",
-    LegacySingleUser = "LEGACY_SINGLE_USER",
-    LegacySingleUserStandard = "LEGACY_SINGLE_USER_STANDARD",
-    LegacyTableACL = "LEGACY_TABLE_ACL",
-    None = "NONE",
-    SingleUser = "SINGLE_USER",
-    UserIsolation = "USER_ISOLATION",
+export interface VolumesClass {
+    /**
+     * UC Volumes destination, e.g. `/Volumes/catalog/schema/vol1/init-scripts/setup-datadog.sh`
+     * or `dbfs:/Volumes/catalog/schema/vol1/init-scripts/setup-datadog.sh`
+     */
+    destination: string;
 }
 
 export interface DockerImageClass {
@@ -814,10 +966,13 @@ export interface BasicAuthClass {
     username?: string;
 }
 
+/**
+ * Attributes set during cluster creation which are related to GCP.
+ */
 export interface GcpAttributesClass {
-    availability?: GcpAttributesAvailability;
+    availability?: string;
     /**
-     * boot disk size in GB
+     * Boot disk size in GB
      */
     boot_disk_size?: number | string;
     /**
@@ -829,7 +984,9 @@ export interface GcpAttributesClass {
     google_service_account?: string;
     /**
      * If provided, each node (workers and driver) in the cluster will have this number of local
-     * SSDs attached. Each local SSD is 375GB in size. Refer to [GCP
+     * SSDs attached.
+     * Each local SSD is 375GB in size.
+     * Refer to [GCP
      * documentation](https://cloud.google.com/compute/docs/disks/local-ssd#choose_number_local_ssds)
      * for the supported number of local SSDs for each instance type.
      */
@@ -837,74 +994,69 @@ export interface GcpAttributesClass {
     /**
      * This field determines whether the spark executors will be scheduled to run on preemptible
      * VMs (when set to true) versus standard compute engine VMs (when set to false; default).
-     * Note: Soon to be deprecated, use the availability field instead.
+     * Note: Soon to be deprecated, use the 'availability' field instead.
      */
     use_preemptible_executors?: boolean | string;
     /**
      * Identifier for the availability zone in which the cluster resides.
      * This can be one of the following:
      * - "HA" => High availability, spread nodes across availability zones for a Databricks
-     * deployment region [default]
+     * deployment region [default].
      * - "AUTO" => Databricks picks an availability zone to schedule the cluster on.
      * - A GCP availability zone => Pick One of the available zones for (machine type + region)
-     * from https://cloud.google.com/compute/docs/regions-zones.
+     * from
+     * https://cloud.google.com/compute/docs/regions-zones.
      */
     zone_id?: string;
 }
 
 /**
- * This field determines whether the instance pool will contain preemptible
- * VMs, on-demand VMs, or preemptible VMs with a fallback to on-demand VMs if the former is
- * unavailable.
+ * Config for an individual init script
+ * Next ID: 11
  */
-export enum GcpAttributesAvailability {
-    OnDemandGcp = "ON_DEMAND_GCP",
-    PreemptibleGcp = "PREEMPTIBLE_GCP",
-    PreemptibleWithFallbackGcp = "PREEMPTIBLE_WITH_FALLBACK_GCP",
-}
-
 export interface InitScriptClass {
     /**
-     * destination needs to be provided. e.g.
-     * `{ "abfss" : { "destination" :
-     * "abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<directory-name>" }
-     * }
+     * Contains the Azure Data Lake Storage destination path
      */
     abfss?: AbfssClass | string;
     /**
      * destination needs to be provided. e.g.
-     * `{ "dbfs" : { "destination" : "dbfs:/home/cluster_log" } }`
+     * `{ "dbfs": { "destination" : "dbfs:/home/cluster_log" } }`
      */
     dbfs?: DbfsClass | string;
     /**
-     * destination needs to be provided. e.g.
-     * `{ "file" : { "destination" : "file:/my/local/file.sh" } }`
+     * destination needs to be provided, e.g.
+     * `{ "file": { "destination": "file:/my/local/file.sh" } }`
      */
-    file?: IndigoBundleSchem | string;
+    file?: HilariousBundleSchem | string;
     /**
-     * destination needs to be provided. e.g.
+     * destination needs to be provided, e.g.
      * `{ "gcs": { "destination": "gs://my-bucket/file.sh" } }`
      */
     gcs?: GcsClass | string;
     /**
      * destination and either the region or endpoint need to be provided. e.g.
-     * `{ "s3": { "destination" : "s3://cluster_log_bucket/prefix", "region" : "us-west-2" } }`
+     * `{ \"s3\": { \"destination\": \"s3://cluster_log_bucket/prefix\", \"region\":
+     * \"us-west-2\" } }`
      * Cluster iam role is used to access s3, please make sure the cluster iam role in
      * `instance_profile_arn` has permission to write data to the s3 destination.
      */
     s3?: S3Class | string;
     /**
      * destination needs to be provided. e.g.
-     * `{ "volumes" : { "destination" : "/Volumes/my-init.sh" } }`
+     * `{ \"volumes\" : { \"destination\" : \"/Volumes/my-init.sh\" } }`
      */
     volumes?: VolumesClass | string;
     /**
-     * destination needs to be provided. e.g.
-     * `{ "workspace" : { "destination" : "/Users/user1@databricks.com/my-init.sh" } }`
+     * destination needs to be provided, e.g.
+     * `{ "workspace": { "destination": "/cluster-init-scripts/setup-datadog.sh" } }`
      */
-    workspace?: IndecentBundleSchem | string;
+    workspace?: AmbitiousBundleSchem | string;
 }
 
+/**
+ * A storage location in Adls Gen2
+ */
 export interface AbfssClass {
     /**
      * abfss destination, e.g.
@@ -913,13 +1065,16 @@ export interface AbfssClass {
     destination: string;
 }
 
-export interface IndigoBundleSchem {
+export interface HilariousBundleSchem {
     /**
      * local file destination, e.g. `file:/my/local/file.sh`
      */
     destination: string;
 }
 
+/**
+ * A storage location in Google Cloud Platform's GCS
+ */
 export interface GcsClass {
     /**
      * GCS destination/URI, e.g. `gs://my-bucket/some-prefix`
@@ -927,35 +1082,26 @@ export interface GcsClass {
     destination: string;
 }
 
-export interface VolumesClass {
+/**
+ * A storage location in Workspace Filesystem (WSFS)
+ */
+export interface AmbitiousBundleSchem {
     /**
-     * Unity Catalog Volumes file destination, e.g. `/Volumes/my-init.sh`
+     * wsfs destination, e.g. `workspace:/cluster-init-scripts/setup-datadog.sh`
      */
     destination: string;
 }
 
-export interface IndecentBundleSchem {
-    /**
-     * workspace files destination, e.g. `/Users/user1@databricks.com/my-init.sh`
-     */
-    destination: string;
+export interface CunningBundleSchem {
+    group_name?: string;
+    level: string;
+    service_principal_name?: string;
+    user_name?: string;
 }
 
 /**
- * Determines the cluster's runtime engine, either standard or Photon.
- *
- * This field is not compatible with legacy `spark_version` values that contain `-photon-`.
- * Remove `-photon-` from the `spark_version` and set `runtime_engine` to `PHOTON`.
- *
- * If left unspecified, the runtime engine defaults to standard unless the spark_version
- * contains -photon-, in which case Photon will be used.
+ * Cluster Attributes showing for clusters workload types.
  */
-export enum RuntimeEngine {
-    Null = "NULL",
-    Photon = "PHOTON",
-    Standard = "STANDARD",
-}
-
 export interface WorkloadTypeClass {
     /**
      * defined what type of clients can use the cluster. E.g. Notebooks, Jobs
@@ -974,7 +1120,7 @@ export interface ClientsClass {
     notebooks?: boolean | string;
 }
 
-export interface HilariousBundleSchem {
+export interface MagentaBundleSchem {
     /**
      * The timestamp of when the dashboard was created.
      */
@@ -999,7 +1145,7 @@ export interface HilariousBundleSchem {
     /**
      * The state of the dashboard resource. Used for tracking trashed status.
      */
-    lifecycle_state?: LifecycleState;
+    lifecycle_state?: string;
     /**
      * The workspace path of the folder containing the dashboard. Includes leading slash and no
      * trailing slash.
@@ -1012,7 +1158,7 @@ export interface HilariousBundleSchem {
      * This field is excluded in List Dashboards responses.
      */
     path?: string;
-    permissions?: Array<PermissionClass | string> | string;
+    permissions?: Array<FriskyBundleSchem | string> | string;
     /**
      * The contents of the dashboard in serialized string form.
      * This field is excluded in List Dashboards responses.
@@ -1033,14 +1179,16 @@ export interface HilariousBundleSchem {
     warehouse_id?: string;
 }
 
-/**
- * The state of the dashboard resource. Used for tracking trashed status.
- */
-export enum LifecycleState {
-    Active = "ACTIVE",
-    Trashed = "TRASHED",
+export interface FriskyBundleSchem {
+    group_name?: string;
+    level: string;
+    service_principal_name?: string;
+    user_name?: string;
 }
 
+/**
+ * An experiment and its metadata.
+ */
 export interface ExperimentClass {
     /**
      * Location where artifacts for the experiment are stored.
@@ -1067,14 +1215,24 @@ export interface ExperimentClass {
      * Human readable name that identifies the experiment.
      */
     name?: string;
-    permissions?: Array<PermissionClass | string> | string;
+    permissions?: Array<MischievousBundleSchem | string> | string;
     /**
      * Tags: Additional metadata key-value pairs.
      */
-    tags?: Array<AmbitiousBundleSchem | string> | string;
+    tags?: Array<BraggadociousBundleSchem | string> | string;
 }
 
-export interface AmbitiousBundleSchem {
+export interface MischievousBundleSchem {
+    group_name?: string;
+    level: string;
+    service_principal_name?: string;
+    user_name?: string;
+}
+
+/**
+ * A tag for an experiment.
+ */
+export interface BraggadociousBundleSchem {
     /**
      * The tag key.
      */
@@ -1085,7 +1243,7 @@ export interface AmbitiousBundleSchem {
     value?: string;
 }
 
-export interface JobClass {
+export interface BundleSchem1 {
     /**
      * The id of the user specified budget policy to use for this job.
      * If not specified, a default budget policy may be applied when creating or modifying the
@@ -1107,7 +1265,7 @@ export interface JobClass {
      * An optional set of email addresses that is notified when runs of this job begin or
      * complete as well as when this job is deleted.
      */
-    email_notifications?: CunningBundleSchem | string;
+    email_notifications?: BundleSchem2 | string;
     /**
      * A list of task execution environment specifications that can be referenced by serverless
      * tasks of this job.
@@ -1117,7 +1275,7 @@ export interface JobClass {
      * For other serverless tasks, the task environment is required to be specified using
      * environment_key in the task settings.
      */
-    environments?: Array<EnvironmentClass | string> | string;
+    environments?: Array<BundleSchem3 | string> | string;
     /**
      * An optional specification for a remote Git repository containing the source code used by
      * tasks. Version-controlled source code is supported by notebook, dbt, Python script, and
@@ -1161,23 +1319,32 @@ export interface JobClass {
      * Optional notification settings that are used when sending notifications to each of the
      * `email_notifications` and `webhook_notifications` for this job.
      */
-    notification_settings?: MagentaBundleSchem | string;
+    notification_settings?: BundleSchem4 | string;
     /**
      * Job-level parameter definitions
      */
     parameters?: Array<ParameterClass | string> | string;
-    permissions?: Array<PermissionClass | string> | string;
+    /**
+     * The performance mode on a serverless job. This field determines the level of compute
+     * performance or cost-efficiency for the run.
+     *
+     * * `STANDARD`: Enables cost-efficient execution of serverless workloads.
+     * * `PERFORMANCE_OPTIMIZED`: Prioritizes fast startup and execution times through rapid
+     * scaling and optimized cluster performance.
+     */
+    performance_target?: string;
+    permissions?: Array<BundleSchem5 | string> | string;
     /**
      * The queue settings of the job.
      */
     queue?: QueueClass | string;
-    run_as?: RunAsClass | string;
+    run_as?: BundleSchem6 | string;
     /**
      * An optional periodic schedule for this job. The default behavior is that the job only
      * runs when triggered by clicking “Run Now” in the Jobs UI or sending an API request to
      * `runNow`.
      */
-    schedule?: FriskyBundleSchem | string;
+    schedule?: BundleSchem7 | string;
     /**
      * A map of tags associated with the job. These are forwarded to the cluster as cluster tags
      * for jobs clusters, and are subject to the same limitations as cluster tags. A maximum of
@@ -1186,6 +1353,11 @@ export interface JobClass {
     tags?: {[key: string]: string} | string;
     /**
      * A list of task specifications to be executed by this job.
+     * It supports up to 1000 elements in write endpoints (:method:jobs/create,
+     * :method:jobs/reset, :method:jobs/update, :method:jobs/submit).
+     * Read endpoints return only 100 tasks. If more than 100 tasks are available, you can
+     * paginate through them using :method:jobs/get. Use the `next_page_token` field at the
+     * object root to determine if more results are available.
      */
     tasks?: Array<TaskClass | string> | string;
     /**
@@ -1197,7 +1369,7 @@ export interface JobClass {
      * that the job runs only when triggered by clicking “Run Now” in the Jobs UI or sending an
      * API request to `runNow`.
      */
-    trigger?: BundleSchem4 | string;
+    trigger?: BundleSchem16 | string;
     /**
      * A collection of system notification IDs to notify when runs of this job begin or complete.
      */
@@ -1209,25 +1381,10 @@ export interface ContinuousClass {
      * Indicate whether the continuous execution of the job is paused or not. Defaults to
      * UNPAUSED.
      */
-    pause_status?: PauseStatus;
+    pause_status?: string;
 }
 
-/**
- * Indicate whether the continuous execution of the job is paused or not. Defaults to
- * UNPAUSED.
- *
- * Indicate whether this schedule is paused or not.
- *
- * Whether this trigger is paused or not.
- *
- * Read only field that indicates whether a schedule is paused or not.
- */
-export enum PauseStatus {
-    Paused = "PAUSED",
-    Unpaused = "UNPAUSED",
-}
-
-export interface CunningBundleSchem {
+export interface BundleSchem2 {
     /**
      * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
      * This field is `deprecated`. Please use the
@@ -1272,7 +1429,7 @@ export interface CunningBundleSchem {
     on_success?: string[] | string;
 }
 
-export interface EnvironmentClass {
+export interface BundleSchem3 {
     /**
      * The key of an environment. It has to be unique within a job.
      */
@@ -1281,27 +1438,31 @@ export interface EnvironmentClass {
 }
 
 /**
- * The environment entity used to preserve serverless environment side panel and jobs'
- * environment for non-notebook task.
+ * The environment entity used to preserve serverless environment side panel, jobs'
+ * environment for non-notebook task, and DLT's environment for classic and serverless
+ * pipelines.
  * In this minimal environment spec, only pip dependencies are supported.
  */
 export interface SpecClass {
     /**
-     * Client version used by the environment
-     * The client is the user-facing environment of the runtime.
-     * Each client comes with a specific set of pre-installed libraries.
-     * The version is a string, consisting of the major client version.
+     * Use `environment_version` instead.
      */
-    client: string;
+    client?: string;
     /**
      * List of pip dependencies, as supported by the version of pip in this environment.
-     * Each dependency is a pip requirement file line
-     * https://pip.pypa.io/en/stable/reference/requirements-file-format/
-     * Allowed dependency could be <requirement specifier>, <archive url/path>, <local project
-     * path>(WSFS or Volumes in Databricks), <vcs project url>
-     * E.g. dependencies: ["foo==0.0.1", "-r /Workspace/test/requirements.txt"]
      */
     dependencies?: string[] | string;
+    /**
+     * Required. Environment version used by the environment.
+     * Each version comes with a specific Python version and a set of Python packages.
+     * The version is a string, consisting of an integer.
+     */
+    environment_version?: string;
+    /**
+     * List of jar dependencies, should be string representing volume paths. For example:
+     * `/Volumes/path/to/test.jar`.
+     */
+    jar_dependencies?: string[] | string;
 }
 
 /**
@@ -1331,7 +1492,7 @@ export interface GitSourceClass {
      * Unique identifier of the service used to host the Git repository. The value is case
      * insensitive.
      */
-    git_provider: GitProvider;
+    git_provider: string;
     /**
      * Name of the tag to be checked out and used by this job. This field cannot be specified in
      * conjunction with git_branch or git_commit.
@@ -1344,21 +1505,6 @@ export interface GitSourceClass {
 }
 
 /**
- * Unique identifier of the service used to host the Git repository. The value is case
- * insensitive.
- */
-export enum GitProvider {
-    AwsCodeCommit = "awsCodeCommit",
-    AzureDevOpsServices = "azureDevOpsServices",
-    BitbucketCloud = "bitbucketCloud",
-    BitbucketServer = "bitbucketServer",
-    GitHub = "gitHub",
-    GitHubEnterprise = "gitHubEnterprise",
-    GitLab = "gitLab",
-    GitLabEnterpriseEdition = "gitLabEnterpriseEdition",
-}
-
-/**
  * An optional set of health rules that can be defined for this job.
  */
 export interface HealthClass {
@@ -1366,42 +1512,13 @@ export interface HealthClass {
 }
 
 export interface RuleClass {
-    metric: Metric;
-    op: RuleOp;
+    metric: string;
+    op: string;
     /**
      * Specifies the threshold value that the health metric should obey to satisfy the health
      * rule.
      */
     value: number | string;
-}
-
-/**
- * Specifies the health metric that is being evaluated for a particular health rule.
- *
- * * `RUN_DURATION_SECONDS`: Expected total time for a run in seconds.
- * * `STREAMING_BACKLOG_BYTES`: An estimate of the maximum bytes of data waiting to be
- * consumed across all streams. This metric is in Public Preview.
- * * `STREAMING_BACKLOG_RECORDS`: An estimate of the maximum offset lag across all streams.
- * This metric is in Public Preview.
- * * `STREAMING_BACKLOG_SECONDS`: An estimate of the maximum consumer delay across all
- * streams. This metric is in Public Preview.
- * * `STREAMING_BACKLOG_FILES`: An estimate of the maximum number of outstanding files
- * across all streams. This metric is in Public Preview.
- */
-export enum Metric {
-    RunDurationSeconds = "RUN_DURATION_SECONDS",
-    StreamingBacklogBytes = "STREAMING_BACKLOG_BYTES",
-    StreamingBacklogFiles = "STREAMING_BACKLOG_FILES",
-    StreamingBacklogRecords = "STREAMING_BACKLOG_RECORDS",
-    StreamingBacklogSeconds = "STREAMING_BACKLOG_SECONDS",
-}
-
-/**
- * Specifies the operator used to compare the health metric value with the specified
- * threshold.
- */
-export enum RuleOp {
-    GreaterThan = "GREATER_THAN",
 }
 
 export interface JobClusterClass {
@@ -1418,6 +1535,10 @@ export interface JobClusterClass {
     new_cluster: NewClusterClass | string;
 }
 
+/**
+ * Contains a snapshot of the latest user specified settings that were used to create/edit
+ * the cluster.
+ */
 export interface NewClusterClass {
     /**
      * When set to true, fixed and default values from the policy will be used for fields that
@@ -1428,7 +1549,7 @@ export interface NewClusterClass {
      * Parameters needed in order to automatically scale clusters up and down based on load.
      * Note: autoscaling works best with DB runtime versions 3.0 or later.
      */
-    autoscale?: StickyBundleSchem | string;
+    autoscale?: IndecentBundleSchem | string;
     /**
      * Automatically terminates the cluster after it is inactive for this time in minutes. If
      * not set,
@@ -1450,8 +1571,8 @@ export interface NewClusterClass {
     azure_attributes?: AzureAttributesClass | string;
     /**
      * The configuration for delivering spark logs to a long-term storage destination.
-     * Two kinds of destinations (dbfs and s3) are supported. Only one destination can be
-     * specified
+     * Three kinds of destinations (DBFS, S3 and Unity Catalog volumes) are supported. Only one
+     * destination can be specified
      * for one cluster. If the conf is given, the logs will be delivered to the destination
      * every
      * `5 mins`. The destination of driver logs is `$destination/$clusterId/driver`, while
@@ -1461,6 +1582,7 @@ export interface NewClusterClass {
     /**
      * Cluster name requested by the user. This doesn't have to be unique.
      * If not specified at creation, the cluster name will be an empty string.
+     * For job clusters, the cluster name is automatically set based on the job and job run IDs.
      */
     cluster_name?: string;
     /**
@@ -1474,7 +1596,7 @@ export interface NewClusterClass {
      * cluster tags
      */
     custom_tags?: {[key: string]: string} | string;
-    data_security_mode?: DataSecurityMode;
+    data_security_mode?: string;
     docker_image?: DockerImageClass | string;
     /**
      * The optional ID of the instance pool for the driver of the cluster belongs.
@@ -1484,9 +1606,14 @@ export interface NewClusterClass {
      */
     driver_instance_pool_id?: string;
     /**
-     * The node type of the Spark driver. Note that this field is optional;
-     * if unset, the driver node type will be set as the same value
+     * The node type of the Spark driver.
+     * Note that this field is optional; if unset, the driver node type will be set as the same
+     * value
      * as `node_type_id` defined above.
+     *
+     * This field, along with node_type_id, should not be set if virtual_cluster_size is set.
+     * If both driver_node_type_id, node_type_id, and virtual_cluster_size are specified,
+     * driver_node_type_id and node_type_id take precedence.
      */
     driver_node_type_id?: string;
     /**
@@ -1508,8 +1635,9 @@ export interface NewClusterClass {
     gcp_attributes?: GcpAttributesClass | string;
     /**
      * The configuration for storing init scripts. Any number of destinations can be specified.
-     * The scripts are executed sequentially in the order provided. If `cluster_log_conf` is
-     * specified, init script logs are sent to `<destination>/<cluster-ID>/init_scripts`.
+     * The scripts are executed sequentially in the order provided.
+     * If `cluster_log_conf` is specified, init script logs are sent to
+     * `<destination>/<cluster-ID>/init_scripts`.
      */
     init_scripts?: Array<InitScriptClass | string> | string;
     /**
@@ -1517,7 +1645,7 @@ export interface NewClusterClass {
      */
     instance_pool_id?: string;
     /**
-     * This field can only be used with `kind`.
+     * This field can only be used when `kind = CLASSIC_PREVIEW`.
      *
      * When set to true, Databricks will automatically set single node related `custom_tags`,
      * `spark_conf`, and `num_workers`
@@ -1546,7 +1674,12 @@ export interface NewClusterClass {
      * The ID of the cluster policy used to create the cluster if applicable.
      */
     policy_id?: string;
-    runtime_engine?: RuntimeEngine;
+    /**
+     * If set, what the configurable throughput (in Mb/s) for the remote disk is. Currently only
+     * supported for GCP HYPERDISK_BALANCED disks.
+     */
+    remote_disk_throughput?: number | string;
+    runtime_engine?: string;
     /**
      * Single user name if data_security_mode is `SINGLE_USER`
      */
@@ -1588,7 +1721,12 @@ export interface NewClusterClass {
      */
     ssh_public_keys?: string[] | string;
     /**
-     * This field can only be used with `kind`.
+     * If set, what the total initial volume size (in GB) of the remote disks should be.
+     * Currently only supported for GCP HYPERDISK_BALANCED disks.
+     */
+    total_initial_remote_disk_size?: number | string;
+    /**
+     * This field can only be used when `kind = CLASSIC_PREVIEW`.
      *
      * `effective_spark_version` is determined by `spark_version` (DBR release), this field
      * `use_ml_runtime`, and whether `node_type_id` is gpu node or not.
@@ -1597,7 +1735,7 @@ export interface NewClusterClass {
     workload_type?: WorkloadTypeClass | string;
 }
 
-export interface MagentaBundleSchem {
+export interface BundleSchem4 {
     /**
      * If true, do not send notifications to recipients specified in `on_failure` if the run is
      * canceled.
@@ -1622,6 +1760,13 @@ export interface ParameterClass {
     name: string;
 }
 
+export interface BundleSchem5 {
+    group_name?: string;
+    level: string;
+    service_principal_name?: string;
+    user_name?: string;
+}
+
 export interface QueueClass {
     /**
      * If true, enable queueing for the job. This is a required field.
@@ -1636,9 +1781,9 @@ export interface QueueClass {
  * Either `user_name` or `service_principal_name` should be specified. If not, an error is
  * thrown.
  */
-export interface RunAsClass {
+export interface BundleSchem6 {
     /**
-     * Application ID of an active service principal. Setting this field requires the
+     * The application ID of an active service principal. Setting this field requires the
      * `servicePrincipal/user` role.
      */
     service_principal_name?: string;
@@ -1649,11 +1794,11 @@ export interface RunAsClass {
     user_name?: string;
 }
 
-export interface FriskyBundleSchem {
+export interface BundleSchem7 {
     /**
      * Indicate whether this schedule is paused or not.
      */
-    pause_status?: PauseStatus;
+    pause_status?: string;
     /**
      * A Cron expression using Quartz syntax that describes the schedule for a job. See [Cron
      * Trigger](http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
@@ -1700,6 +1845,15 @@ export interface TaskClass {
      */
     condition_task?: ConditionTaskClass | string;
     /**
+     * The task refreshes a dashboard and sends a snapshot to subscribers.
+     */
+    dashboard_task?: DashboardTaskClass | string;
+    /**
+     * Task type for dbt cloud, deprecated in favor of the new name dbt_platform_task
+     */
+    dbt_cloud_task?: DbtCloudTaskClass | string;
+    dbt_platform_task?: DbtPlatformTaskClass | string;
+    /**
      * The task runs one or more dbt commands when the `dbt_task` field is present. The dbt task
      * requires both Databricks SQL and the ability to use a serverless or a pro SQL warehouse.
      */
@@ -1724,7 +1878,7 @@ export interface TaskClass {
      * complete as well as when this task is deleted. The default behavior is to not send any
      * emails.
      */
-    email_notifications?: MischievousBundleSchem | string;
+    email_notifications?: BundleSchem9 | string;
     /**
      * The key that references an environment spec in a job. This field is required for Python
      * script, Python wheel and dbt tasks when using serverless compute.
@@ -1742,6 +1896,7 @@ export interface TaskClass {
      * is present.
      */
     for_each_task?: ForEachTaskClass | string;
+    gen_ai_compute_task?: GenAIComputeTaskClass | string;
     health?: HealthClass | string;
     /**
      * If job_cluster_key, this task is executed reusing the cluster specified in
@@ -1752,7 +1907,7 @@ export interface TaskClass {
      * An optional list of libraries to be installed on the cluster.
      * The default value is an empty list.
      */
-    libraries?: Array<BraggadociousBundleSchem | string> | string;
+    libraries?: Array<BundleSchem10 | string> | string;
     /**
      * An optional maximum number of times to retry an unsuccessful run. A run is considered to
      * be unsuccessful if it completes with the `FAILED` result_state or `INTERNAL_ERROR`
@@ -1778,12 +1933,17 @@ export interface TaskClass {
      * Optional notification settings that are used when sending notifications to each of the
      * `email_notifications` and `webhook_notifications` for this task.
      */
-    notification_settings?: BundleSchem1 | string;
+    notification_settings?: BundleSchem11 | string;
     /**
      * The task triggers a pipeline update when the `pipeline_task` field is present. Only
      * pipelines configured to use triggered more are supported.
      */
     pipeline_task?: PipelineTaskClass | string;
+    /**
+     * The task triggers a Power BI semantic model update when the `power_bi_task` field is
+     * present.
+     */
+    power_bi_task?: PowerBITaskClass | string;
     /**
      * The task runs a Python wheel when the `python_wheel_task` field is present.
      */
@@ -1805,7 +1965,7 @@ export interface TaskClass {
      * * `AT_LEAST_ONE_FAILED`: At least one dependency failed
      * * `ALL_FAILED`: ALl dependencies have failed
      */
-    run_if?: RunIf;
+    run_if?: string;
     /**
      * The task triggers another job when the `run_job_task` field is present.
      */
@@ -1897,7 +2057,7 @@ export interface ConditionTaskClass {
      * `NOT_EQUAL`. If a task value was set to a boolean value, it will be serialized to
      * `“true”` or `“false”` for the comparison.
      */
-    op: ConditionTaskOp;
+    op: string;
     /**
      * The right operand of the condition task. Can be either a string value or a job state or
      * parameter reference.
@@ -1906,23 +2066,60 @@ export interface ConditionTaskClass {
 }
 
 /**
- * * `EQUAL_TO`, `NOT_EQUAL` operators perform string comparison of their operands. This
- * means that `“12.0” == “12”` will evaluate to `false`.
- * * `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`, `LESS_THAN_OR_EQUAL` operators
- * perform numeric comparison of their operands. `“12.0” >= “12”` will evaluate to `true`,
- * `“10.0” >= “12”` will evaluate to `false`.
- *
- * The boolean comparison to task values can be implemented with operators `EQUAL_TO`,
- * `NOT_EQUAL`. If a task value was set to a boolean value, it will be serialized to
- * `“true”` or `“false”` for the comparison.
+ * Configures the Lakeview Dashboard job task type.
  */
-export enum ConditionTaskOp {
-    EqualTo = "EQUAL_TO",
-    GreaterThan = "GREATER_THAN",
-    GreaterThanOrEqual = "GREATER_THAN_OR_EQUAL",
-    LessThan = "LESS_THAN",
-    LessThanOrEqual = "LESS_THAN_OR_EQUAL",
-    NotEqual = "NOT_EQUAL",
+export interface DashboardTaskClass {
+    dashboard_id?: string;
+    subscription?: BundleSchem8 | string;
+    /**
+     * Optional: The warehouse id to execute the dashboard with for the schedule.
+     * If not specified, the default warehouse of the dashboard will be used.
+     */
+    warehouse_id?: string;
+}
+
+export interface BundleSchem8 {
+    /**
+     * Optional: Allows users to specify a custom subject line on the email sent
+     * to subscribers.
+     */
+    custom_subject?: string;
+    /**
+     * When true, the subscription will not send emails.
+     */
+    paused?: boolean | string;
+    subscribers?: Array<SubscriberClass | string> | string;
+}
+
+export interface SubscriberClass {
+    destination_id?: string;
+    user_name?: string;
+}
+
+/**
+ * Deprecated in favor of DbtPlatformTask
+ */
+export interface DbtCloudTaskClass {
+    /**
+     * The resource name of the UC connection that authenticates the dbt Cloud for this task
+     */
+    connection_resource_name?: string;
+    /**
+     * Id of the dbt Cloud job to be triggered
+     */
+    dbt_cloud_job_id?: number | string;
+}
+
+export interface DbtPlatformTaskClass {
+    /**
+     * The resource name of the UC connection that authenticates the dbt platform for this task
+     */
+    connection_resource_name?: string;
+    /**
+     * Id of the dbt platform job to be triggered. Specified as a string for maximum
+     * compatibility with clients.
+     */
+    dbt_platform_job_id?: string;
 }
 
 export interface DbtTaskClass {
@@ -1964,67 +2161,13 @@ export interface DbtTaskClass {
      * * `WORKSPACE`: Project is located in Databricks workspace.
      * * `GIT`: Project is located in cloud Git provider.
      */
-    source?: Source;
+    source?: string;
     /**
      * ID of the SQL warehouse to connect to. If provided, we automatically generate and provide
      * the profile and connection details to dbt. It can be overridden on a per-command basis by
      * using the `--profiles-dir` command line argument.
      */
     warehouse_id?: string;
-}
-
-/**
- * Optional location type of the project directory. When set to `WORKSPACE`, the project
- * will be retrieved
- * from the local Databricks workspace. When set to `GIT`, the project will be retrieved
- * from a Git repository
- * defined in `git_source`. If the value is empty, the task will use `GIT` if `git_source`
- * is defined and `WORKSPACE` otherwise.
- *
- * * `WORKSPACE`: Project is located in Databricks workspace.
- * * `GIT`: Project is located in cloud Git provider.
- *
- * Optional location type of the SQL file. When set to `WORKSPACE`, the SQL file will be
- * retrieved\
- * from the local Databricks workspace. When set to `GIT`, the SQL file will be retrieved
- * from a Git repository
- * defined in `git_source`. If the value is empty, the task will use `GIT` if `git_source`
- * is defined and `WORKSPACE` otherwise.
- *
- * * `WORKSPACE`: SQL file is located in Databricks workspace.
- * * `GIT`: SQL file is located in cloud Git provider.
- *
- * Optional location type of the notebook. When set to `WORKSPACE`, the notebook will be
- * retrieved from the local Databricks workspace. When set to `GIT`, the notebook will be
- * retrieved from a Git repository
- * defined in `git_source`. If the value is empty, the task will use `GIT` if `git_source`
- * is defined and `WORKSPACE` otherwise.
- * * `WORKSPACE`: Notebook is located in Databricks workspace.
- * * `GIT`: Notebook is located in cloud Git provider.
- *
- * Optional location type of the Python file. When set to `WORKSPACE` or not specified, the
- * file will be retrieved from the local
- * Databricks workspace or cloud location (if the `python_file` has a URI format). When set
- * to `GIT`,
- * the Python file will be retrieved from a Git repository defined in `git_source`.
- *
- * * `WORKSPACE`: The Python file is located in a Databricks workspace or at a cloud
- * filesystem URI.
- * * `GIT`: The Python file is located in a remote Git repository.
- *
- * Optional location type of the SQL file. When set to `WORKSPACE`, the SQL file will be
- * retrieved
- * from the local Databricks workspace. When set to `GIT`, the SQL file will be retrieved
- * from a Git repository
- * defined in `git_source`. If the value is empty, the task will use `GIT` if `git_source`
- * is defined and `WORKSPACE` otherwise.
- *
- * * `WORKSPACE`: SQL file is located in Databricks workspace.
- * * `GIT`: SQL file is located in cloud Git provider.
- */
-export enum Source {
-    Git = "GIT",
-    Workspace = "WORKSPACE",
 }
 
 export interface DependsOnClass {
@@ -2039,7 +2182,7 @@ export interface DependsOnClass {
     task_key: string;
 }
 
-export interface MischievousBundleSchem {
+export interface BundleSchem9 {
     /**
      * If true, do not send email to recipients specified in `on_failure` if the run is skipped.
      * This field is `deprecated`. Please use the
@@ -2084,7 +2227,66 @@ export interface MischievousBundleSchem {
     on_success?: string[] | string;
 }
 
-export interface BraggadociousBundleSchem {
+export interface GenAIComputeTaskClass {
+    /**
+     * Command launcher to run the actual script, e.g. bash, python etc.
+     */
+    command?: string;
+    compute?: ComputeClass | string;
+    /**
+     * Runtime image
+     */
+    dl_runtime_image: string;
+    /**
+     * Optional string containing the name of the MLflow experiment to log the run to. If name
+     * is not
+     * found, backend will create the mlflow experiment using the name.
+     */
+    mlflow_experiment_name?: string;
+    /**
+     * Optional location type of the training script. When set to `WORKSPACE`, the script will
+     * be retrieved from the local Databricks workspace. When set to `GIT`, the script will be
+     * retrieved from a Git repository
+     * defined in `git_source`. If the value is empty, the task will use `GIT` if `git_source`
+     * is defined and `WORKSPACE` otherwise.
+     * * `WORKSPACE`: Script is located in Databricks workspace.
+     * * `GIT`: Script is located in cloud Git provider.
+     */
+    source?: string;
+    /**
+     * The training script file path to be executed. Cloud file URIs (such as dbfs:/, s3:/,
+     * adls:/, gcs:/) and workspace paths are supported. For python files stored in the
+     * Databricks workspace, the path must be absolute and begin with `/`. For files stored in a
+     * remote repository, the path must be relative. This field is required.
+     */
+    training_script_path?: string;
+    /**
+     * Optional string containing model parameters passed to the training script in yaml format.
+     * If present, then the content in yaml_parameters_file_path will be ignored.
+     */
+    yaml_parameters?: string;
+    /**
+     * Optional path to a YAML file containing model parameters passed to the training script.
+     */
+    yaml_parameters_file_path?: string;
+}
+
+export interface ComputeClass {
+    /**
+     * IDof the GPU pool to use.
+     */
+    gpu_node_pool_id?: string;
+    /**
+     * GPU type.
+     */
+    gpu_type?: string;
+    /**
+     * Number of GPUs.
+     */
+    num_gpus: number | string;
+}
+
+export interface BundleSchem10 {
     /**
      * Specification of a CRAN library to be installed as part of the library
      */
@@ -2217,7 +2419,7 @@ export interface NotebookTaskClass {
      * * `WORKSPACE`: Notebook is located in Databricks workspace.
      * * `GIT`: Notebook is located in cloud Git provider.
      */
-    source?: Source;
+    source?: string;
     /**
      * Optional `warehouse_id` to run the notebook on a SQL warehouse. Classic SQL warehouses
      * are NOT supported, please use serverless or pro SQL warehouses.
@@ -2228,7 +2430,7 @@ export interface NotebookTaskClass {
     warehouse_id?: string;
 }
 
-export interface BundleSchem1 {
+export interface BundleSchem11 {
     /**
      * If true, do not send notifications to recipients specified in `on_start` for the retried
      * runs and do not send notifications to recipients specified in `on_failure` until the last
@@ -2258,6 +2460,71 @@ export interface PipelineTaskClass {
     pipeline_id: string;
 }
 
+export interface PowerBITaskClass {
+    /**
+     * The resource name of the UC connection to authenticate from Databricks to Power BI
+     */
+    connection_resource_name?: string;
+    /**
+     * The semantic model to update
+     */
+    power_bi_model?: PowerBIModelClass | string;
+    /**
+     * Whether the model should be refreshed after the update
+     */
+    refresh_after_update?: boolean | string;
+    /**
+     * The tables to be exported to Power BI
+     */
+    tables?: Array<BundleSchem12 | string> | string;
+    /**
+     * The SQL warehouse ID to use as the Power BI data source
+     */
+    warehouse_id?: string;
+}
+
+export interface PowerBIModelClass {
+    /**
+     * How the published Power BI model authenticates to Databricks
+     */
+    authentication_method?: string;
+    /**
+     * The name of the Power BI model
+     */
+    model_name?: string;
+    /**
+     * Whether to overwrite existing Power BI models
+     */
+    overwrite_existing?: boolean | string;
+    /**
+     * The default storage mode of the Power BI model
+     */
+    storage_mode?: string;
+    /**
+     * The name of the Power BI workspace of the model
+     */
+    workspace_name?: string;
+}
+
+export interface BundleSchem12 {
+    /**
+     * The catalog name in Databricks
+     */
+    catalog?: string;
+    /**
+     * The table name in Databricks
+     */
+    name?: string;
+    /**
+     * The schema name in Databricks
+     */
+    schema?: string;
+    /**
+     * The Power BI storage mode of the table
+     */
+    storage_mode?: string;
+}
+
 export interface PythonWheelTaskClass {
     /**
      * Named entry point to use, if it does not exist in the metadata of the package it executes
@@ -2278,37 +2545,6 @@ export interface PythonWheelTaskClass {
      * is not null.
      */
     parameters?: string[] | string;
-}
-
-/**
- * An optional value specifying the condition determining whether the task is run once its
- * dependencies have been completed.
- *
- * * `ALL_SUCCESS`: All dependencies have executed and succeeded
- * * `AT_LEAST_ONE_SUCCESS`: At least one dependency has succeeded
- * * `NONE_FAILED`: None of the dependencies have failed and at least one was executed
- * * `ALL_DONE`: All dependencies have been completed
- * * `AT_LEAST_ONE_FAILED`: At least one dependency failed
- * * `ALL_FAILED`: ALl dependencies have failed
- *
- * An optional value indicating the condition that determines whether the task should be run
- * once its dependencies have been completed. When omitted, defaults to `ALL_SUCCESS`.
- *
- * Possible values are:
- * * `ALL_SUCCESS`: All dependencies have executed and succeeded
- * * `AT_LEAST_ONE_SUCCESS`: At least one dependency has succeeded
- * * `NONE_FAILED`: None of the dependencies have failed and at least one was executed
- * * `ALL_DONE`: All dependencies have been completed
- * * `AT_LEAST_ONE_FAILED`: At least one dependency failed
- * * `ALL_FAILED`: ALl dependencies have failed
- */
-export enum RunIf {
-    AllDone = "ALL_DONE",
-    AllFailed = "ALL_FAILED",
-    AllSuccess = "ALL_SUCCESS",
-    AtLeastOneFailed = "AT_LEAST_ONE_FAILED",
-    AtLeastOneSuccess = "AT_LEAST_ONE_SUCCESS",
-    NoneFailed = "NONE_FAILED",
 }
 
 export interface RunJobTaskClass {
@@ -2435,6 +2671,10 @@ export interface SparkJarTaskClass {
      * to set parameters containing information about job runs.
      */
     parameters?: string[] | string;
+    /**
+     * Deprecated. A value of `false` is no longer supported.
+     */
+    run_as_repl?: boolean | string;
 }
 
 export interface SparkPythonTaskClass {
@@ -2463,7 +2703,7 @@ export interface SparkPythonTaskClass {
      * filesystem URI.
      * * `GIT`: The Python file is located in a remote Git repository.
      */
-    source?: Source;
+    source?: string;
 }
 
 export interface SparkSubmitTaskClass {
@@ -2484,11 +2724,11 @@ export interface SQLTaskClass {
     /**
      * If dashboard, indicates that this job must refresh a SQL dashboard.
      */
-    dashboard?: BundleSchem2 | string;
+    dashboard?: BundleSchem14 | string;
     /**
      * If file, indicates that this job runs a SQL file in a remote Git repository.
      */
-    file?: BundleSchem3 | string;
+    file?: BundleSchem15 | string;
     /**
      * Parameters to be used for each run of this job. The SQL alert task does not support
      * custom parameters.
@@ -2518,10 +2758,10 @@ export interface AlertClass {
     /**
      * If specified, alert notifications are sent to subscribers.
      */
-    subscriptions?: Array<SubscriptionClass | string> | string;
+    subscriptions?: Array<BundleSchem13 | string> | string;
 }
 
-export interface SubscriptionClass {
+export interface BundleSchem13 {
     /**
      * The canonical identifier of the destination to receive email notification. This parameter
      * is mutually exclusive with user_name. You cannot set both destination_id and user_name
@@ -2536,7 +2776,7 @@ export interface SubscriptionClass {
     user_name?: string;
 }
 
-export interface BundleSchem2 {
+export interface BundleSchem14 {
     /**
      * Subject of the email sent to subscribers of this task.
      */
@@ -2552,10 +2792,10 @@ export interface BundleSchem2 {
     /**
      * If specified, dashboard snapshots are sent to subscriptions.
      */
-    subscriptions?: Array<SubscriptionClass | string> | string;
+    subscriptions?: Array<BundleSchem13 | string> | string;
 }
 
-export interface BundleSchem3 {
+export interface BundleSchem15 {
     /**
      * Path of the SQL file. Must be relative if the source is a remote Git repository and
      * absolute for workspace paths.
@@ -2572,7 +2812,7 @@ export interface BundleSchem3 {
      * * `WORKSPACE`: SQL file is located in Databricks workspace.
      * * `GIT`: SQL file is located in cloud Git provider.
      */
-    source?: Source;
+    source?: string;
 }
 
 export interface QueryClass {
@@ -2631,7 +2871,7 @@ export interface OnDurationWarningThresholdExceededClass {
     id: string;
 }
 
-export interface BundleSchem4 {
+export interface BundleSchem16 {
     /**
      * File arrival trigger settings.
      */
@@ -2639,7 +2879,7 @@ export interface BundleSchem4 {
     /**
      * Whether this trigger is paused or not.
      */
-    pause_status?: PauseStatus;
+    pause_status?: string;
     /**
      * Periodic trigger settings.
      */
@@ -2680,23 +2920,14 @@ export interface PeriodicClass {
     /**
      * The unit of time for the interval.
      */
-    unit: Unit;
-}
-
-/**
- * The unit of time for the interval.
- */
-export enum Unit {
-    Days = "DAYS",
-    Hours = "HOURS",
-    Weeks = "WEEKS",
+    unit: string;
 }
 
 export interface TableUpdateClass {
     /**
      * The table(s) condition based on which to trigger a job run.
      */
-    condition?: Condition;
+    condition?: string;
     /**
      * If set, the trigger starts a run only after the specified amount of time has passed since
      * the last time the trigger fired. The minimum allowed value is 60 seconds.
@@ -2716,36 +2947,33 @@ export interface TableUpdateClass {
     wait_after_last_change_seconds?: number | string;
 }
 
-/**
- * The table(s) condition based on which to trigger a job run.
- */
-export enum Condition {
-    AllUpdated = "ALL_UPDATED",
-    AnyUpdated = "ANY_UPDATED",
-}
-
 export interface ModelServingEndpointClass {
     /**
-     * The AI Gateway configuration for the serving endpoint. NOTE: only external model
-     * endpoints are supported as of now.
+     * The AI Gateway configuration for the serving endpoint. NOTE: External model, provisioned
+     * throughput, and pay-per-token endpoints are fully supported; agent endpoints currently
+     * only support inference tables.
      */
     ai_gateway?: AIGatewayClass | string;
     /**
+     * The budget policy to be applied to the serving endpoint.
+     */
+    budget_policy_id?: string;
+    /**
      * The core config of the serving endpoint.
      */
-    config: ConfigClass | string;
+    config?: ConfigClass | string;
     /**
      * The name of the serving endpoint. This field is required and must be unique across a
      * Databricks workspace.
      * An endpoint name can consist of alphanumeric characters, dashes, and underscores.
      */
     name: string;
-    permissions?: Array<PermissionClass | string> | string;
+    permissions?: Array<BundleSchem18 | string> | string;
     /**
      * Rate limits to be applied to the serving endpoint. NOTE: this field is deprecated, please
      * use AI Gateway to manage rate limits.
      */
-    rate_limits?: Array<BundleSchem6 | string> | string;
+    rate_limits?: Array<BundleSchem19 | string> | string;
     /**
      * Enable route optimization for the serving endpoint.
      */
@@ -2753,29 +2981,50 @@ export interface ModelServingEndpointClass {
     /**
      * Tags to be attached to the serving endpoint and automatically propagated to billing logs.
      */
-    tags?: Array<BundleSchem7 | string> | string;
+    tags?: Array<BundleSchem20 | string> | string;
 }
 
 export interface AIGatewayClass {
+    /**
+     * Configuration for traffic fallback which auto fallbacks to other served entities if the
+     * request to a served
+     * entity fails with certain error codes, to increase availability.
+     */
+    fallback_config?: FallbackConfigClass | string;
     /**
      * Configuration for AI Guardrails to prevent unwanted data and unsafe data in requests and
      * responses.
      */
     guardrails?: GuardrailsClass | string;
     /**
-     * Configuration for payload logging using inference tables. Use these tables to monitor and
-     * audit data being sent to and received from model APIs and to improve model quality.
+     * Configuration for payload logging using inference tables.
+     * Use these tables to monitor and audit data being sent to and received from model APIs and
+     * to improve model quality.
      */
     inference_table_config?: InferenceTableConfigClass | string;
     /**
      * Configuration for rate limits which can be set to limit endpoint traffic.
      */
-    rate_limits?: Array<BundleSchem5 | string> | string;
+    rate_limits?: Array<BundleSchem17 | string> | string;
     /**
-     * Configuration to enable usage tracking using system tables. These tables allow you to
-     * monitor operational usage on endpoints and their associated costs.
+     * Configuration to enable usage tracking using system tables.
+     * These tables allow you to monitor operational usage on endpoints and their associated
+     * costs.
      */
     usage_tracking_config?: UsageTrackingConfigClass | string;
+}
+
+export interface FallbackConfigClass {
+    /**
+     * Whether to enable traffic fallback. When a served entity in the serving endpoint returns
+     * specific error
+     * codes (e.g. 500), the request will automatically be round-robin attempted with other
+     * served entities in the same
+     * endpoint, following the order of served entity list, until a successful response is
+     * returned.
+     * If all attempts fail, return the last response with the error code.
+     */
+    enabled: boolean | string;
 }
 
 export interface GuardrailsClass {
@@ -2791,8 +3040,9 @@ export interface GuardrailsClass {
 
 export interface InputClass {
     /**
-     * List of invalid keywords. AI guardrail uses keyword or string matching to decide if the
-     * keyword exists in the request or response content.
+     * List of invalid keywords.
+     * AI guardrail uses keyword or string matching to decide if the keyword exists in the
+     * request or response content.
      */
     invalid_keywords?: string[] | string;
     /**
@@ -2804,39 +3054,25 @@ export interface InputClass {
      */
     safety?: boolean | string;
     /**
-     * The list of allowed topics. Given a chat request, this guardrail flags the request if its
-     * topic is not in the allowed topics.
+     * The list of allowed topics.
+     * Given a chat request, this guardrail flags the request if its topic is not in the allowed
+     * topics.
      */
     valid_topics?: string[] | string;
 }
 
 export interface PiiClass {
     /**
-     * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
-     * input guardrail and the request contains PII, the request is not sent to the model server
-     * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
-     * response contains PII, the PII info in the response is redacted and 400 status code is
-     * returned.
+     * Configuration for input guardrail filters.
      */
-    behavior: Behavior;
-}
-
-/**
- * Behavior for PII filter. Currently only 'BLOCK' is supported. If 'BLOCK' is set for the
- * input guardrail and the request contains PII, the request is not sent to the model server
- * and 400 status code is returned; if 'BLOCK' is set for the output guardrail and the model
- * response contains PII, the PII info in the response is redacted and 400 status code is
- * returned.
- */
-export enum Behavior {
-    Block = "BLOCK",
-    None = "NONE",
+    behavior?: string;
 }
 
 export interface InferenceTableConfigClass {
     /**
-     * The name of the catalog in Unity Catalog. Required when enabling inference tables. NOTE:
-     * On update, you have to disable inference table first in order to change the catalog name.
+     * The name of the catalog in Unity Catalog. Required when enabling inference tables.
+     * NOTE: On update, you have to disable inference table first in order to change the catalog
+     * name.
      */
     catalog_name?: string;
     /**
@@ -2844,53 +3080,33 @@ export interface InferenceTableConfigClass {
      */
     enabled?: boolean | string;
     /**
-     * The name of the schema in Unity Catalog. Required when enabling inference tables. NOTE:
-     * On update, you have to disable inference table first in order to change the schema name.
+     * The name of the schema in Unity Catalog. Required when enabling inference tables.
+     * NOTE: On update, you have to disable inference table first in order to change the schema
+     * name.
      */
     schema_name?: string;
     /**
-     * The prefix of the table in Unity Catalog. NOTE: On update, you have to disable inference
-     * table first in order to change the prefix name.
+     * The prefix of the table in Unity Catalog.
+     * NOTE: On update, you have to disable inference table first in order to change the prefix
+     * name.
      */
     table_name_prefix?: string;
 }
 
-export interface BundleSchem5 {
+export interface BundleSchem17 {
     /**
      * Used to specify how many calls are allowed for a key within the renewal_period.
      */
     calls: number | string;
     /**
-     * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
-     * 'endpoint' being the default if not specified.
+     * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported,
+     * with 'endpoint' being the default if not specified.
      */
-    key?: Key;
+    key?: string;
     /**
      * Renewal period field for a rate limit. Currently, only 'minute' is supported.
      */
-    renewal_period: RenewalPeriod;
-}
-
-/**
- * Key field for a rate limit. Currently, only 'user' and 'endpoint' are supported, with
- * 'endpoint' being the default if not specified.
- *
- * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
- * supported, with 'endpoint' being the default if not specified.
- */
-export enum Key {
-    Endpoint = "endpoint",
-    User = "user",
-}
-
-/**
- * Renewal period field for a rate limit. Currently, only 'minute' is supported.
- *
- * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
- * supported.
- */
-export enum RenewalPeriod {
-    Minute = "minute",
+    renewal_period: string;
 }
 
 export interface UsageTrackingConfigClass {
@@ -2904,20 +3120,23 @@ export interface ConfigClass {
     /**
      * Configuration for Inference Tables which automatically logs requests and responses to
      * Unity Catalog.
+     * Note: this field is deprecated for creating new provisioned throughput endpoints,
+     * or updating existing provisioned throughput endpoints that never have inference table
+     * configured;
+     * in these cases please use AI Gateway to manage inference tables.
      */
     auto_capture_config?: AutoCaptureConfigClass | string;
     /**
-     * A list of served entities for the endpoint to serve. A serving endpoint can have up to 15
-     * served entities.
+     * The list of served entities under the serving endpoint config.
      */
     served_entities?: Array<ServedEntityClass | string> | string;
     /**
-     * (Deprecated, use served_entities instead) A list of served models for the endpoint to
-     * serve. A serving endpoint can have up to 15 served models.
+     * (Deprecated, use served_entities instead) The list of served models under the serving
+     * endpoint config.
      */
     served_models?: Array<ServedModelClass | string> | string;
     /**
-     * The traffic config defining how invocations to the serving endpoint should be routed.
+     * The traffic configuration associated with the serving endpoint config.
      */
     traffic_config?: TrafficConfigClass | string;
 }
@@ -2947,34 +3166,28 @@ export interface AutoCaptureConfigClass {
 export interface ServedEntityClass {
     /**
      * The name of the entity to be served. The entity may be a model in the Databricks Model
-     * Registry, a model in the Unity Catalog (UC),
-     * or a function of type FEATURE_SPEC in the UC. If it is a UC object, the full name of the
-     * object should be given in the form of
-     * __catalog_name__.__schema_name__.__model_name__.
+     * Registry, a model in the Unity Catalog (UC), or a function of type FEATURE_SPEC in the
+     * UC. If it is a UC object, the full name of the object should be given in the form of
+     * **catalog_name.schema_name.model_name**.
      */
     entity_name?: string;
-    /**
-     * The version of the model in Databricks Model Registry to be served or empty if the entity
-     * is a FEATURE_SPEC.
-     */
     entity_version?: string;
     /**
      * An object containing a set of optional, user-specified environment variable key-value
-     * pairs used for serving this entity.
-     * Note: this is an experimental feature and subject to change.
-     * Example entity environment variables that refer to Databricks secrets:
+     * pairs used for serving this entity. Note: this is an experimental feature and subject to
+     * change. Example entity environment variables that refer to Databricks secrets:
      * `{"OPENAI_API_KEY": "{{secrets/my_scope/my_key}}", "DATABRICKS_TOKEN":
      * "{{secrets/my_scope2/my_key2}}"}`
      */
     environment_vars?: {[key: string]: string} | string;
     /**
      * The external model to be served. NOTE: Only one of external_model and (entity_name,
-     * entity_version, workload_size, workload_type, and scale_to_zero_enabled)
-     * can be specified with the latter set being used for custom model serving for a Databricks
-     * registered model. For an existing endpoint with external_model,
-     * it cannot be updated to an endpoint without external_model. If the endpoint is created
-     * without external_model, users cannot update it to add external_model later.
-     * The task type of all external models within an endpoint must be the same.
+     * entity_version, workload_size, workload_type, and scale_to_zero_enabled) can be specified
+     * with the latter set being used for custom model serving for a Databricks registered
+     * model. For an existing endpoint with external_model, it cannot be updated to an endpoint
+     * without external_model. If the endpoint is created without external_model, users cannot
+     * update it to add external_model later. The task type of all external models within an
+     * endpoint must be the same.
      */
     external_model?: ExternalModelClass | string;
     /**
@@ -2982,42 +3195,56 @@ export interface ServedEntityClass {
      */
     instance_profile_arn?: string;
     /**
+     * The maximum provisioned concurrency that the endpoint can scale up to. Do not use if
+     * workload_size is specified.
+     */
+    max_provisioned_concurrency?: number | string;
+    /**
      * The maximum tokens per second that the endpoint can scale up to.
      */
     max_provisioned_throughput?: number | string;
+    /**
+     * The minimum provisioned concurrency that the endpoint can scale down to. Do not use if
+     * workload_size is specified.
+     */
+    min_provisioned_concurrency?: number | string;
     /**
      * The minimum tokens per second that the endpoint can scale down to.
      */
     min_provisioned_throughput?: number | string;
     /**
      * The name of a served entity. It must be unique across an endpoint. A served entity name
-     * can consist of alphanumeric characters, dashes, and underscores.
-     * If not specified for an external model, this field defaults to external_model.name, with
-     * '.' and ':' replaced with '-', and if not specified for other
-     * entities, it defaults to <entity-name>-<entity-version>.
+     * can consist of alphanumeric characters, dashes, and underscores. If not specified for an
+     * external model, this field defaults to external_model.name, with '.' and ':' replaced
+     * with '-', and if not specified for other entities, it defaults to
+     * entity_name-entity_version.
      */
     name?: string;
+    /**
+     * The number of model units provisioned.
+     */
+    provisioned_model_units?: number | string;
     /**
      * Whether the compute resources for the served entity should scale down to zero.
      */
     scale_to_zero_enabled?: boolean | string;
     /**
      * The workload size of the served entity. The workload size corresponds to a range of
-     * provisioned concurrency that the compute autoscales between.
-     * A single unit of provisioned concurrency can process one request at a time.
-     * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
-     * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
-     * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
-     * workload size is 0.
+     * provisioned concurrency that the compute autoscales between. A single unit of provisioned
+     * concurrency can process one request at a time. Valid workload sizes are "Small" (4 - 4
+     * provisioned concurrency), "Medium" (8 - 16 provisioned concurrency), and "Large" (16 - 64
+     * provisioned concurrency). Additional custom workload sizes can also be used when
+     * available in the workspace. If scale-to-zero is enabled, the lower bound of the
+     * provisioned concurrency for each workload size is 0. Do not use if
+     * min_provisioned_concurrency and max_provisioned_concurrency are specified.
      */
     workload_size?: string;
     /**
      * The workload type of the served entity. The workload type selects which type of compute
-     * to use in the endpoint. The default value for this parameter is
-     * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
-     * types like GPU_SMALL and others.
-     * See the available [GPU
-     * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+     * to use in the endpoint. The default value for this parameter is "CPU". For deep learning
+     * workloads, GPU acceleration is available by selecting workload types like GPU_SMALL and
+     * others. See the available [GPU
+     * types](https://docs.databricks.com/en/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
      */
     workload_type?: string;
 }
@@ -3039,6 +3266,10 @@ export interface ExternalModelClass {
      * Cohere Config. Only required if the provider is 'cohere'.
      */
     cohere_config?: CohereConfigClass | string;
+    /**
+     * Custom Provider Config. Only required if the provider is 'custom'.
+     */
+    custom_provider_config?: CustomProviderConfigClass | string;
     /**
      * Databricks Model Serving Config. Only required if the provider is
      * 'databricks-model-serving'.
@@ -3064,11 +3295,10 @@ export interface ExternalModelClass {
     palm_config?: PalmConfigClass | string;
     /**
      * The name of the provider for the external model. Currently, the supported providers are
-     * 'ai21labs', 'anthropic',
-     * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
-     * 'openai', and 'palm'.",
+     * 'ai21labs', 'anthropic', 'amazon-bedrock', 'cohere', 'databricks-model-serving',
+     * 'google-cloud-vertex-ai', 'openai', 'palm', and 'custom'.
      */
-    provider: Provider;
+    provider: string;
     /**
      * The task type of the external model.
      */
@@ -3077,32 +3307,36 @@ export interface ExternalModelClass {
 
 export interface Ai21LabsConfigClass {
     /**
-     * The Databricks secret key reference for an AI21 Labs API key. If you prefer to paste your
-     * API key directly, see `ai21labs_api_key_plaintext`. You must provide an API key using one
-     * of the following fields: `ai21labs_api_key` or `ai21labs_api_key_plaintext`.
+     * The Databricks secret key reference for an AI21 Labs API key. If you
+     * prefer to paste your API key directly, see `ai21labs_api_key_plaintext`.
+     * You must provide an API key using one of the following fields:
+     * `ai21labs_api_key` or `ai21labs_api_key_plaintext`.
      */
     ai21labs_api_key?: string;
     /**
-     * An AI21 Labs API key provided as a plaintext string. If you prefer to reference your key
-     * using Databricks Secrets, see `ai21labs_api_key`. You must provide an API key using one
-     * of the following fields: `ai21labs_api_key` or `ai21labs_api_key_plaintext`.
+     * An AI21 Labs API key provided as a plaintext string. If you prefer to
+     * reference your key using Databricks Secrets, see `ai21labs_api_key`. You
+     * must provide an API key using one of the following fields:
+     * `ai21labs_api_key` or `ai21labs_api_key_plaintext`.
      */
     ai21labs_api_key_plaintext?: string;
 }
 
 export interface AmazonBedrockConfigClass {
     /**
-     * The Databricks secret key reference for an AWS access key ID with permissions to interact
-     * with Bedrock services. If you prefer to paste your API key directly, see
-     * `aws_access_key_id`. You must provide an API key using one of the following fields:
-     * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+     * The Databricks secret key reference for an AWS access key ID with
+     * permissions to interact with Bedrock services. If you prefer to paste
+     * your API key directly, see `aws_access_key_id_plaintext`. You must provide an API
+     * key using one of the following fields: `aws_access_key_id` or
+     * `aws_access_key_id_plaintext`.
      */
     aws_access_key_id?: string;
     /**
-     * An AWS access key ID with permissions to interact with Bedrock services provided as a
-     * plaintext string. If you prefer to reference your key using Databricks Secrets, see
-     * `aws_access_key_id`. You must provide an API key using one of the following fields:
-     * `aws_access_key_id` or `aws_access_key_id_plaintext`.
+     * An AWS access key ID with permissions to interact with Bedrock services
+     * provided as a plaintext string. If you prefer to reference your key using
+     * Databricks Secrets, see `aws_access_key_id`. You must provide an API key
+     * using one of the following fields: `aws_access_key_id` or
+     * `aws_access_key_id_plaintext`.
      */
     aws_access_key_id_plaintext?: string;
     /**
@@ -3110,333 +3344,357 @@ export interface AmazonBedrockConfigClass {
      */
     aws_region: string;
     /**
-     * The Databricks secret key reference for an AWS secret access key paired with the access
-     * key ID, with permissions to interact with Bedrock services. If you prefer to paste your
-     * API key directly, see `aws_secret_access_key_plaintext`. You must provide an API key
-     * using one of the following fields: `aws_secret_access_key` or
+     * The Databricks secret key reference for an AWS secret access key paired
+     * with the access key ID, with permissions to interact with Bedrock
+     * services. If you prefer to paste your API key directly, see
+     * `aws_secret_access_key_plaintext`. You must provide an API key using one
+     * of the following fields: `aws_secret_access_key` or
      * `aws_secret_access_key_plaintext`.
      */
     aws_secret_access_key?: string;
     /**
-     * An AWS secret access key paired with the access key ID, with permissions to interact with
-     * Bedrock services provided as a plaintext string. If you prefer to reference your key
-     * using Databricks Secrets, see `aws_secret_access_key`. You must provide an API key using
-     * one of the following fields: `aws_secret_access_key` or `aws_secret_access_key_plaintext`.
+     * An AWS secret access key paired with the access key ID, with permissions
+     * to interact with Bedrock services provided as a plaintext string. If you
+     * prefer to reference your key using Databricks Secrets, see
+     * `aws_secret_access_key`. You must provide an API key using one of the
+     * following fields: `aws_secret_access_key` or
+     * `aws_secret_access_key_plaintext`.
      */
     aws_secret_access_key_plaintext?: string;
     /**
-     * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
-     * Anthropic, Cohere, AI21Labs, Amazon.
+     * The underlying provider in Amazon Bedrock. Supported values (case
+     * insensitive) include: Anthropic, Cohere, AI21Labs, Amazon.
      */
-    bedrock_provider: BedrockProvider;
-}
-
-/**
- * The underlying provider in Amazon Bedrock. Supported values (case insensitive) include:
- * Anthropic, Cohere, AI21Labs, Amazon.
- */
-export enum BedrockProvider {
-    Ai21Labs = "ai21labs",
-    Amazon = "amazon",
-    Anthropic = "anthropic",
-    Cohere = "cohere",
+    bedrock_provider: string;
+    /**
+     * ARN of the instance profile that the external model will use to access AWS resources.
+     * You must authenticate using an instance profile or access keys.
+     * If you prefer to authenticate using access keys, see `aws_access_key_id`,
+     * `aws_access_key_id_plaintext`, `aws_secret_access_key` and
+     * `aws_secret_access_key_plaintext`.
+     */
+    instance_profile_arn?: string;
 }
 
 export interface AnthropicConfigClass {
     /**
-     * The Databricks secret key reference for an Anthropic API key. If you prefer to paste your
-     * API key directly, see `anthropic_api_key_plaintext`. You must provide an API key using
-     * one of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+     * The Databricks secret key reference for an Anthropic API key. If you
+     * prefer to paste your API key directly, see `anthropic_api_key_plaintext`.
+     * You must provide an API key using one of the following fields:
+     * `anthropic_api_key` or `anthropic_api_key_plaintext`.
      */
     anthropic_api_key?: string;
     /**
-     * The Anthropic API key provided as a plaintext string. If you prefer to reference your key
-     * using Databricks Secrets, see `anthropic_api_key`. You must provide an API key using one
-     * of the following fields: `anthropic_api_key` or `anthropic_api_key_plaintext`.
+     * The Anthropic API key provided as a plaintext string. If you prefer to
+     * reference your key using Databricks Secrets, see `anthropic_api_key`. You
+     * must provide an API key using one of the following fields:
+     * `anthropic_api_key` or `anthropic_api_key_plaintext`.
      */
     anthropic_api_key_plaintext?: string;
 }
 
 export interface CohereConfigClass {
     /**
-     * This is an optional field to provide a customized base URL for the Cohere API.
-     * If left unspecified, the standard Cohere base URL is used.
+     * This is an optional field to provide a customized base URL for the Cohere
+     * API. If left unspecified, the standard Cohere base URL is used.
      */
     cohere_api_base?: string;
     /**
-     * The Databricks secret key reference for a Cohere API key. If you prefer to paste your API
-     * key directly, see `cohere_api_key_plaintext`. You must provide an API key using one of
-     * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+     * The Databricks secret key reference for a Cohere API key. If you prefer
+     * to paste your API key directly, see `cohere_api_key_plaintext`. You must
+     * provide an API key using one of the following fields: `cohere_api_key` or
+     * `cohere_api_key_plaintext`.
      */
     cohere_api_key?: string;
     /**
-     * The Cohere API key provided as a plaintext string. If you prefer to reference your key
-     * using Databricks Secrets, see `cohere_api_key`. You must provide an API key using one of
-     * the following fields: `cohere_api_key` or `cohere_api_key_plaintext`.
+     * The Cohere API key provided as a plaintext string. If you prefer to
+     * reference your key using Databricks Secrets, see `cohere_api_key`. You
+     * must provide an API key using one of the following fields:
+     * `cohere_api_key` or `cohere_api_key_plaintext`.
      */
     cohere_api_key_plaintext?: string;
 }
 
+/**
+ * Configs needed to create a custom provider model route.
+ */
+export interface CustomProviderConfigClass {
+    /**
+     * This is a field to provide API key authentication for the custom provider API.
+     * You can only specify one authentication method.
+     */
+    api_key_auth?: APIKeyAuthClass | string;
+    /**
+     * This is a field to provide bearer token authentication for the custom provider API.
+     * You can only specify one authentication method.
+     */
+    bearer_token_auth?: BearerTokenAuthClass | string;
+    /**
+     * This is a field to provide the URL of the custom provider API.
+     */
+    custom_provider_url: string;
+}
+
+export interface APIKeyAuthClass {
+    /**
+     * The name of the API key parameter used for authentication.
+     */
+    key: string;
+    /**
+     * The Databricks secret key reference for an API Key.
+     * If you prefer to paste your token directly, see `value_plaintext`.
+     */
+    value?: string;
+    /**
+     * The API Key provided as a plaintext string. If you prefer to reference your
+     * token using Databricks Secrets, see `value`.
+     */
+    value_plaintext?: string;
+}
+
+export interface BearerTokenAuthClass {
+    /**
+     * The Databricks secret key reference for a token.
+     * If you prefer to paste your token directly, see `token_plaintext`.
+     */
+    token?: string;
+    /**
+     * The token provided as a plaintext string. If you prefer to reference your
+     * token using Databricks Secrets, see `token`.
+     */
+    token_plaintext?: string;
+}
+
 export interface DatabricksModelServingConfigClass {
     /**
-     * The Databricks secret key reference for a Databricks API token that corresponds to a user
-     * or service
-     * principal with Can Query access to the model serving endpoint pointed to by this external
-     * model.
-     * If you prefer to paste your API key directly, see `databricks_api_token_plaintext`.
-     * You must provide an API key using one of the following fields: `databricks_api_token` or
-     * `databricks_api_token_plaintext`.
+     * The Databricks secret key reference for a Databricks API token that
+     * corresponds to a user or service principal with Can Query access to the
+     * model serving endpoint pointed to by this external model. If you prefer
+     * to paste your API key directly, see `databricks_api_token_plaintext`. You
+     * must provide an API key using one of the following fields:
+     * `databricks_api_token` or `databricks_api_token_plaintext`.
      */
     databricks_api_token?: string;
     /**
-     * The Databricks API token that corresponds to a user or service
-     * principal with Can Query access to the model serving endpoint pointed to by this external
-     * model provided as a plaintext string.
-     * If you prefer to reference your key using Databricks Secrets, see `databricks_api_token`.
-     * You must provide an API key using one of the following fields: `databricks_api_token` or
-     * `databricks_api_token_plaintext`.
+     * The Databricks API token that corresponds to a user or service principal
+     * with Can Query access to the model serving endpoint pointed to by this
+     * external model provided as a plaintext string. If you prefer to reference
+     * your key using Databricks Secrets, see `databricks_api_token`. You must
+     * provide an API key using one of the following fields:
+     * `databricks_api_token` or `databricks_api_token_plaintext`.
      */
     databricks_api_token_plaintext?: string;
     /**
-     * The URL of the Databricks workspace containing the model serving endpoint pointed to by
-     * this external model.
+     * The URL of the Databricks workspace containing the model serving endpoint
+     * pointed to by this external model.
      */
     databricks_workspace_url: string;
 }
 
 export interface GoogleCloudVertexAIConfigClass {
     /**
-     * The Databricks secret key reference for a private key for the service account which has
-     * access to the Google Cloud Vertex AI Service. See [Best practices for managing service
-     * account
-     * keys](https://cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys).
-     * If you prefer to paste your API key directly, see `private_key_plaintext`. You must
-     * provide an API key using one of the following fields: `private_key` or
+     * The Databricks secret key reference for a private key for the service
+     * account which has access to the Google Cloud Vertex AI Service. See [Best
+     * practices for managing service account keys]. If you prefer to paste your
+     * API key directly, see `private_key_plaintext`. You must provide an API
+     * key using one of the following fields: `private_key` or
      * `private_key_plaintext`
+     *
+     * [Best practices for managing service account keys]:
+     * https://cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys
      */
     private_key?: string;
     /**
-     * The private key for the service account which has access to the Google Cloud Vertex AI
-     * Service provided as a plaintext secret. See [Best practices for managing service account
-     * keys](https://cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys).
-     * If you prefer to reference your key using Databricks Secrets, see `private_key`. You must
-     * provide an API key using one of the following fields: `private_key` or
+     * The private key for the service account which has access to the Google
+     * Cloud Vertex AI Service provided as a plaintext secret. See [Best
+     * practices for managing service account keys]. If you prefer to reference
+     * your key using Databricks Secrets, see `private_key`. You must provide an
+     * API key using one of the following fields: `private_key` or
      * `private_key_plaintext`.
+     *
+     * [Best practices for managing service account keys]:
+     * https://cloud.google.com/iam/docs/best-practices-for-managing-service-account-keys
      */
     private_key_plaintext?: string;
     /**
-     * This is the Google Cloud project id that the service account is associated with.
+     * This is the Google Cloud project id that the service account is
+     * associated with.
      */
-    project_id?: string;
+    project_id: string;
     /**
      * This is the region for the Google Cloud Vertex AI Service. See [supported
-     * regions](https://cloud.google.com/vertex-ai/docs/general/locations) for more details.
-     * Some models are only available in specific regions.
+     * regions] for more details. Some models are only available in specific
+     * regions.
+     *
+     * [supported regions]: https://cloud.google.com/vertex-ai/docs/general/locations
      */
-    region?: string;
+    region: string;
 }
 
+/**
+ * Configs needed to create an OpenAI model route.
+ */
 export interface OpenaiConfigClass {
     /**
-     * This field is only required for Azure AD OpenAI and is the Microsoft Entra Client ID.
+     * This field is only required for Azure AD OpenAI and is the Microsoft
+     * Entra Client ID.
      */
     microsoft_entra_client_id?: string;
     /**
-     * The Databricks secret key reference for a client secret used for Microsoft Entra ID
-     * authentication.
-     * If you prefer to paste your client secret directly, see
+     * The Databricks secret key reference for a client secret used for
+     * Microsoft Entra ID authentication. If you prefer to paste your client
+     * secret directly, see `microsoft_entra_client_secret_plaintext`. You must
+     * provide an API key using one of the following fields:
+     * `microsoft_entra_client_secret` or
      * `microsoft_entra_client_secret_plaintext`.
-     * You must provide an API key using one of the following fields:
-     * `microsoft_entra_client_secret` or `microsoft_entra_client_secret_plaintext`.
      */
     microsoft_entra_client_secret?: string;
     /**
-     * The client secret used for Microsoft Entra ID authentication provided as a plaintext
-     * string.
-     * If you prefer to reference your key using Databricks Secrets, see
-     * `microsoft_entra_client_secret`.
-     * You must provide an API key using one of the following fields:
-     * `microsoft_entra_client_secret` or `microsoft_entra_client_secret_plaintext`.
+     * The client secret used for Microsoft Entra ID authentication provided as
+     * a plaintext string. If you prefer to reference your key using Databricks
+     * Secrets, see `microsoft_entra_client_secret`. You must provide an API key
+     * using one of the following fields: `microsoft_entra_client_secret` or
+     * `microsoft_entra_client_secret_plaintext`.
      */
     microsoft_entra_client_secret_plaintext?: string;
     /**
-     * This field is only required for Azure AD OpenAI and is the Microsoft Entra Tenant ID.
+     * This field is only required for Azure AD OpenAI and is the Microsoft
+     * Entra Tenant ID.
      */
     microsoft_entra_tenant_id?: string;
     /**
-     * This is a field to provide a customized base URl for the OpenAI API.
-     * For Azure OpenAI, this field is required, and is the base URL for the Azure OpenAI API
-     * service
-     * provided by Azure.
-     * For other OpenAI API types, this field is optional, and if left unspecified, the standard
-     * OpenAI base URL is used.
+     * This is a field to provide a customized base URl for the OpenAI API. For
+     * Azure OpenAI, this field is required, and is the base URL for the Azure
+     * OpenAI API service provided by Azure. For other OpenAI API types, this
+     * field is optional, and if left unspecified, the standard OpenAI base URL
+     * is used.
      */
     openai_api_base?: string;
     /**
-     * The Databricks secret key reference for an OpenAI API key using the OpenAI or Azure
-     * service. If you prefer to paste your API key directly, see `openai_api_key_plaintext`.
-     * You must provide an API key using one of the following fields: `openai_api_key` or
-     * `openai_api_key_plaintext`.
+     * The Databricks secret key reference for an OpenAI API key using the
+     * OpenAI or Azure service. If you prefer to paste your API key directly,
+     * see `openai_api_key_plaintext`. You must provide an API key using one of
+     * the following fields: `openai_api_key` or `openai_api_key_plaintext`.
      */
     openai_api_key?: string;
     /**
-     * The OpenAI API key using the OpenAI or Azure service provided as a plaintext string. If
-     * you prefer to reference your key using Databricks Secrets, see `openai_api_key`. You must
-     * provide an API key using one of the following fields: `openai_api_key` or
-     * `openai_api_key_plaintext`.
+     * The OpenAI API key using the OpenAI or Azure service provided as a
+     * plaintext string. If you prefer to reference your key using Databricks
+     * Secrets, see `openai_api_key`. You must provide an API key using one of
+     * the following fields: `openai_api_key` or `openai_api_key_plaintext`.
      */
     openai_api_key_plaintext?: string;
     /**
-     * This is an optional field to specify the type of OpenAI API to use.
-     * For Azure OpenAI, this field is required, and adjust this parameter to represent the
-     * preferred security
-     * access validation protocol. For access token validation, use azure. For authentication
-     * using Azure Active
+     * This is an optional field to specify the type of OpenAI API to use. For
+     * Azure OpenAI, this field is required, and adjust this parameter to
+     * represent the preferred security access validation protocol. For access
+     * token validation, use azure. For authentication using Azure Active
      * Directory (Azure AD) use, azuread.
      */
     openai_api_type?: string;
     /**
-     * This is an optional field to specify the OpenAI API version.
-     * For Azure OpenAI, this field is required, and is the version of the Azure OpenAI service
-     * to
-     * utilize, specified by a date.
+     * This is an optional field to specify the OpenAI API version. For Azure
+     * OpenAI, this field is required, and is the version of the Azure OpenAI
+     * service to utilize, specified by a date.
      */
     openai_api_version?: string;
     /**
-     * This field is only required for Azure OpenAI and is the name of the deployment resource
-     * for the
-     * Azure OpenAI service.
+     * This field is only required for Azure OpenAI and is the name of the
+     * deployment resource for the Azure OpenAI service.
      */
     openai_deployment_name?: string;
     /**
-     * This is an optional field to specify the organization in OpenAI or Azure OpenAI.
+     * This is an optional field to specify the organization in OpenAI or Azure
+     * OpenAI.
      */
     openai_organization?: string;
 }
 
 export interface PalmConfigClass {
     /**
-     * The Databricks secret key reference for a PaLM API key. If you prefer to paste your API
-     * key directly, see `palm_api_key_plaintext`. You must provide an API key using one of the
-     * following fields: `palm_api_key` or `palm_api_key_plaintext`.
+     * The Databricks secret key reference for a PaLM API key. If you prefer to
+     * paste your API key directly, see `palm_api_key_plaintext`. You must
+     * provide an API key using one of the following fields: `palm_api_key` or
+     * `palm_api_key_plaintext`.
      */
     palm_api_key?: string;
     /**
-     * The PaLM API key provided as a plaintext string. If you prefer to reference your key
-     * using Databricks Secrets, see `palm_api_key`. You must provide an API key using one of
-     * the following fields: `palm_api_key` or `palm_api_key_plaintext`.
+     * The PaLM API key provided as a plaintext string. If you prefer to
+     * reference your key using Databricks Secrets, see `palm_api_key`. You must
+     * provide an API key using one of the following fields: `palm_api_key` or
+     * `palm_api_key_plaintext`.
      */
     palm_api_key_plaintext?: string;
-}
-
-/**
- * The name of the provider for the external model. Currently, the supported providers are
- * 'ai21labs', 'anthropic',
- * 'amazon-bedrock', 'cohere', 'databricks-model-serving', 'google-cloud-vertex-ai',
- * 'openai', and 'palm'.",
- */
-export enum Provider {
-    Ai21Labs = "ai21labs",
-    AmazonBedrock = "amazon-bedrock",
-    Anthropic = "anthropic",
-    Cohere = "cohere",
-    DatabricksModelServing = "databricks-model-serving",
-    GoogleCloudVertexAI = "google-cloud-vertex-ai",
-    Openai = "openai",
-    Palm = "palm",
 }
 
 export interface ServedModelClass {
     /**
      * An object containing a set of optional, user-specified environment variable key-value
-     * pairs used for serving this model.
-     * Note: this is an experimental feature and subject to change.
-     * Example model environment variables that refer to Databricks secrets: `{"OPENAI_API_KEY":
-     * "{{secrets/my_scope/my_key}}", "DATABRICKS_TOKEN": "{{secrets/my_scope2/my_key2}}"}`
+     * pairs used for serving this entity. Note: this is an experimental feature and subject to
+     * change. Example entity environment variables that refer to Databricks secrets:
+     * `{"OPENAI_API_KEY": "{{secrets/my_scope/my_key}}", "DATABRICKS_TOKEN":
+     * "{{secrets/my_scope2/my_key2}}"}`
      */
     environment_vars?: {[key: string]: string} | string;
     /**
-     * ARN of the instance profile that the served model will use to access AWS resources.
+     * ARN of the instance profile that the served entity uses to access AWS resources.
      */
     instance_profile_arn?: string;
+    /**
+     * The maximum provisioned concurrency that the endpoint can scale up to. Do not use if
+     * workload_size is specified.
+     */
+    max_provisioned_concurrency?: number | string;
     /**
      * The maximum tokens per second that the endpoint can scale up to.
      */
     max_provisioned_throughput?: number | string;
     /**
+     * The minimum provisioned concurrency that the endpoint can scale down to. Do not use if
+     * workload_size is specified.
+     */
+    min_provisioned_concurrency?: number | string;
+    /**
      * The minimum tokens per second that the endpoint can scale down to.
      */
     min_provisioned_throughput?: number | string;
-    /**
-     * The name of the model in Databricks Model Registry to be served or if the model resides
-     * in Unity Catalog, the full name of model,
-     * in the form of __catalog_name__.__schema_name__.__model_name__.
-     */
     model_name: string;
-    /**
-     * The version of the model in Databricks Model Registry or Unity Catalog to be served.
-     */
     model_version: string;
     /**
-     * The name of a served model. It must be unique across an endpoint. If not specified, this
-     * field will default to <model-name>-<model-version>.
-     * A served model name can consist of alphanumeric characters, dashes, and underscores.
+     * The name of a served entity. It must be unique across an endpoint. A served entity name
+     * can consist of alphanumeric characters, dashes, and underscores. If not specified for an
+     * external model, this field defaults to external_model.name, with '.' and ':' replaced
+     * with '-', and if not specified for other entities, it defaults to
+     * entity_name-entity_version.
      */
     name?: string;
     /**
-     * Whether the compute resources for the served model should scale down to zero.
+     * The number of model units provisioned.
+     */
+    provisioned_model_units?: number | string;
+    /**
+     * Whether the compute resources for the served entity should scale down to zero.
      */
     scale_to_zero_enabled: boolean | string;
     /**
-     * The workload size of the served model. The workload size corresponds to a range of
-     * provisioned concurrency that the compute will autoscale between.
-     * A single unit of provisioned concurrency can process one request at a time.
-     * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
-     * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
-     * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
-     * workload size will be 0.
+     * The workload size of the served entity. The workload size corresponds to a range of
+     * provisioned concurrency that the compute autoscales between. A single unit of provisioned
+     * concurrency can process one request at a time. Valid workload sizes are "Small" (4 - 4
+     * provisioned concurrency), "Medium" (8 - 16 provisioned concurrency), and "Large" (16 - 64
+     * provisioned concurrency). Additional custom workload sizes can also be used when
+     * available in the workspace. If scale-to-zero is enabled, the lower bound of the
+     * provisioned concurrency for each workload size is 0. Do not use if
+     * min_provisioned_concurrency and max_provisioned_concurrency are specified.
      */
-    workload_size?: WorkloadSize;
+    workload_size?: string;
     /**
-     * The workload type of the served model. The workload type selects which type of compute to
-     * use in the endpoint. The default value for this parameter is
-     * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
-     * types like GPU_SMALL and others.
-     * See the available [GPU
-     * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
+     * The workload type of the served entity. The workload type selects which type of compute
+     * to use in the endpoint. The default value for this parameter is "CPU". For deep learning
+     * workloads, GPU acceleration is available by selecting workload types like GPU_SMALL and
+     * others. See the available [GPU
+     * types](https://docs.databricks.com/en/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
      */
-    workload_type?: WorkloadTypeEnum;
-}
-
-/**
- * The workload size of the served model. The workload size corresponds to a range of
- * provisioned concurrency that the compute will autoscale between.
- * A single unit of provisioned concurrency can process one request at a time.
- * Valid workload sizes are "Small" (4 - 4 provisioned concurrency), "Medium" (8 - 16
- * provisioned concurrency), and "Large" (16 - 64 provisioned concurrency).
- * If scale-to-zero is enabled, the lower bound of the provisioned concurrency for each
- * workload size will be 0.
- */
-export enum WorkloadSize {
-    Large = "Large",
-    Medium = "Medium",
-    Small = "Small",
-}
-
-/**
- * The workload type of the served model. The workload type selects which type of compute to
- * use in the endpoint. The default value for this parameter is
- * "CPU". For deep learning workloads, GPU acceleration is available by selecting workload
- * types like GPU_SMALL and others.
- * See the available [GPU
- * types](https://docs.databricks.com/machine-learning/model-serving/create-manage-serving-endpoints.html#gpu-workload-types).
- */
-export enum WorkloadTypeEnum {
-    CPU = "CPU",
-    GPULarge = "GPU_LARGE",
-    GPUMedium = "GPU_MEDIUM",
-    GPUSmall = "GPU_SMALL",
-    MultigpuMedium = "MULTIGPU_MEDIUM",
+    workload_type?: string;
 }
 
 export interface TrafficConfigClass {
@@ -3458,7 +3716,14 @@ export interface RouteClass {
     traffic_percentage: number | string;
 }
 
-export interface BundleSchem6 {
+export interface BundleSchem18 {
+    group_name?: string;
+    level: string;
+    service_principal_name?: string;
+    user_name?: string;
+}
+
+export interface BundleSchem19 {
     /**
      * Used to specify how many calls are allowed for a key within the renewal_period.
      */
@@ -3467,15 +3732,15 @@ export interface BundleSchem6 {
      * Key field for a serving endpoint rate limit. Currently, only 'user' and 'endpoint' are
      * supported, with 'endpoint' being the default if not specified.
      */
-    key?: Key;
+    key?: string;
     /**
      * Renewal period field for a serving endpoint rate limit. Currently, only 'minute' is
      * supported.
      */
-    renewal_period: RenewalPeriod;
+    renewal_period: string;
 }
 
-export interface BundleSchem7 {
+export interface BundleSchem20 {
     /**
      * Key field for a serving endpoint tag.
      */
@@ -3488,115 +3753,28 @@ export interface BundleSchem7 {
 
 export interface ModelClass {
     /**
-     * Timestamp recorded when this `registered_model` was created.
-     */
-    creation_timestamp?: number | string;
-    /**
-     * Description of this `registered_model`.
+     * Optional description for registered model.
      */
     description?: string;
     /**
-     * Timestamp recorded when metadata for this `registered_model` was last updated.
+     * Register models under this name
      */
-    last_updated_timestamp?: number | string;
+    name: string;
+    permissions?: Array<BundleSchem21 | string> | string;
     /**
-     * Collection of latest model versions for each stage.
-     * Only contains models with current `READY` status.
+     * Additional metadata for registered model.
      */
-    latest_versions?: Array<LatestVersionClass | string> | string;
-    /**
-     * Unique name for the model.
-     */
-    name?: string;
-    permissions?: Array<PermissionClass | string> | string;
-    /**
-     * Tags: Additional metadata key-value pairs for this `registered_model`.
-     */
-    tags?: Array<BundleSchem9 | string> | string;
-    /**
-     * User that created this `registered_model`
-     */
-    user_id?: string;
+    tags?: Array<BundleSchem22 | string> | string;
 }
 
-export interface LatestVersionClass {
-    /**
-     * Timestamp recorded when this `model_version` was created.
-     */
-    creation_timestamp?: number | string;
-    /**
-     * Current stage for this `model_version`.
-     */
-    current_stage?: string;
-    /**
-     * Description of this `model_version`.
-     */
-    description?: string;
-    /**
-     * Timestamp recorded when metadata for this `model_version` was last updated.
-     */
-    last_updated_timestamp?: number | string;
-    /**
-     * Unique name of the model
-     */
-    name?: string;
-    /**
-     * MLflow run ID used when creating `model_version`, if `source` was generated by an
-     * experiment run stored in MLflow tracking server.
-     */
-    run_id?: string;
-    /**
-     * Run Link: Direct link to the run that generated this version
-     */
-    run_link?: string;
-    /**
-     * URI indicating the location of the source model artifacts, used when creating
-     * `model_version`
-     */
-    source?: string;
-    /**
-     * Current status of `model_version`
-     */
-    status?: Status;
-    /**
-     * Details on current `status`, if it is pending or failed.
-     */
-    status_message?: string;
-    /**
-     * Tags: Additional metadata key-value pairs for this `model_version`.
-     */
-    tags?: Array<BundleSchem8 | string> | string;
-    /**
-     * User that created this `model_version`.
-     */
-    user_id?: string;
-    /**
-     * Model's version number.
-     */
-    version?: string;
+export interface BundleSchem21 {
+    group_name?: string;
+    level: string;
+    service_principal_name?: string;
+    user_name?: string;
 }
 
-/**
- * Current status of `model_version`
- */
-export enum Status {
-    FailedRegistration = "FAILED_REGISTRATION",
-    PendingRegistration = "PENDING_REGISTRATION",
-    Ready = "READY",
-}
-
-export interface BundleSchem8 {
-    /**
-     * The tag key.
-     */
-    key?: string;
-    /**
-     * The tag value.
-     */
-    value?: string;
-}
-
-export interface BundleSchem9 {
+export interface BundleSchem22 {
     /**
      * The tag key.
      */
@@ -3626,7 +3804,7 @@ export interface PipelineClass {
     /**
      * Cluster settings for this pipeline deployment.
      */
-    clusters?: Array<BundleSchem10 | string> | string;
+    clusters?: Array<BundleSchem23 | string> | string;
     /**
      * String-String configuration for this pipeline execution.
      */
@@ -3636,10 +3814,6 @@ export interface PipelineClass {
      */
     continuous?: boolean | string;
     /**
-     * Deployment type of this pipeline.
-     */
-    deployment?: BundleSchem12 | string;
-    /**
      * Whether the pipeline is in Development mode. Defaults to false.
      */
     development?: boolean | string;
@@ -3647,6 +3821,14 @@ export interface PipelineClass {
      * Pipeline product edition.
      */
     edition?: string;
+    /**
+     * Environment specification for this pipeline used to install dependencies.
+     */
+    environment?: BundleSchem25 | string;
+    /**
+     * Event log configuration for this pipeline
+     */
+    event_log?: EventLogClass | string;
     /**
      * Filters on which Pipeline packages to include in the deployed graph.
      */
@@ -3661,13 +3843,13 @@ export interface PipelineClass {
     id?: string;
     /**
      * The configuration for a managed ingestion pipeline. These settings cannot be used with
-     * the 'libraries', 'target' or 'catalog' settings.
+     * the 'libraries', 'schema', 'target', or 'catalog' settings.
      */
     ingestion_definition?: IngestionDefinitionClass | string;
     /**
      * Libraries or code needed by this deployment.
      */
-    libraries?: Array<BundleSchem15 | string> | string;
+    libraries?: Array<BundleSchem28 | string> | string;
     /**
      * Friendly identifier for this pipeline.
      */
@@ -3676,7 +3858,7 @@ export interface PipelineClass {
      * List of notification settings for this pipeline.
      */
     notifications?: Array<NotificationClass | string> | string;
-    permissions?: Array<PermissionClass | string> | string;
+    permissions?: Array<BundleSchem30 | string> | string;
     /**
      * Whether Photon is enabled for this pipeline.
      */
@@ -3686,8 +3868,15 @@ export interface PipelineClass {
      */
     restart_window?: RestartWindowClass | string;
     /**
-     * The default schema (database) where tables are read from or published to. The presence of
-     * this field implies that the pipeline is in direct publishing mode.
+     * Root path for this pipeline.
+     * This is used as the root directory when editing the pipeline in the Databricks user
+     * interface and it is
+     * added to sys.path when executing Python sources during pipeline execution.
+     */
+    root_path?: string;
+    run_as?: BundleSchem31 | string;
+    /**
+     * The default schema (database) where tables are read from or published to.
      */
     schema?: string;
     /**
@@ -3699,18 +3888,25 @@ export interface PipelineClass {
      */
     storage?: string;
     /**
-     * Target schema (database) to add tables in this pipeline to. If not specified, no data is
-     * published to the Hive metastore or Unity Catalog. To publish to Unity Catalog, also
-     * specify `catalog`.
+     * A map of tags associated with the pipeline.
+     * These are forwarded to the cluster as cluster tags, and are therefore subject to the same
+     * limitations.
+     * A maximum of 25 tags can be added to the pipeline.
+     */
+    tags?: {[key: string]: string} | string;
+    /**
+     * Target schema (database) to add tables in this pipeline to. Exactly one of `schema` or
+     * `target` must be specified. To publish to Unity Catalog, also specify `catalog`. This
+     * legacy field is deprecated for pipeline creation in favor of the `schema` field.
      */
     target?: string;
     /**
      * Which pipeline trigger to use. Deprecated: Use `continuous` instead.
      */
-    trigger?: BundleSchem17 | string;
+    trigger?: BundleSchem32 | string;
 }
 
-export interface BundleSchem10 {
+export interface BundleSchem23 {
     /**
      * Note: This field won't be persisted. Only API users will check this field.
      */
@@ -3719,7 +3915,7 @@ export interface BundleSchem10 {
      * Parameters needed in order to automatically scale clusters up and down based on load.
      * Note: autoscaling works best with DB runtime versions 3.0 or later.
      */
-    autoscale?: BundleSchem11 | string;
+    autoscale?: BundleSchem24 | string;
     /**
      * Attributes related to clusters running on Amazon Web Services.
      * If not specified at cluster creation, a set of default values will be used.
@@ -3842,7 +4038,7 @@ export interface BundleSchem10 {
     ssh_public_keys?: string[] | string;
 }
 
-export interface BundleSchem11 {
+export interface BundleSchem24 {
     /**
      * The maximum number of workers to which the cluster can scale up when overloaded.
      * `max_workers` must be strictly greater than `min_workers`.
@@ -3860,40 +4056,42 @@ export interface BundleSchem11 {
      * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
      * clusters.
      */
-    mode?: Mode;
+    mode?: string;
 }
 
 /**
- * Databricks Enhanced Autoscaling optimizes cluster utilization by automatically
- * allocating cluster resources based on workload volume, with minimal impact to
- * the data processing latency of your pipelines. Enhanced Autoscaling is available
- * for `updates` clusters only. The legacy autoscaling feature is used for `maintenance`
- * clusters.
+ * The environment entity used to preserve serverless environment side panel, jobs'
+ * environment for non-notebook task, and DLT's environment for classic and serverless
+ * pipelines.
+ * In this minimal environment spec, only pip dependencies are supported.
  */
-export enum Mode {
-    Enhanced = "ENHANCED",
-    Legacy = "LEGACY",
-}
-
-export interface BundleSchem12 {
+export interface BundleSchem25 {
     /**
-     * The deployment method that manages the pipeline.
+     * List of pip dependencies, as supported by the version of pip in this environment.
+     * Each dependency is a pip requirement file line
+     * https://pip.pypa.io/en/stable/reference/requirements-file-format/
+     * Allowed dependency could be <requirement specifier>, <archive url/path>, <local project
+     * path>(WSFS or Volumes in Databricks), <vcs project url>
      */
-    kind?: Kind;
-    /**
-     * The path to the file containing metadata about the deployment.
-     */
-    metadata_file_path?: string;
+    dependencies?: string[] | string;
 }
 
 /**
- * The deployment method that manages the pipeline.
- *
- * The deployment method that manages the pipeline:
- * - BUNDLE: The pipeline is managed by a Databricks Asset Bundle.
+ * Configurable event log parameters.
  */
-export enum Kind {
-    Bundle = "BUNDLE",
+export interface EventLogClass {
+    /**
+     * The UC catalog the event log is published under.
+     */
+    catalog?: string;
+    /**
+     * The name the event log is published to in UC.
+     */
+    name?: string;
+    /**
+     * The UC schema the event log is published under.
+     */
+    schema?: string;
 }
 
 export interface FiltersClass {
@@ -3917,11 +4115,11 @@ export interface GatewayDefinitionClass {
      * Immutable. The Unity Catalog connection that this gateway pipeline uses to communicate
      * with the source.
      */
-    connection_name?: string;
+    connection_name: string;
     /**
      * Required, Immutable. The name of the catalog for the gateway pipeline's storage location.
      */
-    gateway_storage_catalog?: string;
+    gateway_storage_catalog: string;
     /**
      * Optional. The Unity Catalog-compatible name for the gateway storage location.
      * This is the destination to use for the data that is extracted by the gateway.
@@ -3932,7 +4130,7 @@ export interface GatewayDefinitionClass {
     /**
      * Required, Immutable. The name of the schema for the gateway pipelines's storage location.
      */
-    gateway_storage_schema?: string;
+    gateway_storage_schema: string;
 }
 
 export interface IngestionDefinitionClass {
@@ -3954,6 +4152,12 @@ export interface IngestionDefinitionClass {
      */
     objects?: Array<ObjectClass | string> | string;
     /**
+     * The type of the foreign source.
+     * The source type will be inferred from the source connection or ingestion gateway.
+     * This field is output only and will be ignored if provided.
+     */
+    source_type?: string;
+    /**
      * Configuration settings to control the ingestion of tables. These settings are applied to
      * all tables in the pipeline.
      */
@@ -3968,22 +4172,22 @@ export interface ObjectClass {
     /**
      * Select all tables from a specific source schema.
      */
-    schema?: BundleSchem13 | string;
+    schema?: BundleSchem26 | string;
     /**
      * Select a specific source table.
      */
-    table?: BundleSchem14 | string;
+    table?: BundleSchem27 | string;
 }
 
 export interface ReportClass {
     /**
      * Required. Destination catalog to store table.
      */
-    destination_catalog?: string;
+    destination_catalog: string;
     /**
      * Required. Destination schema to store table.
      */
-    destination_schema?: string;
+    destination_schema: string;
     /**
      * Required. Destination table name. The pipeline fails if a table with that name already
      * exists.
@@ -3992,7 +4196,7 @@ export interface ReportClass {
     /**
      * Required. Report URL in the source system.
      */
-    source_url?: string;
+    source_url: string;
     /**
      * Configuration settings to control the ingestion of tables. These settings override the
      * table_configuration defined in the IngestionPipelineDefinition object.
@@ -4001,6 +4205,22 @@ export interface ReportClass {
 }
 
 export interface TableConfigurationClass {
+    /**
+     * A list of column names to be excluded for the ingestion.
+     * When not specified, include_columns fully controls what columns to be ingested.
+     * When specified, all other columns including future ones will be automatically included
+     * for ingestion.
+     * This field in mutually exclusive with `include_columns`.
+     */
+    exclude_columns?: string[] | string;
+    /**
+     * A list of column names to be included for the ingestion.
+     * When not specified, all columns except ones in exclude_columns will be included. Future
+     * columns will be automatically included.
+     * When specified, all other future columns will be automatically excluded from ingestion.
+     * This field in mutually exclusive with `exclude_columns`.
+     */
+    include_columns?: string[] | string;
     /**
      * The primary key of the table used to apply changes.
      */
@@ -4013,7 +4233,7 @@ export interface TableConfigurationClass {
     /**
      * The SCD type to use to ingest the table.
      */
-    scd_type?: ScdType;
+    scd_type?: string;
     /**
      * The column names specifying the logical order of events in the source data. Delta Live
      * Tables uses this sequencing to handle change events that arrive out of order.
@@ -4021,25 +4241,17 @@ export interface TableConfigurationClass {
     sequence_by?: string[] | string;
 }
 
-/**
- * The SCD type to use to ingest the table.
- */
-export enum ScdType {
-    ScdType1 = "SCD_TYPE_1",
-    ScdType2 = "SCD_TYPE_2",
-}
-
-export interface BundleSchem13 {
+export interface BundleSchem26 {
     /**
      * Required. Destination catalog to store tables.
      */
-    destination_catalog?: string;
+    destination_catalog: string;
     /**
      * Required. Destination schema to store tables in. Tables with the same name as the source
      * tables are created in this destination schema. The pipeline fails If a table with the
      * same name already exists.
      */
-    destination_schema?: string;
+    destination_schema: string;
     /**
      * The source catalog name. Might be optional depending on the type of source.
      */
@@ -4047,7 +4259,7 @@ export interface BundleSchem13 {
     /**
      * Required. Schema name in the source database.
      */
-    source_schema?: string;
+    source_schema: string;
     /**
      * Configuration settings to control the ingestion of tables. These settings are applied to
      * all tables in this schema and override the table_configuration defined in the
@@ -4056,15 +4268,15 @@ export interface BundleSchem13 {
     table_configuration?: TableConfigurationClass | string;
 }
 
-export interface BundleSchem14 {
+export interface BundleSchem27 {
     /**
      * Required. Destination catalog to store table.
      */
-    destination_catalog?: string;
+    destination_catalog: string;
     /**
      * Required. Destination schema to store table.
      */
-    destination_schema?: string;
+    destination_schema: string;
     /**
      * Optional. Destination table name. The pipeline fails if a table with that name already
      * exists. If not set, the source table name is used.
@@ -4081,7 +4293,7 @@ export interface BundleSchem14 {
     /**
      * Required. Table name in the source database.
      */
-    source_table?: string;
+    source_table: string;
     /**
      * Configuration settings to control the ingestion of tables. These settings override the
      * table_configuration defined in the IngestionPipelineDefinition object and the SchemaSpec.
@@ -4089,11 +4301,17 @@ export interface BundleSchem14 {
     table_configuration?: TableConfigurationClass | string;
 }
 
-export interface BundleSchem15 {
+export interface BundleSchem28 {
     /**
      * The path to a file that defines a pipeline and is stored in the Databricks Repos.
      */
-    file?: BundleSchem16 | string;
+    file?: BundleSchem29 | string;
+    /**
+     * The unified field to include source codes.
+     * Each entry can be a notebook path, a file path, or a folder path that ends `/**`.
+     * This field cannot be used together with `notebook` or `file`.
+     */
+    glob?: GlobClass | string;
     /**
      * URI of the jar to be installed. Currently only DBFS is supported.
      */
@@ -4112,16 +4330,23 @@ export interface BundleSchem15 {
     whl?: string;
 }
 
-export interface BundleSchem16 {
+export interface BundleSchem29 {
     /**
-     * The absolute path of the file.
+     * The absolute path of the source code.
      */
     path?: string;
 }
 
+export interface GlobClass {
+    /**
+     * The source code to include for pipelines
+     */
+    include?: string;
+}
+
 export interface NotebookClass {
     /**
-     * The absolute path of the notebook.
+     * The absolute path of the source code.
      */
     path?: string;
 }
@@ -4143,13 +4368,20 @@ export interface NotificationClass {
     email_recipients?: string[] | string;
 }
 
+export interface BundleSchem30 {
+    group_name?: string;
+    level: string;
+    service_principal_name?: string;
+    user_name?: string;
+}
+
 export interface RestartWindowClass {
     /**
      * Days of week in which the restart is allowed to happen (within a five-hour window
      * starting at start_hour).
      * If not specified all days of the week will be used.
      */
-    days_of_week?: DaysOfWeekElement[] | string;
+    days_of_week?: string[] | string;
     /**
      * An integer between 0 and 23 denoting the start hour for the restart window in the 24-hour
      * day.
@@ -4167,21 +4399,26 @@ export interface RestartWindowClass {
 }
 
 /**
- * Days of week in which the restart is allowed to happen (within a five-hour window
- * starting at start_hour).
- * If not specified all days of the week will be used.
+ * Write-only setting, available only in Create/Update calls. Specifies the user or service
+ * principal that the pipeline runs as. If not specified, the pipeline runs as the user who
+ * created the pipeline.
+ *
+ * Only `user_name` or `service_principal_name` can be specified. If both are specified, an
+ * error is thrown.
  */
-export enum DaysOfWeekElement {
-    Friday = "FRIDAY",
-    Monday = "MONDAY",
-    Saturday = "SATURDAY",
-    Sunday = "SUNDAY",
-    Thursday = "THURSDAY",
-    Tuesday = "TUESDAY",
-    Wednesday = "WEDNESDAY",
+export interface BundleSchem31 {
+    /**
+     * Application ID of an active service principal. Setting this field requires the
+     * `servicePrincipal/user` role.
+     */
+    service_principal_name?: string;
+    /**
+     * The email of an active workspace user. Users can only set this field to their own email.
+     */
+    user_name?: string;
 }
 
-export interface BundleSchem17 {
+export interface BundleSchem32 {
     cron?: CronClass | string;
     manual?: ManualClass | string;
 }
@@ -4229,7 +4466,7 @@ export interface QualityMonitorClass {
     /**
      * The schedule for automatically updating and refreshing metric tables.
      */
-    schedule?: BundleSchem18 | string;
+    schedule?: BundleSchem33 | string;
     /**
      * Whether to skip creating a default dashboard summarizing data quality metrics.
      */
@@ -4291,24 +4528,7 @@ export interface CustomMetricClass {
      * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
      * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
      */
-    type: Type;
-}
-
-/**
- * Can only be one of ``"CUSTOM_METRIC_TYPE_AGGREGATE"``, ``"CUSTOM_METRIC_TYPE_DERIVED"``,
- * or ``"CUSTOM_METRIC_TYPE_DRIFT"``.
- * The ``"CUSTOM_METRIC_TYPE_AGGREGATE"`` and ``"CUSTOM_METRIC_TYPE_DERIVED"`` metrics
- * are computed on a single table, whereas the ``"CUSTOM_METRIC_TYPE_DRIFT"`` compare
- * metrics across
- * baseline and input table, or across the two consecutive time windows.
- * - CUSTOM_METRIC_TYPE_AGGREGATE: only depend on the existing columns in your table
- * - CUSTOM_METRIC_TYPE_DERIVED: depend on previously computed aggregate metrics
- * - CUSTOM_METRIC_TYPE_DRIFT:  depend on previously computed aggregate or derived metrics
- */
-export enum Type {
-    CustomMetricTypeAggregate = "CUSTOM_METRIC_TYPE_AGGREGATE",
-    CustomMetricTypeDerived = "CUSTOM_METRIC_TYPE_DERIVED",
-    CustomMetricTypeDrift = "CUSTOM_METRIC_TYPE_DRIFT",
+    type: string;
 }
 
 export interface DataClassificationConfigClass {
@@ -4320,11 +4540,8 @@ export interface DataClassificationConfigClass {
 
 export interface InferenceLogClass {
     /**
-     * Granularities for aggregating data into time windows based on their timestamp. Currently
-     * the following static
-     * granularities are supported:
-     * {``"5 minutes"``, ``"30 minutes"``, ``"1 hour"``, ``"1 day"``, ``"<n> week(s)"``, ``"1
-     * month"``, ``"1 year"``}.
+     * Granularities for aggregating data into time windows based on their timestamp. Valid
+     * values are 5 minutes, 30 minutes, 1 hour, 1 day, n weeks, 1 month, or 1 year.
      */
     granularities: string[] | string;
     /**
@@ -4353,7 +4570,7 @@ export interface InferenceLogClass {
      * Problem type the model aims to solve. Determines the type of model-quality metrics that
      * will be computed.
      */
-    problem_type: ProblemType;
+    problem_type: string;
     /**
      * Column that contains the timestamps of requests. The column must be one of the following:
      * - A ``TimestampType`` column
@@ -4362,15 +4579,6 @@ export interface InferenceLogClass {
      * [function](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.to_timestamp.html).
      */
     timestamp_col: string;
-}
-
-/**
- * Problem type the model aims to solve. Determines the type of model-quality metrics that
- * will be computed.
- */
-export enum ProblemType {
-    ProblemTypeClassification = "PROBLEM_TYPE_CLASSIFICATION",
-    ProblemTypeRegression = "PROBLEM_TYPE_REGRESSION",
 }
 
 export interface NotificationsClass {
@@ -4394,11 +4602,11 @@ export interface OnNewClassificationTagDetectedClass {
     email_addresses?: string[] | string;
 }
 
-export interface BundleSchem18 {
+export interface BundleSchem33 {
     /**
      * Read only field that indicates whether a schedule is paused or not.
      */
-    pause_status?: PauseStatus;
+    pause_status?: string;
     /**
      * The expression that determines when to run the monitor. See
      * [examples](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
@@ -4414,11 +4622,8 @@ export interface SnapshotClass {}
 
 export interface TimeSeriesClass {
     /**
-     * Granularities for aggregating data into time windows based on their timestamp. Currently
-     * the following static
-     * granularities are supported:
-     * {``"5 minutes"``, ``"30 minutes"``, ``"1 hour"``, ``"1 day"``, ``"<n> week(s)"``, ``"1
-     * month"``, ``"1 year"``}.
+     * Granularities for aggregating data into time windows based on their timestamp. Valid
+     * values are 5 minutes, 30 minutes, 1 hour, 1 day, n weeks, 1 month, or 1 year.
      */
     granularities: string[] | string;
     /**
@@ -4466,7 +4671,7 @@ export interface GrantClass {
     privileges: string[] | string;
 }
 
-export interface BundleSchem19 {
+export interface BundleSchem34 {
     /**
      * Name of parent catalog.
      */
@@ -4485,6 +4690,60 @@ export interface BundleSchem19 {
      * Storage root URL for managed tables within schema.
      */
     storage_root?: string;
+}
+
+export interface SecretScopeClass {
+    /**
+     * The backend type the scope will be created with. If not specified, will default to
+     * `DATABRICKS`
+     */
+    backend_type?: string;
+    /**
+     * The metadata for the secret scope if the `backend_type` is `AZURE_KEYVAULT`
+     */
+    keyvault_metadata?: KeyvaultMetadataClass | string;
+    /**
+     * Scope name requested by the user. Scope names are unique.
+     */
+    name: string;
+    /**
+     * The permissions to apply to the secret scope. Permissions are managed via secret scope
+     * ACLs.
+     */
+    permissions?: Array<BundleSchem35 | string> | string;
+}
+
+export interface KeyvaultMetadataClass {
+    /**
+     * The DNS of the KeyVault
+     */
+    dns_name: string;
+    /**
+     * The resource id of the azure KeyVault that user wants to associate the scope with.
+     */
+    resource_id: string;
+}
+
+export interface BundleSchem35 {
+    /**
+     * The name of the group that has the permission set in level. This field translates to a
+     * `principal` field in secret scope ACL.
+     */
+    group_name?: string;
+    /**
+     * The allowed permission for user, group, service principal defined for this permission.
+     */
+    level: string;
+    /**
+     * The application ID of an active service principal. This field translates to a `principal`
+     * field in secret scope ACL.
+     */
+    service_principal_name?: string;
+    /**
+     * The name of the user that has the permission set in level. This field translates to a
+     * `principal` field in secret scope ACL.
+     */
+    user_name?: string;
 }
 
 export interface VolumeClass {
@@ -4509,12 +4768,7 @@ export interface VolumeClass {
      * The storage location on the cloud
      */
     storage_location?: string;
-    volume_type?: VolumeType;
-}
-
-export enum VolumeType {
-    External = "EXTERNAL",
-    Managed = "MANAGED",
+    volume_type?: string;
 }
 
 export interface SyncClass {
@@ -4533,66 +4787,7 @@ export interface SyncClass {
     paths?: string[] | string;
 }
 
-export interface TargetClass {
-    /**
-     * The artifacts to include in the target deployment.
-     */
-    artifacts?: {[key: string]: ArtifactClass | string} | string;
-    /**
-     * The name of the bundle when deploying to this target.
-     */
-    bundle?: BundleClass | string;
-    /**
-     * The ID of the cluster to use for this target.
-     */
-    cluster_id?: string;
-    /**
-     * Deprecated. The ID of the compute to use for this target.
-     */
-    compute_id?: string;
-    /**
-     * Whether this target is the default target.
-     */
-    default?: boolean | string;
-    /**
-     * The Git version control settings for the target.
-     */
-    git?: GitClass | string;
-    /**
-     * The deployment mode for the target.
-     */
-    mode?: string;
-    /**
-     * The permissions for deploying and running the bundle in the target.
-     */
-    permissions?: Array<PermissionClass | string> | string;
-    /**
-     * The deployment presets for the target.
-     */
-    presets?: PresetsClass | string;
-    /**
-     * The resource definitions for the target.
-     */
-    resources?: ResourcesClass | string;
-    /**
-     * The identity to use to run the bundle.
-     */
-    run_as?: RunAsClass | string;
-    /**
-     * The local paths to sync to the target workspace when a bundle is run or deployed.
-     */
-    sync?: SyncClass | string;
-    /**
-     * The custom variable definitions for the target.
-     */
-    variables?: {[key: string]: any} | string;
-    /**
-     * The Databricks workspace for the target.
-     */
-    workspace?: BundleSchem20 | string;
-}
-
-export interface BundleSchem20 {
+export interface BundleSchem36 {
     /**
      * The artifact path to use within the workspace for both deployments and workflow runs
      */
@@ -4659,7 +4854,76 @@ export interface BundleSchem20 {
     state_path?: string;
 }
 
+export interface ExperimentalClass {
+    /**
+     * The PyDABs configuration.
+     */
+    pydabs?: PydabsClass | string;
+    /**
+     * Configures loading of Python code defined with 'databricks-bundles' package.
+     */
+    python?: PythonClass | string;
+    /**
+     * Whether to use a Python wheel wrapper.
+     */
+    python_wheel_wrapper?: boolean | string;
+    /**
+     * The commands to run.
+     */
+    scripts?: {[key: string]: string} | string;
+    /**
+     * Determines whether to skip cleaning up the .internal folder
+     */
+    skip_artifact_cleanup?: boolean | string;
+    /**
+     * Skip adding the prefix that is either set in `presets.name_prefix` or computed when
+     * `mode: development`
+     * is set, to the names of UC schemas defined in the bundle.
+     */
+    skip_name_prefix_for_schema?: boolean | string;
+    /**
+     * Whether to use the legacy run_as behavior.
+     */
+    use_legacy_run_as?: boolean | string;
+}
+
+export interface PydabsClass {
+    /**
+     * Whether or not PyDABs (Private Preview) is enabled
+     */
+    enabled?: boolean | string;
+}
+
+export interface PythonClass {
+    /**
+     * Mutators contains a list of fully qualified function paths to mutator functions.
+     *
+     * Example: ["my_project.mutators:add_default_cluster"]
+     */
+    mutators?: string[] | string;
+    /**
+     * Resources contains a list of fully qualified function paths to load resources
+     * defined in Python code.
+     *
+     * Example: ["my_project.resources:load_resources"]
+     */
+    resources?: string[] | string;
+    /**
+     * VEnvPath is path to the virtual environment.
+     *
+     * If enabled, Python code will execute within this environment. If disabled,
+     * it defaults to using the Python interpreter available in the current shell.
+     */
+    venv_path?: string;
+}
+
+/**
+ * Defines a custom variable for the bundle.
+ */
 export interface VariableValue {
+    /**
+     * The default value for the variable.
+     */
     default?: any;
     /**
      * The description of the variable
@@ -4677,17 +4941,53 @@ export interface VariableValue {
 }
 
 export interface LookupClass {
+    /**
+     * The name of the alert for which to retrieve an ID.
+     */
     alert?: string;
+    /**
+     * The name of the cluster for which to retrieve an ID.
+     */
     cluster?: string;
+    /**
+     * The name of the cluster_policy for which to retrieve an ID.
+     */
     cluster_policy?: string;
+    /**
+     * The name of the dashboard for which to retrieve an ID.
+     */
     dashboard?: string;
+    /**
+     * The name of the instance_pool for which to retrieve an ID.
+     */
     instance_pool?: string;
+    /**
+     * The name of the job for which to retrieve an ID.
+     */
     job?: string;
+    /**
+     * The name of the metastore for which to retrieve an ID.
+     */
     metastore?: string;
+    /**
+     * The name of the notification_destination for which to retrieve an ID.
+     */
     notification_destination?: string;
+    /**
+     * The name of the pipeline for which to retrieve an ID.
+     */
     pipeline?: string;
+    /**
+     * The name of the query for which to retrieve an ID.
+     */
     query?: string;
+    /**
+     * The name of the service_principal for which to retrieve an ID.
+     */
     service_principal?: string;
+    /**
+     * The name of the warehouse for which to retrieve an ID.
+     */
     warehouse?: string;
 }
 
@@ -4906,6 +5206,11 @@ const typeMap: any = {
                 typ: u(undefined, u(r("BundleClass"), "")),
             },
             {
+                json: "environments",
+                js: "environments",
+                typ: u(undefined, u(m(u(r("TargetClass"), "")), "")),
+            },
+            {
                 json: "experimental",
                 js: "experimental",
                 typ: u(undefined, u(r("ExperimentalClass"), "")),
@@ -4914,7 +5219,7 @@ const typeMap: any = {
             {
                 json: "permissions",
                 js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("FluffyBundleSchem"), "")), "")),
             },
             {
                 json: "presets",
@@ -4929,7 +5234,7 @@ const typeMap: any = {
             {
                 json: "run_as",
                 js: "run_as",
-                typ: u(undefined, u(r("RunAsClass"), "")),
+                typ: u(undefined, u(r("BundleSchem6"), "")),
             },
             {
                 json: "sync",
@@ -4949,14 +5254,19 @@ const typeMap: any = {
             {
                 json: "workspace",
                 js: "workspace",
-                typ: u(undefined, u(r("BundleSchem20"), "")),
+                typ: u(undefined, u(r("BundleSchem36"), "")),
             },
         ],
-        false
+        "any"
     ),
     ArtifactClass: o(
         [
             {json: "build", js: "build", typ: u(undefined, "")},
+            {
+                json: "dynamic_version",
+                js: "dynamic_version",
+                typ: u(undefined, u(true, "")),
+            },
             {json: "executable", js: "executable", typ: u(undefined, "")},
             {
                 json: "files",
@@ -4964,7 +5274,7 @@ const typeMap: any = {
                 typ: u(undefined, u(a(u(r("PurpleBundleSchem"), "")), "")),
             },
             {json: "path", js: "path", typ: u(undefined, "")},
-            {json: "type", js: "type", typ: ""},
+            {json: "type", js: "type", typ: u(undefined, "")},
         ],
         false
     ),
@@ -4981,7 +5291,7 @@ const typeMap: any = {
             {
                 json: "deployment",
                 js: "deployment",
-                typ: u(undefined, u(r("FluffyBundleSchem"), "")),
+                typ: u(undefined, u(r("DeploymentClass"), "")),
             },
             {json: "git", js: "git", typ: u(undefined, u(r("GitClass"), ""))},
             {json: "name", js: "name", typ: ""},
@@ -4989,7 +5299,7 @@ const typeMap: any = {
         ],
         false
     ),
-    FluffyBundleSchem: o(
+    DeploymentClass: o(
         [
             {
                 json: "fail_on_active_runs",
@@ -5018,49 +5328,62 @@ const typeMap: any = {
         ],
         false
     ),
-    ExperimentalClass: o(
+    TargetClass: o(
         [
             {
-                json: "pydabs",
-                js: "pydabs",
-                typ: u(undefined, u(r("PydabsClass"), "")),
+                json: "artifacts",
+                js: "artifacts",
+                typ: u(undefined, u(m(u(r("ArtifactClass"), "")), "")),
             },
             {
-                json: "python",
-                js: "python",
-                typ: u(undefined, u(r("PythonClass"), "")),
+                json: "bundle",
+                js: "bundle",
+                typ: u(undefined, u(r("BundleClass"), "")),
+            },
+            {json: "cluster_id", js: "cluster_id", typ: u(undefined, "")},
+            {json: "compute_id", js: "compute_id", typ: u(undefined, "")},
+            {json: "default", js: "default", typ: u(undefined, u(true, ""))},
+            {json: "git", js: "git", typ: u(undefined, u(r("GitClass"), ""))},
+            {json: "mode", js: "mode", typ: u(undefined, "")},
+            {
+                json: "permissions",
+                js: "permissions",
+                typ: u(undefined, u(a(u(r("FluffyBundleSchem"), "")), "")),
             },
             {
-                json: "python_wheel_wrapper",
-                js: "python_wheel_wrapper",
-                typ: u(undefined, u(true, "")),
+                json: "presets",
+                js: "presets",
+                typ: u(undefined, u(r("PresetsClass"), "")),
             },
-            {json: "scripts", js: "scripts", typ: u(undefined, u(m(""), ""))},
             {
-                json: "use_legacy_run_as",
-                js: "use_legacy_run_as",
-                typ: u(undefined, u(true, "")),
+                json: "resources",
+                js: "resources",
+                typ: u(undefined, u(r("ResourcesClass"), "")),
+            },
+            {
+                json: "run_as",
+                js: "run_as",
+                typ: u(undefined, u(r("BundleSchem6"), "")),
+            },
+            {
+                json: "sync",
+                js: "sync",
+                typ: u(undefined, u(r("SyncClass"), "")),
+            },
+            {
+                json: "variables",
+                js: "variables",
+                typ: u(undefined, u(m("any"), "")),
+            },
+            {
+                json: "workspace",
+                js: "workspace",
+                typ: u(undefined, u(r("BundleSchem36"), "")),
             },
         ],
         false
     ),
-    PydabsClass: o(
-        [
-            {json: "enabled", js: "enabled", typ: u(undefined, u(true, ""))},
-            {json: "import", js: "import", typ: u(undefined, u(a(""), ""))},
-            {json: "venv_path", js: "venv_path", typ: u(undefined, "")},
-        ],
-        false
-    ),
-    PythonClass: o(
-        [
-            {json: "mutators", js: "mutators", typ: u(a(""), "")},
-            {json: "resources", js: "resources", typ: u(a(""), "")},
-            {json: "venv_path", js: "venv_path", typ: u(undefined, "")},
-        ],
-        false
-    ),
-    PermissionClass: o(
+    FluffyBundleSchem: o(
         [
             {json: "group_name", js: "group_name", typ: u(undefined, "")},
             {json: "level", js: "level", typ: ""},
@@ -5075,6 +5398,11 @@ const typeMap: any = {
     ),
     PresetsClass: o(
         [
+            {
+                json: "artifacts_dynamic_version",
+                js: "artifacts_dynamic_version",
+                typ: u(undefined, u(true, "")),
+            },
             {
                 json: "jobs_max_concurrent_runs",
                 js: "jobs_max_concurrent_runs",
@@ -5103,14 +5431,19 @@ const typeMap: any = {
     ResourcesClass: o(
         [
             {
+                json: "apps",
+                js: "apps",
+                typ: u(undefined, u(m(u(r("AppClass"), "")), "")),
+            },
+            {
                 json: "clusters",
                 js: "clusters",
-                typ: u(undefined, u(m(u(r("TentacledBundleSchem"), "")), "")),
+                typ: u(undefined, u(m(u(r("IndigoBundleSchem"), "")), "")),
             },
             {
                 json: "dashboards",
                 js: "dashboards",
-                typ: u(undefined, u(m(u(r("HilariousBundleSchem"), "")), "")),
+                typ: u(undefined, u(m(u(r("MagentaBundleSchem"), "")), "")),
             },
             {
                 json: "experiments",
@@ -5120,7 +5453,7 @@ const typeMap: any = {
             {
                 json: "jobs",
                 js: "jobs",
-                typ: u(undefined, u(m(u(r("JobClass"), "")), "")),
+                typ: u(undefined, u(m(u(r("BundleSchem1"), "")), "")),
             },
             {
                 json: "model_serving_endpoints",
@@ -5153,7 +5486,12 @@ const typeMap: any = {
             {
                 json: "schemas",
                 js: "schemas",
-                typ: u(undefined, u(m(u(r("BundleSchem19"), "")), "")),
+                typ: u(undefined, u(m(u(r("BundleSchem34"), "")), "")),
+            },
+            {
+                json: "secret_scopes",
+                js: "secret_scopes",
+                typ: u(undefined, u(m(u(r("SecretScopeClass"), "")), "")),
             },
             {
                 json: "volumes",
@@ -5163,7 +5501,240 @@ const typeMap: any = {
         ],
         false
     ),
+    AppClass: o(
+        [
+            {
+                json: "active_deployment",
+                js: "active_deployment",
+                typ: u(undefined, u(r("ActiveDeploymentClass"), "")),
+            },
+            {
+                json: "app_status",
+                js: "app_status",
+                typ: u(undefined, u(r("AppStatusClass"), "")),
+            },
+            {
+                json: "budget_policy_id",
+                js: "budget_policy_id",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "compute_status",
+                js: "compute_status",
+                typ: u(undefined, u(r("ComputeStatusClass"), "")),
+            },
+            {json: "config", js: "config", typ: u(undefined, u(m("any"), ""))},
+            {json: "create_time", js: "create_time", typ: u(undefined, "")},
+            {json: "creator", js: "creator", typ: u(undefined, "")},
+            {
+                json: "default_source_code_path",
+                js: "default_source_code_path",
+                typ: u(undefined, ""),
+            },
+            {json: "description", js: "description", typ: u(undefined, "")},
+            {
+                json: "effective_budget_policy_id",
+                js: "effective_budget_policy_id",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "effective_user_api_scopes",
+                js: "effective_user_api_scopes",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {json: "id", js: "id", typ: u(undefined, "")},
+            {json: "name", js: "name", typ: ""},
+            {
+                json: "oauth2_app_client_id",
+                js: "oauth2_app_client_id",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "oauth2_app_integration_id",
+                js: "oauth2_app_integration_id",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "pending_deployment",
+                js: "pending_deployment",
+                typ: u(undefined, u(r("ActiveDeploymentClass"), "")),
+            },
+            {
+                json: "permissions",
+                js: "permissions",
+                typ: u(undefined, u(a(u(r("TentacledBundleSchem"), "")), "")),
+            },
+            {
+                json: "resources",
+                js: "resources",
+                typ: u(undefined, u(a(u(r("ResourceClass"), "")), "")),
+            },
+            {
+                json: "service_principal_client_id",
+                js: "service_principal_client_id",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "service_principal_id",
+                js: "service_principal_id",
+                typ: u(undefined, u(0, "")),
+            },
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "source_code_path", js: "source_code_path", typ: ""},
+            {json: "update_time", js: "update_time", typ: u(undefined, "")},
+            {json: "updater", js: "updater", typ: u(undefined, "")},
+            {json: "url", js: "url", typ: u(undefined, "")},
+            {
+                json: "user_api_scopes",
+                js: "user_api_scopes",
+                typ: u(undefined, u(a(""), "")),
+            },
+        ],
+        false
+    ),
+    ActiveDeploymentClass: o(
+        [
+            {json: "create_time", js: "create_time", typ: u(undefined, "")},
+            {json: "creator", js: "creator", typ: u(undefined, "")},
+            {
+                json: "deployment_artifacts",
+                js: "deployment_artifacts",
+                typ: u(undefined, u(r("DeploymentArtifactsClass"), "")),
+            },
+            {json: "deployment_id", js: "deployment_id", typ: u(undefined, "")},
+            {json: "mode", js: "mode", typ: u(undefined, "")},
+            {
+                json: "source_code_path",
+                js: "source_code_path",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "status",
+                js: "status",
+                typ: u(undefined, u(r("StatusClass"), "")),
+            },
+            {json: "update_time", js: "update_time", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    DeploymentArtifactsClass: o(
+        [
+            {
+                json: "source_code_path",
+                js: "source_code_path",
+                typ: u(undefined, ""),
+            },
+        ],
+        false
+    ),
+    StatusClass: o(
+        [
+            {json: "message", js: "message", typ: u(undefined, "")},
+            {json: "state", js: "state", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    AppStatusClass: o(
+        [
+            {json: "message", js: "message", typ: u(undefined, "")},
+            {json: "state", js: "state", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    ComputeStatusClass: o(
+        [
+            {json: "message", js: "message", typ: u(undefined, "")},
+            {json: "state", js: "state", typ: u(undefined, "")},
+        ],
+        false
+    ),
     TentacledBundleSchem: o(
+        [
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    ResourceClass: o(
+        [
+            {json: "description", js: "description", typ: u(undefined, "")},
+            {
+                json: "job",
+                js: "job",
+                typ: u(undefined, u(r("StickyBundleSchem"), "")),
+            },
+            {json: "name", js: "name", typ: ""},
+            {
+                json: "secret",
+                js: "secret",
+                typ: u(undefined, u(r("SecretClass"), "")),
+            },
+            {
+                json: "serving_endpoint",
+                js: "serving_endpoint",
+                typ: u(undefined, u(r("ServingEndpointClass"), "")),
+            },
+            {
+                json: "sql_warehouse",
+                js: "sql_warehouse",
+                typ: u(undefined, u(r("SQLWarehouseClass"), "")),
+            },
+            {
+                json: "uc_securable",
+                js: "uc_securable",
+                typ: u(undefined, u(r("UcSecurableClass"), "")),
+            },
+        ],
+        false
+    ),
+    StickyBundleSchem: o(
+        [
+            {json: "id", js: "id", typ: ""},
+            {json: "permission", js: "permission", typ: ""},
+        ],
+        false
+    ),
+    SecretClass: o(
+        [
+            {json: "key", js: "key", typ: ""},
+            {json: "permission", js: "permission", typ: ""},
+            {json: "scope", js: "scope", typ: ""},
+        ],
+        false
+    ),
+    ServingEndpointClass: o(
+        [
+            {json: "name", js: "name", typ: ""},
+            {json: "permission", js: "permission", typ: ""},
+        ],
+        false
+    ),
+    SQLWarehouseClass: o(
+        [
+            {json: "id", js: "id", typ: ""},
+            {json: "permission", js: "permission", typ: ""},
+        ],
+        false
+    ),
+    UcSecurableClass: o(
+        [
+            {json: "permission", js: "permission", typ: ""},
+            {json: "securable_full_name", js: "securable_full_name", typ: ""},
+            {json: "securable_type", js: "securable_type", typ: ""},
+        ],
+        false
+    ),
+    IndigoBundleSchem: o(
         [
             {
                 json: "apply_policy_default_values",
@@ -5173,7 +5744,7 @@ const typeMap: any = {
             {
                 json: "autoscale",
                 js: "autoscale",
-                typ: u(undefined, u(r("StickyBundleSchem"), "")),
+                typ: u(undefined, u(r("IndecentBundleSchem"), "")),
             },
             {
                 json: "autotermination_minutes",
@@ -5204,7 +5775,7 @@ const typeMap: any = {
             {
                 json: "data_security_mode",
                 js: "data_security_mode",
-                typ: u(undefined, r("DataSecurityMode")),
+                typ: u(undefined, ""),
             },
             {
                 json: "docker_image",
@@ -5261,13 +5832,18 @@ const typeMap: any = {
             {
                 json: "permissions",
                 js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("CunningBundleSchem"), "")), "")),
             },
             {json: "policy_id", js: "policy_id", typ: u(undefined, "")},
             {
+                json: "remote_disk_throughput",
+                js: "remote_disk_throughput",
+                typ: u(undefined, u(0, "")),
+            },
+            {
                 json: "runtime_engine",
                 js: "runtime_engine",
-                typ: u(undefined, r("RuntimeEngine")),
+                typ: u(undefined, ""),
             },
             {
                 json: "single_user_name",
@@ -5291,6 +5867,11 @@ const typeMap: any = {
                 typ: u(undefined, u(a(""), "")),
             },
             {
+                json: "total_initial_remote_disk_size",
+                js: "total_initial_remote_disk_size",
+                typ: u(undefined, u(0, "")),
+            },
+            {
                 json: "use_ml_runtime",
                 js: "use_ml_runtime",
                 typ: u(undefined, u(true, "")),
@@ -5303,7 +5884,7 @@ const typeMap: any = {
         ],
         false
     ),
-    StickyBundleSchem: o(
+    IndecentBundleSchem: o(
         [
             {
                 json: "max_workers",
@@ -5320,11 +5901,7 @@ const typeMap: any = {
     ),
     AwsAttributesClass: o(
         [
-            {
-                json: "availability",
-                js: "availability",
-                typ: u(undefined, r("AwsAttributesAvailability")),
-            },
+            {json: "availability", js: "availability", typ: u(undefined, "")},
             {
                 json: "ebs_volume_count",
                 js: "ebs_volume_count",
@@ -5348,7 +5925,7 @@ const typeMap: any = {
             {
                 json: "ebs_volume_type",
                 js: "ebs_volume_type",
-                typ: u(undefined, r("EbsVolumeType")),
+                typ: u(undefined, ""),
             },
             {
                 json: "first_on_demand",
@@ -5371,11 +5948,7 @@ const typeMap: any = {
     ),
     AzureAttributesClass: o(
         [
-            {
-                json: "availability",
-                js: "availability",
-                typ: u(undefined, r("AzureAttributesAvailability")),
-            },
+            {json: "availability", js: "availability", typ: u(undefined, "")},
             {
                 json: "first_on_demand",
                 js: "first_on_demand",
@@ -5417,6 +5990,11 @@ const typeMap: any = {
                 typ: u(undefined, u(r("DbfsClass"), "")),
             },
             {json: "s3", js: "s3", typ: u(undefined, u(r("S3Class"), ""))},
+            {
+                json: "volumes",
+                js: "volumes",
+                typ: u(undefined, u(r("VolumesClass"), "")),
+            },
         ],
         false
     ),
@@ -5441,6 +6019,7 @@ const typeMap: any = {
         ],
         false
     ),
+    VolumesClass: o([{json: "destination", js: "destination", typ: ""}], false),
     DockerImageClass: o(
         [
             {
@@ -5461,11 +6040,7 @@ const typeMap: any = {
     ),
     GcpAttributesClass: o(
         [
-            {
-                json: "availability",
-                js: "availability",
-                typ: u(undefined, r("GcpAttributesAvailability")),
-            },
+            {json: "availability", js: "availability", typ: u(undefined, "")},
             {
                 json: "boot_disk_size",
                 js: "boot_disk_size",
@@ -5505,7 +6080,7 @@ const typeMap: any = {
             {
                 json: "file",
                 js: "file",
-                typ: u(undefined, u(r("IndigoBundleSchem"), "")),
+                typ: u(undefined, u(r("HilariousBundleSchem"), "")),
             },
             {json: "gcs", js: "gcs", typ: u(undefined, u(r("GcsClass"), ""))},
             {json: "s3", js: "s3", typ: u(undefined, u(r("S3Class"), ""))},
@@ -5517,20 +6092,32 @@ const typeMap: any = {
             {
                 json: "workspace",
                 js: "workspace",
-                typ: u(undefined, u(r("IndecentBundleSchem"), "")),
+                typ: u(undefined, u(r("AmbitiousBundleSchem"), "")),
             },
         ],
         false
     ),
     AbfssClass: o([{json: "destination", js: "destination", typ: ""}], false),
-    IndigoBundleSchem: o(
+    HilariousBundleSchem: o(
         [{json: "destination", js: "destination", typ: ""}],
         false
     ),
     GcsClass: o([{json: "destination", js: "destination", typ: ""}], false),
-    VolumesClass: o([{json: "destination", js: "destination", typ: ""}], false),
-    IndecentBundleSchem: o(
+    AmbitiousBundleSchem: o(
         [{json: "destination", js: "destination", typ: ""}],
+        false
+    ),
+    CunningBundleSchem: o(
+        [
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
+        ],
         false
     ),
     WorkloadTypeClass: o(
@@ -5548,7 +6135,7 @@ const typeMap: any = {
         ],
         false
     ),
-    HilariousBundleSchem: o(
+    MagentaBundleSchem: o(
         [
             {json: "create_time", js: "create_time", typ: u(undefined, "")},
             {json: "dashboard_id", js: "dashboard_id", typ: u(undefined, "")},
@@ -5563,14 +6150,14 @@ const typeMap: any = {
             {
                 json: "lifecycle_state",
                 js: "lifecycle_state",
-                typ: u(undefined, r("LifecycleState")),
+                typ: u(undefined, ""),
             },
             {json: "parent_path", js: "parent_path", typ: u(undefined, "")},
             {json: "path", js: "path", typ: u(undefined, "")},
             {
                 json: "permissions",
                 js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("FriskyBundleSchem"), "")), "")),
             },
             {
                 json: "serialized_dashboard",
@@ -5579,6 +6166,19 @@ const typeMap: any = {
             },
             {json: "update_time", js: "update_time", typ: u(undefined, "")},
             {json: "warehouse_id", js: "warehouse_id", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    FriskyBundleSchem: o(
+        [
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
         ],
         false
     ),
@@ -5609,24 +6209,40 @@ const typeMap: any = {
             {
                 json: "permissions",
                 js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("MischievousBundleSchem"), "")), "")),
             },
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("AmbitiousBundleSchem"), "")), "")),
+                typ: u(
+                    undefined,
+                    u(a(u(r("BraggadociousBundleSchem"), "")), "")
+                ),
             },
         ],
         false
     ),
-    AmbitiousBundleSchem: o(
+    MischievousBundleSchem: o(
+        [
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    BraggadociousBundleSchem: o(
         [
             {json: "key", js: "key", typ: u(undefined, "")},
             {json: "value", js: "value", typ: u(undefined, "")},
         ],
         false
     ),
-    JobClass: o(
+    BundleSchem1: o(
         [
             {
                 json: "budget_policy_id",
@@ -5642,12 +6258,12 @@ const typeMap: any = {
             {
                 json: "email_notifications",
                 js: "email_notifications",
-                typ: u(undefined, u(r("CunningBundleSchem"), "")),
+                typ: u(undefined, u(r("BundleSchem2"), "")),
             },
             {
                 json: "environments",
                 js: "environments",
-                typ: u(undefined, u(a(u(r("EnvironmentClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem3"), "")), "")),
             },
             {
                 json: "git_source",
@@ -5673,7 +6289,7 @@ const typeMap: any = {
             {
                 json: "notification_settings",
                 js: "notification_settings",
-                typ: u(undefined, u(r("MagentaBundleSchem"), "")),
+                typ: u(undefined, u(r("BundleSchem4"), "")),
             },
             {
                 json: "parameters",
@@ -5681,9 +6297,14 @@ const typeMap: any = {
                 typ: u(undefined, u(a(u(r("ParameterClass"), "")), "")),
             },
             {
+                json: "performance_target",
+                js: "performance_target",
+                typ: u(undefined, ""),
+            },
+            {
                 json: "permissions",
                 js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem5"), "")), "")),
             },
             {
                 json: "queue",
@@ -5693,12 +6314,12 @@ const typeMap: any = {
             {
                 json: "run_as",
                 js: "run_as",
-                typ: u(undefined, u(r("RunAsClass"), "")),
+                typ: u(undefined, u(r("BundleSchem6"), "")),
             },
             {
                 json: "schedule",
                 js: "schedule",
-                typ: u(undefined, u(r("FriskyBundleSchem"), "")),
+                typ: u(undefined, u(r("BundleSchem7"), "")),
             },
             {json: "tags", js: "tags", typ: u(undefined, u(m(""), ""))},
             {
@@ -5714,7 +6335,7 @@ const typeMap: any = {
             {
                 json: "trigger",
                 js: "trigger",
-                typ: u(undefined, u(r("BundleSchem4"), "")),
+                typ: u(undefined, u(r("BundleSchem16"), "")),
             },
             {
                 json: "webhook_notifications",
@@ -5725,16 +6346,10 @@ const typeMap: any = {
         false
     ),
     ContinuousClass: o(
-        [
-            {
-                json: "pause_status",
-                js: "pause_status",
-                typ: u(undefined, r("PauseStatus")),
-            },
-        ],
+        [{json: "pause_status", js: "pause_status", typ: u(undefined, "")}],
         false
     ),
-    CunningBundleSchem: o(
+    BundleSchem2: o(
         [
             {
                 json: "no_alert_for_skipped_runs",
@@ -5765,7 +6380,7 @@ const typeMap: any = {
         ],
         false
     ),
-    EnvironmentClass: o(
+    BundleSchem3: o(
         [
             {json: "environment_key", js: "environment_key", typ: ""},
             {
@@ -5778,10 +6393,20 @@ const typeMap: any = {
     ),
     SpecClass: o(
         [
-            {json: "client", js: "client", typ: ""},
+            {json: "client", js: "client", typ: u(undefined, "")},
             {
                 json: "dependencies",
                 js: "dependencies",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {
+                json: "environment_version",
+                js: "environment_version",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "jar_dependencies",
+                js: "jar_dependencies",
                 typ: u(undefined, u(a(""), "")),
             },
         ],
@@ -5791,7 +6416,7 @@ const typeMap: any = {
         [
             {json: "git_branch", js: "git_branch", typ: u(undefined, "")},
             {json: "git_commit", js: "git_commit", typ: u(undefined, "")},
-            {json: "git_provider", js: "git_provider", typ: r("GitProvider")},
+            {json: "git_provider", js: "git_provider", typ: ""},
             {json: "git_tag", js: "git_tag", typ: u(undefined, "")},
             {json: "git_url", js: "git_url", typ: ""},
         ],
@@ -5809,8 +6434,8 @@ const typeMap: any = {
     ),
     RuleClass: o(
         [
-            {json: "metric", js: "metric", typ: r("Metric")},
-            {json: "op", js: "op", typ: r("RuleOp")},
+            {json: "metric", js: "metric", typ: ""},
+            {json: "op", js: "op", typ: ""},
             {json: "value", js: "value", typ: u(0, "")},
         ],
         false
@@ -5836,7 +6461,7 @@ const typeMap: any = {
             {
                 json: "autoscale",
                 js: "autoscale",
-                typ: u(undefined, u(r("StickyBundleSchem"), "")),
+                typ: u(undefined, u(r("IndecentBundleSchem"), "")),
             },
             {
                 json: "autotermination_minutes",
@@ -5867,7 +6492,7 @@ const typeMap: any = {
             {
                 json: "data_security_mode",
                 js: "data_security_mode",
-                typ: u(undefined, r("DataSecurityMode")),
+                typ: u(undefined, ""),
             },
             {
                 json: "docker_image",
@@ -5923,9 +6548,14 @@ const typeMap: any = {
             },
             {json: "policy_id", js: "policy_id", typ: u(undefined, "")},
             {
+                json: "remote_disk_throughput",
+                js: "remote_disk_throughput",
+                typ: u(undefined, u(0, "")),
+            },
+            {
                 json: "runtime_engine",
                 js: "runtime_engine",
-                typ: u(undefined, r("RuntimeEngine")),
+                typ: u(undefined, ""),
             },
             {
                 json: "single_user_name",
@@ -5949,6 +6579,11 @@ const typeMap: any = {
                 typ: u(undefined, u(a(""), "")),
             },
             {
+                json: "total_initial_remote_disk_size",
+                js: "total_initial_remote_disk_size",
+                typ: u(undefined, u(0, "")),
+            },
+            {
                 json: "use_ml_runtime",
                 js: "use_ml_runtime",
                 typ: u(undefined, u(true, "")),
@@ -5961,7 +6596,7 @@ const typeMap: any = {
         ],
         false
     ),
-    MagentaBundleSchem: o(
+    BundleSchem4: o(
         [
             {
                 json: "no_alert_for_canceled_runs",
@@ -5983,8 +6618,21 @@ const typeMap: any = {
         ],
         false
     ),
+    BundleSchem5: o(
+        [
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
+        ],
+        false
+    ),
     QueueClass: o([{json: "enabled", js: "enabled", typ: u(true, "")}], false),
-    RunAsClass: o(
+    BundleSchem6: o(
         [
             {
                 json: "service_principal_name",
@@ -5995,13 +6643,9 @@ const typeMap: any = {
         ],
         false
     ),
-    FriskyBundleSchem: o(
+    BundleSchem7: o(
         [
-            {
-                json: "pause_status",
-                js: "pause_status",
-                typ: u(undefined, r("PauseStatus")),
-            },
+            {json: "pause_status", js: "pause_status", typ: u(undefined, "")},
             {
                 json: "quartz_cron_expression",
                 js: "quartz_cron_expression",
@@ -6036,6 +6680,21 @@ const typeMap: any = {
                 typ: u(undefined, u(r("ConditionTaskClass"), "")),
             },
             {
+                json: "dashboard_task",
+                js: "dashboard_task",
+                typ: u(undefined, u(r("DashboardTaskClass"), "")),
+            },
+            {
+                json: "dbt_cloud_task",
+                js: "dbt_cloud_task",
+                typ: u(undefined, u(r("DbtCloudTaskClass"), "")),
+            },
+            {
+                json: "dbt_platform_task",
+                js: "dbt_platform_task",
+                typ: u(undefined, u(r("DbtPlatformTaskClass"), "")),
+            },
+            {
                 json: "dbt_task",
                 js: "dbt_task",
                 typ: u(undefined, u(r("DbtTaskClass"), "")),
@@ -6054,7 +6713,7 @@ const typeMap: any = {
             {
                 json: "email_notifications",
                 js: "email_notifications",
-                typ: u(undefined, u(r("MischievousBundleSchem"), "")),
+                typ: u(undefined, u(r("BundleSchem9"), "")),
             },
             {
                 json: "environment_key",
@@ -6072,6 +6731,11 @@ const typeMap: any = {
                 typ: u(undefined, u(r("ForEachTaskClass"), "")),
             },
             {
+                json: "gen_ai_compute_task",
+                js: "gen_ai_compute_task",
+                typ: u(undefined, u(r("GenAIComputeTaskClass"), "")),
+            },
+            {
                 json: "health",
                 js: "health",
                 typ: u(undefined, u(r("HealthClass"), "")),
@@ -6084,10 +6748,7 @@ const typeMap: any = {
             {
                 json: "libraries",
                 js: "libraries",
-                typ: u(
-                    undefined,
-                    u(a(u(r("BraggadociousBundleSchem"), "")), "")
-                ),
+                typ: u(undefined, u(a(u(r("BundleSchem10"), "")), "")),
             },
             {
                 json: "max_retries",
@@ -6112,12 +6773,17 @@ const typeMap: any = {
             {
                 json: "notification_settings",
                 js: "notification_settings",
-                typ: u(undefined, u(r("BundleSchem1"), "")),
+                typ: u(undefined, u(r("BundleSchem11"), "")),
             },
             {
                 json: "pipeline_task",
                 js: "pipeline_task",
                 typ: u(undefined, u(r("PipelineTaskClass"), "")),
+            },
+            {
+                json: "power_bi_task",
+                js: "power_bi_task",
+                typ: u(undefined, u(r("PowerBITaskClass"), "")),
             },
             {
                 json: "python_wheel_task",
@@ -6129,7 +6795,7 @@ const typeMap: any = {
                 js: "retry_on_timeout",
                 typ: u(undefined, u(true, "")),
             },
-            {json: "run_if", js: "run_if", typ: u(undefined, r("RunIf"))},
+            {json: "run_if", js: "run_if", typ: u(undefined, "")},
             {
                 json: "run_job_task",
                 js: "run_job_task",
@@ -6185,8 +6851,77 @@ const typeMap: any = {
     ConditionTaskClass: o(
         [
             {json: "left", js: "left", typ: ""},
-            {json: "op", js: "op", typ: r("ConditionTaskOp")},
+            {json: "op", js: "op", typ: ""},
             {json: "right", js: "right", typ: ""},
+        ],
+        false
+    ),
+    DashboardTaskClass: o(
+        [
+            {json: "dashboard_id", js: "dashboard_id", typ: u(undefined, "")},
+            {
+                json: "subscription",
+                js: "subscription",
+                typ: u(undefined, u(r("BundleSchem8"), "")),
+            },
+            {json: "warehouse_id", js: "warehouse_id", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    BundleSchem8: o(
+        [
+            {
+                json: "custom_subject",
+                js: "custom_subject",
+                typ: u(undefined, ""),
+            },
+            {json: "paused", js: "paused", typ: u(undefined, u(true, ""))},
+            {
+                json: "subscribers",
+                js: "subscribers",
+                typ: u(undefined, u(a(u(r("SubscriberClass"), "")), "")),
+            },
+        ],
+        false
+    ),
+    SubscriberClass: o(
+        [
+            {
+                json: "destination_id",
+                js: "destination_id",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    DbtCloudTaskClass: o(
+        [
+            {
+                json: "connection_resource_name",
+                js: "connection_resource_name",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "dbt_cloud_job_id",
+                js: "dbt_cloud_job_id",
+                typ: u(undefined, u(0, "")),
+            },
+        ],
+        false
+    ),
+    DbtPlatformTaskClass: o(
+        [
+            {
+                json: "connection_resource_name",
+                js: "connection_resource_name",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "dbt_platform_job_id",
+                js: "dbt_platform_job_id",
+                typ: u(undefined, ""),
+            },
         ],
         false
     ),
@@ -6205,7 +6940,7 @@ const typeMap: any = {
                 typ: u(undefined, ""),
             },
             {json: "schema", js: "schema", typ: u(undefined, "")},
-            {json: "source", js: "source", typ: u(undefined, r("Source"))},
+            {json: "source", js: "source", typ: u(undefined, "")},
             {json: "warehouse_id", js: "warehouse_id", typ: u(undefined, "")},
         ],
         false
@@ -6217,7 +6952,7 @@ const typeMap: any = {
         ],
         false
     ),
-    MischievousBundleSchem: o(
+    BundleSchem9: o(
         [
             {
                 json: "no_alert_for_skipped_runs",
@@ -6248,7 +6983,52 @@ const typeMap: any = {
         ],
         false
     ),
-    BraggadociousBundleSchem: o(
+    GenAIComputeTaskClass: o(
+        [
+            {json: "command", js: "command", typ: u(undefined, "")},
+            {
+                json: "compute",
+                js: "compute",
+                typ: u(undefined, u(r("ComputeClass"), "")),
+            },
+            {json: "dl_runtime_image", js: "dl_runtime_image", typ: ""},
+            {
+                json: "mlflow_experiment_name",
+                js: "mlflow_experiment_name",
+                typ: u(undefined, ""),
+            },
+            {json: "source", js: "source", typ: u(undefined, "")},
+            {
+                json: "training_script_path",
+                js: "training_script_path",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "yaml_parameters",
+                js: "yaml_parameters",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "yaml_parameters_file_path",
+                js: "yaml_parameters_file_path",
+                typ: u(undefined, ""),
+            },
+        ],
+        false
+    ),
+    ComputeClass: o(
+        [
+            {
+                json: "gpu_node_pool_id",
+                js: "gpu_node_pool_id",
+                typ: u(undefined, ""),
+            },
+            {json: "gpu_type", js: "gpu_type", typ: u(undefined, "")},
+            {json: "num_gpus", js: "num_gpus", typ: u(0, "")},
+        ],
+        false
+    ),
+    BundleSchem10: o(
         [
             {
                 json: "cran",
@@ -6306,12 +7086,12 @@ const typeMap: any = {
                 typ: u(undefined, u(m(""), "")),
             },
             {json: "notebook_path", js: "notebook_path", typ: ""},
-            {json: "source", js: "source", typ: u(undefined, r("Source"))},
+            {json: "source", js: "source", typ: u(undefined, "")},
             {json: "warehouse_id", js: "warehouse_id", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem1: o(
+    BundleSchem11: o(
         [
             {
                 json: "alert_on_last_attempt",
@@ -6339,6 +7119,63 @@ const typeMap: any = {
                 typ: u(undefined, u(true, "")),
             },
             {json: "pipeline_id", js: "pipeline_id", typ: ""},
+        ],
+        false
+    ),
+    PowerBITaskClass: o(
+        [
+            {
+                json: "connection_resource_name",
+                js: "connection_resource_name",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "power_bi_model",
+                js: "power_bi_model",
+                typ: u(undefined, u(r("PowerBIModelClass"), "")),
+            },
+            {
+                json: "refresh_after_update",
+                js: "refresh_after_update",
+                typ: u(undefined, u(true, "")),
+            },
+            {
+                json: "tables",
+                js: "tables",
+                typ: u(undefined, u(a(u(r("BundleSchem12"), "")), "")),
+            },
+            {json: "warehouse_id", js: "warehouse_id", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    PowerBIModelClass: o(
+        [
+            {
+                json: "authentication_method",
+                js: "authentication_method",
+                typ: u(undefined, ""),
+            },
+            {json: "model_name", js: "model_name", typ: u(undefined, "")},
+            {
+                json: "overwrite_existing",
+                js: "overwrite_existing",
+                typ: u(undefined, u(true, "")),
+            },
+            {json: "storage_mode", js: "storage_mode", typ: u(undefined, "")},
+            {
+                json: "workspace_name",
+                js: "workspace_name",
+                typ: u(undefined, ""),
+            },
+        ],
+        false
+    ),
+    BundleSchem12: o(
+        [
+            {json: "catalog", js: "catalog", typ: u(undefined, "")},
+            {json: "name", js: "name", typ: u(undefined, "")},
+            {json: "schema", js: "schema", typ: u(undefined, "")},
+            {json: "storage_mode", js: "storage_mode", typ: u(undefined, "")},
         ],
         false
     ),
@@ -6433,6 +7270,11 @@ const typeMap: any = {
                 js: "parameters",
                 typ: u(undefined, u(a(""), "")),
             },
+            {
+                json: "run_as_repl",
+                js: "run_as_repl",
+                typ: u(undefined, u(true, "")),
+            },
         ],
         false
     ),
@@ -6444,7 +7286,7 @@ const typeMap: any = {
                 typ: u(undefined, u(a(""), "")),
             },
             {json: "python_file", js: "python_file", typ: ""},
-            {json: "source", js: "source", typ: u(undefined, r("Source"))},
+            {json: "source", js: "source", typ: u(undefined, "")},
         ],
         false
     ),
@@ -6468,12 +7310,12 @@ const typeMap: any = {
             {
                 json: "dashboard",
                 js: "dashboard",
-                typ: u(undefined, u(r("BundleSchem2"), "")),
+                typ: u(undefined, u(r("BundleSchem14"), "")),
             },
             {
                 json: "file",
                 js: "file",
-                typ: u(undefined, u(r("BundleSchem3"), "")),
+                typ: u(undefined, u(r("BundleSchem15"), "")),
             },
             {
                 json: "parameters",
@@ -6500,12 +7342,12 @@ const typeMap: any = {
             {
                 json: "subscriptions",
                 js: "subscriptions",
-                typ: u(undefined, u(a(u(r("SubscriptionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem13"), "")), "")),
             },
         ],
         false
     ),
-    SubscriptionClass: o(
+    BundleSchem13: o(
         [
             {
                 json: "destination_id",
@@ -6516,7 +7358,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem2: o(
+    BundleSchem14: o(
         [
             {
                 json: "custom_subject",
@@ -6532,15 +7374,15 @@ const typeMap: any = {
             {
                 json: "subscriptions",
                 js: "subscriptions",
-                typ: u(undefined, u(a(u(r("SubscriptionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem13"), "")), "")),
             },
         ],
         false
     ),
-    BundleSchem3: o(
+    BundleSchem15: o(
         [
             {json: "path", js: "path", typ: ""},
-            {json: "source", js: "source", typ: u(undefined, r("Source"))},
+            {json: "source", js: "source", typ: u(undefined, "")},
         ],
         false
     ),
@@ -6609,18 +7451,14 @@ const typeMap: any = {
         [{json: "id", js: "id", typ: ""}],
         false
     ),
-    BundleSchem4: o(
+    BundleSchem16: o(
         [
             {
                 json: "file_arrival",
                 js: "file_arrival",
                 typ: u(undefined, u(r("FileArrivalClass"), "")),
             },
-            {
-                json: "pause_status",
-                js: "pause_status",
-                typ: u(undefined, r("PauseStatus")),
-            },
+            {json: "pause_status", js: "pause_status", typ: u(undefined, "")},
             {
                 json: "periodic",
                 js: "periodic",
@@ -6658,17 +7496,13 @@ const typeMap: any = {
     PeriodicClass: o(
         [
             {json: "interval", js: "interval", typ: u(0, "")},
-            {json: "unit", js: "unit", typ: r("Unit")},
+            {json: "unit", js: "unit", typ: ""},
         ],
         false
     ),
     TableUpdateClass: o(
         [
-            {
-                json: "condition",
-                js: "condition",
-                typ: u(undefined, r("Condition")),
-            },
+            {json: "condition", js: "condition", typ: u(undefined, "")},
             {
                 json: "min_time_between_triggers_seconds",
                 js: "min_time_between_triggers_seconds",
@@ -6694,17 +7528,26 @@ const typeMap: any = {
                 js: "ai_gateway",
                 typ: u(undefined, u(r("AIGatewayClass"), "")),
             },
-            {json: "config", js: "config", typ: u(r("ConfigClass"), "")},
+            {
+                json: "budget_policy_id",
+                js: "budget_policy_id",
+                typ: u(undefined, ""),
+            },
+            {
+                json: "config",
+                js: "config",
+                typ: u(undefined, u(r("ConfigClass"), "")),
+            },
             {json: "name", js: "name", typ: ""},
             {
                 json: "permissions",
                 js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem18"), "")), "")),
             },
             {
                 json: "rate_limits",
                 js: "rate_limits",
-                typ: u(undefined, u(a(u(r("BundleSchem6"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem19"), "")), "")),
             },
             {
                 json: "route_optimized",
@@ -6714,13 +7557,18 @@ const typeMap: any = {
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem7"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem20"), "")), "")),
             },
         ],
         false
     ),
     AIGatewayClass: o(
         [
+            {
+                json: "fallback_config",
+                js: "fallback_config",
+                typ: u(undefined, u(r("FallbackConfigClass"), "")),
+            },
             {
                 json: "guardrails",
                 js: "guardrails",
@@ -6734,7 +7582,7 @@ const typeMap: any = {
             {
                 json: "rate_limits",
                 js: "rate_limits",
-                typ: u(undefined, u(a(u(r("BundleSchem5"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem17"), "")), "")),
             },
             {
                 json: "usage_tracking_config",
@@ -6742,6 +7590,10 @@ const typeMap: any = {
                 typ: u(undefined, u(r("UsageTrackingConfigClass"), "")),
             },
         ],
+        false
+    ),
+    FallbackConfigClass: o(
+        [{json: "enabled", js: "enabled", typ: u(true, "")}],
         false
     ),
     GuardrailsClass: o(
@@ -6777,7 +7629,7 @@ const typeMap: any = {
         false
     ),
     PiiClass: o(
-        [{json: "behavior", js: "behavior", typ: r("Behavior")}],
+        [{json: "behavior", js: "behavior", typ: u(undefined, "")}],
         false
     ),
     InferenceTableConfigClass: o(
@@ -6793,15 +7645,11 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem5: o(
+    BundleSchem17: o(
         [
             {json: "calls", js: "calls", typ: u(0, "")},
-            {json: "key", js: "key", typ: u(undefined, r("Key"))},
-            {
-                json: "renewal_period",
-                js: "renewal_period",
-                typ: r("RenewalPeriod"),
-            },
+            {json: "key", js: "key", typ: u(undefined, "")},
+            {json: "renewal_period", js: "renewal_period", typ: ""},
         ],
         false
     ),
@@ -6871,8 +7719,18 @@ const typeMap: any = {
                 typ: u(undefined, ""),
             },
             {
+                json: "max_provisioned_concurrency",
+                js: "max_provisioned_concurrency",
+                typ: u(undefined, u(0, "")),
+            },
+            {
                 json: "max_provisioned_throughput",
                 js: "max_provisioned_throughput",
+                typ: u(undefined, u(0, "")),
+            },
+            {
+                json: "min_provisioned_concurrency",
+                js: "min_provisioned_concurrency",
                 typ: u(undefined, u(0, "")),
             },
             {
@@ -6881,6 +7739,11 @@ const typeMap: any = {
                 typ: u(undefined, u(0, "")),
             },
             {json: "name", js: "name", typ: u(undefined, "")},
+            {
+                json: "provisioned_model_units",
+                js: "provisioned_model_units",
+                typ: u(undefined, u(0, "")),
+            },
             {
                 json: "scale_to_zero_enabled",
                 js: "scale_to_zero_enabled",
@@ -6914,6 +7777,11 @@ const typeMap: any = {
                 typ: u(undefined, u(r("CohereConfigClass"), "")),
             },
             {
+                json: "custom_provider_config",
+                js: "custom_provider_config",
+                typ: u(undefined, u(r("CustomProviderConfigClass"), "")),
+            },
+            {
                 json: "databricks_model_serving_config",
                 js: "databricks_model_serving_config",
                 typ: u(
@@ -6937,7 +7805,7 @@ const typeMap: any = {
                 js: "palm_config",
                 typ: u(undefined, u(r("PalmConfigClass"), "")),
             },
-            {json: "provider", js: "provider", typ: r("Provider")},
+            {json: "provider", js: "provider", typ: ""},
             {json: "task", js: "task", typ: ""},
         ],
         false
@@ -6980,10 +7848,11 @@ const typeMap: any = {
                 js: "aws_secret_access_key_plaintext",
                 typ: u(undefined, ""),
             },
+            {json: "bedrock_provider", js: "bedrock_provider", typ: ""},
             {
-                json: "bedrock_provider",
-                js: "bedrock_provider",
-                typ: r("BedrockProvider"),
+                json: "instance_profile_arn",
+                js: "instance_profile_arn",
+                typ: u(undefined, ""),
             },
         ],
         false
@@ -7023,6 +7892,45 @@ const typeMap: any = {
         ],
         false
     ),
+    CustomProviderConfigClass: o(
+        [
+            {
+                json: "api_key_auth",
+                js: "api_key_auth",
+                typ: u(undefined, u(r("APIKeyAuthClass"), "")),
+            },
+            {
+                json: "bearer_token_auth",
+                js: "bearer_token_auth",
+                typ: u(undefined, u(r("BearerTokenAuthClass"), "")),
+            },
+            {json: "custom_provider_url", js: "custom_provider_url", typ: ""},
+        ],
+        false
+    ),
+    APIKeyAuthClass: o(
+        [
+            {json: "key", js: "key", typ: ""},
+            {json: "value", js: "value", typ: u(undefined, "")},
+            {
+                json: "value_plaintext",
+                js: "value_plaintext",
+                typ: u(undefined, ""),
+            },
+        ],
+        false
+    ),
+    BearerTokenAuthClass: o(
+        [
+            {json: "token", js: "token", typ: u(undefined, "")},
+            {
+                json: "token_plaintext",
+                js: "token_plaintext",
+                typ: u(undefined, ""),
+            },
+        ],
+        false
+    ),
     DatabricksModelServingConfigClass: o(
         [
             {
@@ -7051,8 +7959,8 @@ const typeMap: any = {
                 js: "private_key_plaintext",
                 typ: u(undefined, ""),
             },
-            {json: "project_id", js: "project_id", typ: u(undefined, "")},
-            {json: "region", js: "region", typ: u(undefined, "")},
+            {json: "project_id", js: "project_id", typ: ""},
+            {json: "region", js: "region", typ: ""},
         ],
         false
     ),
@@ -7140,8 +8048,18 @@ const typeMap: any = {
                 typ: u(undefined, ""),
             },
             {
+                json: "max_provisioned_concurrency",
+                js: "max_provisioned_concurrency",
+                typ: u(undefined, u(0, "")),
+            },
+            {
                 json: "max_provisioned_throughput",
                 js: "max_provisioned_throughput",
+                typ: u(undefined, u(0, "")),
+            },
+            {
+                json: "min_provisioned_concurrency",
+                js: "min_provisioned_concurrency",
                 typ: u(undefined, u(0, "")),
             },
             {
@@ -7153,20 +8071,17 @@ const typeMap: any = {
             {json: "model_version", js: "model_version", typ: ""},
             {json: "name", js: "name", typ: u(undefined, "")},
             {
+                json: "provisioned_model_units",
+                js: "provisioned_model_units",
+                typ: u(undefined, u(0, "")),
+            },
+            {
                 json: "scale_to_zero_enabled",
                 js: "scale_to_zero_enabled",
                 typ: u(true, ""),
             },
-            {
-                json: "workload_size",
-                js: "workload_size",
-                typ: u(undefined, r("WorkloadSize")),
-            },
-            {
-                json: "workload_type",
-                js: "workload_type",
-                typ: u(undefined, r("WorkloadTypeEnum")),
-            },
+            {json: "workload_size", js: "workload_size", typ: u(undefined, "")},
+            {json: "workload_type", js: "workload_type", typ: u(undefined, "")},
         ],
         false
     ),
@@ -7191,19 +8106,28 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem6: o(
+    BundleSchem18: o(
         [
-            {json: "calls", js: "calls", typ: u(0, "")},
-            {json: "key", js: "key", typ: u(undefined, r("Key"))},
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
             {
-                json: "renewal_period",
-                js: "renewal_period",
-                typ: r("RenewalPeriod"),
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
             },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem7: o(
+    BundleSchem19: o(
+        [
+            {json: "calls", js: "calls", typ: u(0, "")},
+            {json: "key", js: "key", typ: u(undefined, "")},
+            {json: "renewal_period", js: "renewal_period", typ: ""},
+        ],
+        false
+    ),
+    BundleSchem20: o(
         [
             {json: "key", js: "key", typ: ""},
             {json: "value", js: "value", typ: u(undefined, "")},
@@ -7212,79 +8136,35 @@ const typeMap: any = {
     ),
     ModelClass: o(
         [
-            {
-                json: "creation_timestamp",
-                js: "creation_timestamp",
-                typ: u(undefined, u(0, "")),
-            },
             {json: "description", js: "description", typ: u(undefined, "")},
-            {
-                json: "last_updated_timestamp",
-                js: "last_updated_timestamp",
-                typ: u(undefined, u(0, "")),
-            },
-            {
-                json: "latest_versions",
-                js: "latest_versions",
-                typ: u(undefined, u(a(u(r("LatestVersionClass"), "")), "")),
-            },
-            {json: "name", js: "name", typ: u(undefined, "")},
+            {json: "name", js: "name", typ: ""},
             {
                 json: "permissions",
                 js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem21"), "")), "")),
             },
             {
                 json: "tags",
                 js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem9"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem22"), "")), "")),
             },
-            {json: "user_id", js: "user_id", typ: u(undefined, "")},
         ],
         false
     ),
-    LatestVersionClass: o(
+    BundleSchem21: o(
         [
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
             {
-                json: "creation_timestamp",
-                js: "creation_timestamp",
-                typ: u(undefined, u(0, "")),
-            },
-            {json: "current_stage", js: "current_stage", typ: u(undefined, "")},
-            {json: "description", js: "description", typ: u(undefined, "")},
-            {
-                json: "last_updated_timestamp",
-                js: "last_updated_timestamp",
-                typ: u(undefined, u(0, "")),
-            },
-            {json: "name", js: "name", typ: u(undefined, "")},
-            {json: "run_id", js: "run_id", typ: u(undefined, "")},
-            {json: "run_link", js: "run_link", typ: u(undefined, "")},
-            {json: "source", js: "source", typ: u(undefined, "")},
-            {json: "status", js: "status", typ: u(undefined, r("Status"))},
-            {
-                json: "status_message",
-                js: "status_message",
+                json: "service_principal_name",
+                js: "service_principal_name",
                 typ: u(undefined, ""),
             },
-            {
-                json: "tags",
-                js: "tags",
-                typ: u(undefined, u(a(u(r("BundleSchem8"), "")), "")),
-            },
-            {json: "user_id", js: "user_id", typ: u(undefined, "")},
-            {json: "version", js: "version", typ: u(undefined, "")},
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem8: o(
-        [
-            {json: "key", js: "key", typ: u(undefined, "")},
-            {json: "value", js: "value", typ: u(undefined, "")},
-        ],
-        false
-    ),
-    BundleSchem9: o(
+    BundleSchem22: o(
         [
             {json: "key", js: "key", typ: u(undefined, "")},
             {json: "value", js: "value", typ: u(undefined, "")},
@@ -7303,7 +8183,7 @@ const typeMap: any = {
             {
                 json: "clusters",
                 js: "clusters",
-                typ: u(undefined, u(a(u(r("BundleSchem10"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem23"), "")), "")),
             },
             {
                 json: "configuration",
@@ -7316,16 +8196,21 @@ const typeMap: any = {
                 typ: u(undefined, u(true, "")),
             },
             {
-                json: "deployment",
-                js: "deployment",
-                typ: u(undefined, u(r("BundleSchem12"), "")),
-            },
-            {
                 json: "development",
                 js: "development",
                 typ: u(undefined, u(true, "")),
             },
             {json: "edition", js: "edition", typ: u(undefined, "")},
+            {
+                json: "environment",
+                js: "environment",
+                typ: u(undefined, u(r("BundleSchem25"), "")),
+            },
+            {
+                json: "event_log",
+                js: "event_log",
+                typ: u(undefined, u(r("EventLogClass"), "")),
+            },
             {
                 json: "filters",
                 js: "filters",
@@ -7345,7 +8230,7 @@ const typeMap: any = {
             {
                 json: "libraries",
                 js: "libraries",
-                typ: u(undefined, u(a(u(r("BundleSchem15"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem28"), "")), "")),
             },
             {json: "name", js: "name", typ: u(undefined, "")},
             {
@@ -7356,13 +8241,19 @@ const typeMap: any = {
             {
                 json: "permissions",
                 js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
+                typ: u(undefined, u(a(u(r("BundleSchem30"), "")), "")),
             },
             {json: "photon", js: "photon", typ: u(undefined, u(true, ""))},
             {
                 json: "restart_window",
                 js: "restart_window",
                 typ: u(undefined, u(r("RestartWindowClass"), "")),
+            },
+            {json: "root_path", js: "root_path", typ: u(undefined, "")},
+            {
+                json: "run_as",
+                js: "run_as",
+                typ: u(undefined, u(r("BundleSchem31"), "")),
             },
             {json: "schema", js: "schema", typ: u(undefined, "")},
             {
@@ -7371,16 +8262,17 @@ const typeMap: any = {
                 typ: u(undefined, u(true, "")),
             },
             {json: "storage", js: "storage", typ: u(undefined, "")},
+            {json: "tags", js: "tags", typ: u(undefined, u(m(""), ""))},
             {json: "target", js: "target", typ: u(undefined, "")},
             {
                 json: "trigger",
                 js: "trigger",
-                typ: u(undefined, u(r("BundleSchem17"), "")),
+                typ: u(undefined, u(r("BundleSchem32"), "")),
             },
         ],
         false
     ),
-    BundleSchem10: o(
+    BundleSchem23: o(
         [
             {
                 json: "apply_policy_default_values",
@@ -7390,7 +8282,7 @@ const typeMap: any = {
             {
                 json: "autoscale",
                 js: "autoscale",
-                typ: u(undefined, u(r("BundleSchem11"), "")),
+                typ: u(undefined, u(r("BundleSchem24"), "")),
             },
             {
                 json: "aws_attributes",
@@ -7468,22 +8360,29 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem11: o(
+    BundleSchem24: o(
         [
             {json: "max_workers", js: "max_workers", typ: u(0, "")},
             {json: "min_workers", js: "min_workers", typ: u(0, "")},
-            {json: "mode", js: "mode", typ: u(undefined, r("Mode"))},
+            {json: "mode", js: "mode", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem12: o(
+    BundleSchem25: o(
         [
-            {json: "kind", js: "kind", typ: u(undefined, r("Kind"))},
             {
-                json: "metadata_file_path",
-                js: "metadata_file_path",
-                typ: u(undefined, ""),
+                json: "dependencies",
+                js: "dependencies",
+                typ: u(undefined, u(a(""), "")),
             },
+        ],
+        false
+    ),
+    EventLogClass: o(
+        [
+            {json: "catalog", js: "catalog", typ: u(undefined, "")},
+            {json: "name", js: "name", typ: u(undefined, "")},
+            {json: "schema", js: "schema", typ: u(undefined, "")},
         ],
         false
     ),
@@ -7497,15 +8396,11 @@ const typeMap: any = {
     GatewayDefinitionClass: o(
         [
             {json: "connection_id", js: "connection_id", typ: u(undefined, "")},
-            {
-                json: "connection_name",
-                js: "connection_name",
-                typ: u(undefined, ""),
-            },
+            {json: "connection_name", js: "connection_name", typ: ""},
             {
                 json: "gateway_storage_catalog",
                 js: "gateway_storage_catalog",
-                typ: u(undefined, ""),
+                typ: "",
             },
             {
                 json: "gateway_storage_name",
@@ -7515,7 +8410,7 @@ const typeMap: any = {
             {
                 json: "gateway_storage_schema",
                 js: "gateway_storage_schema",
-                typ: u(undefined, ""),
+                typ: "",
             },
         ],
         false
@@ -7537,6 +8432,7 @@ const typeMap: any = {
                 js: "objects",
                 typ: u(undefined, u(a(u(r("ObjectClass"), "")), "")),
             },
+            {json: "source_type", js: "source_type", typ: u(undefined, "")},
             {
                 json: "table_configuration",
                 js: "table_configuration",
@@ -7555,34 +8451,26 @@ const typeMap: any = {
             {
                 json: "schema",
                 js: "schema",
-                typ: u(undefined, u(r("BundleSchem13"), "")),
+                typ: u(undefined, u(r("BundleSchem26"), "")),
             },
             {
                 json: "table",
                 js: "table",
-                typ: u(undefined, u(r("BundleSchem14"), "")),
+                typ: u(undefined, u(r("BundleSchem27"), "")),
             },
         ],
         false
     ),
     ReportClass: o(
         [
-            {
-                json: "destination_catalog",
-                js: "destination_catalog",
-                typ: u(undefined, ""),
-            },
-            {
-                json: "destination_schema",
-                js: "destination_schema",
-                typ: u(undefined, ""),
-            },
+            {json: "destination_catalog", js: "destination_catalog", typ: ""},
+            {json: "destination_schema", js: "destination_schema", typ: ""},
             {
                 json: "destination_table",
                 js: "destination_table",
                 typ: u(undefined, ""),
             },
-            {json: "source_url", js: "source_url", typ: u(undefined, "")},
+            {json: "source_url", js: "source_url", typ: ""},
             {
                 json: "table_configuration",
                 js: "table_configuration",
@@ -7594,6 +8482,16 @@ const typeMap: any = {
     TableConfigurationClass: o(
         [
             {
+                json: "exclude_columns",
+                js: "exclude_columns",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {
+                json: "include_columns",
+                js: "include_columns",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {
                 json: "primary_keys",
                 js: "primary_keys",
                 typ: u(undefined, u(a(""), "")),
@@ -7603,7 +8501,7 @@ const typeMap: any = {
                 js: "salesforce_include_formula_fields",
                 typ: u(undefined, u(true, "")),
             },
-            {json: "scd_type", js: "scd_type", typ: u(undefined, r("ScdType"))},
+            {json: "scd_type", js: "scd_type", typ: u(undefined, "")},
             {
                 json: "sequence_by",
                 js: "sequence_by",
@@ -7612,24 +8510,16 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem13: o(
+    BundleSchem26: o(
         [
-            {
-                json: "destination_catalog",
-                js: "destination_catalog",
-                typ: u(undefined, ""),
-            },
-            {
-                json: "destination_schema",
-                js: "destination_schema",
-                typ: u(undefined, ""),
-            },
+            {json: "destination_catalog", js: "destination_catalog", typ: ""},
+            {json: "destination_schema", js: "destination_schema", typ: ""},
             {
                 json: "source_catalog",
                 js: "source_catalog",
                 typ: u(undefined, ""),
             },
-            {json: "source_schema", js: "source_schema", typ: u(undefined, "")},
+            {json: "source_schema", js: "source_schema", typ: ""},
             {
                 json: "table_configuration",
                 js: "table_configuration",
@@ -7638,18 +8528,10 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem14: o(
+    BundleSchem27: o(
         [
-            {
-                json: "destination_catalog",
-                js: "destination_catalog",
-                typ: u(undefined, ""),
-            },
-            {
-                json: "destination_schema",
-                js: "destination_schema",
-                typ: u(undefined, ""),
-            },
+            {json: "destination_catalog", js: "destination_catalog", typ: ""},
+            {json: "destination_schema", js: "destination_schema", typ: ""},
             {
                 json: "destination_table",
                 js: "destination_table",
@@ -7661,7 +8543,7 @@ const typeMap: any = {
                 typ: u(undefined, ""),
             },
             {json: "source_schema", js: "source_schema", typ: u(undefined, "")},
-            {json: "source_table", js: "source_table", typ: u(undefined, "")},
+            {json: "source_table", js: "source_table", typ: ""},
             {
                 json: "table_configuration",
                 js: "table_configuration",
@@ -7670,12 +8552,17 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem15: o(
+    BundleSchem28: o(
         [
             {
                 json: "file",
                 js: "file",
-                typ: u(undefined, u(r("BundleSchem16"), "")),
+                typ: u(undefined, u(r("BundleSchem29"), "")),
+            },
+            {
+                json: "glob",
+                js: "glob",
+                typ: u(undefined, u(r("GlobClass"), "")),
             },
             {json: "jar", js: "jar", typ: u(undefined, "")},
             {
@@ -7692,8 +8579,12 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem16: o(
+    BundleSchem29: o(
         [{json: "path", js: "path", typ: u(undefined, "")}],
+        false
+    ),
+    GlobClass: o(
+        [{json: "include", js: "include", typ: u(undefined, "")}],
         false
     ),
     NotebookClass: o(
@@ -7711,19 +8602,43 @@ const typeMap: any = {
         ],
         false
     ),
+    BundleSchem30: o(
+        [
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
+        ],
+        false
+    ),
     RestartWindowClass: o(
         [
             {
                 json: "days_of_week",
                 js: "days_of_week",
-                typ: u(undefined, u(a(r("DaysOfWeekElement")), "")),
+                typ: u(undefined, u(a(""), "")),
             },
             {json: "start_hour", js: "start_hour", typ: u(0, "")},
             {json: "time_zone_id", js: "time_zone_id", typ: u(undefined, "")},
         ],
         false
     ),
-    BundleSchem17: o(
+    BundleSchem31: o(
+        [
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    BundleSchem32: o(
         [
             {
                 json: "cron",
@@ -7782,7 +8697,7 @@ const typeMap: any = {
             {
                 json: "schedule",
                 js: "schedule",
-                typ: u(undefined, u(r("BundleSchem18"), "")),
+                typ: u(undefined, u(r("BundleSchem33"), "")),
             },
             {
                 json: "skip_builtin_dashboard",
@@ -7815,7 +8730,7 @@ const typeMap: any = {
             {json: "input_columns", js: "input_columns", typ: u(a(""), "")},
             {json: "name", js: "name", typ: ""},
             {json: "output_data_type", js: "output_data_type", typ: ""},
-            {json: "type", js: "type", typ: r("Type")},
+            {json: "type", js: "type", typ: ""},
         ],
         false
     ),
@@ -7834,7 +8749,7 @@ const typeMap: any = {
                 js: "prediction_proba_col",
                 typ: u(undefined, ""),
             },
-            {json: "problem_type", js: "problem_type", typ: r("ProblemType")},
+            {json: "problem_type", js: "problem_type", typ: ""},
             {json: "timestamp_col", js: "timestamp_col", typ: ""},
         ],
         false
@@ -7870,13 +8785,9 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem18: o(
+    BundleSchem33: o(
         [
-            {
-                json: "pause_status",
-                js: "pause_status",
-                typ: u(undefined, r("PauseStatus")),
-            },
+            {json: "pause_status", js: "pause_status", typ: u(undefined, "")},
             {
                 json: "quartz_cron_expression",
                 js: "quartz_cron_expression",
@@ -7920,7 +8831,7 @@ const typeMap: any = {
         ],
         false
     ),
-    BundleSchem19: o(
+    BundleSchem34: o(
         [
             {json: "catalog_name", js: "catalog_name", typ: ""},
             {json: "comment", js: "comment", typ: u(undefined, "")},
@@ -7936,6 +8847,43 @@ const typeMap: any = {
                 typ: u(undefined, u(m(""), "")),
             },
             {json: "storage_root", js: "storage_root", typ: u(undefined, "")},
+        ],
+        false
+    ),
+    SecretScopeClass: o(
+        [
+            {json: "backend_type", js: "backend_type", typ: u(undefined, "")},
+            {
+                json: "keyvault_metadata",
+                js: "keyvault_metadata",
+                typ: u(undefined, u(r("KeyvaultMetadataClass"), "")),
+            },
+            {json: "name", js: "name", typ: ""},
+            {
+                json: "permissions",
+                js: "permissions",
+                typ: u(undefined, u(a(u(r("BundleSchem35"), "")), "")),
+            },
+        ],
+        false
+    ),
+    KeyvaultMetadataClass: o(
+        [
+            {json: "dns_name", js: "dns_name", typ: ""},
+            {json: "resource_id", js: "resource_id", typ: ""},
+        ],
+        false
+    ),
+    BundleSchem35: o(
+        [
+            {json: "group_name", js: "group_name", typ: u(undefined, "")},
+            {json: "level", js: "level", typ: ""},
+            {
+                json: "service_principal_name",
+                js: "service_principal_name",
+                typ: u(undefined, ""),
+            },
+            {json: "user_name", js: "user_name", typ: u(undefined, "")},
         ],
         false
     ),
@@ -7955,11 +8903,7 @@ const typeMap: any = {
                 js: "storage_location",
                 typ: u(undefined, ""),
             },
-            {
-                json: "volume_type",
-                js: "volume_type",
-                typ: u(undefined, r("VolumeType")),
-            },
+            {json: "volume_type", js: "volume_type", typ: u(undefined, "")},
         ],
         false
     ),
@@ -7971,62 +8915,7 @@ const typeMap: any = {
         ],
         false
     ),
-    TargetClass: o(
-        [
-            {
-                json: "artifacts",
-                js: "artifacts",
-                typ: u(undefined, u(m(u(r("ArtifactClass"), "")), "")),
-            },
-            {
-                json: "bundle",
-                js: "bundle",
-                typ: u(undefined, u(r("BundleClass"), "")),
-            },
-            {json: "cluster_id", js: "cluster_id", typ: u(undefined, "")},
-            {json: "compute_id", js: "compute_id", typ: u(undefined, "")},
-            {json: "default", js: "default", typ: u(undefined, u(true, ""))},
-            {json: "git", js: "git", typ: u(undefined, u(r("GitClass"), ""))},
-            {json: "mode", js: "mode", typ: u(undefined, "")},
-            {
-                json: "permissions",
-                js: "permissions",
-                typ: u(undefined, u(a(u(r("PermissionClass"), "")), "")),
-            },
-            {
-                json: "presets",
-                js: "presets",
-                typ: u(undefined, u(r("PresetsClass"), "")),
-            },
-            {
-                json: "resources",
-                js: "resources",
-                typ: u(undefined, u(r("ResourcesClass"), "")),
-            },
-            {
-                json: "run_as",
-                js: "run_as",
-                typ: u(undefined, u(r("RunAsClass"), "")),
-            },
-            {
-                json: "sync",
-                js: "sync",
-                typ: u(undefined, u(r("SyncClass"), "")),
-            },
-            {
-                json: "variables",
-                js: "variables",
-                typ: u(undefined, u(m("any"), "")),
-            },
-            {
-                json: "workspace",
-                js: "workspace",
-                typ: u(undefined, u(r("BundleSchem20"), "")),
-            },
-        ],
-        false
-    ),
-    BundleSchem20: o(
+    BundleSchem36: o(
         [
             {json: "artifact_path", js: "artifact_path", typ: u(undefined, "")},
             {json: "auth_type", js: "auth_type", typ: u(undefined, "")},
@@ -8075,6 +8964,58 @@ const typeMap: any = {
         ],
         false
     ),
+    ExperimentalClass: o(
+        [
+            {
+                json: "pydabs",
+                js: "pydabs",
+                typ: u(undefined, u(r("PydabsClass"), "")),
+            },
+            {
+                json: "python",
+                js: "python",
+                typ: u(undefined, u(r("PythonClass"), "")),
+            },
+            {
+                json: "python_wheel_wrapper",
+                js: "python_wheel_wrapper",
+                typ: u(undefined, u(true, "")),
+            },
+            {json: "scripts", js: "scripts", typ: u(undefined, u(m(""), ""))},
+            {
+                json: "skip_artifact_cleanup",
+                js: "skip_artifact_cleanup",
+                typ: u(undefined, u(true, "")),
+            },
+            {
+                json: "skip_name_prefix_for_schema",
+                js: "skip_name_prefix_for_schema",
+                typ: u(undefined, u(true, "")),
+            },
+            {
+                json: "use_legacy_run_as",
+                js: "use_legacy_run_as",
+                typ: u(undefined, u(true, "")),
+            },
+        ],
+        false
+    ),
+    PydabsClass: o(
+        [{json: "enabled", js: "enabled", typ: u(undefined, u(true, ""))}],
+        false
+    ),
+    PythonClass: o(
+        [
+            {json: "mutators", js: "mutators", typ: u(undefined, u(a(""), ""))},
+            {
+                json: "resources",
+                js: "resources",
+                typ: u(undefined, u(a(""), "")),
+            },
+            {json: "venv_path", js: "venv_path", typ: u(undefined, "")},
+        ],
+        false
+    ),
     VariableValue: o(
         [
             {json: "default", js: "default", typ: u(undefined, "any")},
@@ -8117,110 +9058,4 @@ const typeMap: any = {
         ],
         false
     ),
-    AwsAttributesAvailability: ["ON_DEMAND", "SPOT", "SPOT_WITH_FALLBACK"],
-    EbsVolumeType: ["GENERAL_PURPOSE_SSD", "THROUGHPUT_OPTIMIZED_HDD"],
-    AzureAttributesAvailability: [
-        "ON_DEMAND_AZURE",
-        "SPOT_AZURE",
-        "SPOT_WITH_FALLBACK_AZURE",
-    ],
-    DataSecurityMode: [
-        "DATA_SECURITY_MODE_AUTO",
-        "DATA_SECURITY_MODE_DEDICATED",
-        "DATA_SECURITY_MODE_STANDARD",
-        "LEGACY_PASSTHROUGH",
-        "LEGACY_SINGLE_USER",
-        "LEGACY_SINGLE_USER_STANDARD",
-        "LEGACY_TABLE_ACL",
-        "NONE",
-        "SINGLE_USER",
-        "USER_ISOLATION",
-    ],
-    GcpAttributesAvailability: [
-        "ON_DEMAND_GCP",
-        "PREEMPTIBLE_GCP",
-        "PREEMPTIBLE_WITH_FALLBACK_GCP",
-    ],
-    RuntimeEngine: ["NULL", "PHOTON", "STANDARD"],
-    LifecycleState: ["ACTIVE", "TRASHED"],
-    PauseStatus: ["PAUSED", "UNPAUSED"],
-    GitProvider: [
-        "awsCodeCommit",
-        "azureDevOpsServices",
-        "bitbucketCloud",
-        "bitbucketServer",
-        "gitHub",
-        "gitHubEnterprise",
-        "gitLab",
-        "gitLabEnterpriseEdition",
-    ],
-    Metric: [
-        "RUN_DURATION_SECONDS",
-        "STREAMING_BACKLOG_BYTES",
-        "STREAMING_BACKLOG_FILES",
-        "STREAMING_BACKLOG_RECORDS",
-        "STREAMING_BACKLOG_SECONDS",
-    ],
-    RuleOp: ["GREATER_THAN"],
-    ConditionTaskOp: [
-        "EQUAL_TO",
-        "GREATER_THAN",
-        "GREATER_THAN_OR_EQUAL",
-        "LESS_THAN",
-        "LESS_THAN_OR_EQUAL",
-        "NOT_EQUAL",
-    ],
-    Source: ["GIT", "WORKSPACE"],
-    RunIf: [
-        "ALL_DONE",
-        "ALL_FAILED",
-        "ALL_SUCCESS",
-        "AT_LEAST_ONE_FAILED",
-        "AT_LEAST_ONE_SUCCESS",
-        "NONE_FAILED",
-    ],
-    Unit: ["DAYS", "HOURS", "WEEKS"],
-    Condition: ["ALL_UPDATED", "ANY_UPDATED"],
-    Behavior: ["BLOCK", "NONE"],
-    Key: ["endpoint", "user"],
-    RenewalPeriod: ["minute"],
-    BedrockProvider: ["ai21labs", "amazon", "anthropic", "cohere"],
-    Provider: [
-        "ai21labs",
-        "amazon-bedrock",
-        "anthropic",
-        "cohere",
-        "databricks-model-serving",
-        "google-cloud-vertex-ai",
-        "openai",
-        "palm",
-    ],
-    WorkloadSize: ["Large", "Medium", "Small"],
-    WorkloadTypeEnum: [
-        "CPU",
-        "GPU_LARGE",
-        "GPU_MEDIUM",
-        "GPU_SMALL",
-        "MULTIGPU_MEDIUM",
-    ],
-    Status: ["FAILED_REGISTRATION", "PENDING_REGISTRATION", "READY"],
-    Mode: ["ENHANCED", "LEGACY"],
-    Kind: ["BUNDLE"],
-    ScdType: ["SCD_TYPE_1", "SCD_TYPE_2"],
-    DaysOfWeekElement: [
-        "FRIDAY",
-        "MONDAY",
-        "SATURDAY",
-        "SUNDAY",
-        "THURSDAY",
-        "TUESDAY",
-        "WEDNESDAY",
-    ],
-    Type: [
-        "CUSTOM_METRIC_TYPE_AGGREGATE",
-        "CUSTOM_METRIC_TYPE_DERIVED",
-        "CUSTOM_METRIC_TYPE_DRIFT",
-    ],
-    ProblemType: ["PROBLEM_TYPE_CLASSIFICATION", "PROBLEM_TYPE_REGRESSION"],
-    VolumeType: ["EXTERNAL", "MANAGED"],
 };
