@@ -4,7 +4,7 @@
 
 ## (2025-08-28)
 
--   Update Databricks CLI to v0.266.0 (#1771) ([b4e8722](https://github.com/databricks/databricks-vscode/commit/b4e8722)), closes [#1771](https://github.com/databricks/databricks-vscode/issues/1771)
+-   Update Databricks CLI to v0.266.0. **Note that there are breaking changes**, see [the CLI release notes](https://github.com/databricks/cli/releases/tag/v0.266.0)
 
 # Release: v2.10.2
 
