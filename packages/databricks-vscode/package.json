@@ -1244,7 +1244,7 @@
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3",
         "vsce": "^2.15.0",
-        "wdio-video-reporter": "^5.1.4",
+        "wdio-video-reporter": "^6.2.0",
         "wdio-vscode-service": "^6.0.2",
         "yargs": "^17.7.2"
     },
