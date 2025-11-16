@@ -96,8 +96,8 @@ describe(__filename, function () {
         verify(
             mockedClient.request(
                 objectContaining({
-                    path: "/api/2.1/clusters/get",
-                    method: "GET",
+                    path: "/api/2.1/clusters/start",
+                    method: "POST",
                 }),
                 anything()
             )
