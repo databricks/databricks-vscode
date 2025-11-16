@@ -45,6 +45,7 @@
         "typescript": "^5.5.0"
     },
     "resolutions": {
-        "json5": "2.2.2"
+        "json5": "2.2.2",
+        "path-scurry": "^2.0.0"
     }
 }
