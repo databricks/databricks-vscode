@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {mock, when, anything, instance, spy} from "ts-mockito";
+import {
+    mock,
+    when,
+    anything,
+    instance,
+    spy,
+    objectContaining,
+} from "ts-mockito";
 import {
     ApiClient,
     WorkspaceClient,
@@ -48,7 +55,10 @@ describe(__filename, () => {
 
         when<compute.ListClustersResponse>(
             mockedApiClient.request(
-                anything(),
+                objectContaining({
+                    path: "/api/2.0/clusters/list",
+                    method: "GET",
+                }),
                 anything()
             ) as Promise<compute.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);

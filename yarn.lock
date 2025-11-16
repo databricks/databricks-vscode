@@ -386,7 +386,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode@workspace:."
   dependencies:
-    "@types/node": ^20.10.4
+    "@types/node": ^22.0.0
     "@typescript-eslint/eslint-plugin": ^6.14.0
     "@typescript-eslint/parser": ^6.14.0
     conventional-changelog-cli: ^4.1.0
@@ -1543,21 +1543,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^20.10.4":
-  version: 20.10.4
-  resolution: "@types/node@npm:20.10.4"
-  dependencies:
-    undici-types: ~5.26.4
-  checksum: 054b296417e771ab524bea63cf3289559c6bdf290d45428f7cc68e9b00030ff7a0ece47b8c99a26b4f47a443919813bcf42beadff2f0bea7d8125fa541d92eb0
-  languageName: node
-  linkType: hard
-
 "@types/node@npm:^20.11.28":
   version: 20.12.7
   resolution: "@types/node@npm:20.12.7"
   dependencies:
     undici-types: ~5.26.4
   checksum: 7cc979f7e2ca9a339ec71318c3901b9978555257929ef3666987f3e447123bc6dc92afcc89f6347e09e07d602fde7d51bcddea626c23aa2bb74aeaacfd1e1686
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^22.0.0":
+  version: 22.19.1
+  resolution: "@types/node@npm:22.19.1"
+  dependencies:
+    undici-types: ~6.21.0
+  checksum: 62b72e26a51659e654cfd6791f296a95ebc4b1deb1fa97f7a5cea4032434d1b4f14021f6e52eb9ea0cc1d1a7ab90567797a25c3865e3ea3d2caf6b3ea0ac4c4d
   languageName: node
   linkType: hard
 
@@ -3786,7 +3786,7 @@ __metadata:
     "@types/lodash": ^4.14.202
     "@types/mocha": ^10.0.6
     "@types/mock-require": ^2.0.3
-    "@types/node": ^20.10.4
+    "@types/node": ^22.0.0
     "@types/shell-quote": ^1.7.5
     "@types/sinonjs__fake-timers": ^8.1.5
     "@types/tmp": ^0.2.6
@@ -10658,6 +10658,13 @@ __metadata:
   version: 5.26.5
   resolution: "undici-types@npm:5.26.5"
   checksum: 3192ef6f3fd5df652f2dc1cd782b49d6ff14dc98e5dced492aa8a8c65425227da5da6aafe22523c67f035a272c599bb89cfe803c1db6311e44bed3042fc25487
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~6.21.0":
+  version: 6.21.0
+  resolution: "undici-types@npm:6.21.0"
+  checksum: 46331c7d6016bf85b3e8f20c159d62f5ae471aba1eb3dc52fff35a0259d58dcc7d592d4cc4f00c5f9243fa738a11cfa48bd20203040d4a9e6bc25e807fab7ab3
   languageName: node
   linkType: hard
 

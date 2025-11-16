@@ -8,7 +8,14 @@ import {
 } from "@databricks/sdk-experimental";
 import {Cluster} from "./Cluster";
 import * as assert from "node:assert";
-import {mock, when, instance, verify, anything} from "ts-mockito";
+import {
+    mock,
+    when,
+    instance,
+    verify,
+    anything,
+    objectContaining,
+} from "ts-mockito";
 import {getMockTestCluster} from "./test/ClusterFixtures";
 import {TokenFixture} from "./test/TokenFixtures";
 import FakeTimers from "@sinonjs/fake-timers";
@@ -33,7 +40,15 @@ describe(__filename, function () {
     });
 
     it("calling start on a non terminated state should not throw an error", async () => {
-        when(mockedClient.request(anything(), anything())).thenResolve(
+        when(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
+        ).thenResolve(
             {
                 ...testClusterDetails,
                 state: "PENDING",
@@ -68,13 +83,37 @@ describe(__filename, function () {
         await startPromise;
         assert.equal(mockedCluster.state, "RUNNING");
 
-        verify(mockedClient.request(anything(), anything())).times(6);
+        verify(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
+        ).times(6);
 
-        verify(mockedClient.request(anything(), anything())).never();
+        verify(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
+        ).never();
     });
 
     it("should terminate cluster", async () => {
-        when(mockedClient.request(anything(), anything())).thenResolve(
+        when(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
+        ).thenResolve(
             {
                 ...testClusterDetails,
                 state: "RUNNING",
@@ -89,7 +128,15 @@ describe(__filename, function () {
             }
         );
 
-        when(mockedClient.request(anything(), anything())).thenResolve({});
+        when(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/delete",
+                    method: "POST",
+                }),
+                anything()
+            )
+        ).thenResolve({});
 
         assert.equal(mockedCluster.state, "RUNNING");
 
@@ -99,13 +146,37 @@ describe(__filename, function () {
 
         assert.equal(mockedCluster.state, "TERMINATED");
 
-        verify(mockedClient.request(anything(), anything())).times(3);
+        verify(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
+        ).times(3);
 
-        verify(mockedClient.request(anything(), anything())).once();
+        verify(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/delete",
+                    method: "POST",
+                }),
+                anything()
+            )
+        ).once();
     });
 
     it("should terminate non running clusters", async () => {
-        when(mockedClient.request(anything(), anything())).thenResolve(
+        when(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
+        ).thenResolve(
             {
                 ...testClusterDetails,
                 state: "PENDING",
@@ -129,14 +200,36 @@ describe(__filename, function () {
 
         assert.equal(mockedCluster.state, "TERMINATED");
 
-        verify(mockedClient.request(anything(), anything())).times(3);
+        verify(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
+        ).times(3);
 
-        verify(mockedClient.request(anything(), anything())).once();
+        verify(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/delete",
+                    method: "POST",
+                }),
+                anything()
+            )
+        ).once();
     });
 
     it("should cancel cluster start", async () => {
         const whenMockGetCluster = when(
-            mockedClient.request(anything(), anything())
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
         );
 
         whenMockGetCluster.thenResolve({
@@ -144,7 +237,15 @@ describe(__filename, function () {
             state: "PENDING",
         });
 
-        when(mockedClient.request(anything(), anything())).thenCall(() => {
+        when(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/delete",
+                    method: "POST",
+                }),
+                anything()
+            )
+        ).thenCall(() => {
             whenMockGetCluster.thenResolve(
                 {
                     ...testClusterDetails,

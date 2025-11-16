@@ -1214,7 +1214,7 @@
         "@types/ini": "^4.1.1",
         "@types/mocha": "^10.0.6",
         "@types/mock-require": "^2.0.3",
-        "@types/node": "^20.10.4",
+        "@types/node": "^22.0.0",
         "@types/sinonjs__fake-timers": "^8.1.5",
         "@types/tmp": "^0.2.6",
         "@types/triple-beam": "^1.3.5",

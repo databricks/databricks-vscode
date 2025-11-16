@@ -6,7 +6,14 @@ import {
     WorkspaceClient,
 } from "@databricks/sdk-experimental";
 import assert from "assert";
-import {anything, instance, mock, spy, when} from "ts-mockito";
+import {
+    anything,
+    instance,
+    mock,
+    objectContaining,
+    spy,
+    when,
+} from "ts-mockito";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ClusterLoader} from "./ClusterLoader";
 
@@ -101,17 +108,23 @@ describe(__filename, () => {
 
         when<compute.ListClustersResponse>(
             mockedApiClient.request(
-                anything(),
+                objectContaining({
+                    path: "/api/2.0/clusters/list",
+                    method: "GET",
+                }),
                 anything()
             ) as Promise<compute.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);
         when(mockedConnectionManager.workspaceClient).thenReturn(
             instance(mockedWorkspaceClient)
         );
-        for (const [, perms] of mockClusterPermissions.entries()) {
+        for (const [clusterId, perms] of mockClusterPermissions.entries()) {
             when<iam.ObjectPermissions>(
                 mockedApiClient.request(
-                    anything(),
+                    objectContaining({
+                        path: `/api/2.0/permissions/clusters/${clusterId}`,
+                        method: "GET",
+                    }),
                     anything()
                 ) as Promise<iam.ObjectPermissions>
             ).thenResolve(perms);

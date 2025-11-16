@@ -9,7 +9,7 @@
         "hoistingLimits": "dependencies"
     },
     "engines": {
-        "node": ">=16.0",
+        "node": ">=22.0",
         "yarn": ">=3.2.0"
     },
     "scripts": {
@@ -32,7 +32,7 @@
     "homepage": "https://github.com/databricks/databricks-vscode#readme",
     "packageManager": "yarn@3.2.1",
     "devDependencies": {
-        "@types/node": "^20.10.4",
+        "@types/node": "^22.0.0",
         "@typescript-eslint/eslint-plugin": "^6.14.0",
         "@typescript-eslint/parser": "^6.14.0",
         "conventional-changelog-cli": "^4.1.0",

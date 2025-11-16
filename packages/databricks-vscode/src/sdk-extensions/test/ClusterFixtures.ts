@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {Cluster} from "../Cluster";
-import {mock, when, resetCalls, instance, anything} from "ts-mockito";
+import {
+    mock,
+    when,
+    resetCalls,
+    instance,
+    anything,
+    objectContaining,
+} from "ts-mockito";
 import {compute, ApiClient} from "@databricks/sdk-experimental";
 
 const testClusterDetails: compute.ClusterDetails = {
@@ -11,7 +18,15 @@ const testClusterDetails: compute.ClusterDetails = {
 
 export async function getMockTestCluster() {
     const mockedClient = mock(ApiClient);
-    when(mockedClient.request(anything(), anything())).thenResolve({
+    when(
+        mockedClient.request(
+            objectContaining({
+                path: "/api/2.1/clusters/get",
+                method: "GET",
+            }),
+            anything()
+        )
+    ).thenResolve({
         ...testClusterDetails,
         state: "RUNNING",
     });
