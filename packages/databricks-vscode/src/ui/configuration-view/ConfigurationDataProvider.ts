@@ -42,26 +42,7 @@ export class ConfigurationDataProvider
     > = this._onDidChangeTreeData.event;
 
     private disposables: Array<Disposable> = [];
-    private components: Array<BaseComponent> = [
-        new WorkspaceFolderComponent(this.workspaceFolderManager),
-        new BundleTargetComponent(this.configModel),
-        new AuthTypeComponent(
-            this.connectionManager,
-            this.configModel,
-            this.cli
-        ),
-        new ClusterComponent(this.connectionManager, this.configModel),
-        new SyncDestinationComponent(
-            this.connectionManager,
-            this.configModel,
-            this.codeSynchronizer
-        ),
-        new EnvironmentComponent(
-            this.featureManager,
-            this.connectionManager,
-            this.configModel
-        ),
-    ];
+    private components: Array<BaseComponent>;
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly codeSynchronizer: CodeSynchronizer,
@@ -71,6 +52,26 @@ export class ConfigurationDataProvider
         private readonly featureManager: FeatureManager,
         private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
+        this.components = [
+            new WorkspaceFolderComponent(this.workspaceFolderManager),
+            new BundleTargetComponent(this.configModel),
+            new AuthTypeComponent(
+                this.connectionManager,
+                this.configModel,
+                this.cli
+            ),
+            new ClusterComponent(this.connectionManager, this.configModel),
+            new SyncDestinationComponent(
+                this.connectionManager,
+                this.configModel,
+                this.codeSynchronizer
+            ),
+            new EnvironmentComponent(
+                this.featureManager,
+                this.connectionManager,
+                this.configModel
+            ),
+        ];
         this.disposables.push(
             this.bundleProjectManager.onDidChangeStatus(async () => {
                 this._onDidChangeTreeData.fire();

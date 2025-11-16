@@ -1,11 +1,11 @@
 {
     "compilerOptions": {
         "module": "CommonJS",
-        "target": "ES2023",
+        "target": "ES2022",
         "outDir": "out",
         "esModuleInterop": true,
         "isolatedModules": false,
-        "lib": ["ES2023"],
+        "lib": ["ES2022"],
         "sourceMap": true,
         "strict": true /* enable all strict type-checking options */,
         "forceConsistentCasingInFileNames": true,
