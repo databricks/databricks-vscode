@@ -1,7 +1,7 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
 import {ExtensionContext, Uri} from "vscode";
-import {logging, Headers} from "@databricks/databricks-sdk";
+import {logging, Headers} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {TerraformMetadata} from "./terraformUtils";
 

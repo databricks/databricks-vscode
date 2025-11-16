@@ -2,7 +2,7 @@
 
 import {Cluster} from "../Cluster";
 import {mock, when, resetCalls, instance, anything} from "ts-mockito";
-import {compute, ApiClient} from "@databricks/databricks-sdk";
+import {compute, ApiClient} from "@databricks/sdk-experimental";
 
 const testClusterDetails: compute.ClusterDetails = {
     cluster_id: "testClusterId",
@@ -11,14 +11,7 @@ const testClusterDetails: compute.ClusterDetails = {
 
 export async function getMockTestCluster() {
     const mockedClient = mock(ApiClient);
-    when(
-        mockedClient.request(
-            "/api/2.1/clusters/get",
-            "GET",
-            anything(),
-            anything()
-        )
-    ).thenResolve({
+    when(mockedClient.request(anything(), anything())).thenResolve({
         ...testClusterDetails,
         state: "RUNNING",
     });

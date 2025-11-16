@@ -13,9 +13,9 @@ import {
 } from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {LoggerManager, Loggers} from "../logger";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {Cloud} from "../utils/constants";
 import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";

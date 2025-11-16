@@ -13,7 +13,7 @@ import {
 import path from "node:path";
 import fs from "fs/promises";
 import {BundleSchema} from "../../bundle/types.ts";
-import {WorkspaceClient} from "@databricks/databricks-sdk";
+import {WorkspaceClient} from "@databricks/sdk-experimental";
 
 describe("Sync", async function () {
     let vscodeWorkspaceRoot: string;

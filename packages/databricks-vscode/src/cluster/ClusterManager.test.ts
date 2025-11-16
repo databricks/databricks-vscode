@@ -6,18 +6,10 @@ import {
     Time,
     TimeUnits,
     retries,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {Cluster} from "../sdk-extensions";
 import {ClusterFixtures} from "../sdk-extensions/test";
-import {
-    anything,
-    deepEqual,
-    instance,
-    mock,
-    resetCalls,
-    verify,
-    when,
-} from "ts-mockito";
+import {anything, instance, mock, resetCalls, verify, when} from "ts-mockito";
 import assert from "assert";
 
 describe(__filename, async () => {
@@ -28,17 +20,7 @@ describe(__filename, async () => {
     beforeEach(async () => {
         ({testClusterDetails} = await ClusterFixtures.getMockTestCluster());
         mockedClient = mock(ApiClient);
-        when(
-            mockedClient.request(
-                "/api/2.1/clusters/get",
-                "GET",
-                deepEqual({
-                    // eslint-disable-next-line
-                    cluster_id: testClusterDetails.cluster_id,
-                }),
-                anything()
-            )
-        ).thenResolve({
+        when(mockedClient.request(anything(), anything())).thenResolve({
             ...testClusterDetails,
             state: "RUNNING",
         });
@@ -55,17 +37,7 @@ describe(__filename, async () => {
     });
 
     it("should start a cluster with progress", async () => {
-        when(
-            mockedClient.request(
-                "/api/2.1/clusters/get",
-                "GET",
-                deepEqual({
-                    // eslint-disable-next-line
-                    cluster_id: testClusterDetails.cluster_id,
-                }),
-                anything()
-            )
-        ).thenResolve(
+        when(mockedClient.request(anything(), anything())).thenResolve(
             {
                 ...testClusterDetails,
                 state: "TERMINATED",

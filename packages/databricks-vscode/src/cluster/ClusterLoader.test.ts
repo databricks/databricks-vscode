@@ -4,7 +4,7 @@ import {
     compute,
     iam,
     WorkspaceClient,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import assert from "assert";
 import {anything, instance, mock, spy, when} from "ts-mockito";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -101,8 +101,6 @@ describe(__filename, () => {
 
         when<compute.ListClustersResponse>(
             mockedApiClient.request(
-                "/api/2.0/clusters/list",
-                "GET",
                 anything(),
                 anything()
             ) as Promise<compute.ListClustersResponse>
@@ -110,11 +108,9 @@ describe(__filename, () => {
         when(mockedConnectionManager.workspaceClient).thenReturn(
             instance(mockedWorkspaceClient)
         );
-        for (const [id, perms] of mockClusterPermissions.entries()) {
+        for (const [, perms] of mockClusterPermissions.entries()) {
             when<iam.ObjectPermissions>(
                 mockedApiClient.request(
-                    `/api/2.0/permissions/clusters/${id}`,
-                    "GET",
                     anything(),
                     anything()
                 ) as Promise<iam.ObjectPermissions>

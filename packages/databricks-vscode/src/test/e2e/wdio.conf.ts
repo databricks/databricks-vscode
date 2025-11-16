@@ -8,7 +8,7 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
-import {Config, WorkspaceClient} from "@databricks/databricks-sdk";
+import {Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile as execFileCb} from "node:child_process";
 import {cpSync, mkdirSync, rmSync} from "node:fs";

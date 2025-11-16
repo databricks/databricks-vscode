@@ -7,7 +7,7 @@ import lodash from "lodash";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {withOnErrorHandler} from "../../utils/onErrorDecorator";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 

@@ -1,8 +1,8 @@
-import {compute, Time, TimeUnits} from "@databricks/databricks-sdk";
+import {compute, Time, TimeUnits} from "@databricks/sdk-experimental";
 import {Cluster} from "../sdk-extensions";
 import {CancellationTokenSource, Disposable} from "vscode";
 import lodash from "lodash";
-import {logging, context, Context} from "@databricks/databricks-sdk";
+import {logging, context, Context} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
 export class ClusterManager implements Disposable {
     private cancellationTokenSource?: CancellationTokenSource;
