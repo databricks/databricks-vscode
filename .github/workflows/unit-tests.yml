@@ -15,7 +15,7 @@ jobs:
             os: macos-latest
           - cli_arch: windows_amd64
             os: windows-latest
-        node-version: [18.x]
+        node-version: [22.x]
         vscode-version: [stable]
 
     runs-on: ${{ matrix.arch.os }}
