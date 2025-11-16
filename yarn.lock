@@ -339,36 +339,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types":
-  version: 0.10.0
-  resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=%40databricks%2Fdatabricks-vscode-types%40workspace%3Apackages%2Fdatabricks-vscode-types"
-  dependencies:
-    "@types/ini": ^4.1.0
-    "@types/node": ^18.19.23
-    "@types/semver": ^7.5.8
-    google-auth-library: ^9.10.0
-    ini: ^4.1.2
-    reflect-metadata: ^0.2.1
-    semver: ^7.6.0
-  checksum: 84c9f44a5e807b176e0375658e44abe8ac0772d193e3aadbddb06da0d0fbf61696a6102f4e6fa06bf917d16247166b497f5ac7d6c32a4c0ea3fd23b269a2c6d3
-  languageName: node
-  linkType: hard
-
-"@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode":
-  version: 0.10.0
-  resolution: "@databricks/databricks-sdk@file:../../vendor/databricks-sdk.tgz::locator=databricks%40workspace%3Apackages%2Fdatabricks-vscode"
-  dependencies:
-    "@types/ini": ^4.1.0
-    "@types/node": ^18.19.23
-    "@types/semver": ^7.5.8
-    google-auth-library: ^9.10.0
-    ini: ^4.1.2
-    reflect-metadata: ^0.2.1
-    semver: ^7.6.0
-  checksum: 84c9f44a5e807b176e0375658e44abe8ac0772d193e3aadbddb06da0d0fbf61696a6102f4e6fa06bf917d16247166b497f5ac7d6c32a4c0ea3fd23b269a2c6d3
-  languageName: node
-  linkType: hard
-
 "@databricks/databricks-vscode-types@workspace:^, @databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types":
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
