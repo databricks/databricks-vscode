@@ -1,4 +1,4 @@
-import {jobs, ApiError} from "@databricks/databricks-sdk";
+import {jobs, ApiError} from "@databricks/sdk-experimental";
 import {Cluster, WorkflowRun} from "../sdk-extensions";
 import {basename} from "node:path";
 import {
@@ -19,7 +19,7 @@ import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWra
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 import {Events, Telemetry} from "../telemetry";
 import {ComputeType, WorkflowTaskType} from "../telemetry/constants";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {Loggers} from "../logger";
 
 export class WorkflowRunner implements Disposable {

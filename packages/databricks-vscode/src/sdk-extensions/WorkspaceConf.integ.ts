@@ -1,4 +1,4 @@
-import {ApiError} from "@databricks/databricks-sdk";
+import {ApiError} from "@databricks/sdk-experimental";
 import {WorkspaceConf} from "./WorkspaceConf";
 import assert from "assert";
 

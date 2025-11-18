@@ -3,7 +3,7 @@ import {
     ProductVersion,
     WorkspaceClient,
     logging,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {CancellationToken, commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
@@ -13,7 +13,7 @@ import {cancellableExecFile} from "../../cli/CliWrapper";
 import {
     FileNotFoundException,
     isFileNotFound,
-} from "@databricks/databricks-sdk/dist/config/execUtils";
+} from "@databricks/sdk-experimental/dist/config/execUtils";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;

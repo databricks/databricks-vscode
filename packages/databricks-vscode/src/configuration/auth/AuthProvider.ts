@@ -4,7 +4,7 @@ import {
     ProductVersion,
     WorkspaceClient,
     logging,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {CancellationToken, ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";

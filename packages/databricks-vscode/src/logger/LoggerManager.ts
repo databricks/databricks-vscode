@@ -1,4 +1,4 @@
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {env, ExtensionContext, window, LogOutputChannel} from "vscode";
 import {loggers, format, transports} from "winston";
 

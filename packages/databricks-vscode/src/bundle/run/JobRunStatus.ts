@@ -3,7 +3,7 @@ import {
     JobsError,
     JobsRetriableError,
     Run,
-} from "@databricks/databricks-sdk/dist/apis/jobs";
+} from "@databricks/sdk-experimental/dist/apis/jobs";
 import {Event, EventEmitter} from "vscode";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {onError} from "../../utils/onErrorDecorator";

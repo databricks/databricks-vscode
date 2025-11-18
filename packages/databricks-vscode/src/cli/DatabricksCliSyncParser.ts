@@ -1,4 +1,4 @@
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {EventEmitter} from "vscode";
 import {Loggers} from "../logger";
 import {SyncState} from "../sync";

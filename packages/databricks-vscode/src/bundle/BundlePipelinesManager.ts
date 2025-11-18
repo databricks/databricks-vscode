@@ -27,10 +27,10 @@ import {
     ListPipelineEventsRequest,
     PipelineEvent,
     UpdateInfo,
-} from "@databricks/databricks-sdk/dist/apis/pipelines";
+} from "@databricks/sdk-experimental/dist/apis/pipelines";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Barrier} from "../locking/Barrier";
-import {WorkspaceClient} from "@databricks/databricks-sdk";
+import {WorkspaceClient} from "@databricks/sdk-experimental";
 import {LocalUri, RemoteUri} from "../sync/SyncDestination";
 import {expandUriAndType, NotebookType} from "../utils/fileUtils";
 import {onError} from "../utils/onErrorDecorator";

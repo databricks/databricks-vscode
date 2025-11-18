@@ -5,7 +5,7 @@ import {
     TreeItem,
     TreeItemCollapsibleState,
 } from "vscode";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 
 export interface DocsTreeItem extends TreeItem {

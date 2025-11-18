@@ -1,7 +1,7 @@
 import {posix} from "path";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {WorkspaceFsEntity} from "./WorkspaceFsEntity";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {isDirectory, isFile} from "./utils";
 
 export class WorkspaceFsDir extends WorkspaceFsEntity {

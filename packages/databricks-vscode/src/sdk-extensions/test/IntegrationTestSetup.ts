@@ -2,7 +2,7 @@
 
 import * as crypto from "crypto";
 import {Cluster} from "../Cluster";
-import {WorkspaceClient} from "@databricks/databricks-sdk";
+import {WorkspaceClient} from "@databricks/sdk-experimental";
 
 export class IntegrationTestSetup {
     readonly testRunId: string;

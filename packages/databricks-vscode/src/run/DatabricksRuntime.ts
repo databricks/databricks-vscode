@@ -28,7 +28,7 @@ import {
 import * as fs from "node:fs/promises";
 import {parseErrorResult} from "./ErrorParser";
 import path from "node:path";
-import {Time, TimeUnits} from "@databricks/databricks-sdk";
+import {Time, TimeUnits} from "@databricks/sdk-experimental";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 

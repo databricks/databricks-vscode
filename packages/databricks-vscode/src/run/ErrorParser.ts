@@ -1,5 +1,5 @@
 /* eslint-disable no-control-regex */
-import {compute} from "@databricks/databricks-sdk";
+import {compute} from "@databricks/sdk-experimental";
 import * as assert from "node:assert";
 
 interface Frame {

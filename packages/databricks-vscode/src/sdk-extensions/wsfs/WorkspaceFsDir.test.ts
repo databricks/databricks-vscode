@@ -1,7 +1,7 @@
 import assert from "assert";
 import {posix} from "path";
 import {anything, deepEqual, instance, mock, when} from "ts-mockito";
-import {WorkspaceClient, workspace} from "@databricks/databricks-sdk";
+import {WorkspaceClient, workspace} from "@databricks/sdk-experimental";
 import {isDirectory} from "./utils";
 import {WorkspaceFsEntity} from "./WorkspaceFsEntity";
 

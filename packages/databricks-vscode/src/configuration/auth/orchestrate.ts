@@ -1,4 +1,4 @@
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {CancellationToken} from "vscode";
 
 type StepResult<S, N> = SuccessResult<S> | NextResult<N> | ErrorResult;

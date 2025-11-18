@@ -3,7 +3,7 @@ import {
     ApiClient,
     logging,
     AuthType as SdkAuthType,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {Cluster} from "../sdk-extensions";
 import {EventEmitter, window, Disposable} from "vscode";
 import {CliWrapper, ProcessError} from "../cli/CliWrapper";

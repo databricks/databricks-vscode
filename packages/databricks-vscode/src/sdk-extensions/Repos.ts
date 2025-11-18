@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiClient, workspace, logging} from "@databricks/databricks-sdk";
+import {ApiClient, workspace, logging} from "@databricks/sdk-experimental";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import {context, Context} from "@databricks/databricks-sdk/dist/context";
+import {context, Context} from "@databricks/sdk-experimental/dist/context";
 
 export interface RepoList {
     repos: Repo[];

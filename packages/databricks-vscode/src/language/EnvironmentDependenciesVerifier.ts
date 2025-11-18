@@ -7,7 +7,7 @@ import {Loggers} from "../logger";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
 import {FeatureStepState} from "../feature-manager/FeatureManager";
 import {ResolvedEnvironment} from "./MsPythonExtensionApi";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {ConfigureAutocomplete} from "./ConfigureAutocomplete";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {

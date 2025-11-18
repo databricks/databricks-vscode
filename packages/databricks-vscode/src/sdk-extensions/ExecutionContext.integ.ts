@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {retries} from "@databricks/databricks-sdk";
+import {retries} from "@databricks/sdk-experimental";
 import {ExecutionContext} from "./ExecutionContext";
 import assert from "assert";
 

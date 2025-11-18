@@ -3,7 +3,7 @@ import {Mutex} from "../locking";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {DisabledFeature} from "./DisabledFeature";
 import {EnabledFeature} from "./EnabledFeature";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
 
 export type FeatureEnableAction = (...args: any[]) => Promise<void>;

@@ -16,7 +16,7 @@ import {ClusterComponent} from "./ClusterComponent";
 import {SyncDestinationComponent} from "./SyncDestinationComponent";
 import {BundleProjectManager} from "../../bundle/BundleProjectManager";
 import {CliWrapper} from "../../cli/CliWrapper";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {EnvironmentComponent} from "./EnvironmentComponent";

@@ -2,7 +2,7 @@ import {EventEmitter} from "vscode";
 import {RunState} from "./types";
 import {ResourceKey} from "../types";
 import {BundleRemoteState} from "../models/BundleRemoteStateModel";
-import {Time, TimeUnits} from "@databricks/databricks-sdk";
+import {Time, TimeUnits} from "@databricks/sdk-experimental";
 export abstract class BundleRunStatus {
     abstract readonly type: ResourceKey<BundleRemoteState>;
     protected readonly onDidChangeEmitter = new EventEmitter<void>();

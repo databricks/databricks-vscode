@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {Time, TimeUnits, logging} from "@databricks/databricks-sdk";
+import {Time, TimeUnits, logging} from "@databricks/sdk-experimental";
 import {Cluster} from "../sdk-extensions";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
