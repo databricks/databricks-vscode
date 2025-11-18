@@ -12,7 +12,7 @@ import {WorkflowRun} from "../../sdk-extensions";
 
 export class JobRunStatus extends BundleRunStatus {
     readonly type = "jobs";
-    data: Run | undefined;
+    declare data: Run | undefined;
     private readonly onDidCompleteEmitter = new EventEmitter<void>();
     onDidComplete: Event<void> = this.onDidCompleteEmitter.event;
 

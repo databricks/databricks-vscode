@@ -1,6 +1,7 @@
 {
     "transpileOnly": true,
     "compilerOptions": {
-        "module": "Node16"
+        "module": "Node22",
+        "target": "ES2022"
     }
 }

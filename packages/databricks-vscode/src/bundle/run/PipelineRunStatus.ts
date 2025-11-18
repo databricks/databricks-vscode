@@ -25,7 +25,7 @@ function isRunning(status?: pipelines.UpdateInfoState) {
 
 export class PipelineRunStatus extends BundleRunStatus {
     public readonly type = "pipelines";
-    public data: pipelines.UpdateInfo | undefined;
+    public declare data: pipelines.UpdateInfo | undefined;
     public events: pipelines.PipelineEvent[] | undefined;
 
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
