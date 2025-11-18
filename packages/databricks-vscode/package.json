@@ -1233,7 +1233,7 @@
         "eslint": "^8.55.0",
         "eslint-plugin-local-rules": "^2.0.1",
         "fs-extra": "^11.2.0",
-        "glob": "^10.3.10",
+        "glob": "^11.1.0",
         "mocha": "^10.2.0",
         "mock-require": "^3.0.3",
         "nyc": "^15.1.0",
