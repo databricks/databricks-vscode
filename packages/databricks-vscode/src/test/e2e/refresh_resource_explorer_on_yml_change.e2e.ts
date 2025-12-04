@@ -1,5 +1,5 @@
 import assert from "assert";
-import {CustomTreeSection} from "wdio-vscode-service";
+import {CustomTreeSection, sleep} from "wdio-vscode-service";
 import {
     dismissNotifications,
     getViewSection,
@@ -78,6 +78,7 @@ describe("Automatically refresh resource explorer", async function () {
         const outputView = await (await browser.getWorkbench())
             .getBottomBar()
             .openOutputView();
+        await sleep(1000);
         await outputView.selectChannel("Databricks Bundle Logs");
 
         const jobDef = await createProjectWithJob(
