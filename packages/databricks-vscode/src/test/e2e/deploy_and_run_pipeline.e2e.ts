@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getActionButton,
     getViewSection,
     selectOutputChannel,
     waitForDeployment,
@@ -76,7 +77,8 @@ describe("Deploy and run pipeline", async function () {
             `Pipeline ${pipelineName} not found in resource explorer`
         );
 
-        const deployAndRunButton = await pipelineItem.getActionButton(
+        const deployAndRunButton = await getActionButton(
+            pipelineItem,
             "Deploy the bundle and run the pipeline"
         );
         assert(deployAndRunButton, "Deploy and run button not found");

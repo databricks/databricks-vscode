@@ -7,6 +7,7 @@ import {
     ViewSection,
     InputBox,
     OutputView,
+    TreeItem,
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -378,4 +379,23 @@ export async function waitForDeployment() {
                 "Can't find 'Bundle deployed successfully' message in output channel",
         }
     );
+}
+
+export async function getActionButton(item: TreeItem, label: string) {
+    const actions = await item.getActionButtons();
+    if (actions.length > 0) {
+        for (const item of actions) {
+            console.log("Checking action button:", item.getLabel());
+            console.log(
+                "Action button element:",
+                await (await item.elem).getHTML()
+            );
+            const itemLabel =
+                item.getLabel() ?? (await item.elem.getAttribute("aria-label"));
+            if (itemLabel.indexOf(label) > -1) {
+                return item;
+            }
+        }
+    }
+    return undefined;
 }

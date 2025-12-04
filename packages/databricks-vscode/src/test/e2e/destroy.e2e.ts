@@ -71,7 +71,7 @@ describe("Deploy and destroy", async function () {
             ?.split("@")[0]
             .replaceAll(/[^a-zA-Z0-9]/g, "_")}]`;
 
-        let outputView = await workbench.getBottomBar().openOutputView();
+        const outputView = await workbench.getBottomBar().openOutputView();
         await selectOutputChannel(outputView, "Databricks Bundle Logs");
         await outputView.clearText();
 
@@ -85,7 +85,6 @@ describe("Deploy and destroy", async function () {
             );
         });
 
-        outputView = await workbench.getBottomBar().openOutputView();
         await selectOutputChannel(outputView, "Databricks Bundle Logs");
 
         console.log("Waiting for deployment to finish");
@@ -133,7 +132,7 @@ describe("Deploy and destroy", async function () {
                 "workbench.panel.output.focus"
             );
         });
-        outputView = await workbench.getBottomBar().openOutputView();
+
         await selectOutputChannel(outputView, "Databricks Bundle Logs");
 
         console.log("Waiting for bundle to destroy");
