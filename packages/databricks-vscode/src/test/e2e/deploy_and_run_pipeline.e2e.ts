@@ -84,7 +84,7 @@ describe("Deploy and run pipeline", async function () {
         assert(deployAndRunButton, "Deploy and run button not found");
         await deployAndRunButton.elem.click();
 
-        await waitForDeployment();
+        await waitForDeployment(outputView);
 
         await waitForRunStatus(
             resourceExplorerView,
