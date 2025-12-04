@@ -6,6 +6,7 @@ import {
     ViewControl,
     ViewSection,
     InputBox,
+    OutputView,
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -18,6 +19,26 @@ const ViewSectionTypes = [
     "DOCUMENTATION",
 ] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
+
+export async function selectOutputChannel(
+    outputView: OutputView,
+    channelName: string
+) {
+    if ((await outputView.getCurrentChannel()) === channelName) {
+        return;
+    }
+    await browser.waitUntil(
+        async () => {
+            await outputView.selectChannel(channelName);
+            return true;
+        },
+        {
+            timeout: 10_000,
+            interval: 1_000,
+            timeoutMsg: `Output view channel "${channelName}" not found`,
+        }
+    );
+}
 
 export async function findViewSection(name: ViewSectionType) {
     const workbench = await browser.getWorkbench();
@@ -352,12 +373,7 @@ export async function waitForDeployment() {
                     .getBottomBar()
                     .openOutputView();
 
-                if (
-                    (await outputView.getCurrentChannel()) !==
-                    "Databricks Bundle Logs"
-                ) {
-                    await outputView.selectChannel("Databricks Bundle Logs");
-                }
+                await selectOutputChannel(outputView, "Databricks Bundle Logs");
 
                 const logs = (await outputView.getText()).join("");
                 console.log("------------ Bundle Output ------------");

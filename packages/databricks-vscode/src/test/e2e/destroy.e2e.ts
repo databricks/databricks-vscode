@@ -3,6 +3,7 @@ import {
     dismissNotifications,
     getUniqueResourceName,
     getViewSection,
+    selectOutputChannel,
     waitForLogin,
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
@@ -71,7 +72,7 @@ describe("Deploy and destroy", async function () {
             .replaceAll(/[^a-zA-Z0-9]/g, "_")}]`;
 
         const outputView = await workbench.getBottomBar().openOutputView();
-        await outputView.selectChannel("Databricks Bundle Logs");
+        await selectOutputChannel(outputView, "Databricks Bundle Logs");
         await outputView.clearText();
 
         await browser.executeWorkbench(async (vscode) => {
@@ -91,14 +92,10 @@ describe("Deploy and destroy", async function () {
                         .getBottomBar()
                         .openOutputView();
 
-                    if (
-                        (await outputView.getCurrentChannel()) !==
+                    await selectOutputChannel(
+                        outputView,
                         "Databricks Bundle Logs"
-                    ) {
-                        await outputView.selectChannel(
-                            "Databricks Bundle Logs"
-                        );
-                    }
+                    );
 
                     const logs = (await outputView.getText()).join("");
                     console.log(logs);
@@ -149,14 +146,10 @@ describe("Deploy and destroy", async function () {
                         .getBottomBar()
                         .openOutputView();
 
-                    if (
-                        (await outputView.getCurrentChannel()) !==
+                    await selectOutputChannel(
+                        outputView,
                         "Databricks Bundle Logs"
-                    ) {
-                        await outputView.selectChannel(
-                            "Databricks Bundle Logs"
-                        );
-                    }
+                    );
 
                     const logs = (await outputView.getText()).join("");
                     console.log(logs);

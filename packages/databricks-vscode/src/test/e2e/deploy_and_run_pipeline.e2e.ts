@@ -2,6 +2,7 @@ import assert from "node:assert";
 import {
     dismissNotifications,
     getViewSection,
+    selectOutputChannel,
     waitForDeployment,
     waitForLogin,
     waitForTreeItems,
@@ -62,7 +63,7 @@ describe("Deploy and run pipeline", async function () {
 
     it("should deploy and run the current pipeline", async () => {
         const outputView = await workbench.getBottomBar().openOutputView();
-        await outputView.selectChannel("Databricks Bundle Logs");
+        await selectOutputChannel(outputView, "Databricks Bundle Logs");
         await outputView.clearText();
 
         const pipelineItem = await getResourceViewItem(

@@ -3,6 +3,7 @@ import {
     dismissNotifications,
     getUniqueResourceName,
     getViewSection,
+    selectOutputChannel,
     waitForDeployment,
     waitForLogin,
     waitForTreeItems,
@@ -65,7 +66,7 @@ describe("Deploy and run job", async function () {
 
     it("should deploy and run the current job", async () => {
         const outputView = await workbench.getBottomBar().openOutputView();
-        await outputView.selectChannel("Databricks Bundle Logs");
+        await selectOutputChannel(outputView, "Databricks Bundle Logs");
         await outputView.clearText();
 
         const jobItem = await getResourceViewItem(

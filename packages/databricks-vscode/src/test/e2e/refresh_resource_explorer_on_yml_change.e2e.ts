@@ -1,8 +1,9 @@
 import assert from "assert";
-import {CustomTreeSection, sleep} from "wdio-vscode-service";
+import {CustomTreeSection} from "wdio-vscode-service";
 import {
     dismissNotifications,
     getViewSection,
+    selectOutputChannel,
     waitForLogin,
 } from "./utils/commonUtils.ts";
 import {
@@ -79,17 +80,7 @@ describe("Automatically refresh resource explorer", async function () {
             .getBottomBar()
             .openOutputView();
 
-        browser.waitUntil(
-            async () => {
-                await outputView.selectChannel("Databricks Bundle Logs");
-                return true;
-            },
-            {
-                timeout: 10_000,
-                interval: 1_000,
-                timeoutMsg: "Output view channel not found",
-            }
-        );
+        await selectOutputChannel(outputView, "Databricks Bundle Logs");
 
         const jobDef = await createProjectWithJob(
             projectName,
