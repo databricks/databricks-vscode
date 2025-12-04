@@ -27,17 +27,8 @@ export async function selectOutputChannel(
     if ((await outputView.getCurrentChannel()) === channelName) {
         return;
     }
-    await browser.waitUntil(
-        async () => {
-            await outputView.selectChannel(channelName);
-            return true;
-        },
-        {
-            timeout: 10_000,
-            interval: 1_000,
-            timeoutMsg: `Output view channel "${channelName}" not found`,
-        }
-    );
+    outputView.locatorMap.BottomBarViews.outputChannels = `ul[aria-label="Output actions"] select`;
+    await outputView.selectChannel(channelName);
 }
 
 export async function findViewSection(name: ViewSectionType) {
