@@ -352,20 +352,14 @@ export async function waitForNotification(message: string, action?: string) {
 export async function waitForDeployment() {
     console.log("Waiting for deployment to finish");
     const workbench = await driver.getWorkbench();
+    await browser.executeWorkbench(async (vscode) => {
+        await vscode.commands.executeCommand("workbench.panel.output.focus");
+    });
+    const outputView = await workbench.getBottomBar().openOutputView();
+    await selectOutputChannel(outputView, "Databricks Bundle Logs");
     await browser.waitUntil(
         async () => {
             try {
-                await browser.executeWorkbench(async (vscode) => {
-                    await vscode.commands.executeCommand(
-                        "workbench.panel.output.focus"
-                    );
-                });
-                const outputView = await workbench
-                    .getBottomBar()
-                    .openOutputView();
-
-                await selectOutputChannel(outputView, "Databricks Bundle Logs");
-
                 const logs = (await outputView.getText()).join("");
                 console.log("------------ Bundle Output ------------");
                 console.log(logs);

@@ -71,32 +71,27 @@ describe("Deploy and destroy", async function () {
             ?.split("@")[0]
             .replaceAll(/[^a-zA-Z0-9]/g, "_")}]`;
 
-        const outputView = await workbench.getBottomBar().openOutputView();
+        let outputView = await workbench.getBottomBar().openOutputView();
         await selectOutputChannel(outputView, "Databricks Bundle Logs");
         await outputView.clearText();
 
         await browser.executeWorkbench(async (vscode) => {
             await vscode.commands.executeCommand("databricks.bundle.deploy");
         });
+
+        await browser.executeWorkbench(async (vscode) => {
+            await vscode.commands.executeCommand(
+                "workbench.panel.output.focus"
+            );
+        });
+
+        outputView = await workbench.getBottomBar().openOutputView();
+        await selectOutputChannel(outputView, "Databricks Bundle Logs");
+
         console.log("Waiting for deployment to finish");
-        // Wait for the deployment to finish
         await browser.waitUntil(
             async () => {
                 try {
-                    await browser.executeWorkbench(async (vscode) => {
-                        await vscode.commands.executeCommand(
-                            "workbench.panel.output.focus"
-                        );
-                    });
-                    const outputView = await workbench
-                        .getBottomBar()
-                        .openOutputView();
-
-                    await selectOutputChannel(
-                        outputView,
-                        "Databricks Bundle Logs"
-                    );
-
                     const logs = (await outputView.getText()).join("");
                     console.log(logs);
                     return (
@@ -104,6 +99,7 @@ describe("Deploy and destroy", async function () {
                         logs.includes("Bundle configuration refreshed")
                     );
                 } catch (e) {
+                    console.log("Error waiting for deployment to finish:", e);
                     return false;
                 }
             },
@@ -132,25 +128,19 @@ describe("Deploy and destroy", async function () {
             );
         });
 
+        await browser.executeWorkbench(async (vscode) => {
+            await vscode.commands.executeCommand(
+                "workbench.panel.output.focus"
+            );
+        });
+        outputView = await workbench.getBottomBar().openOutputView();
+        await selectOutputChannel(outputView, "Databricks Bundle Logs");
+
         console.log("Waiting for bundle to destroy");
         // Wait for status to reach success
         await browser.waitUntil(
             async () => {
                 try {
-                    await browser.executeWorkbench(async (vscode) => {
-                        await vscode.commands.executeCommand(
-                            "workbench.panel.output.focus"
-                        );
-                    });
-                    const outputView = await workbench
-                        .getBottomBar()
-                        .openOutputView();
-
-                    await selectOutputChannel(
-                        outputView,
-                        "Databricks Bundle Logs"
-                    );
-
                     const logs = (await outputView.getText()).join("");
                     console.log(logs);
                     return (
