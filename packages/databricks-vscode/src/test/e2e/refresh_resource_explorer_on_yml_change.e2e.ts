@@ -78,8 +78,18 @@ describe("Automatically refresh resource explorer", async function () {
         const outputView = await (await browser.getWorkbench())
             .getBottomBar()
             .openOutputView();
-        await sleep(1000);
-        await outputView.selectChannel("Databricks Bundle Logs");
+
+        browser.waitUntil(
+            async () => {
+                await outputView.selectChannel("Databricks Bundle Logs");
+                return true;
+            },
+            {
+                timeout: 10_000,
+                interval: 1_000,
+                timeoutMsg: "Output view channel not found",
+            }
+        );
 
         const jobDef = await createProjectWithJob(
             projectName,
