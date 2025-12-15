@@ -1,3 +1,11 @@
+# Release: v2.10.4
+
+## packages/databricks-vscode-types
+
+## (2025-12-15)
+
+-   Bump Node.js and TypeScript to version 22/ES2022 (#1806) ([5563d38](https://github.com/databricks/databricks-vscode/commit/5563d38)), closes [#1806](https://github.com/databricks/databricks-vscode/issues/1806)
+
 # Release: v2.10.3
 
 ## packages/databricks-vscode-types
