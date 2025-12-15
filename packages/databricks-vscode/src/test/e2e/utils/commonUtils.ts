@@ -6,6 +6,8 @@ import {
     ViewControl,
     ViewSection,
     InputBox,
+    OutputView,
+    TreeItem,
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -18,6 +20,17 @@ const ViewSectionTypes = [
     "DOCUMENTATION",
 ] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
+
+export async function selectOutputChannel(
+    outputView: OutputView,
+    channelName: string
+) {
+    if ((await outputView.getCurrentChannel()) === channelName) {
+        return;
+    }
+    outputView.locatorMap.BottomBarViews.outputChannels = `ul[aria-label="Output actions"] select`;
+    await outputView.selectChannel(channelName);
+}
 
 export async function findViewSection(name: ViewSectionType) {
     const workbench = await browser.getWorkbench();
@@ -41,12 +54,14 @@ export async function findViewSection(name: ViewSectionType) {
     );
     const views =
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
+    console.log("Views:", views.length);
     for (const v of views) {
-        const title = await v.getTitle();
+        const title = await v.elem.getText();
+        console.log("View title:", title);
         if (title === null) {
             continue;
         }
-        if (title.toUpperCase() === name) {
+        if (title.toUpperCase().includes(name)) {
             return v;
         }
     }
@@ -335,28 +350,15 @@ export async function waitForNotification(message: string, action?: string) {
     );
 }
 
-export async function waitForDeployment() {
+export async function waitForDeployment(outputView: OutputView) {
     console.log("Waiting for deployment to finish");
-    const workbench = await driver.getWorkbench();
+    await browser.executeWorkbench(async (vscode) => {
+        await vscode.commands.executeCommand("workbench.panel.output.focus");
+    });
+    await selectOutputChannel(outputView, "Databricks Bundle Logs");
     await browser.waitUntil(
         async () => {
             try {
-                await browser.executeWorkbench(async (vscode) => {
-                    await vscode.commands.executeCommand(
-                        "workbench.panel.output.focus"
-                    );
-                });
-                const outputView = await workbench
-                    .getBottomBar()
-                    .openOutputView();
-
-                if (
-                    (await outputView.getCurrentChannel()) !==
-                    "Databricks Bundle Logs"
-                ) {
-                    await outputView.selectChannel("Databricks Bundle Logs");
-                }
-
                 const logs = (await outputView.getText()).join("");
                 console.log("------------ Bundle Output ------------");
                 console.log(logs);
@@ -375,4 +377,23 @@ export async function waitForDeployment() {
                 "Can't find 'Bundle deployed successfully' message in output channel",
         }
     );
+}
+
+export async function getActionButton(item: TreeItem, label: string) {
+    const actions = await item.getActionButtons();
+    if (actions.length > 0) {
+        for (const item of actions) {
+            console.log("Checking action button:", item.getLabel());
+            console.log(
+                "Action button element:",
+                await (await item.elem).getHTML()
+            );
+            const itemLabel =
+                item.getLabel() ?? (await item.elem.getAttribute("aria-label"));
+            if (itemLabel.indexOf(label) > -1) {
+                return item;
+            }
+        }
+    }
+    return undefined;
 }

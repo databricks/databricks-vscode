@@ -51,10 +51,22 @@ describe("Run files", async function () {
         await executeCommandWhenAvailable("Databricks: Upload and Run File");
         await browser.waitUntil(async () => {
             const notifications = await workbench.getNotifications();
+            console.log("Notifications:", notifications.length);
             for (const notification of notifications) {
                 const message = await notification.getMessage();
+                console.log("Message:", message);
                 if (message.includes("Uploading bundle assets")) {
-                    await notification.takeAction("Cancel");
+                    const elements = await notification.actions$.$$(
+                        notification.locators.action
+                    );
+                    console.log("Elements:", elements.length);
+                    for (const element of elements) {
+                        const text = await element.getText();
+                        if (text === "Cancel") {
+                            await element.click();
+                            break;
+                        }
+                    }
                     return true;
                 }
             }
