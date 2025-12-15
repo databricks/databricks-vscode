@@ -1,8 +1,10 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getActionButton,
     getUniqueResourceName,
     getViewSection,
+    selectOutputChannel,
     waitForDeployment,
     waitForLogin,
     waitForTreeItems,
@@ -65,7 +67,7 @@ describe("Deploy and run job", async function () {
 
     it("should deploy and run the current job", async () => {
         const outputView = await workbench.getBottomBar().openOutputView();
-        await outputView.selectChannel("Databricks Bundle Logs");
+        await selectOutputChannel(outputView, "Databricks Bundle Logs");
         await outputView.clearText();
 
         const jobItem = await getResourceViewItem(
@@ -75,7 +77,8 @@ describe("Deploy and run job", async function () {
         );
         assert(jobItem, `Job ${jobName} not found in resource explorer`);
 
-        const deployAndRunButton = await jobItem.getActionButton(
+        const deployAndRunButton = await getActionButton(
+            jobItem,
             "Deploy the bundle and run the job"
         );
         assert(deployAndRunButton, "Deploy and run button not found");
