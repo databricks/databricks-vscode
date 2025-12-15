@@ -4,9 +4,7 @@
 
 ## (2025-12-15)
 
--   [WIP] Fix e2e tests (#1812) ([f468d9f](https://github.com/databricks/databricks-vscode/commit/f468d9f)), closes [#1812](https://github.com/databricks/databricks-vscode/issues/1812)
--   Bump Node.js and TypeScript to version 22/ES2022 (#1806) ([5563d38](https://github.com/databricks/databricks-vscode/commit/5563d38)), closes [#1806](https://github.com/databricks/databricks-vscode/issues/1806)
--   Update Databricks CLI to v0.280.0 (#1819) ([a5bdf87](https://github.com/databricks/databricks-vscode/commit/a5bdf87)), closes [#1819](https://github.com/databricks/databricks-vscode/issues/1819)
+-   Update Databricks CLI to v0.280.0
 
 # Release: v2.10.3
 
