@@ -81,7 +81,7 @@ jobs:
         GH_TOKEN: ${{ steps.generate-token.outputs.token }}
       run: |
         gh workflow run vscode-isolated-pr.yml -R ${{ secrets.ORG_NAME }}/${{secrets.REPO_NAME}} \
-        --ref main \
+        --ref deco-26060-vscode-checks-api \
         -f pull_request_number=${{ github.event.pull_request.number }} \
         -f commit_sha=${{ github.event.pull_request.head.sha }} \
         -f check_run_id=${{ steps.create-check.outputs.check_run_id }}
