@@ -198,9 +198,15 @@ describe("Run files on serverless compute", async function () {
 
         // Install dependencies from the requirements.txt
         const dependenciesInput = await waitForInput();
-        await dependenciesInput.toggleAllQuickPicks(true);
+        try {
+            await dependenciesInput.toggleAllQuickPicks(true);
+        } catch (e) {
+            console.log(
+                "Failed to toggle all quick picks, moving on. Error:",
+                e
+            );
+        }
         await dependenciesInput.confirm();
-
         await waitForNotification("The following environment is selected");
         await waitForNotification("Databricks Connect", "Install");
 

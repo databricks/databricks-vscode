@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.10.3",
+    "version": "2.10.4",
     "engines": {
         "vscode": "^1.101.0",
         "node": ">=22.0"
@@ -1150,7 +1150,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.266.0"
+        "version": "0.280.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
