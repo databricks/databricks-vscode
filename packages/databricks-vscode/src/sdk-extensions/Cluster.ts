@@ -10,9 +10,9 @@ import {
     compute,
     CancellationToken,
     logging,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {ExecutionContext} from "./ExecutionContext";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {Context, context} from "@databricks/sdk-experimental/dist/context";
 
 const {ExposedLoggers, withLogContext} = logging;
 

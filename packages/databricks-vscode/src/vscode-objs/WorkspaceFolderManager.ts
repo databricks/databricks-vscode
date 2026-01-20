@@ -8,7 +8,7 @@ import {
 } from "vscode";
 import {CustomWhenContext} from "./CustomWhenContext";
 import {StateStorage} from "./StateStorage";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {Loggers} from "../logger";
 
 export class WorkspaceFolderManager implements Disposable {

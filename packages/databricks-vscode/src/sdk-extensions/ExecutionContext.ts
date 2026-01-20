@@ -4,7 +4,7 @@ import {
     Time,
     compute,
     retries,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {Cluster} from "./Cluster";
 import {Command, CommandWithResult, StatusUpdateListener} from "./Command";
 

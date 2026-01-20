@@ -4,7 +4,7 @@ import {
 } from "./types";
 import {TreeItemCollapsibleState} from "vscode";
 import {ContextUtils, RunStateUtils} from "./utils";
-import {jobs} from "@databricks/databricks-sdk";
+import {jobs} from "@databricks/sdk-experimental";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {getSimplifiedJobRunState} from "./utils/RunStateUtils";

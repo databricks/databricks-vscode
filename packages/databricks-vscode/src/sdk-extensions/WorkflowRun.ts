@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiClient, CancellationToken, jobs} from "@databricks/databricks-sdk";
-import {SubmitRun, SubmitTask} from "@databricks/databricks-sdk/dist/apis/jobs";
+import {ApiClient, CancellationToken, jobs} from "@databricks/sdk-experimental";
+import {
+    SubmitRun,
+    SubmitTask,
+} from "@databricks/sdk-experimental/dist/apis/jobs";
 
 export class WorkflowRun {
     constructor(

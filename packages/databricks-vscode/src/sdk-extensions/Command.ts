@@ -5,7 +5,7 @@ import {
     retries,
     retry,
     compute,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {ExecutionContext} from "./ExecutionContext";
 
 interface CommandErrorParams {
