@@ -4,7 +4,7 @@ import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {
     EventLevel,
     PipelineEvent,
-} from "@databricks/databricks-sdk/dist/apis/pipelines";
+} from "@databricks/sdk-experimental/dist/apis/pipelines";
 
 export class PipelineEventTreeNode<T> extends TreeItemTreeNode<T> {
     constructor(

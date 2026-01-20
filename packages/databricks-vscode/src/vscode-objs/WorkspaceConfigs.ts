@@ -1,5 +1,5 @@
 import {ConfigurationTarget, workspace} from "vscode";
-import {Time, TimeUnits} from "@databricks/databricks-sdk";
+import {Time, TimeUnits} from "@databricks/sdk-experimental";
 
 export const workspaceConfigs = {
     get maxFieldLength() {

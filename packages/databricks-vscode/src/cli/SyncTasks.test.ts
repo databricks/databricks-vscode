@@ -1,4 +1,4 @@
-import "@databricks/databricks-sdk";
+import "@databricks/sdk-experimental";
 import * as assert from "assert";
 import {instance, mock, when} from "ts-mockito";
 import {Uri} from "vscode";

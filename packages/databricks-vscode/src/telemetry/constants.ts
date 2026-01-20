@@ -1,4 +1,4 @@
-import {AuthType} from "@databricks/databricks-sdk";
+import {AuthType} from "@databricks/sdk-experimental";
 /** The production application insights instrumentation key for Databricks. */
 export const PROD_APP_INSIGHTS_CONFIGURATION_KEY =
     "ebe191c5-f06b-4189-b68c-34fb5fbdb3f0";

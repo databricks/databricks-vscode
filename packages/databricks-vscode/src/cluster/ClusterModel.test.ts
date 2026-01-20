@@ -1,8 +1,19 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {mock, when, anything, anyString, instance, spy} from "ts-mockito";
-import {ApiClient, WorkspaceClient, compute} from "@databricks/databricks-sdk";
+import {
+    mock,
+    when,
+    anything,
+    instance,
+    spy,
+    objectContaining,
+} from "ts-mockito";
+import {
+    ApiClient,
+    WorkspaceClient,
+    compute,
+} from "@databricks/sdk-experimental";
 import {Cluster} from "../sdk-extensions";
 import {ClusterModel} from "./ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -44,9 +55,10 @@ describe(__filename, () => {
 
         when<compute.ListClustersResponse>(
             mockedApiClient.request(
-                anyString(),
-                "GET",
-                anything(),
+                objectContaining({
+                    path: "/api/2.0/clusters/list",
+                    method: "GET",
+                }),
                 anything()
             ) as Promise<compute.ListClustersResponse>
         ).thenResolve(mockListClustersResponse);

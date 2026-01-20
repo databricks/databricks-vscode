@@ -21,7 +21,7 @@ import {
     ProfileAuthProvider,
 } from "./auth/AuthProvider";
 import {FileUtils, UrlUtils} from "../utils";
-import {AuthType as SdkAuthType} from "@databricks/databricks-sdk";
+import {AuthType as SdkAuthType} from "@databricks/sdk-experimental";
 import {randomUUID} from "crypto";
 import ini from "ini";
 import {appendFile, copyFile} from "fs/promises";

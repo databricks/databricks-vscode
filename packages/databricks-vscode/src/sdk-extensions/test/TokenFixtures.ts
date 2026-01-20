@@ -1,4 +1,4 @@
-import {CancellationToken} from "@databricks/databricks-sdk";
+import {CancellationToken} from "@databricks/sdk-experimental";
 
 export class TokenFixture implements CancellationToken {
     private listeners: Array<(e?: any) => any> = [];

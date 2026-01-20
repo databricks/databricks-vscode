@@ -12,7 +12,7 @@ import {
 } from "vscode";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
-import {jobs} from "@databricks/databricks-sdk";
+import {jobs} from "@databricks/sdk-experimental";
 import {TaskRunStatusTreeNode} from "./TaskRunStatusTreeNode";
 import {ContextUtils} from "./utils";
 import {BundleRemoteState} from "../../bundle/models/BundleRemoteStateModel";

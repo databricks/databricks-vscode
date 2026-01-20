@@ -6,7 +6,7 @@ import {
     TerminalLocation,
     commands,
 } from "vscode";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {LoginWizard} from "../configuration/LoginWizard";

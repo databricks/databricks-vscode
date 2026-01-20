@@ -4,7 +4,7 @@ import {
     ProductVersion,
     WorkspaceClient,
     logging,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {Disposable, window} from "vscode";
 import {DatabricksCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";

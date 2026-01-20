@@ -6,8 +6,8 @@ import {
     BundleResourceExplorerTreeItem,
     BundleResourceExplorerTreeNode,
 } from "../types";
-import {GetUpdateResponse} from "@databricks/databricks-sdk/dist/apis/pipelines";
-import {Run} from "@databricks/databricks-sdk/dist/apis/jobs";
+import {GetUpdateResponse} from "@databricks/sdk-experimental/dist/apis/pipelines";
+import {Run} from "@databricks/sdk-experimental/dist/apis/jobs";
 
 export type SimplifiedRunState =
     | "Terminated"

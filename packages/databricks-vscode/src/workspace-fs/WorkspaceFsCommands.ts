@@ -1,10 +1,10 @@
-import {ApiError, logging} from "@databricks/databricks-sdk";
+import {ApiError, logging} from "@databricks/sdk-experimental";
 import {
     WorkspaceFsDir,
     WorkspaceFsEntity,
     WorkspaceFsUtils,
 } from "../sdk-extensions";
-import {context, Context} from "@databricks/databricks-sdk/dist/context";
+import {context, Context} from "@databricks/sdk-experimental/dist/context";
 import {Disposable, window} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";

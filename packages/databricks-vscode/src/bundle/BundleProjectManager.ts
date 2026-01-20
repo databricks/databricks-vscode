@@ -5,7 +5,7 @@ import os from "node:os";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {BundleFileSet, getSubProjects} from "./BundleFileSet";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
 import {CachedValue} from "../locking/CachedValue";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
