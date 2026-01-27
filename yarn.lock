@@ -343,7 +343,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
-    "@databricks/sdk-experimental": ^0.15.0
+    "@databricks/sdk-experimental": ^0.16.0
     "@types/vscode": 1.86.0
     databricks: "workspace:^"
     eslint: ^8.55.0
@@ -368,15 +368,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@databricks/sdk-experimental@npm:^0.15.0":
-  version: 0.15.0
-  resolution: "@databricks/sdk-experimental@npm:0.15.0"
+"@databricks/sdk-experimental@npm:^0.16.0":
+  version: 0.16.0
+  resolution: "@databricks/sdk-experimental@npm:0.16.0"
   dependencies:
     google-auth-library: ^10.5.0
     ini: ^6.0.0
     reflect-metadata: ^0.2.2
     semver: ^7.7.3
-  checksum: 800bbd1d6ad62e940a8f2b0d94e9258b96bf216f9b237973b7afa2f6e2146043c7f56c30482c04d4586fe70f22a7af6c2e69d26ee358f469c1a2f50ba7024f5e
+  checksum: 621cbb34e260a902b46c67ae88a00184985679d10ee450dfaa297d4fb7baccca70d14af3fca2e66d333edd5d0304497fbb2219de231162e62b3293c5bd162933
   languageName: node
   linkType: hard
 
@@ -3745,7 +3745,7 @@ __metadata:
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
     "@databricks/databricks-vscode-types": "workspace:^"
-    "@databricks/sdk-experimental": ^0.15.0
+    "@databricks/sdk-experimental": ^0.16.0
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^11.2.2
     "@types/bcryptjs": ^2.4.6
