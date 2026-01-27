@@ -1188,7 +1188,7 @@
     },
     "dependencies": {
         "@databricks/databricks-vscode-types": "workspace:^",
-        "@databricks/sdk-experimental": "^0.15.0",
+        "@databricks/sdk-experimental": "^0.16.0",
         "@types/lodash": "^4.14.202",
         "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",
