@@ -1,3 +1,11 @@
+# Release: v2.10.5
+
+## packages/databricks-vscode-types
+
+## (2026-01-29)
+
+-   Use public @databricks/sdk-experimental package
+
 # Release: v2.10.4
 
 ## packages/databricks-vscode-types
