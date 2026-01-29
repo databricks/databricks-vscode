@@ -4,10 +4,7 @@
 
 ## (2026-01-29)
 
--   Bump JS SDK to 0.16.0 (#1832) ([dbb5db9](https://github.com/databricks/databricks-vscode/commit/dbb5db9)), closes [#1832](https://github.com/databricks/databricks-vscode/issues/1832)
--   Update Databricks CLI to v0.285.0 (#1831) ([5123120](https://github.com/databricks/databricks-vscode/commit/5123120)), closes [#1831](https://github.com/databricks/databricks-vscode/issues/1831)
--   Update Databricks CLI to v0.286.0 (#1833) ([1d8e469](https://github.com/databricks/databricks-vscode/commit/1d8e469)), closes [#1833](https://github.com/databricks/databricks-vscode/issues/1833)
--   Use public @databricks/sdk-experimental package (#1805) ([2f38ebd](https://github.com/databricks/databricks-vscode/commit/2f38ebd)), closes [#1805](https://github.com/databricks/databricks-vscode/issues/1805)
+-   Update Databricks CLI to v0.286.0
 
 # Release: v2.10.4
 
