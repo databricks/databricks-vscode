@@ -404,10 +404,17 @@ export class CliWrapper {
             return [];
         }
 
-        let profiles = JSON.parse(res.stdout).profiles || [];
+        let profiles = [];
+        try {
+            profiles = JSON.parse(res.stdout).profiles || [];
+        } catch (e: unknown) {
+            ctx?.logger?.error("Failed to parse profiles:", e);
+        }
 
-        // filter out account profiles
-        profiles = profiles.filter((p: any) => !p.account_id);
+        // Filter out account-only profiles
+        // profiles = profiles.filter((p: any) => {
+        //     return !p.account_id || (p.account_id && p.workspace_id);
+        // });
 
         const result = [];
         let hasError = false;

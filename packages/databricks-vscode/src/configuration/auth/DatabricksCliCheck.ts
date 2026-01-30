@@ -27,10 +27,13 @@ export class DatabricksCliCheck implements Disposable {
         this.disposables = [];
     }
 
-    async check(cancellationToken?: CancellationToken): Promise<boolean> {
+    async check(
+        profile?: string,
+        cancellationToken?: CancellationToken
+    ): Promise<boolean> {
         const steps: Record<StepName, Step<boolean, StepName>> = {
             tryLogin: async () => {
-                if (await this.tryLogin(cancellationToken)) {
+                if (await this.tryLogin(profile, cancellationToken)) {
                     return {type: "success", result: true};
                 } else {
                     return {type: "next", next: "login"};
@@ -38,7 +41,7 @@ export class DatabricksCliCheck implements Disposable {
             },
             login: async () => {
                 try {
-                    await this.login(cancellationToken);
+                    await this.login(profile, cancellationToken);
                 } catch (e: any) {
                     return {
                         type: "error",
@@ -77,6 +80,7 @@ export class DatabricksCliCheck implements Disposable {
     }
 
     private async tryLogin(
+        profile?: string,
         cancellationToken?: CancellationToken
     ): Promise<boolean> {
         const workspaceClient = new WorkspaceClient(
@@ -84,6 +88,7 @@ export class DatabricksCliCheck implements Disposable {
                 host: this.authProvider.host.toString(),
                 authType: "databricks-cli",
                 databricksCliPath: this.authProvider.cliPath,
+                profile,
             },
             {
                 product: "databricks-vscode",
@@ -102,12 +107,21 @@ export class DatabricksCliCheck implements Disposable {
         return true;
     }
 
-    private async login(cancellationToken?: CancellationToken): Promise<void> {
+    private async login(
+        profile?: string,
+        cancellationToken?: CancellationToken
+    ): Promise<void> {
         try {
             const host = this.authProvider.host.toString().replace(/\/+$/, "");
+            const args = ["auth", "login", "--experimental-is-unified-host"];
+            if (profile) {
+                args.push("--profile", profile);
+            } else {
+                args.push("--host", host);
+            }
             await execFile(
                 this.authProvider.cliPath,
-                ["auth", "login", "--host", host],
+                args,
                 {},
                 cancellationToken
             );

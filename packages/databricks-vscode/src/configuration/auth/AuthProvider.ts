@@ -64,11 +64,15 @@ export abstract class AuthProvider {
      * This function should not throw an error and each implementing class must
      * handle it's own error messages and retry loops.
      */
-    protected abstract _check(token?: CancellationToken): Promise<boolean>;
+    protected abstract _check(
+        profile?: string,
+        token?: CancellationToken
+    ): Promise<boolean>;
 
     public async check(
         force = false,
         showProgress = true,
+        profile?: string,
         cancellationToken?: CancellationToken
     ): Promise<boolean> {
         if (force) {
@@ -79,7 +83,7 @@ export abstract class AuthProvider {
         }
 
         const checkFn = async (token?: CancellationToken) => {
-            this.checked = await this._check(token);
+            this.checked = await this._check(profile, token);
         };
 
         if (!showProgress) {
@@ -128,6 +132,7 @@ export abstract class AuthProvider {
 
         return this.checked;
     }
+
     async getSdkConfig(): Promise<Config> {
         const config = this._getSdkConfig();
         await config.ensureResolved();
@@ -260,7 +265,10 @@ export class ProfileAuthProvider extends AuthProvider {
         return ProfileAuthProvider.getSdkConfig(this.profile);
     }
 
-    protected async _check(cancellationToken?: CancellationToken) {
+    protected async _check(
+        profile?: string,
+        cancellationToken?: CancellationToken
+    ) {
         while (cancellationToken?.isCancellationRequested !== true) {
             try {
                 const sdkConfig = await this.getSdkConfig();
@@ -278,6 +286,7 @@ export class ProfileAuthProvider extends AuthProvider {
                 return await authProvider.check(
                     false,
                     false,
+                    this.profile,
                     cancellationToken
                 );
             } catch (e) {
@@ -348,10 +357,11 @@ export class DatabricksCliAuthProvider extends AuthProvider {
     }
 
     protected async _check(
+        profile?: string,
         cancellationToken?: CancellationToken
     ): Promise<boolean> {
         const databricksCliCheck = new DatabricksCliCheck(this);
-        return databricksCliCheck.check(cancellationToken);
+        return databricksCliCheck.check(profile, cancellationToken);
     }
 }
 
@@ -416,6 +426,7 @@ export class AzureCliAuthProvider extends AuthProvider {
     }
 
     protected async _check(
+        profile?: string,
         cancellationToken?: CancellationToken
     ): Promise<boolean> {
         const cliCheck = new AzureCliCheck(this);
@@ -459,6 +470,7 @@ export class PersonalAccessTokenAuthProvider extends AuthProvider {
         };
     }
     protected async _check(
+        profile?: string,
         cancellationToken?: CancellationToken
     ): Promise<boolean> {
         while (cancellationToken?.isCancellationRequested !== true) {
