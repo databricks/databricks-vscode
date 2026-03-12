@@ -50,6 +50,7 @@ import {
     BundleFileSet,
     registerBundleAutocompleteProvider,
 } from "./bundle";
+import {BundleLSPClient} from "./bundle/BundleLSPClient";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
 import {ConfigModel} from "./configuration/models/ConfigModel";
@@ -889,6 +890,20 @@ export async function activate(
             e
         );
     });
+
+    // Start the DABs LSP client for deployment-aware features (document links, hover).
+    const bundleLSPClient = new BundleLSPClient(cli);
+    context.subscriptions.push(bundleLSPClient);
+
+    const workspaceFolder = workspace.workspaceFolders?.[0]?.uri;
+    if (workspaceFolder) {
+        bundleLSPClient.start(workspaceFolder).catch((e) => {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Failed to start bundle LSP: ",
+                e
+            );
+        });
+    }
 
     setDbnbCellLimits(workspaceFolderManager, connectionManager).catch((e) => {
         logging.NamedLogger.getOrCreate(Loggers.Extension).error(
