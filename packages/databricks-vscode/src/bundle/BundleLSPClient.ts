@@ -8,7 +8,7 @@ import {CliWrapper} from "../cli/CliWrapper";
 
 /**
  * Manages the lifecycle of the DABs Language Server Protocol client.
- * Spawns `databricks bundle lsp` and connects via stdio to provide
+ * Spawns `databricks experimental bundle-lsp` and connects via stdio to provide
  * deployment-aware features (document links, hover) for bundle YAML files.
  */
 export class BundleLSPClient implements Disposable {
@@ -23,7 +23,7 @@ export class BundleLSPClient implements Disposable {
         // Stop existing client if running.
         await this.stop();
 
-        const args = ["bundle", "lsp"];
+        const args = ["experimental", "bundle-lsp"];
         if (target) {
             args.push("--target", target);
         }
@@ -68,7 +68,7 @@ export class BundleLSPClient implements Disposable {
 
         this.client = new LanguageClient(
             "databricks-bundle-lsp",
-            "Databricks Bundle LSP",
+            "Databricks Experimental Bundle LSP",
             serverOptions,
             clientOptions
         );
