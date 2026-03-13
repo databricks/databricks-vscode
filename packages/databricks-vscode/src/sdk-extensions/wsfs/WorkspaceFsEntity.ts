@@ -122,7 +122,10 @@ export abstract class WorkspaceFsEntity {
             return this;
         } catch (e: unknown) {
             if (e instanceof ApiError) {
-                if (e.errorCode === "RESOURCE_DOES_NOT_EXIST") {
+                if (
+                    e.errorCode === "RESOURCE_DOES_NOT_EXIST" ||
+                    e.statusCode === 404
+                ) {
                     return undefined;
                 }
             }
@@ -154,7 +157,8 @@ export abstract class WorkspaceFsEntity {
         } catch (e) {
             if (
                 e instanceof ApiError &&
-                e.errorCode === "RESOURCE_DOES_NOT_EXIST"
+                (e.errorCode === "RESOURCE_DOES_NOT_EXIST" ||
+                    e.statusCode === 404)
             ) {
                 return undefined;
             }
