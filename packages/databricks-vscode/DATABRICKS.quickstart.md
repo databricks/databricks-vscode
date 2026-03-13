@@ -6,7 +6,7 @@ The Databricks extension for Visual Studio Code enables you to connect to your r
 
 # Features
 
--   Define, deploy, and run Databricks Asset Bundles to apply CI/CD patterns to your Databricks jobs, Delta Live Tables pipelines, and MLOps Stacks.
+-   Define, deploy, and run Declarative Automation Bundles to apply CI/CD patterns to your Databricks jobs, Delta Live Tables pipelines, and MLOps Stacks.
 -   Run local Python code files on Databricks clusters.
 -   Run notebooks and local Python code files as Databricks jobs.
 -   Set up and configure your debugging environment and Databricks Connect using a simple checklist that triggers selection dialogs.
@@ -21,9 +21,9 @@ The Databricks extension for Visual Studio Code enables you to connect to your r
         -   [Running Python files](#running-pyspark-code)
         -   [Running Notebooks as Workflows](#running-code-as-workflows)
         -   [Debugging and running Notebooks cell-by-cell using Databricks Connect](#running-notebook)
-    -   [Deploying Databricks Asset Bundles](#dabs)
-        -   [What are Databricks Asset Bundles?](#what-is-dab)
-        -   [Deploying Databricks Asset Bundles](#deploy-dab)
+    -   [Deploying Declarative Automation Bundles](#dabs)
+        -   [What are Declarative Automation Bundles?](#what-is-dab)
+        -   [Deploying Declarative Automation Bundles](#deploy-dab)
         -   [Run a Job or Pipeline](#deploy-run-job-pipeline)
 -   [Changes from v1](#changes-from-v1)
     -   [Migrate a project from Databricks extension v1 to v2](#migrate-from-v1)
@@ -46,7 +46,7 @@ The Databricks extension for Visual Studio Code enables you to connect to your r
 
 ![create-databricks-project](./images/dabs_vsc.gif)
 
-If your folder has multiple [Databricks Asset Bundles](#dabs), you can select which one to use by clicking "Open Existing Databricks project" button and selecting the desired project.
+If your folder has multiple [Declarative Automation Bundles](#dabs), you can select which one to use by clicking "Open Existing Databricks project" button and selecting the desired project.
 
 ## <a id="select-cluster"></a>Select a cluster
 
@@ -84,13 +84,13 @@ This will run the file using the Jobs API on the configured cluster and render t
 
 The extension provides easy setup for cell-by-cell running and debugging notebooks locally using Databricks Connect. For more details on how to set up Databricks Connect, refer to the [full docs](https://docs.databricks.com/en/dev-tools/vscode-ext/notebooks.html).
 
-## <a id="dabs"></a>Deploying Databricks Asset Bundles
+## <a id="dabs"></a>Deploying Declarative Automation Bundles
 
-### <a id="what-is-dab"></a>What are Databricks Asset Bundles?
+### <a id="what-is-dab"></a>What are Declarative Automation Bundles?
 
-Databricks Asset Bundles make it possible to describe Databricks resources such as jobs, pipelines, and notebooks as source files. These source files provide an end-to-end definition of a project, including how it should be structured, tested, and deployed, which makes it easier to collaborate on projects during active development. For more information, see [Databricks Asset Bundles](https://docs.databricks.com/en/dev-tools/bundles/index.html).
+Declarative Automation Bundles make it possible to describe Databricks resources such as jobs, pipelines, and notebooks as source files. These source files provide an end-to-end definition of a project, including how it should be structured, tested, and deployed, which makes it easier to collaborate on projects during active development. For more information, see [Declarative Automation Bundles](https://docs.databricks.com/en/dev-tools/bundles/index.html).
 
-### <a id="deploy-dab"></a>Deploying Databricks Asset Bundles?
+### <a id="deploy-dab"></a>Deploying Declarative Automation Bundles?
 
 1. In the Databricks extension panel, find the "Bundle Resource Explorer" view.
 2. Click on the "Deploy" button.
@@ -100,7 +100,7 @@ Databricks Asset Bundles make it possible to describe Databricks resources such 
 
 ### <a id="deploy-run-job-pipeline"></a>Run a Job or Pipeline
 
-You can run a job or a pipeline managed by Databricks Asset Bundles, from the "Bundle Resource Explorer" view.
+You can run a job or a pipeline managed by Declarative Automation Bundles, from the "Bundle Resource Explorer" view.
 
 1. In the Databricks extension panel, find the "Bundle Resource Explorer" view.
 2. Hover over the job or pipeline that you want to run.
@@ -121,7 +121,7 @@ By default, a job is run using a jobs cluster. You can change this behavior and 
 
 ## <a id="migrate-from-v1"></a>Migrate a project from Databricks extension v1 to v2
 
-If you are using Databricks extension v1, your project will automatically be migrated a [Databricks Asset Bundle](#what-is-dab) when you open it in v2. The migration process will create a new [`databricks.yml`](#what-is-databricksyml) file in the root of your project and move the configurations from the old `.databricks/project.json` to the new `databricks.yml` file.
+If you are using Databricks extension v1, your project will automatically be migrated a [Declarative Automation Bundle](#what-is-dab) when you open it in v2. The migration process will create a new [`databricks.yml`](#what-is-databricksyml) file in the root of your project and move the configurations from the old `.databricks/project.json` to the new `databricks.yml` file.
 
 > **Note**: This means that you will start seeing a `databricks.yml` file in your project root directory and in your version control system change logs. We recommend comitting this file to your version control system.
 
