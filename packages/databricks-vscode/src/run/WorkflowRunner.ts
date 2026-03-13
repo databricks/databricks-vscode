@@ -221,14 +221,18 @@ export class WorkflowRunner implements Disposable {
         try {
             if (e instanceof ApiError) {
                 logger.error("API error while running workflow:", e.message);
+                const response =
+                    typeof e.response === "string"
+                        ? JSON.parse(e.response)
+                        : e.response;
                 panel.showError({
                     message: e.message,
                     stack:
-                        "error_trace" in e.response
-                            ? new Convert().toHtml(e.response.error_trace)
+                        "error_trace" in response
+                            ? new Convert().toHtml(response.error_trace)
                             : undefined,
                 });
-                panel.showStdoutResult(e.response.logs || "");
+                panel.showStdoutResult(response.logs || "");
             } else {
                 logger.error("Unexpected error while running workflow:", e);
                 panel.showError({
