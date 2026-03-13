@@ -668,10 +668,10 @@ export async function activate(
         bundlePipelinesManager,
         decorationProvider,
         window.registerFileDecorationProvider(decorationProvider),
-        window.registerTreeDataProvider(
-            "dabsResourceExplorerView",
-            bundleResourceExplorerTreeDataProvider
-        ),
+        window.createTreeView("dabsResourceExplorerView", {
+            treeDataProvider: bundleResourceExplorerTreeDataProvider,
+            showCollapseAll: true,
+        }),
         telemetry.registerCommand(
             "databricks.bundle.refreshRemoteState",
             bundleCommands.refreshCommand,

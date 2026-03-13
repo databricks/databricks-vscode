@@ -23,7 +23,7 @@ export class TaskHeaderTreeNode implements BundleResourceExplorerTreeNode {
             contextValue: "task_header",
             collapsibleState:
                 this.children.length > 0
-                    ? TreeItemCollapsibleState.Expanded
+                    ? TreeItemCollapsibleState.Collapsed
                     : TreeItemCollapsibleState.None,
         };
     }
