@@ -106,6 +106,7 @@ describe("Deploy and run pipeline", async function () {
             console.log(`Run status item: ${label}`);
             labels.push(label);
         }
+        console.log(`Labels: ${labels}`);
         assert(labels.includes("Start Time"), "Start Time label not found");
         assert(
             labels.includes("Dataset 'test_view' defined as VIEW.") ||
@@ -143,6 +144,7 @@ describe("Deploy and run pipeline", async function () {
             datasets.push({label, description, item});
         }
         datasets.sort((a, b) => (a.label > b.label ? 1 : -1));
+        console.log(`Datasets: ${datasets}`);
         assert.strictEqual(datasets.length, 2);
         assert.strictEqual(datasets[0].label, "test_table");
         assert.strictEqual(datasets[0].description, "materialized view");
@@ -158,6 +160,7 @@ describe("Deploy and run pipeline", async function () {
             "Datasets",
             "test_table"
         );
+        console.log(`Items: ${schemaItems}`);
         assert.strictEqual(schemaItems.length, 1);
         assert.strictEqual(await schemaItems[0].getLabel(), "1");
         assert.strictEqual(await schemaItems[0].getDescription(), "integer");
