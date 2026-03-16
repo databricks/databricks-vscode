@@ -6,7 +6,7 @@ The extension is available from the [Visual Studio Marketplace](https://marketpl
 
 ## Features
 
--   Define, deploy, and run Declarative Automation Bundles to apply CI/CD patterns to your Databricks jobs, Delta Live Tables pipelines, and MLOps Stacks.
+-   Define, deploy, and run Databricks Asset Bundles to apply CI/CD patterns to your Databricks jobs, Delta Live Tables pipelines, and MLOps Stacks.
 -   Run local Python code files on Databricks clusters.
 -   Run notebooks and local Python code files as Databricks jobs.
 -   Set up and configure your debugging environment and Databricks Connect.

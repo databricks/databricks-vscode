@@ -205,7 +205,7 @@ export class BundleProjectManager {
             recordEvent({success: false});
             this.setPendingManualMigration();
             const message =
-                "Failed to perform automatic migration to Declarative Automation Bundles.";
+                "Failed to perform automatic migration to Databricks Asset Bundles.";
             this.logger.error(message, error);
             const errorMessage = (error as Error)?.message ?? "Unknown Error";
             window.showErrorMessage(`${message} ${errorMessage}`);
@@ -262,7 +262,7 @@ export class BundleProjectManager {
 
     @onError({
         popup: {
-            prefix: "Failed to migrate the project to Declarative Automation Bundles",
+            prefix: "Failed to migrate the project to Databricks Asset Bundles",
         },
     })
     public async startManualMigration() {
