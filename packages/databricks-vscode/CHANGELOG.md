@@ -1,3 +1,11 @@
+# Release: v2.10.6
+
+## packages/databricks-vscode
+
+## (2026-03-16)
+
+-   Handle 404 from @databricks/sdk-experimental (#1855) ([0093352](https://github.com/databricks/databricks-vscode/commit/0093352)), closes [#1843](https://github.com/databricks/databricks-vscode/issues/1843) [#1853](https://github.com/databricks/databricks-vscode/issues/1853) [#1856](https://github.com/databricks/databricks-vscode/issues/1856)
+
 # Release: v2.10.5
 
 ## packages/databricks-vscode
