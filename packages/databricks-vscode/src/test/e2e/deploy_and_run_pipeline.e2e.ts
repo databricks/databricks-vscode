@@ -145,13 +145,13 @@ describe("Deploy and run pipeline", async function () {
         datasets.sort((a, b) => (a.label > b.label ? 1 : -1));
 
         assert.strictEqual(datasets.length, 2);
+        assert.strictEqual(datasets[0].label, "test_view");
+        assert.strictEqual(datasets[0].description, "view");
         assert.strictEqual(
-            datasets[0].label,
+            datasets[1].label,
             "vscode_integration_test.test_table"
         );
-        assert.strictEqual(datasets[0].description, "materialized view");
-        assert.strictEqual(datasets[1].label, "test_view");
-        assert.strictEqual(datasets[1].description, "view");
+        assert.strictEqual(datasets[1].description, "materialized view");
     });
 
     it("should show expected schema definitions for a dataset", async () => {
@@ -162,7 +162,6 @@ describe("Deploy and run pipeline", async function () {
             "Datasets",
             "vscode_integration_test.test_table"
         );
-        console.log(`Items: ${schemaItems}`);
         assert.strictEqual(schemaItems.length, 1);
         assert.strictEqual(await schemaItems[0].getLabel(), "1");
         assert.strictEqual(await schemaItems[0].getDescription(), "integer");
