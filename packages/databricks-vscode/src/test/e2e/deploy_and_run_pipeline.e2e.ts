@@ -1,9 +1,7 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
-    getActionButton,
     getViewSection,
-    selectOutputChannel,
     waitForDeployment,
     waitForLogin,
     waitForTreeItems,
@@ -64,7 +62,7 @@ describe("Deploy and run pipeline", async function () {
 
     it("should deploy and run the current pipeline", async () => {
         const outputView = await workbench.getBottomBar().openOutputView();
-        await selectOutputChannel(outputView, "Databricks Bundle Logs");
+        await outputView.selectChannel("Databricks Bundle Logs");
         await outputView.clearText();
 
         const pipelineItem = await getResourceViewItem(
@@ -77,14 +75,13 @@ describe("Deploy and run pipeline", async function () {
             `Pipeline ${pipelineName} not found in resource explorer`
         );
 
-        const deployAndRunButton = await getActionButton(
-            pipelineItem,
+        const deployAndRunButton = await pipelineItem.getActionButton(
             "Deploy the bundle and run the pipeline"
         );
         assert(deployAndRunButton, "Deploy and run button not found");
         await deployAndRunButton.elem.click();
 
-        await waitForDeployment(outputView);
+        await waitForDeployment();
 
         await waitForRunStatus(
             resourceExplorerView,
