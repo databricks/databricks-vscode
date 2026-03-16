@@ -1,3 +1,12 @@
+# Release: v2.10.6
+
+## packages/databricks-vscode
+
+## (2026-03-16)
+
+-   Handle 404 from @databricks/sdk-experimental (#1855) ([0093352](https://github.com/databricks/databricks-vscode/commit/0093352)), closes [#1855](https://github.com/databricks/databricks-vscode/issues/1855) [#1805](https://github.com/databricks/databricks-vscode/issues/1805) [#1853](https://github.com/databricks/databricks-vscode/issues/1853)
+-   Rename "Databricks Asset Bundles" to "Declarative Automation Bundles" (#1857) ([950051d](https://github.com/databricks/databricks-vscode/commit/950051d)), closes [#1857](https://github.com/databricks/databricks-vscode/issues/1857)
+
 # Release: v2.10.5
 
 ## packages/databricks-vscode
