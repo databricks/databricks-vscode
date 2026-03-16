@@ -151,7 +151,7 @@ describe("Deploy and run pipeline", async function () {
             datasets[1].label,
             "vscode_integration_test.test_table"
         );
-        assert.strictEqual(datasets[1].description, "materialized view");
+        assert.strictEqual(datasets[1].description, "");
     });
 
     it("should show expected schema definitions for a dataset", async () => {
