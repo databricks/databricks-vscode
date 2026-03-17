@@ -55,67 +55,67 @@
                 "command": "databricks.connection.logout",
                 "title": "Logout",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
             },
             {
                 "command": "databricks.connection.configureLogin",
                 "icon": "$(gear)",
                 "title": "Sign in to Databricks workspace",
-                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.connection.openDatabricksConfigFile",
                 "title": "Open Databricks configuration file",
-                "enablement": "databricks.context.activated",
+                "enablement": "databricks.context.activated && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.connection.attachCluster",
                 "title": "Attach cluster",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(plug)"
             },
             {
                 "command": "databricks.connection.attachClusterQuickPick",
                 "title": "Configure cluster",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachCluster",
                 "title": "Detach cluster",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(debug-disconnect)"
             },
             {
                 "command": "databricks.cluster.filterByAll",
                 "title": "All",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
             },
             {
                 "command": "databricks.cluster.filterByRunning",
                 "title": "Running",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
             },
             {
                 "command": "databricks.cluster.filterByMe",
                 "title": "Created by me",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
             },
             {
                 "command": "databricks.cluster.refresh",
                 "icon": "$(refresh)",
                 "title": "Refresh",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn"
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
             },
             {
                 "command": "databricks.run.runEditorContentsAsWorkflow",
                 "title": "Run File as Workflow",
                 "category": "Databricks",
-                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": {
                     "dark": "resources/dark/databricks-run-icon.svg",
                     "light": "resources/light/databricks-run-icon.svg"
@@ -125,7 +125,7 @@
                 "command": "databricks.run.runEditorContents",
                 "title": "Upload and Run File",
                 "category": "Databricks",
-                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn && !databricks.context.serverless",
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.loggedIn && !databricks.context.serverless && !databricks.context.remoteMode",
                 "icon": {
                     "dark": "resources/dark/databricks-run-icon.svg",
                     "light": "resources/light/databricks-run-icon.svg"
@@ -134,7 +134,8 @@
             {
                 "command": "databricks.quickstart.open",
                 "title": "Show Quickstart",
-                "category": "Databricks"
+                "category": "Databricks",
+                "enablement": "!databricks.context.remoteMode"
             },
             {
                 "command": "databricks.logs.openFolder",
@@ -144,21 +145,21 @@
             {
                 "command": "databricks.autocomplete.configure",
                 "title": "Configure autocomplete for Databricks globals",
-                "enablement": "databricks.context.activated",
+                "enablement": "databricks.context.activated && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.cluster.start",
                 "title": "Start Cluster",
                 "icon": "$(debug-start)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.cluster.stop",
                 "title": "Stop Cluster",
                 "icon": "$(stop-circle)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
@@ -177,14 +178,14 @@
                 "command": "databricks.wsfs.refresh",
                 "title": "Refresh workspace filesystem view",
                 "icon": "$(refresh)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace && databricks.feature.views.workspace",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace && databricks.feature.views.workspace && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.wsfs.createFolder",
                 "title": "Create Folder",
                 "icon": "$(new-folder)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.feature.views.workspace",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.feature.views.workspace && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
@@ -200,63 +201,63 @@
             {
                 "command": "databricks.notebookInitScript.verify",
                 "title": "Verify Databricks notebook init scripts",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.connection.bundle.selectTarget",
                 "icon": "$(gear)",
                 "title": "Select a Databricks Asset Bundle target",
-                "enablement": "databricks.context.activated",
+                "enablement": "databricks.context.activated && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.selectActiveProjectFolder",
                 "icon": "$(gear)",
                 "title": "Select a Databricks project folder",
-                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.refreshRemoteState",
                 "icon": "$(refresh)",
                 "title": "Refresh remote state",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deploy",
                 "icon": "$(cloud-upload)",
                 "title": "Deploy bundle",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRunFromInput",
                 "icon": "$(run)",
                 "title": "Deploy the bundle and run a resource",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRunJob",
                 "icon": "$(run)",
                 "title": "Deploy the bundle and run the job",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRunPipeline",
                 "icon": "$(run-all)",
                 "title": "Deploy the bundle and run the pipeline",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRunSelectedTables",
                 "icon": "$(run)",
                 "title": "Deploy the bundle and select pipeline tables for partial update",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
@@ -266,40 +267,41 @@
                     "light": "resources/light/check-line-icon.svg"
                 },
                 "title": "Deploy the bundle and validate the pipeline",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.clearPipelineDiagnostics",
                 "icon": "$(clear-all)",
                 "title": "Clear pipeline diagnostics",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.showPipelineEventDetails",
                 "icon": "$(info)",
                 "title": "Show more information",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.cancelRun",
                 "title": "Cancel run",
                 "icon": "$(stop)",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.initNewProject",
                 "icon": "$(new-folder)",
                 "title": "Initialize new project",
-                "category": "Databricks"
+                "category": "Databricks",
+                "enablement": "!databricks.context.remoteMode"
             },
             {
                 "command": "databricks.run.dbconnect.debug",
                 "title": "Debug current file with Databricks Connect",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks",
                 "icon": {
                     "dark": "resources/dark/databricks-run-icon.svg",
@@ -309,7 +311,7 @@
             {
                 "command": "databricks.run.dbconnect.run",
                 "title": "Run current file with Databricks Connect",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks",
                 "icon": {
                     "dark": "resources/dark/databricks-run-icon.svg",
@@ -319,7 +321,7 @@
             {
                 "command": "databricks.bundle.showLogs",
                 "title": "Show bundle logs",
-                "enablement": "databricks.context.activated",
+                "enablement": "databricks.context.activated && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
@@ -332,48 +334,48 @@
                 "command": "databricks.environment.refresh",
                 "title": "Refresh python environment status",
                 "icon": "$(refresh)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.environment.setup",
                 "title": "Setup python environment",
                 "icon": "$(gear)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.environment.selectPythonInterpreter",
                 "title": "Change Python environment",
                 "icon": "$(gear)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.environment.reinstallDBConnect",
                 "title": "Reinstall Databricks Connect",
                 "icon": "$(gear)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.variable.openFile",
                 "title": "Override bundle variables",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.bundle.variable.reset",
                 "title": "Reset bundle variables to default values",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks",
                 "icon": "$(discard)"
             },
             {
                 "command": "databricks.bundle.destroy",
                 "title": "Destroy bundle",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                 "category": "Databricks",
                 "icon": "$(trash)"
             },
@@ -381,33 +383,33 @@
                 "command": "databricks.bundle.forceDeploy",
                 "title": "Force deploy bundle",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode"
             },
             {
                 "command": "databricks.bundle.forceDestroy",
                 "title": "Force destroy bundle",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode"
             },
             {
                 "command": "databricks.sync.start",
                 "title": "Start synchronization",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget && !databricks.context.remoteMode",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.startFull",
                 "title": "Start synchronization (full sync)",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget && !databricks.context.remoteMode",
                 "icon": "$(sync)"
             },
             {
                 "command": "databricks.sync.stop",
                 "title": "Stop synchronization",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget && !databricks.context.remoteMode",
                 "icon": "$(sync-ignored)"
             }
         ],
@@ -428,29 +430,30 @@
                 },
                 {
                     "id": "clusterView",
-                    "when": "databricks.feature.views.cluster",
+                    "when": "databricks.feature.views.cluster && !databricks.context.remoteMode",
                     "name": "Clusters"
                 },
                 {
                     "id": "dabsResourceExplorerView",
                     "name": "Bundle Resource Explorer",
                     "visibility": "visible",
-                    "when": "databricks.context.bundle.isTargetSet"
+                    "when": "databricks.context.bundle.isTargetSet && !databricks.context.remoteMode"
                 },
                 {
                     "id": "dabsVariableView",
                     "name": "Bundle Variables",
                     "visibility": "visible",
-                    "when": "databricks.context.bundle.isTargetSet"
+                    "when": "databricks.context.bundle.isTargetSet && !databricks.context.remoteMode"
                 },
                 {
                     "id": "workspaceFsView",
                     "name": "Workspace explorer",
-                    "when": "databricks.feature.views.workspace"
+                    "when": "databricks.feature.views.workspace && !databricks.context.remoteMode"
                 },
                 {
                     "id": "databricksDocsView",
-                    "name": "Documentation"
+                    "name": "Documentation",
+                    "when": "!databricks.context.remoteMode"
                 }
             ]
         },
@@ -504,12 +507,12 @@
             "view/title": [
                 {
                     "command": "databricks.quickstart.open",
-                    "when": "view == configurationView"
+                    "when": "view == configurationView && !databricks.context.remoteMode"
                 },
                 {
                     "command": "databricks.bundle.initNewProject",
                     "group": "navigation@1",
-                    "when": "view == configurationView"
+                    "when": "view == configurationView && !databricks.context.remoteMode"
                 },
                 {
                     "when": "view == clusterView",
@@ -788,13 +791,13 @@
                 {
                     "submenu": "databricks.run",
                     "group": "navigation@0",
-                    "when": "databricks.context.isActiveFileInActiveWorkspace && databricks.context.showRunAsWorkflow || databricks.context.isActiveFileInActiveWorkspace && resourceExtname == .ipynb"
+                    "when": "!databricks.context.remoteMode && databricks.context.isActiveFileInActiveWorkspace && databricks.context.showRunAsWorkflow || !databricks.context.remoteMode && databricks.context.isActiveFileInActiveWorkspace && resourceExtname == .ipynb"
                 }
             ],
             "databricks.run": [
                 {
                     "command": "databricks.connection.configureLogin",
-                    "when": "databricks.context.activated && !databricks.context.loggedIn",
+                    "when": "databricks.context.activated && !databricks.context.loggedIn && !databricks.context.remoteMode",
                     "group": "1_login@0"
                 },
                 {
@@ -879,7 +882,7 @@
             "explorer/context": [
                 {
                     "submenu": "databricks.run",
-                    "when": "resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow"
+                    "when": "!databricks.context.remoteMode && (resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow)"
                 }
             ]
         },
