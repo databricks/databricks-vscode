@@ -109,6 +109,7 @@ describe("Run files on serverless compute", async function () {
                 "# MAGIC select 1 + 1;",
                 "# MAGIC select 'hello run;'",
                 "# COMMAND ----------",
+                `import os`,
                 `df = _sqldf.toPandas()`,
                 `df.to_json(os.path.join(os.getcwd(), "databricks-run-notebook-output.json"))`,
             ].join("\n")
@@ -118,6 +119,7 @@ describe("Run files on serverless compute", async function () {
             path.join(nestedDir, "databricks-notebook.py"),
             [
                 "# Databricks notebook source",
+                `import os`,
                 `spark.sql('SELECT "hello world"').show()`,
                 "# COMMAND ----------",
                 "# DBTITLE 1,My cell title",
