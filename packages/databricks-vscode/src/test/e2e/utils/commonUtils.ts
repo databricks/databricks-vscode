@@ -42,7 +42,7 @@ export async function findViewSection(name: ViewSectionType) {
     const views =
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
     for (const v of views) {
-        const title = await v.elem.getTitle();
+        const title = await v.getTitle();
         console.log("View title:", title);
         if (title === null) {
             continue;
