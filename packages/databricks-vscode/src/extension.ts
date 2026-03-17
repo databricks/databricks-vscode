@@ -230,24 +230,24 @@ export async function activate(
     // When running inside a Databricks Remote SSH session, activate only the
     // venv and show a placeholder UI. All other features are inapplicable.
     const venvPath = process.env["DATABRICKS_VIRTUAL_ENV"];
-    console.log(
-        "[Databricks] Remote mode check:",
-        `DATABRICKS_REMOTE_ENV=${process.env["DATABRICKS_REMOTE_ENV"]}`,
-        `DATABRICKS_VIRTUAL_ENV=${venvPath ?? "(not set)"}`
-    );
+    logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Remote mode check", {
+        DATABRICKS_REMOTE_ENV: process.env["DATABRICKS_REMOTE_ENV"],
+        DATABRICKS_VIRTUAL_ENV: venvPath ?? "(not set)",
+    });
     if (process.env["DATABRICKS_REMOTE_ENV"] === "1" && venvPath) {
-        console.log("[Databricks] Entering remote mode, venv:", venvPath);
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Entering remote mode", {venvPath});
         customWhenContext.setRemoteMode(true);
 
-        await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
-            venvPath
-        );
-        console.log("[Databricks] Python environment set to:", venvPath);
+        try {
+            await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(venvPath);
+        } catch(e) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error("Failed to update active python environment", e);
+        }
 
         customWhenContext.setActivated(true);
         return undefined;
     }
-    console.log("[Databricks] Remote mode not activated, continuing normal initialization");
+    logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Remote mode not activated, continuing normal initialization");
 
     // manage contexts for experimental features
     function updateFeatureContexts() {
