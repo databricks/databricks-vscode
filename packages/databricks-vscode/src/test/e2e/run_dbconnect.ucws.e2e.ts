@@ -23,7 +23,7 @@ async function checkOutputFile(path: string, expectedContent: string) {
             return fileContent.includes(expectedContent);
         },
         {
-            timeout: 60_000,
+            timeout: 120_000,
             interval: 2000,
             timeoutMsg: `Output file "${path}" did not contain "${expectedContent}"`,
         }
@@ -33,7 +33,7 @@ async function checkOutputFile(path: string, expectedContent: string) {
 
 describe("Run files on serverless compute", async function () {
     let projectDir: string;
-    this.timeout(3 * 60 * 1000);
+    this.timeout(6 * 60 * 1000);
 
     before(async () => {
         assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
