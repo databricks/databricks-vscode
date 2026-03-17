@@ -74,7 +74,6 @@ import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
 import {BundlePipelinesManager} from "./bundle/BundlePipelinesManager";
 import {DocsViewTreeDataProvider} from "./ui/docs-view/DocsViewTreeDataProvider";
-import {RemoteModeDataProvider} from "./ui/configuration-view/RemoteModeDataProvider";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -231,23 +230,24 @@ export async function activate(
     // When running inside a Databricks Remote SSH session, activate only the
     // venv and show a placeholder UI. All other features are inapplicable.
     const venvPath = process.env["DATABRICKS_VIRTUAL_ENV"];
+    console.log(
+        "[Databricks] Remote mode check:",
+        `DATABRICKS_REMOTE_ENV=${process.env["DATABRICKS_REMOTE_ENV"]}`,
+        `DATABRICKS_VIRTUAL_ENV=${venvPath ?? "(not set)"}`
+    );
     if (process.env["DATABRICKS_REMOTE_ENV"] === "1" && venvPath) {
+        console.log("[Databricks] Entering remote mode, venv:", venvPath);
         customWhenContext.setRemoteMode(true);
 
         await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
             venvPath
         );
-
-        context.subscriptions.push(
-            window.registerTreeDataProvider(
-                "configurationView",
-                new RemoteModeDataProvider(venvPath)
-            )
-        );
+        console.log("[Databricks] Python environment set to:", venvPath);
 
         customWhenContext.setActivated(true);
         return undefined;
     }
+    console.log("[Databricks] Remote mode not activated, continuing normal initialization");
 
     // manage contexts for experimental features
     function updateFeatureContexts() {

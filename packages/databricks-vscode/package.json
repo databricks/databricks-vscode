@@ -426,7 +426,8 @@
             "databricksBar": [
                 {
                     "id": "configurationView",
-                    "name": "Configuration"
+                    "name": "Configuration",
+                    "when": "!databricks.context.remoteMode"
                 },
                 {
                     "id": "clusterView",
