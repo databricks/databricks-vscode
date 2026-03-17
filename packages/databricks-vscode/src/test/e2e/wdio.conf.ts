@@ -498,33 +498,33 @@ export const config: Options.Testrunner = {
         console.log("Starting cleanup");
         console.log("Extensions dir:", EXTENSIONS_DIR);
         console.log("Workspace dir:", WORKSPACE_PATH);
-        const dbCli = path.join(
-            EXTENSIONS_DIR,
-            `${packageJson.publisher}.${packageJson.name}-${packageJson.version}`,
-            "bin",
-            "databricks"
-        );
-        const subfolders = await fs.readdir(WORKSPACE_PATH, {
-            withFileTypes: true,
-        });
-        for (const folder of subfolders) {
-            if (folder.isDirectory()) {
-                const folderPath = path.join(WORKSPACE_PATH, folder.name);
-                console.log(`Cleaning up ${folderPath}`);
-                try {
-                    const res = await execFile(
-                        dbCli,
-                        ["bundle", "destroy", "--auto-approve", "--force-lock"],
-                        {cwd: folderPath}
-                    );
-                    console.log(`'bundle destroy' output:`);
-                    console.log(res.stdout.trim());
-                    console.log(res.stderr.trim());
-                } catch (e) {
-                    console.error(e);
-                }
-            }
-        }
+        // const dbCli = path.join(
+        //     EXTENSIONS_DIR,
+        //     `${packageJson.publisher}.${packageJson.name}-${packageJson.version}`,
+        //     "bin",
+        //     "databricks"
+        // );
+        // const subfolders = await fs.readdir(WORKSPACE_PATH, {
+        //     withFileTypes: true,
+        // });
+        // for (const folder of subfolders) {
+        //     if (folder.isDirectory()) {
+        //         const folderPath = path.join(WORKSPACE_PATH, folder.name);
+        //         console.log(`Cleaning up ${folderPath}`);
+        //         try {
+        //             const res = await execFile(
+        //                 dbCli,
+        //                 ["bundle", "destroy", "--auto-approve", "--force-lock"],
+        //                 {cwd: folderPath}
+        //             );
+        //             console.log(`'bundle destroy' output:`);
+        //             console.log(res.stdout.trim());
+        //             console.log(res.stderr.trim());
+        //         } catch (e) {
+        //             console.error(e);
+        //         }
+        //     }
+        // }
     },
 
     /**
