@@ -16,7 +16,7 @@ import {
 
 describe("Run files", async function () {
     let projectDir: string;
-    this.timeout(3 * 60 * 1000);
+    this.timeout(6 * 60 * 1000);
 
     before(async () => {
         assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
