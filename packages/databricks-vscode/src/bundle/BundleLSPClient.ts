@@ -36,27 +36,20 @@ export class BundleLSPClient implements Disposable {
             },
         };
 
+        // Match all YAML files in the workspace, not just the root databricks.yml.
+        // Bundle configs can include other YAML files via the "include" directive,
+        // so the LSP needs to handle any .yml/.yaml file in the project.
         const clientOptions: LanguageClientOptions = {
             documentSelector: [
                 {
                     scheme: "file",
                     language: "yaml",
-                    pattern: "**/databricks.yml",
+                    pattern: `${workspaceFolder.fsPath}/**/*.yml`,
                 },
                 {
                     scheme: "file",
                     language: "yaml",
-                    pattern: "**/databricks.yaml",
-                },
-                {
-                    scheme: "file",
-                    language: "yaml",
-                    pattern: "**/bundle.yml",
-                },
-                {
-                    scheme: "file",
-                    language: "yaml",
-                    pattern: "**/bundle.yaml",
+                    pattern: `${workspaceFolder.fsPath}/**/*.yaml`,
                 },
             ],
             workspaceFolder: {
@@ -87,7 +80,7 @@ export class BundleLSPClient implements Disposable {
         }
     }
 
-    dispose(): void {
-        this.stop();
+    dispose(): Promise<void> {
+        return this.stop();
     }
 }

@@ -897,12 +897,31 @@ export async function activate(
 
     const workspaceFolder = workspace.workspaceFolders?.[0]?.uri;
     if (workspaceFolder) {
-        bundleLSPClient.start(workspaceFolder).catch((e) => {
-            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                "Failed to start bundle LSP: ",
-                e
-            );
-        });
+        bundleLSPClient
+            .start(workspaceFolder, configModel.target)
+            .catch((e) => {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    "Failed to start bundle LSP: ",
+                    e
+                );
+            });
+
+        // Restart the LSP client when the bundle target changes so the server
+        // picks up the new target's configuration.
+        context.subscriptions.push(
+            configModel.onDidChangeTarget(() => {
+                bundleLSPClient
+                    .start(workspaceFolder, configModel.target)
+                    .catch((e) => {
+                        logging.NamedLogger.getOrCreate(
+                            Loggers.Extension
+                        ).error(
+                            "Failed to restart bundle LSP after target change: ",
+                            e
+                        );
+                    });
+            })
+        );
     }
 
     setDbnbCellLimits(workspaceFolderManager, connectionManager).catch((e) => {
