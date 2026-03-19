@@ -2,7 +2,7 @@
 
 The Databricks extension for Visual Studio Code enables you to connect to your remote Databricks workspaces from Visual Studio Code.
 
-> 📘 **Note**: The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html) contains comprehesive documentation about the Databricks extension.
+> 📘 **Note**: The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html) contains comprehensive documentation about the Databricks extension.
 
 # Features
 
@@ -90,7 +90,7 @@ The extension provides easy setup for cell-by-cell running and debugging noteboo
 
 Databricks Asset Bundles make it possible to describe Databricks resources such as jobs, pipelines, and notebooks as source files. These source files provide an end-to-end definition of a project, including how it should be structured, tested, and deployed, which makes it easier to collaborate on projects during active development. For more information, see [Databricks Asset Bundles](https://docs.databricks.com/en/dev-tools/bundles/index.html).
 
-### <a id="deploy-dab"></a>Deploying Databricks Asset Bundles?
+### <a id="deploy-dab"></a>Deploying Databricks Asset Bundles
 
 1. In the Databricks extension panel, find the "Bundle Resource Explorer" view.
 2. Click on the "Deploy" button.
@@ -123,7 +123,7 @@ By default, a job is run using a jobs cluster. You can change this behavior and 
 
 If you are using Databricks extension v1, your project will automatically be migrated a [Databricks Asset Bundle](#what-is-dab) when you open it in v2. The migration process will create a new [`databricks.yml`](#what-is-databricksyml) file in the root of your project and move the configurations from the old `.databricks/project.json` to the new `databricks.yml` file.
 
-> **Note**: This means that you will start seeing a `databricks.yml` file in your project root directory and in your version control system change logs. We recommend comitting this file to your version control system.
+> **Note**: This means that you will start seeing a `databricks.yml` file in your project root directory and in your version control system change logs. We recommend committing this file to your version control system.
 
 ## <a id="what-is-databricksyml"></a>What is databricks.yml?
 

@@ -18,7 +18,7 @@ The extension is available from the [Visual Studio Marketplace](https://marketpl
 -   The [Quick Start Guide](DATABRICKS.quickstart.md) provides an overview
     of common features.
 -   The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html)
-    contains comprehesive documentation about the Databricks extension.
+    contains comprehensive documentation about the Databricks extension.
 
 ### Telemetry
 
