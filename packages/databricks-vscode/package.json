@@ -1105,11 +1105,13 @@
                         "items": {
                             "enum": [
                                 "views.cluster",
-                                "views.workspace"
+                                "views.workspace",
+                                "features.bundleLsp"
                             ],
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
-                                "Show workspace browser in the explorer."
+                                "Show workspace browser in the explorer.",
+                                "Enable the DABs Language Server for bundle YAML files (autocomplete, go-to-definition, diagnostics)."
                             ],
                             "type": "string"
                         },

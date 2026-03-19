@@ -1,6 +1,9 @@
 import {
+    CloseAction,
+    ErrorAction,
     LanguageClient,
     LanguageClientOptions,
+    RevealOutputChannelOn,
     ServerOptions,
 } from "vscode-languageclient/node";
 import {Disposable, Uri, workspace} from "vscode";
@@ -56,6 +59,16 @@ export class BundleLSPClient implements Disposable {
                 uri: workspaceFolder,
                 name: workspace.name ?? "workspace",
                 index: 0,
+            },
+            // Suppress error popups if the server binary doesn't support
+            // the bundle-lsp command (e.g. older CLI versions).
+            revealOutputChannelOn: RevealOutputChannelOn.Never,
+            errorHandler: {
+                error: () => ({action: ErrorAction.Shutdown}),
+                closed: () => ({
+                    action: CloseAction.DoNotRestart,
+                    handled: true,
+                }),
             },
         };
 
