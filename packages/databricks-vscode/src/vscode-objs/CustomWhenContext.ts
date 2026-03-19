@@ -118,4 +118,12 @@ export class CustomWhenContext {
             value
         );
     }
+
+    setRemoteMode(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.remoteMode",
+            value
+        );
+    }
 }
