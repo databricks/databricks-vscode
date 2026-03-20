@@ -3,7 +3,6 @@ import {CustomTreeSection} from "wdio-vscode-service";
 import {
     dismissNotifications,
     getViewSection,
-    selectOutputChannel,
     waitForLogin,
 } from "./utils/commonUtils.ts";
 import {
@@ -79,8 +78,7 @@ describe("Automatically refresh resource explorer", async function () {
         const outputView = await (await browser.getWorkbench())
             .getBottomBar()
             .openOutputView();
-
-        await selectOutputChannel(outputView, "Databricks Bundle Logs");
+        await outputView.selectChannel("Databricks Bundle Logs");
 
         const jobDef = await createProjectWithJob(
             projectName,
