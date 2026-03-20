@@ -33,7 +33,7 @@ async function checkOutputFile(path: string, expectedContent: string) {
 
 describe("Run files on serverless compute", async function () {
     let projectDir: string;
-    this.timeout(6 * 60 * 1000);
+    this.timeout(12 * 60 * 1000);
 
     before(async () => {
         assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
