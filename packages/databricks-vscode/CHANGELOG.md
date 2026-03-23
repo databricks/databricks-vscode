@@ -357,7 +357,7 @@
 
 -   Feature: Add a interface for specifying bundle variables.
 -   Feature: Allow opting out of cluster override and make it more visible in UI.
--   Feature: Update databricks CLI to v0.218.0. Databricks Asset Bundles (DABs) are now GA!
+-   Feature: Update databricks CLI to v0.218.0. Declarative Automation Bundles (DABs) are now GA!
 -   Feature: Add UI and wizard to help manage virtual environments and Databricks Connect v2 versions.
 
 # Release: v2.0.4-preview
@@ -395,7 +395,7 @@
 
 ## <small>v2.0.1-preview (2024-03-07)</small>
 
--   Databricks Asset Bundles (DABs) are now available in VS Code which allows you to:
+-   Declarative Automation Bundles (DABs) are now available in VS Code which allows you to:
     -   easily set up, author and run Databricks projects from VS Code.
     -   leverage the DABs Resource Explorer so you can easily see all your Jobs and Pipelines in one place and run them with one click.
 -   All our run methods are now consolidated into 1 run menu.

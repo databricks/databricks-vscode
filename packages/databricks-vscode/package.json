@@ -206,7 +206,7 @@
             {
                 "command": "databricks.connection.bundle.selectTarget",
                 "icon": "$(gear)",
-                "title": "Select a Databricks Asset Bundle target",
+                "title": "Select a Declarative Automation Bundle target",
                 "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
