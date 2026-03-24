@@ -169,7 +169,7 @@ export const config: Options.Testrunner = {
         return [
             {
                 "browserName": "vscode",
-                "browserVersion": "1.86.0",
+                "browserVersion": engines.vscode.replace("^", ""),
                 "wdio:vscodeOptions": {
                     extensionPath: path.resolve(
                         __dirname,
