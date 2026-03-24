@@ -22,7 +22,7 @@ If applicable, add screenshots to help explain your problem.
 
 **System information:**
 
-1. Paste the output ot the `Help: About` command (CMD-Shift-P).
+1. Paste the output of the `Help: About` command (CMD-Shift-P).
 2. Databricks Extension Version
 
 **Databricks Extension Logs**
