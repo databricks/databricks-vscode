@@ -32,13 +32,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: "yarn"
 
       - name: Cache VSCode unit test runner
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: /tmp/vscode-test-databricks
           key: ${{ matrix.arch.cli_arch }}-${{ matrix.vscode-version }}-vscode-test
@@ -59,13 +59,13 @@ jobs:
         run: yarn run build
 
       - name: Unit Tests with Coverage
-        uses: coactions/setup-xvfb@v1
+        uses: coactions/setup-xvfb@b6b4fcfb9f5a895edadc3bc76318fae0ac17c8b3 # v1.0.1
         with:
           run: yarn run test:cov
           working-directory: packages/databricks-vscode
 
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12" # 3.13+ is not yet supported by the latest DBR
 
