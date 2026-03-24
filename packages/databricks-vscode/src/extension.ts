@@ -74,6 +74,7 @@ import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
 import {BundlePipelinesManager} from "./bundle/BundlePipelinesManager";
 import {DocsViewTreeDataProvider} from "./ui/docs-view/DocsViewTreeDataProvider";
+import {UnityCatalogTreeDataProvider} from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -367,6 +368,22 @@ export async function activate(
             "databricks.wsfs.createFolder",
             workspaceFsCommands.createFolder,
             workspaceFsCommands
+        )
+    );
+
+    const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
+        connectionManager
+    );
+    context.subscriptions.push(
+        unityCatalogTreeDataProvider,
+        window.registerTreeDataProvider(
+            "unityCatalogView",
+            unityCatalogTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refresh",
+            unityCatalogTreeDataProvider.refresh,
+            unityCatalogTreeDataProvider
         )
     );
 

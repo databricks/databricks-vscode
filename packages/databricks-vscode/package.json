@@ -188,6 +188,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.unityCatalog.refresh",
+                "title": "Refresh Unity Catalog view",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.call",
                 "title": "Call",
                 "enablement": "databricks.context.activated",
@@ -449,6 +456,11 @@
                     "when": "databricks.feature.views.workspace"
                 },
                 {
+                    "id": "unityCatalogView",
+                    "name": "Unity Catalog",
+                    "when": "databricks.context.activated && databricks.context.loggedIn"
+                },
+                {
                     "id": "databricksDocsView",
                     "name": "Documentation"
                 }
@@ -529,6 +541,11 @@
                 {
                     "command": "databricks.wsfs.createFolder",
                     "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.unityCatalog.refresh",
+                    "when": "view == unityCatalogView",
                     "group": "navigation@1"
                 },
                 {
