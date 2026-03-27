@@ -8,6 +8,7 @@ import {BundleSchema} from "./types";
 import * as yaml from "yaml";
 import {instance, mock, when} from "ts-mockito";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {minimatch} from "minimatch";
 
 describe(__filename, async function () {
     let tmpdir: tmp.DirectoryResult;
@@ -20,10 +21,10 @@ describe(__filename, async function () {
         await tmpdir.cleanup();
     });
 
-    function getWorkspaceFolderManagerMock() {
+    function getWorkspaceFolderManagerMock(projectDir?: string) {
         const mockWorkspaceFolderManager = mock<WorkspaceFolderManager>();
         const mockWorkspaceFolder = mock<WorkspaceFolder>();
-        const uri = Uri.file(tmpdir.path);
+        const uri = Uri.file(projectDir ?? tmpdir.path);
         when(mockWorkspaceFolder.uri).thenReturn(uri);
         when(mockWorkspaceFolderManager.activeWorkspaceFolder).thenReturn(
             instance(mockWorkspaceFolder)
@@ -92,13 +93,9 @@ describe(__filename, async function () {
                 yaml.stringify(rootBundleData)
             );
 
-            const mockWFM = mock<WorkspaceFolderManager>();
-            const mockWF = mock<WorkspaceFolder>();
-            const projectUri = Uri.file(projectDir);
-            when(mockWF.uri).thenReturn(projectUri);
-            when(mockWFM.activeWorkspaceFolder).thenReturn(instance(mockWF));
-            when(mockWFM.activeProjectUri).thenReturn(projectUri);
-            const bundleFileSet = new BundleFileSet(instance(mockWFM));
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock(projectDir)
+            );
 
             const files = await bundleFileSet.getIncludedFiles();
             expect(files?.map((f) => f.fsPath)).to.deep.equal([sharedFile]);
@@ -121,13 +118,9 @@ describe(__filename, async function () {
                 yaml.stringify(rootBundleData)
             );
 
-            const mockWFM = mock<WorkspaceFolderManager>();
-            const mockWF = mock<WorkspaceFolder>();
-            const projectUri = Uri.file(projectDir);
-            when(mockWF.uri).thenReturn(projectUri);
-            when(mockWFM.activeWorkspaceFolder).thenReturn(instance(mockWF));
-            when(mockWFM.activeProjectUri).thenReturn(projectUri);
-            const bundleFileSet = new BundleFileSet(instance(mockWFM));
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock(projectDir)
+            );
 
             expect(
                 await bundleFileSet.isIncludedBundleFile(Uri.file(sharedFile))
