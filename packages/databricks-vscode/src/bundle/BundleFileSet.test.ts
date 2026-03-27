@@ -73,6 +73,74 @@ describe(__filename, async function () {
         expect(await bundleFileSet.getRootFile()).to.be.undefined;
     });
 
+    describe("parent-directory includes", async () => {
+        it("getIncludedFiles should find files referenced via .. paths", async () => {
+            // Structure: tmpdir/shared/config.yml (included), tmpdir/project/sub/ (project root)
+            const sharedDir = path.join(tmpdir.path, "shared");
+            const projectDir = path.join(tmpdir.path, "project", "sub");
+            await fs.mkdir(sharedDir, {recursive: true});
+            await fs.mkdir(projectDir, {recursive: true});
+
+            const sharedFile = path.join(sharedDir, "config.yml");
+            await fs.writeFile(sharedFile, "");
+
+            const rootBundleData: BundleSchema = {
+                include: ["../../shared/config.yml"],
+            };
+            await fs.writeFile(
+                path.join(projectDir, "databricks.yml"),
+                yaml.stringify(rootBundleData)
+            );
+
+            const mockWFM = mock<WorkspaceFolderManager>();
+            const mockWF = mock<WorkspaceFolder>();
+            const projectUri = Uri.file(projectDir);
+            when(mockWF.uri).thenReturn(projectUri);
+            when(mockWFM.activeWorkspaceFolder).thenReturn(instance(mockWF));
+            when(mockWFM.activeProjectUri).thenReturn(projectUri);
+            const bundleFileSet = new BundleFileSet(instance(mockWFM));
+
+            const files = await bundleFileSet.getIncludedFiles();
+            expect(files?.map((f) => f.fsPath)).to.deep.equal([sharedFile]);
+        });
+
+        it("isIncludedBundleFile should return true for files referenced via .. paths", async () => {
+            const sharedDir = path.join(tmpdir.path, "shared");
+            const projectDir = path.join(tmpdir.path, "project", "sub");
+            await fs.mkdir(sharedDir, {recursive: true});
+            await fs.mkdir(projectDir, {recursive: true});
+
+            const sharedFile = path.join(sharedDir, "config.yml");
+            await fs.writeFile(sharedFile, "");
+
+            const rootBundleData: BundleSchema = {
+                include: ["../../shared/config.yml", "local.yml"],
+            };
+            await fs.writeFile(
+                path.join(projectDir, "databricks.yml"),
+                yaml.stringify(rootBundleData)
+            );
+
+            const mockWFM = mock<WorkspaceFolderManager>();
+            const mockWF = mock<WorkspaceFolder>();
+            const projectUri = Uri.file(projectDir);
+            when(mockWF.uri).thenReturn(projectUri);
+            when(mockWFM.activeWorkspaceFolder).thenReturn(instance(mockWF));
+            when(mockWFM.activeProjectUri).thenReturn(projectUri);
+            const bundleFileSet = new BundleFileSet(instance(mockWFM));
+
+            expect(
+                await bundleFileSet.isIncludedBundleFile(Uri.file(sharedFile))
+            ).to.be.true;
+
+            expect(
+                await bundleFileSet.isIncludedBundleFile(
+                    Uri.file(path.join(projectDir, "other.yml"))
+                )
+            ).to.be.false;
+        });
+    });
+
     describe("file listing", async () => {
         beforeEach(async () => {
             const rootBundleData: BundleSchema = {
