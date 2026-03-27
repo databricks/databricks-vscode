@@ -8,7 +8,6 @@ import {BundleSchema} from "./types";
 import * as yaml from "yaml";
 import {instance, mock, when} from "ts-mockito";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
-import {minimatch} from "minimatch";
 
 describe(__filename, async function () {
     let tmpdir: tmp.DirectoryResult;
@@ -83,10 +82,12 @@ describe(__filename, async function () {
             await fs.mkdir(projectDir, {recursive: true});
 
             const sharedFile = path.join(sharedDir, "config.yml");
+            const sharedFile2 = path.join(sharedDir, "config2.yml");
             await fs.writeFile(sharedFile, "");
+            await fs.writeFile(sharedFile2, "");
 
             const rootBundleData: BundleSchema = {
-                include: ["../../shared/config.yml"],
+                include: ["../../shared/config.yml", "../../shared/config2.yml"],
             };
             await fs.writeFile(
                 path.join(projectDir, "databricks.yml"),
@@ -98,7 +99,10 @@ describe(__filename, async function () {
             );
 
             const files = await bundleFileSet.getIncludedFiles();
-            expect(files?.map((f) => f.fsPath)).to.deep.equal([sharedFile]);
+            expect(files).to.not.be.undefined;
+            expect(files!.map((f) => f.fsPath).sort()).to.deep.equal(
+                [sharedFile, sharedFile2].sort()
+            );
         });
 
         it("isIncludedBundleFile should return true for files referenced via .. paths", async () => {
