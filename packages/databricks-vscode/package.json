@@ -794,7 +794,7 @@
                 {
                     "submenu": "databricks.run",
                     "group": "navigation@0",
-                    "when": "!databricks.context.remoteMode && databricks.context.isActiveFileInActiveWorkspace && databricks.context.showRunAsWorkflow || !databricks.context.remoteMode && databricks.context.isActiveFileInActiveWorkspace && resourceExtname == .ipynb"
+                    "when": "(!databricks.context.remoteMode && databricks.context.isActiveFileInActiveWorkspace && databricks.context.showRunAsWorkflow) || (!databricks.context.remoteMode && databricks.context.isActiveFileInActiveWorkspace && resourceExtname == .ipynb)"
                 }
             ],
             "databricks.run": [

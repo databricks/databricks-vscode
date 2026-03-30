@@ -256,7 +256,7 @@ export async function activate(
         }
 
         customWhenContext.setActivated(true);
-        return undefined;
+        return;
     }
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
         "Remote mode not activated, continuing normal initialization"
