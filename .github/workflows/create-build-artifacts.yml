@@ -14,7 +14,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Use Node.js 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -22,7 +22,7 @@ jobs:
           node-version: 22
           cache: "yarn"
 
-      - run: yarn install
+      - run: yarn install --immutable
       - run: yarn run build
       - run: yarn run package:all
         working-directory: packages/databricks-vscode
@@ -30,7 +30,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_PLATFORM_ARCH: linux_amd64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: databricks
           path: "packages/databricks-vscode/*.vsix"
