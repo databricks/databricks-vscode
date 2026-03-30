@@ -1,6 +1,7 @@
 import {
     commands,
     debug,
+    env,
     ExtensionContext,
     extensions,
     window,
@@ -74,7 +75,10 @@ import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
 import {BundlePipelinesManager} from "./bundle/BundlePipelinesManager";
 import {DocsViewTreeDataProvider} from "./ui/docs-view/DocsViewTreeDataProvider";
-import {UnityCatalogTreeDataProvider} from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
+import {
+    UnityCatalogTreeDataProvider,
+    UnityCatalogTreeNode,
+} from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -374,16 +378,42 @@ export async function activate(
     const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
         connectionManager
     );
+    const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
+        treeDataProvider: unityCatalogTreeDataProvider,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        filterOnType: true,
+    } as any);
     context.subscriptions.push(
         unityCatalogTreeDataProvider,
-        window.registerTreeDataProvider(
-            "unityCatalogView",
-            unityCatalogTreeDataProvider
-        ),
+        unityCatalogTreeView,
         telemetry.registerCommand(
             "databricks.unityCatalog.refresh",
             unityCatalogTreeDataProvider.refresh,
             unityCatalogTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refreshNode",
+            (node: UnityCatalogTreeNode) =>
+                unityCatalogTreeDataProvider.refreshNode(node)
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyStorageLocation",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    (node.kind === "table" || node.kind === "volume") &&
+                    node.storageLocation
+                ) {
+                    await env.clipboard.writeText(node.storageLocation);
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyViewSql",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "table" && node.viewDefinition) {
+                    await env.clipboard.writeText(node.viewDefinition);
+                }
+            }
         )
     );
 
