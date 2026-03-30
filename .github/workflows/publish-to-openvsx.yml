@@ -46,10 +46,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install vcse
-        run: npm install -g @vscode/vsce
+        run: npm install -g @vscode/vsce@3.7.1
 
       - name: Install ovsx
-        run: npm install -g ovsx
+        run: npm install -g ovsx@0.10.10
 
       - name: Publish to Open VSX
         run: |
