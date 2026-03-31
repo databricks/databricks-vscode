@@ -121,11 +121,12 @@ export class UnityCatalogTreeDataProvider
         );
     }
 
-    getExploreUrl(path: string): string | undefined {
+    getExploreUrl(fullName: string): string | undefined {
         const host = this.connectionManager.databricksWorkspace?.host;
         if (!host) {
             return undefined;
         }
+        const path = fullName.replaceAll(".", "/");
         return `${host.toString()}explore/data/${path}`;
     }
 
@@ -246,8 +247,14 @@ export class UnityCatalogTreeDataProvider
         if (element.kind === "column") {
             const icon =
                 element.nullable === false
-                    ? new ThemeIcon("symbol-key", new ThemeColor("databricks.unityCatalog.columnKey"))
-                    : new ThemeIcon("symbol-field", new ThemeColor("databricks.unityCatalog.column"));
+                    ? new ThemeIcon(
+                          "symbol-key",
+                          new ThemeColor("databricks.unityCatalog.columnKey")
+                      )
+                    : new ThemeIcon(
+                          "symbol-field",
+                          new ThemeColor("databricks.unityCatalog.column")
+                      );
             const typeLabel = element.typeText ?? element.typeName ?? "";
             const tt = new MarkdownString(
                 `**${element.name}** \`${typeLabel}\``
@@ -319,7 +326,10 @@ export class UnityCatalogTreeDataProvider
             label: `${element.name}${typeSuffix}`,
             description: element.dataSourceFormat,
             tooltip: tt,
-            iconPath: new ThemeIcon("table", new ThemeColor("databricks.unityCatalog.table")),
+            iconPath: new ThemeIcon(
+                "table",
+                new ThemeColor("databricks.unityCatalog.table")
+            ),
             contextValue: flags.join("."),
             collapsibleState: hasColumns
                 ? TreeItemCollapsibleState.Collapsed
