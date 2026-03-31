@@ -121,7 +121,7 @@ export class UnityCatalogTreeDataProvider
         );
     }
 
-    private getExploreUrl(path: string): string | undefined {
+    getExploreUrl(path: string): string | undefined {
         const host = this.connectionManager.databricksWorkspace?.host;
         if (!host) {
             return undefined;

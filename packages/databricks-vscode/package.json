@@ -211,6 +211,12 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.unityCatalog.openExternal",
+                "title": "Open in Databricks",
+                "icon": "$(link-external)",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.call",
                 "title": "Call",
                 "enablement": "databricks.context.activated",
@@ -621,12 +627,12 @@
                     "group": "navigation_2@0"
                 },
                 {
-                    "command": "databricks.utils.openExternal",
+                    "command": "databricks.unityCatalog.openExternal",
                     "when": "view == unityCatalogView && viewItem =~ /\\.has-url$/",
                     "group": "inline@1"
                 },
                 {
-                    "command": "databricks.utils.openExternal",
+                    "command": "databricks.unityCatalog.openExternal",
                     "when": "view == unityCatalogView && viewItem =~ /\\.has-url$/",
                     "group": "navigation_2@0"
                 },

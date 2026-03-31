@@ -27,6 +27,7 @@ import {
     FileUtils,
     PackageJsonUtils,
     TerraformUtils,
+    UrlUtils,
     UtilsCommands,
 } from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
@@ -413,6 +414,24 @@ export async function activate(
                 if (node.kind === "table" && node.viewDefinition) {
                     await env.clipboard.writeText(node.viewDefinition);
                 }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.openExternal",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "error" || node.kind === "column") {
+                    return;
+                }
+                const url = unityCatalogTreeDataProvider.getExploreUrl(
+                    node.fullName
+                );
+                if (!url) {
+                    window.showErrorMessage(
+                        "Databricks: Can't open external link. No URL found."
+                    );
+                    return;
+                }
+                await UrlUtils.openExternal(url);
             }
         )
     );
