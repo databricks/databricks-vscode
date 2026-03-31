@@ -700,12 +700,12 @@
                 },
                 {
                     "command": "databricks.unityCatalog.openExternal",
-                    "when": "view == unityCatalogView && viewItem =~ /\\.has-url$/",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.has-url/",
                     "group": "inline@1"
                 },
                 {
                     "command": "databricks.unityCatalog.openExternal",
-                    "when": "view == unityCatalogView && viewItem =~ /\\.has-url$/",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.has-url/",
                     "group": "navigation_2@0"
                 },
                 {
