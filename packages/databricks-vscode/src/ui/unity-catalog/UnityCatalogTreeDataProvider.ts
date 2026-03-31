@@ -152,7 +152,7 @@ export class UnityCatalogTreeDataProvider
                 tooltip: tt,
                 iconPath: new ThemeIcon(
                     "library",
-                    new ThemeColor("charts.purple")
+                    new ThemeColor("databricks.unityCatalog.catalog")
                 ),
                 contextValue: url
                     ? "unityCatalog.catalog.has-url"
@@ -174,7 +174,7 @@ export class UnityCatalogTreeDataProvider
                 tooltip: tt,
                 iconPath: new ThemeIcon(
                     "folder-library",
-                    new ThemeColor("charts.green")
+                    new ThemeColor("databricks.unityCatalog.schema")
                 ),
                 contextValue: url
                     ? "unityCatalog.schema.has-url"
@@ -215,7 +215,7 @@ export class UnityCatalogTreeDataProvider
                 tooltip: tt,
                 iconPath: new ThemeIcon(
                     "package",
-                    new ThemeColor("charts.blue")
+                    new ThemeColor("databricks.unityCatalog.volume")
                 ),
                 contextValue: flags.join("."),
                 collapsibleState: TreeItemCollapsibleState.None,
@@ -232,7 +232,7 @@ export class UnityCatalogTreeDataProvider
                 tooltip: element.fullName,
                 iconPath: new ThemeIcon(
                     "symbol-function",
-                    new ThemeColor("charts.yellow")
+                    new ThemeColor("databricks.unityCatalog.function")
                 ),
                 contextValue: url
                     ? "unityCatalog.function.has-url"
@@ -246,8 +246,8 @@ export class UnityCatalogTreeDataProvider
         if (element.kind === "column") {
             const icon =
                 element.nullable === false
-                    ? new ThemeIcon("symbol-key")
-                    : new ThemeIcon("symbol-field");
+                    ? new ThemeIcon("symbol-key", new ThemeColor("databricks.unityCatalog.columnKey"))
+                    : new ThemeIcon("symbol-field", new ThemeColor("databricks.unityCatalog.column"));
             const typeLabel = element.typeText ?? element.typeName ?? "";
             const tt = new MarkdownString(
                 `**${element.name}** \`${typeLabel}\``
@@ -319,7 +319,7 @@ export class UnityCatalogTreeDataProvider
             label: `${element.name}${typeSuffix}`,
             description: element.dataSourceFormat,
             tooltip: tt,
-            iconPath: new ThemeIcon("table", new ThemeColor("charts.orange")),
+            iconPath: new ThemeIcon("table", new ThemeColor("databricks.unityCatalog.table")),
             contextValue: flags.join("."),
             collapsibleState: hasColumns
                 ? TreeItemCollapsibleState.Collapsed

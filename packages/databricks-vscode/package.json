@@ -488,6 +488,78 @@
                 }
             ]
         },
+        "colors": [
+            {
+                "id": "databricks.unityCatalog.catalog",
+                "description": "Icon color for Unity Catalog catalog nodes",
+                "defaults": {
+                    "dark": "#9B6CF7",
+                    "light": "#6B2FD4",
+                    "highContrast": "#C586C0",
+                    "highContrastLight": "#6B2FD4"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.schema",
+                "description": "Icon color for Unity Catalog schema nodes",
+                "defaults": {
+                    "dark": "#0DB7C4",
+                    "light": "#007A85",
+                    "highContrast": "#4EC9B0",
+                    "highContrastLight": "#007A85"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.table",
+                "description": "Icon color for Unity Catalog table nodes",
+                "defaults": {
+                    "dark": "#FF6B2C",
+                    "light": "#C84B0A",
+                    "highContrast": "#FF6B2C",
+                    "highContrastLight": "#C84B0A"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.volume",
+                "description": "Icon color for Unity Catalog volume nodes",
+                "defaults": {
+                    "dark": "#4FC1E9",
+                    "light": "#0E6FA0",
+                    "highContrast": "#4FC1E9",
+                    "highContrastLight": "#0E6FA0"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.function",
+                "description": "Icon color for Unity Catalog function nodes",
+                "defaults": {
+                    "dark": "#FFB347",
+                    "light": "#A06000",
+                    "highContrast": "#FFCA28",
+                    "highContrastLight": "#A06000"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.columnKey",
+                "description": "Icon color for Unity Catalog non-nullable (key) column nodes",
+                "defaults": {
+                    "dark": "#F47C7C",
+                    "light": "#C0392B",
+                    "highContrast": "#F47C7C",
+                    "highContrastLight": "#C0392B"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.column",
+                "description": "Icon color for Unity Catalog nullable column nodes",
+                "defaults": {
+                    "dark": "#8EAFC2",
+                    "light": "#4A6B82",
+                    "highContrast": "#8EAFC2",
+                    "highContrastLight": "#4A6B82"
+                }
+            }
+        ],
         "viewsWelcome": [
             {
                 "view": "configurationView",
