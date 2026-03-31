@@ -422,9 +422,8 @@ export async function activate(
                 if (node.kind === "error" || node.kind === "column") {
                     return;
                 }
-                const url = unityCatalogTreeDataProvider.getExploreUrl(
-                    node.fullName
-                );
+                const url =
+                    unityCatalogTreeDataProvider.getNodeExploreUrl(node);
                 if (!url) {
                     window.showErrorMessage(
                         "Databricks: Can't open external link. No URL found."

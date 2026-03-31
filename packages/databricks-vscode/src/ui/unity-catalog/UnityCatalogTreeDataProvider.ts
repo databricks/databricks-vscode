@@ -121,13 +121,24 @@ export class UnityCatalogTreeDataProvider
         );
     }
 
-    getExploreUrl(fullName: string): string | undefined {
+    private getExploreUrl(path: string): string | undefined {
         const host = this.connectionManager.databricksWorkspace?.host;
         if (!host) {
             return undefined;
         }
-        const path = fullName.replaceAll(".", "/");
         return `${host.toString()}explore/data/${path}`;
+    }
+
+    getNodeExploreUrl(node: UnityCatalogTreeNode): string | undefined {
+        if (node.kind === "error" || node.kind === "column") {
+            return undefined;
+        }
+        const fullNamePath = node.fullName.replaceAll(".", "/");
+        const path =
+            node.kind === "function"
+                ? `functions/${fullNamePath}`
+                : fullNamePath;
+        return this.getExploreUrl(path);
     }
 
     getTreeItem(element: UnityCatalogTreeNode): UnityCatalogTreeItem {
@@ -143,7 +154,7 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "catalog") {
-            const url = this.getExploreUrl(element.fullName);
+            const url = this.getNodeExploreUrl(element);
             const tt = new MarkdownString(`**${element.fullName}**`);
             if (element.comment) {
                 tt.appendMarkdown(`\n\n${element.comment}`);
@@ -165,7 +176,7 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "schema") {
-            const url = this.getExploreUrl(element.fullName);
+            const url = this.getNodeExploreUrl(element);
             const tt = new MarkdownString(`**${element.fullName}**`);
             if (element.comment) {
                 tt.appendMarkdown(`\n\n${element.comment}`);
@@ -187,7 +198,7 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "volume") {
-            const url = this.getExploreUrl(element.fullName);
+            const url = this.getNodeExploreUrl(element);
             const isExternal =
                 element.volumeType !== undefined &&
                 element.volumeType !== "MANAGED";
@@ -227,7 +238,7 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "function") {
-            const url = this.getExploreUrl(element.fullName);
+            const url = this.getNodeExploreUrl(element);
             return {
                 label: element.name,
                 tooltip: element.fullName,
@@ -281,7 +292,7 @@ export class UnityCatalogTreeDataProvider
             element.tableType && element.tableType !== "MANAGED"
                 ? ` (${element.tableType})`
                 : "";
-        const url = this.getExploreUrl(element.fullName);
+        const url = this.getNodeExploreUrl(element);
         const flags = ["unityCatalog.table"];
         if (url) {
             flags.push("has-url");
