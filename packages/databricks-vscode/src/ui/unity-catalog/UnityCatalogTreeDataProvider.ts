@@ -1,91 +1,18 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiError, logging} from "@databricks/sdk-experimental";
-import {
-    Disposable,
-    EventEmitter,
-    MarkdownString,
-    ThemeColor,
-    ThemeIcon,
-    TreeDataProvider,
-    TreeItem,
-    TreeItemCollapsibleState,
-} from "vscode";
+import {Disposable, EventEmitter, TreeDataProvider} from "vscode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {Loggers} from "../../logger";
+import {buildTreeItem} from "./nodeRenderer";
+import {UnityCatalogTreeItem, UnityCatalogTreeNode} from "./types";
+
+export type {
+    ColumnData,
+    UnityCatalogTreeItem,
+    UnityCatalogTreeNode,
+} from "./types";
 
 const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
-
-export interface ColumnData {
-    name: string;
-    typeName?: string;
-    typeText?: string;
-    comment?: string;
-    nullable?: boolean;
-    position?: number;
-}
-
-export type UnityCatalogTreeNode =
-    | {kind: "catalog"; name: string; fullName: string; comment?: string}
-    | {
-          kind: "schema";
-          catalogName: string;
-          name: string;
-          fullName: string;
-          comment?: string;
-      }
-    | {
-          kind: "table";
-          catalogName: string;
-          schemaName: string;
-          name: string;
-          fullName: string;
-          tableType?: string;
-          comment?: string;
-          dataSourceFormat?: string;
-          storageLocation?: string;
-          viewDefinition?: string;
-          owner?: string;
-          createdBy?: string;
-          createdAt?: number;
-          updatedAt?: number;
-          columns?: ColumnData[];
-      }
-    | {
-          kind: "volume";
-          catalogName: string;
-          schemaName: string;
-          name: string;
-          fullName: string;
-          volumeType?: string;
-          storageLocation?: string;
-          comment?: string;
-          owner?: string;
-      }
-    | {
-          kind: "function";
-          catalogName: string;
-          schemaName: string;
-          name: string;
-          fullName: string;
-      }
-    | {
-          kind: "column";
-          tableFullName: string;
-          name: string;
-          typeName?: string;
-          typeText?: string;
-          comment?: string;
-          nullable?: boolean;
-          position?: number;
-      }
-    | {kind: "error"; message: string};
-
-export interface UnityCatalogTreeItem extends TreeItem {
-    url?: string;
-    copyText?: string;
-    storageLocation?: string;
-    viewDefinition?: string;
-}
 
 async function drainAsyncIterable<T>(iter: AsyncIterable<T>): Promise<T[]> {
     const out: T[] = [];
@@ -93,15 +20,6 @@ async function drainAsyncIterable<T>(iter: AsyncIterable<T>): Promise<T[]> {
         out.push(item);
     }
     return out;
-}
-
-function formatTs(ms: number | undefined): string | undefined {
-    if (ms === undefined) {
-        return undefined;
-    }
-    return (
-        new Date(ms).toISOString().replace("T", " ").substring(0, 19) + " UTC"
-    );
 }
 
 export class UnityCatalogTreeDataProvider
@@ -142,214 +60,7 @@ export class UnityCatalogTreeDataProvider
     }
 
     getTreeItem(element: UnityCatalogTreeNode): UnityCatalogTreeItem {
-        if (element.kind === "error") {
-            return {
-                label: element.message,
-                iconPath: new ThemeIcon(
-                    "error",
-                    new ThemeColor("notificationsErrorIcon.foreground")
-                ),
-                collapsibleState: TreeItemCollapsibleState.None,
-            };
-        }
-
-        if (element.kind === "catalog") {
-            const url = this.getNodeExploreUrl(element);
-            const tt = new MarkdownString(`**${element.fullName}**`);
-            if (element.comment) {
-                tt.appendMarkdown(`\n\n${element.comment}`);
-            }
-            return {
-                label: element.name,
-                tooltip: tt,
-                iconPath: new ThemeIcon(
-                    "library",
-                    new ThemeColor("databricks.unityCatalog.catalog")
-                ),
-                contextValue: url
-                    ? "unityCatalog.catalog.has-url"
-                    : "unityCatalog.catalog",
-                collapsibleState: TreeItemCollapsibleState.Collapsed,
-                url,
-                copyText: element.fullName,
-            };
-        }
-
-        if (element.kind === "schema") {
-            const url = this.getNodeExploreUrl(element);
-            const tt = new MarkdownString(`**${element.fullName}**`);
-            if (element.comment) {
-                tt.appendMarkdown(`\n\n${element.comment}`);
-            }
-            return {
-                label: element.name,
-                tooltip: tt,
-                iconPath: new ThemeIcon(
-                    "folder-library",
-                    new ThemeColor("databricks.unityCatalog.schema")
-                ),
-                contextValue: url
-                    ? "unityCatalog.schema.has-url"
-                    : "unityCatalog.schema",
-                collapsibleState: TreeItemCollapsibleState.Collapsed,
-                url,
-                copyText: element.fullName,
-            };
-        }
-
-        if (element.kind === "volume") {
-            const url = this.getNodeExploreUrl(element);
-            const isExternal =
-                element.volumeType !== undefined &&
-                element.volumeType !== "MANAGED";
-            const label = isExternal
-                ? `${element.name} (${element.volumeType})`
-                : element.name;
-            const flags = ["unityCatalog.volume"];
-            if (url) {
-                flags.push("has-url");
-            }
-            if (element.storageLocation) {
-                flags.push("has-storage");
-            }
-            const tt = new MarkdownString(`**${element.fullName}**`);
-            if (element.volumeType) {
-                tt.appendMarkdown(`\n\n*Type:* ${element.volumeType}`);
-            }
-            if (element.owner) {
-                tt.appendMarkdown(`\n\n*Owner:* ${element.owner}`);
-            }
-            if (element.comment) {
-                tt.appendMarkdown(`\n\n${element.comment}`);
-            }
-            return {
-                label,
-                tooltip: tt,
-                iconPath: new ThemeIcon(
-                    "package",
-                    new ThemeColor("databricks.unityCatalog.volume")
-                ),
-                contextValue: flags.join("."),
-                collapsibleState: TreeItemCollapsibleState.None,
-                url,
-                copyText: element.fullName,
-                storageLocation: element.storageLocation,
-            };
-        }
-
-        if (element.kind === "function") {
-            const url = this.getNodeExploreUrl(element);
-            return {
-                label: element.name,
-                tooltip: element.fullName,
-                iconPath: new ThemeIcon(
-                    "symbol-function",
-                    new ThemeColor("databricks.unityCatalog.function")
-                ),
-                contextValue: url
-                    ? "unityCatalog.function.has-url"
-                    : "unityCatalog.function",
-                collapsibleState: TreeItemCollapsibleState.None,
-                url,
-                copyText: element.fullName,
-            };
-        }
-
-        if (element.kind === "column") {
-            const icon =
-                element.nullable === false
-                    ? new ThemeIcon(
-                          "symbol-key",
-                          new ThemeColor("databricks.unityCatalog.columnKey")
-                      )
-                    : new ThemeIcon(
-                          "symbol-field",
-                          new ThemeColor("databricks.unityCatalog.column")
-                      );
-            const typeLabel = element.typeText ?? element.typeName ?? "";
-            const tt = new MarkdownString(
-                `**${element.name}** \`${typeLabel}\``
-            );
-            if (element.nullable === false) {
-                tt.appendMarkdown(" *(not null)*");
-            }
-            if (element.comment) {
-                tt.appendMarkdown(`\n\n${element.comment}`);
-            }
-            return {
-                label: element.name,
-                description: typeLabel,
-                tooltip: tt,
-                iconPath: icon,
-                contextValue: "unityCatalog.column",
-                collapsibleState: TreeItemCollapsibleState.None,
-                copyText: element.name,
-            };
-        }
-
-        // table
-        const typeSuffix =
-            element.tableType && element.tableType !== "MANAGED"
-                ? ` (${element.tableType})`
-                : "";
-        const url = this.getNodeExploreUrl(element);
-        const flags = ["unityCatalog.table"];
-        if (url) {
-            flags.push("has-url");
-        }
-        if (element.storageLocation) {
-            flags.push("has-storage");
-        }
-        const isView =
-            element.tableType === "VIEW" ||
-            element.tableType === "MATERIALIZED_VIEW";
-        if (isView && element.viewDefinition) {
-            flags.push("is-view");
-        }
-
-        const tt = new MarkdownString(`**${element.fullName}**`);
-        if (element.tableType) {
-            tt.appendMarkdown(`\n\n*Type:* ${element.tableType}`);
-        }
-        if (element.dataSourceFormat) {
-            tt.appendMarkdown(` · *Format:* ${element.dataSourceFormat}`);
-        }
-        if (element.owner) {
-            tt.appendMarkdown(`\n\n*Owner:* ${element.owner}`);
-        }
-        if (element.createdBy) {
-            tt.appendMarkdown(` · *Created by:* ${element.createdBy}`);
-        }
-        const cAt = formatTs(element.createdAt);
-        const uAt = formatTs(element.updatedAt);
-        if (cAt) {
-            tt.appendMarkdown(`\n\n*Created:* ${cAt}`);
-        }
-        if (uAt) {
-            tt.appendMarkdown(`  *Updated:* ${uAt}`);
-        }
-        if (element.comment) {
-            tt.appendMarkdown(`\n\n${element.comment}`);
-        }
-
-        const hasColumns = (element.columns?.length ?? 0) > 0;
-        return {
-            label: `${element.name}${typeSuffix}`,
-            description: element.dataSourceFormat,
-            tooltip: tt,
-            iconPath: new ThemeIcon(
-                "table",
-                new ThemeColor("databricks.unityCatalog.table")
-            ),
-            contextValue: flags.join("."),
-            collapsibleState: hasColumns
-                ? TreeItemCollapsibleState.Collapsed
-                : TreeItemCollapsibleState.None,
-            url,
-            copyText: element.fullName,
-            storageLocation: element.storageLocation,
-            viewDefinition: element.viewDefinition,
-        };
+        return buildTreeItem(element, this.getNodeExploreUrl(element));
     }
 
     getChildren(
