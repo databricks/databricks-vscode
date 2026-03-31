@@ -205,6 +205,11 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.unityCatalog.copyName",
+                "title": "Copy",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.unityCatalog.refreshNode",
                 "title": "Refresh",
                 "icon": "$(refresh)",
@@ -709,6 +714,11 @@
                     "group": "navigation_2@0"
                 },
                 {
+                    "command": "databricks.unityCatalog.copyName",
+                    "when": "view == unityCatalogView && viewItem =~ /unityCatalog/",
+                    "group": "navigation_2@0"
+                },
+                {
                     "command": "databricks.unityCatalog.copyStorageLocation",
                     "when": "view == unityCatalogView && viewItem =~ /\\.has-storage/",
                     "group": "navigation_2@1"
@@ -865,7 +875,7 @@
                 },
                 {
                     "command": "databricks.utils.copy",
-                    "when": "view == dabsResourceExplorerView || view == configurationView || view == unityCatalogView",
+                    "when": "view == dabsResourceExplorerView || view == configurationView",
                     "group": "navigation_2@0"
                 },
                 {

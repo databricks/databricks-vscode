@@ -417,6 +417,17 @@ export async function activate(
             }
         ),
         telemetry.registerCommand(
+            "databricks.unityCatalog.copyName",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "error") {
+                    return;
+                }
+                const text = node.kind === "column" ? node.name : node.fullName;
+                await env.clipboard.writeText(text);
+                window.showInformationMessage("Copied to clipboard");
+            }
+        ),
+        telemetry.registerCommand(
             "databricks.unityCatalog.openExternal",
             async (node: UnityCatalogTreeNode) => {
                 if (node.kind === "error" || node.kind === "column") {
