@@ -48,7 +48,7 @@ export class UnityCatalogTreeDataProvider
     }
 
     getNodeExploreUrl(node: UnityCatalogTreeNode): string | undefined {
-        if (node.kind === "error" || node.kind === "column") {
+        if (node.kind === "error" || node.kind === "column" || node.kind === "empty") {
             return undefined;
         }
         const fullNamePath = node.fullName.replaceAll(".", "/");
@@ -119,7 +119,7 @@ export class UnityCatalogTreeDataProvider
     ): Promise<UnityCatalogTreeNode[] | undefined> {
         try {
             const rows = await drainAsyncIterable(client.catalogs.list({}));
-            return rows
+            const result = rows
                 .filter((c) => c.name)
                 .map((c) => ({
                     kind: "catalog" as const,
@@ -128,6 +128,9 @@ export class UnityCatalogTreeDataProvider
                     comment: c.comment,
                 }))
                 .sort((a, b) => a.name.localeCompare(b.name));
+            return result.length > 0
+                ? result
+                : this.emptyNode("No catalogs found");
         } catch (e) {
             return this.errorChildren(e, "catalogs");
         }
@@ -141,7 +144,7 @@ export class UnityCatalogTreeDataProvider
             const rows = await drainAsyncIterable(
                 client.schemas.list({catalog_name: catalogName})
             );
-            return rows
+            const result = rows
                 .filter((s) => s.name)
                 .map((s) => ({
                     kind: "schema" as const,
@@ -151,6 +154,7 @@ export class UnityCatalogTreeDataProvider
                     comment: s.comment,
                 }))
                 .sort((a, b) => a.name.localeCompare(b.name));
+            return result.length > 0 ? result : this.emptyNode("No schemas");
         } catch (e) {
             return this.errorChildren(e, "schemas");
         }
@@ -240,7 +244,11 @@ export class UnityCatalogTreeDataProvider
                 string,
                 number
             >;
-            return [...tableNodes, ...volumeNodes, ...functionNodes].sort(
+            const combined = [...tableNodes, ...volumeNodes, ...functionNodes];
+            if (combined.length === 0) {
+                return this.emptyNode("No items");
+            }
+            return combined.sort(
                 (a, b) => {
                     const an =
                         a.kind === "table" ||
@@ -264,6 +272,10 @@ export class UnityCatalogTreeDataProvider
         } catch (e) {
             return this.errorChildren(e, "tables, volumes, and functions");
         }
+    }
+
+    private emptyNode(message: string): UnityCatalogTreeNode[] {
+        return [{kind: "empty", message}];
     }
 
     private errorChildren(

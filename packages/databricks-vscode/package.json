@@ -188,6 +188,12 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.unityCatalog.filter",
+                "title": "Filter",
+                "icon": "$(search)",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.unityCatalog.refresh",
                 "title": "Refresh Unity Catalog view",
                 "icon": "$(refresh)",
@@ -641,6 +647,11 @@
                     "command": "databricks.wsfs.createFolder",
                     "when": "view == workspaceFsView",
                     "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.unityCatalog.filter",
+                    "when": "view == unityCatalogView",
+                    "group": "navigation@2"
                 },
                 {
                     "command": "databricks.unityCatalog.refresh",

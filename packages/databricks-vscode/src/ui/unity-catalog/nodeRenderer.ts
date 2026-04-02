@@ -28,6 +28,19 @@ function renderError(
     };
 }
 
+function renderEmpty(
+    node: Extract<UnityCatalogTreeNode, {kind: "empty"}>
+): UnityCatalogTreeItem {
+    return {
+        label: node.message,
+        iconPath: new ThemeIcon(
+            "info",
+            new ThemeColor("descriptionForeground")
+        ),
+        collapsibleState: TreeItemCollapsibleState.None,
+    };
+}
+
 function renderCatalog(
     node: Extract<UnityCatalogTreeNode, {kind: "catalog"}>,
     exploreUrl: string | undefined
@@ -240,6 +253,8 @@ export function buildTreeItem(
     switch (node.kind) {
         case "error":
             return renderError(node);
+        case "empty":
+            return renderEmpty(node);
         case "catalog":
             return renderCatalog(node, exploreUrl);
         case "schema":

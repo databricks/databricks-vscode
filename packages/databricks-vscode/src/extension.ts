@@ -419,7 +419,7 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.unityCatalog.copyName",
             async (node: UnityCatalogTreeNode) => {
-                if (node.kind === "error") {
+                if (node.kind === "error" || node.kind === "empty") {
                     return;
                 }
                 const text = node.kind === "column" ? node.name : node.fullName;
@@ -442,6 +442,13 @@ export async function activate(
                     return;
                 }
                 await UrlUtils.openExternal(url);
+            }
+        ),
+        commands.registerCommand(
+            "databricks.unityCatalog.filter",
+            async () => {
+                await commands.executeCommand("unityCatalogView.focus");
+                await commands.executeCommand("list.find");
             }
         )
     );

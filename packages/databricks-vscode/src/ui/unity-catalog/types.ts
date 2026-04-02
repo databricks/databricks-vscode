@@ -63,7 +63,8 @@ export type UnityCatalogTreeNode =
           nullable?: boolean;
           position?: number;
       }
-    | {kind: "error"; message: string};
+    | {kind: "error"; message: string}
+    | {kind: "empty"; message: string};
 
 export interface UnityCatalogTreeItem extends TreeItem {
     url?: string;
