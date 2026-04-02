@@ -66,6 +66,11 @@ const StorageConfigurations = {
         location: "workspace",
     }),
 
+    "databricks.unityCatalog.pinnedSchemas": withType<string[]>()({
+        location: "workspace",
+        defaultValue: [],
+    }),
+
     "databricks.lastInstalledExtensionVersion": withType<string>()({
         location: "global",
         defaultValue: "0.0.0",

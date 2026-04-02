@@ -222,6 +222,18 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.unityCatalog.pinSchema",
+                "title": "Pin Schema",
+                "icon": "$(star-empty)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.unpinSchema",
+                "title": "Unpin Schema",
+                "icon": "$(star-full)",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.unityCatalog.openExternal",
                 "title": "Open in Databricks",
                 "icon": "$(link-external)",
@@ -748,6 +760,26 @@
                     "command": "databricks.unityCatalog.refreshNode",
                     "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column)/",
                     "group": "inline@2"
+                },
+                {
+                    "command": "databricks.unityCatalog.pinSchema",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.schema/ && !(viewItem =~ /\\.is-pinned/)",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "databricks.unityCatalog.unpinSchema",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.schema.*\\.is-pinned/",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "databricks.unityCatalog.pinSchema",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.schema/ && !(viewItem =~ /\\.is-pinned/)",
+                    "group": "navigation_2@4"
+                },
+                {
+                    "command": "databricks.unityCatalog.unpinSchema",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.schema.*\\.is-pinned/",
+                    "group": "navigation_2@4"
                 },
                 {
                     "command": "databricks.utils.goToDefinition",

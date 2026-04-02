@@ -17,6 +17,7 @@ export type UnityCatalogTreeNode =
           name: string;
           fullName: string;
           comment?: string;
+          pinned?: boolean;
       }
     | {
           kind: "table";

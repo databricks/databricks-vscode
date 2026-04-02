@@ -21,10 +21,12 @@ import {
     UnityCatalogTreeItem,
     UnityCatalogTreeNode,
 } from "./UnityCatalogTreeDataProvider";
+import {StateStorage} from "../../vscode-objs/StateStorage";
 
 describe(__filename, () => {
     let disposables: Disposable[] = [];
     let mockConnectionManager: ConnectionManager;
+    let stubStateStorage: StateStorage;
     let mockWorkspaceClient: WorkspaceClient;
     let mockCatalogs: CatalogsService;
     let mockSchemas: SchemasService;
@@ -36,6 +38,11 @@ describe(__filename, () => {
     beforeEach(() => {
         disposables = [];
         onDidChangeStateHandler = () => {};
+        stubStateStorage = {
+            get: () => [] as string[],
+            set: async () => {},
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
 
         mockCatalogs = mock(CatalogsService);
         when(mockCatalogs.list(anything(), anything())).thenCall(() => {
@@ -134,7 +141,8 @@ describe(__filename, () => {
     it("returns undefined when not connected", async () => {
         when(mockConnectionManager.workspaceClient).thenReturn(undefined);
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -144,7 +152,8 @@ describe(__filename, () => {
 
     it("lists catalogs sorted by name", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -166,7 +175,8 @@ describe(__filename, () => {
 
     it("lists schemas under a catalog", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -191,7 +201,8 @@ describe(__filename, () => {
 
     it("lists tables, volumes, and functions under a schema", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -226,7 +237,8 @@ describe(__filename, () => {
 
     it("fires onDidChangeTreeData when connection state changes", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -250,7 +262,7 @@ describe(__filename, () => {
             },
         } as unknown as ConnectionManager;
 
-        const provider = new UnityCatalogTreeDataProvider(stubManager);
+        const provider = new UnityCatalogTreeDataProvider(stubManager, stubStateStorage);
         disposables.push(provider);
 
         const catalog: UnityCatalogTreeNode = {
@@ -274,7 +286,8 @@ describe(__filename, () => {
 
     it("getTreeItem omits url when no host", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -291,7 +304,8 @@ describe(__filename, () => {
 
     it("getTreeItem for function node", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -314,7 +328,8 @@ describe(__filename, () => {
 
     it("table node carries enriched fields", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -341,7 +356,8 @@ describe(__filename, () => {
 
     it("getChildren for table with columns returns sorted column nodes", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -374,7 +390,8 @@ describe(__filename, () => {
 
     it("getChildren for table without columns returns undefined", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -394,7 +411,8 @@ describe(__filename, () => {
 
     it("getTreeItem for non-nullable column uses symbol-key icon", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -414,7 +432,8 @@ describe(__filename, () => {
 
     it("getTreeItem for nullable column uses symbol-field icon", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -432,7 +451,8 @@ describe(__filename, () => {
 
     it("getTreeItem for EXTERNAL table with storage has has-storage in contextValue", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -455,7 +475,8 @@ describe(__filename, () => {
 
     it("getTreeItem for VIEW table with view_definition has is-view in contextValue", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -478,7 +499,8 @@ describe(__filename, () => {
 
     it("volume node carries volumeType and shows EXTERNAL label suffix", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -501,7 +523,8 @@ describe(__filename, () => {
 
     it("catalog node carries comment", async () => {
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 
@@ -521,7 +544,8 @@ describe(__filename, () => {
         );
 
         const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager)
+            instance(mockConnectionManager),
+            stubStateStorage
         );
         disposables.push(provider);
 

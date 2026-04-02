@@ -73,16 +73,20 @@ function renderSchema(
     if (node.comment) {
         tt.appendMarkdown(`\n\n${node.comment}`);
     }
+    const baseContextValue = exploreUrl
+        ? "unityCatalog.schema.has-url"
+        : "unityCatalog.schema";
     return {
         label: node.name,
+        description: node.pinned ? "★" : undefined,
         tooltip: tt,
         iconPath: new ThemeIcon(
             "folder-library",
             new ThemeColor("databricks.unityCatalog.schema")
         ),
-        contextValue: exploreUrl
-            ? "unityCatalog.schema.has-url"
-            : "unityCatalog.schema",
+        contextValue: node.pinned
+            ? baseContextValue + ".is-pinned"
+            : baseContextValue,
         collapsibleState: TreeItemCollapsibleState.Collapsed,
         url: exploreUrl,
         copyText: node.fullName,

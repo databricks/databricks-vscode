@@ -377,7 +377,8 @@ export async function activate(
     );
 
     const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
-        connectionManager
+        connectionManager,
+        stateStorage
     );
     const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
         treeDataProvider: unityCatalogTreeDataProvider,
@@ -449,6 +450,22 @@ export async function activate(
             async () => {
                 await commands.executeCommand("unityCatalogView.focus");
                 await commands.executeCommand("list.find");
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.pinSchema",
+            (node: UnityCatalogTreeNode) => {
+                if (node.kind === "schema") {
+                    return unityCatalogTreeDataProvider.pinSchema(node);
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.unpinSchema",
+            (node: UnityCatalogTreeNode) => {
+                if (node.kind === "schema") {
+                    return unityCatalogTreeDataProvider.unpinSchema(node);
+                }
             }
         )
     );

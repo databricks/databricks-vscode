@@ -5,6 +5,7 @@ import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {Loggers} from "../../logger";
 import {buildTreeItem} from "./nodeRenderer";
 import {UnityCatalogTreeItem, UnityCatalogTreeNode} from "./types";
+import {StateStorage} from "../../vscode-objs/StateStorage";
 
 export type {
     ColumnData,
@@ -31,7 +32,10 @@ export class UnityCatalogTreeDataProvider
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
     private readonly disposables: Disposable[] = [];
 
-    constructor(private readonly connectionManager: ConnectionManager) {
+    constructor(
+        private readonly connectionManager: ConnectionManager,
+        private readonly stateStorage: StateStorage
+    ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
                 this._onDidChangeTreeData.fire(undefined);
@@ -144,6 +148,11 @@ export class UnityCatalogTreeDataProvider
             const rows = await drainAsyncIterable(
                 client.schemas.list({catalog_name: catalogName})
             );
+            const pinned = new Set(
+                this.stateStorage.get(
+                    "databricks.unityCatalog.pinnedSchemas"
+                ) ?? []
+            );
             const result = rows
                 .filter((s) => s.name)
                 .map((s) => ({
@@ -152,8 +161,19 @@ export class UnityCatalogTreeDataProvider
                     name: s.name!,
                     fullName: s.full_name ?? `${catalogName}.${s.name}`,
                     comment: s.comment,
+                    pinned: pinned.has(
+                        s.full_name ?? `${catalogName}.${s.name}`
+                    ),
                 }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+                .sort((a, b) => {
+                    if (a.pinned && !b.pinned) {
+                        return -1;
+                    }
+                    if (!a.pinned && b.pinned) {
+                        return 1;
+                    }
+                    return a.name.localeCompare(b.name);
+                });
             return result.length > 0 ? result : this.emptyNode("No schemas");
         } catch (e) {
             return this.errorChildren(e, "schemas");
@@ -288,6 +308,34 @@ export class UnityCatalogTreeDataProvider
                 : `Failed to load ${resource}`;
         logger.error(`Unity Catalog: ${message}`, e);
         return [{kind: "error", message}];
+    }
+
+    async pinSchema(
+        node: Extract<UnityCatalogTreeNode, {kind: "schema"}>
+    ): Promise<void> {
+        const current =
+            this.stateStorage.get("databricks.unityCatalog.pinnedSchemas") ??
+            [];
+        if (!current.includes(node.fullName)) {
+            await this.stateStorage.set(
+                "databricks.unityCatalog.pinnedSchemas",
+                [...current, node.fullName]
+            );
+        }
+        this._onDidChangeTreeData.fire(undefined);
+    }
+
+    async unpinSchema(
+        node: Extract<UnityCatalogTreeNode, {kind: "schema"}>
+    ): Promise<void> {
+        const current =
+            this.stateStorage.get("databricks.unityCatalog.pinnedSchemas") ??
+            [];
+        await this.stateStorage.set(
+            "databricks.unityCatalog.pinnedSchemas",
+            current.filter((n) => n !== node.fullName)
+        );
+        this._onDidChangeTreeData.fire(undefined);
     }
 
     refresh(): void {
