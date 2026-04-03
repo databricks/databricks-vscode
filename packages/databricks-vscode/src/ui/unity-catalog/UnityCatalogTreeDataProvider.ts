@@ -25,8 +25,8 @@ function isOwnedByUser(
     if (owner === user.userName) {
         return true;
     }
-    console.log(`owner ${owner}`, JSON.stringify(user));
-    return (user.groups ?? []).some((g) => g.display === owner);
+    // TODO: Check if user is owner through group? like: return (user.groups ?? []).some((g) => g.display === owner);
+    return false;
 }
 
 async function drainAsyncIterable<T>(iter: AsyncIterable<T>): Promise<T[]> {
