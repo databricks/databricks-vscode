@@ -7,6 +7,7 @@ import {WorkspaceClient} from "@databricks/sdk-experimental";
 import {
     CatalogsService,
     FunctionsService,
+    ModelVersionsService,
     RegisteredModelsService,
     SchemasService,
     TablesService,
@@ -35,6 +36,7 @@ describe(__filename, () => {
     let mockVolumes: VolumesService;
     let mockFunctions: FunctionsService;
     let mockRegisteredModels: RegisteredModelsService;
+    let mockModelVersions: ModelVersionsService;
     let onDidChangeStateHandler: (s: ConnectionState) => void;
 
     beforeEach(() => {
@@ -47,7 +49,7 @@ describe(__filename, () => {
         } as unknown as StateStorage;
 
         mockCatalogs = mock(CatalogsService);
-        when(mockCatalogs.list(anything(), anything())).thenCall(() => {
+        when(mockCatalogs.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {name: "c_b", full_name: "c_b"};
                 yield {name: "c_a", full_name: "c_a"};
@@ -56,7 +58,7 @@ describe(__filename, () => {
         });
 
         mockSchemas = mock(SchemasService);
-        when(mockSchemas.list(anything(), anything())).thenCall(() => {
+        when(mockSchemas.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {name: "s_b", full_name: "cat.s_b"};
                 yield {name: "s_a", full_name: "cat.s_a"};
@@ -65,7 +67,7 @@ describe(__filename, () => {
         });
 
         mockTables = mock(TablesService);
-        when(mockTables.list(anything(), anything())).thenCall(() => {
+        when(mockTables.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {
                     name: "t1",
@@ -94,7 +96,7 @@ describe(__filename, () => {
         });
 
         mockVolumes = mock(VolumesService);
-        when(mockVolumes.list(anything(), anything())).thenCall(() => {
+        when(mockVolumes.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {
                     name: "v1",
@@ -106,7 +108,7 @@ describe(__filename, () => {
         });
 
         mockFunctions = mock(FunctionsService);
-        when(mockFunctions.list(anything(), anything())).thenCall(() => {
+        when(mockFunctions.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {
                     name: "f1",
@@ -118,7 +120,15 @@ describe(__filename, () => {
         });
 
         mockRegisteredModels = mock(RegisteredModelsService);
-        when(mockRegisteredModels.list(anything(), anything())).thenCall(() => {
+        when(mockRegisteredModels.list(anything())).thenCall(() => {
+            async function* impl() {
+                /* empty */
+            }
+            return impl();
+        });
+
+        mockModelVersions = mock(ModelVersionsService);
+        when(mockModelVersions.list(anything())).thenCall(() => {
             async function* impl() {
                 /* empty */
             }
@@ -133,6 +143,9 @@ describe(__filename, () => {
         when(mockWorkspaceClient.functions).thenReturn(instance(mockFunctions));
         when(mockWorkspaceClient.registeredModels).thenReturn(
             instance(mockRegisteredModels)
+        );
+        when(mockWorkspaceClient.modelVersions).thenReturn(
+            instance(mockModelVersions)
         );
 
         mockConnectionManager = mock(ConnectionManager);
@@ -552,9 +565,14 @@ describe(__filename, () => {
     });
 
     it("returns error when functions API throws", async () => {
-        when(mockFunctions.list(anything(), anything())).thenThrow(
-            new Error("functions API unavailable")
-        );
+        when(mockFunctions.list(anything())).thenCall(() => {
+            async function* impl(): AsyncGenerator<never> {
+                throw new Error("functions API unavailable");
+                // eslint-disable-next-line no-unreachable
+                yield undefined as never;
+            }
+            return impl();
+        });
 
         const provider = new UnityCatalogTreeDataProvider(
             instance(mockConnectionManager),
@@ -577,5 +595,156 @@ describe(__filename, () => {
         assert.strictEqual(children.length, 3);
         assert.notStrictEqual(children[0].kind, "error");
         assert.strictEqual(children[children.length - 1].kind, "error");
+    });
+
+    it("lists registered models under a schema", async () => {
+        when(mockRegisteredModels.list(anything())).thenCall(() => {
+            async function* impl() {
+                yield {name: "m1", full_name: "cat.sch.m1"};
+            }
+            return impl();
+        });
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+        const schema: UnityCatalogTreeNode = {
+            kind: "schema",
+            catalogName: "cat",
+            name: "sch",
+            fullName: "cat.sch",
+        };
+        const children = (await resolveProviderResult(
+            provider.getChildren(schema)
+        )) as UnityCatalogTreeNode[];
+        const model = children.find((c) => c.kind === "registeredModel");
+        assert(model && model.kind === "registeredModel");
+        assert.strictEqual(model.name, "m1");
+        assert.strictEqual(model.fullName, "cat.sch.m1");
+    });
+
+    it("lists model versions for a registered model, sorted descending", async () => {
+        when(mockModelVersions.list(anything())).thenCall(() => {
+            async function* impl() {
+                yield {version: 1};
+                yield {version: 3};
+                yield {version: 2};
+            }
+            return impl();
+        });
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+        const modelNode: UnityCatalogTreeNode = {
+            kind: "registeredModel",
+            catalogName: "cat",
+            schemaName: "sch",
+            name: "m1",
+            fullName: "cat.sch.m1",
+        };
+        const children = (await resolveProviderResult(
+            provider.getChildren(modelNode)
+        )) as UnityCatalogTreeNode[];
+        assert(children);
+        assert.strictEqual(children.length, 3);
+        assert.strictEqual(children[0].kind, "modelVersion");
+        if (children[0].kind === "modelVersion") {
+            assert.strictEqual(children[0].version, 3);
+            assert.strictEqual((children[2] as any).version, 1);
+        }
+    });
+
+    it("pinSchema adds fullName to stateStorage and fires tree change", async () => {
+        const stored: string[] = [];
+        const spyStorage = {
+            get: () => stored,
+            set: async (_key: string, val: string[]) => {
+                stored.length = 0;
+                stored.push(...val);
+            },
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
+        const p = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            spyStorage
+        );
+        disposables.push(p);
+        let fired = 0;
+        disposables.push(p.onDidChangeTreeData(() => {fired++;}));
+        const schema = {
+            kind: "schema" as const,
+            catalogName: "cat",
+            name: "sch",
+            fullName: "cat.sch",
+        };
+        await p.pinSchema(schema);
+        assert(stored.includes("cat.sch"));
+        assert.strictEqual(fired, 1);
+    });
+
+    it("unpinSchema removes fullName from stateStorage and fires tree change", async () => {
+        const stored: string[] = ["cat.sch", "cat.other"];
+        const spyStorage = {
+            get: () => [...stored],
+            set: async (_key: string, val: string[]) => {
+                stored.length = 0;
+                stored.push(...val);
+            },
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
+        const p = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            spyStorage
+        );
+        disposables.push(p);
+        let fired = 0;
+        disposables.push(p.onDidChangeTreeData(() => {fired++;}));
+        const schema = {
+            kind: "schema" as const,
+            catalogName: "cat",
+            name: "sch",
+            fullName: "cat.sch",
+        };
+        await p.unpinSchema(schema);
+        assert(!stored.includes("cat.sch"));
+        assert(stored.includes("cat.other"));
+        assert.strictEqual(fired, 1);
+    });
+
+    it("pinned schema sorts before owned, owned before unowned", async () => {
+        const pinnedStorage = {
+            get: () => ["cat.s_b"],
+            set: async () => {},
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
+        when(mockSchemas.list(anything())).thenCall(() => {
+            async function* impl() {
+                yield {name: "s_c", full_name: "cat.s_c", owner: "carol"};
+                yield {name: "s_b", full_name: "cat.s_b", owner: "bob"}; // pinned
+                yield {name: "s_a", full_name: "cat.s_a", owner: "alice"}; // owned
+            }
+            return impl();
+        });
+        const stubManager = {
+            onDidChangeState: () => ({dispose() {}}),
+            workspaceClient: instance(mockWorkspaceClient),
+            databricksWorkspace: {user: {userName: "alice"}},
+        } as unknown as ConnectionManager;
+        const p = new UnityCatalogTreeDataProvider(stubManager, pinnedStorage);
+        disposables.push(p);
+        const catalog: UnityCatalogTreeNode = {
+            kind: "catalog",
+            name: "cat",
+            fullName: "cat",
+        };
+        const children = (await resolveProviderResult(
+            p.getChildren(catalog)
+        )) as UnityCatalogTreeNode[];
+        assert.strictEqual((children[0] as any).name, "s_b"); // pinned first
+        assert.strictEqual((children[1] as any).name, "s_a"); // owned second
+        assert.strictEqual((children[2] as any).name, "s_c"); // unowned last
     });
 });
