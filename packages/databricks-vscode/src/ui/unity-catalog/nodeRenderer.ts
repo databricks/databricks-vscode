@@ -227,6 +227,90 @@ function renderFunction(
     };
 }
 
+function renderRegisteredModel(
+    node: Extract<UnityCatalogTreeNode, {kind: "registeredModel"}>,
+    exploreUrl: string | undefined
+): UnityCatalogTreeItem {
+    const tt = new MarkdownString(`**${node.fullName}**`);
+    if (node.owner) {
+        tt.appendMarkdown(`\n\n*Owner:* ${node.owner}`);
+    }
+    if (node.comment) {
+        tt.appendMarkdown(`\n\n${node.comment}`);
+    }
+    if (node.aliases && node.aliases.length > 0) {
+        const aliasList = node.aliases
+            .filter((a) => a.alias_name)
+            .map((a) =>
+                a.version_num !== undefined
+                    ? `${a.alias_name} → v${a.version_num}`
+                    : a.alias_name!
+            )
+            .join(", ");
+        if (aliasList) {
+            tt.appendMarkdown(`\n\n*Aliases:* ${aliasList}`);
+        }
+    }
+    const cAt = formatTs(node.createdAt);
+    const uAt = formatTs(node.updatedAt);
+    if (cAt) {
+        tt.appendMarkdown(`\n\n*Created:* ${cAt}`);
+    }
+    if (uAt) {
+        tt.appendMarkdown(`  *Updated:* ${uAt}`);
+    }
+    return {
+        label: node.name,
+        tooltip: tt,
+        iconPath: new ThemeIcon(
+            "beaker",
+            new ThemeColor("databricks.unityCatalog.registeredModel")
+        ),
+        contextValue: exploreUrl
+            ? "unityCatalog.registeredModel.has-url"
+            : "unityCatalog.registeredModel",
+        collapsibleState: TreeItemCollapsibleState.Collapsed,
+        url: exploreUrl,
+        copyText: node.fullName,
+    };
+}
+
+function renderModelVersion(
+    node: Extract<UnityCatalogTreeNode, {kind: "modelVersion"}>,
+    exploreUrl: string | undefined
+): UnityCatalogTreeItem {
+    const tt = new MarkdownString(`**v${node.version}**`);
+    if (node.status) {
+        tt.appendMarkdown(`\n\n*Status:* ${node.status}`);
+    }
+    if (node.comment) {
+        tt.appendMarkdown(`\n\n${node.comment}`);
+    }
+    if (node.createdBy) {
+        tt.appendMarkdown(`\n\n*Created by:* ${node.createdBy}`);
+    }
+    const cAt = formatTs(node.createdAt);
+    if (cAt) {
+        tt.appendMarkdown(`\n\n*Created:* ${cAt}`);
+    }
+    return {
+        label: `v${node.version}`,
+        description:
+            node.status && node.status !== "READY" ? node.status : undefined,
+        tooltip: tt,
+        iconPath: new ThemeIcon(
+            "tag",
+            new ThemeColor("databricks.unityCatalog.modelVersion")
+        ),
+        contextValue: exploreUrl
+            ? "unityCatalog.modelVersion.has-url"
+            : "unityCatalog.modelVersion",
+        collapsibleState: TreeItemCollapsibleState.None,
+        url: exploreUrl,
+        copyText: node.fullName,
+    };
+}
+
 function renderColumn(
     node: Extract<UnityCatalogTreeNode, {kind: "column"}>
 ): UnityCatalogTreeItem {
@@ -278,6 +362,10 @@ export function buildTreeItem(
             return renderVolume(node, exploreUrl);
         case "function":
             return renderFunction(node, exploreUrl);
+        case "registeredModel":
+            return renderRegisteredModel(node, exploreUrl);
+        case "modelVersion":
+            return renderModelVersion(node, exploreUrl);
         case "column":
             return renderColumn(node);
     }

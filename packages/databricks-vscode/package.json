@@ -581,6 +581,24 @@
                     "highContrast": "#8EAFC2",
                     "highContrastLight": "#4A6B82"
                 }
+            },
+            {
+                "id": "databricks.unityCatalog.registeredModel",
+                "description": "Color for registered model nodes in the Unity Catalog view",
+                "defaults": {
+                    "dark": "#C586C0",
+                    "light": "#AF00DB",
+                    "highContrast": "#C586C0"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.modelVersion",
+                "description": "Color for model version nodes in the Unity Catalog view",
+                "defaults": {
+                    "dark": "#B5CEA8",
+                    "light": "#008000",
+                    "highContrast": "#B5CEA8"
+                }
             }
         ],
         "viewsWelcome": [

@@ -74,10 +74,18 @@ export class UnityCatalogTreeDataProvider
             return undefined;
         }
         const fullNamePath = node.fullName.replaceAll(".", "/");
-        const path =
-            node.kind === "function"
-                ? `functions/${fullNamePath}`
-                : fullNamePath;
+        let path = fullNamePath;
+        switch (node.kind) {
+            case "registeredModel":
+                path = `models/${fullNamePath}`;
+                break;
+            case "modelVersion":
+                path = `models/${fullNamePath}/version/${node.version}`;
+                break;
+            case "function":
+                path = `functions/${fullNamePath}`;
+                break;
+        }
         return this.getExploreUrl(path);
     }
 
@@ -111,6 +119,10 @@ export class UnityCatalogTreeDataProvider
                 element.catalogName,
                 element.name
             );
+        }
+
+        if (element.kind === "registeredModel") {
+            return this.listModelVersions(client, element);
         }
 
         if (element.kind === "table") {
@@ -221,26 +233,33 @@ export class UnityCatalogTreeDataProvider
         schemaName: string
     ): Promise<UnityCatalogTreeNode[] | undefined> {
         try {
-            const [tableRows, volumeRows, functionRows] = await Promise.all([
-                drainAsyncIterable(
-                    client.tables.list({
-                        catalog_name: catalogName,
-                        schema_name: schemaName,
-                    })
-                ),
-                drainAsyncIterable(
-                    client.volumes.list({
-                        catalog_name: catalogName,
-                        schema_name: schemaName,
-                    })
-                ),
-                drainAsyncIterable(
-                    client.functions.list({
-                        catalog_name: catalogName,
-                        schema_name: schemaName,
-                    })
-                ),
-            ]);
+            const [tableRows, volumeRows, functionRows, modelRows] =
+                await Promise.all([
+                    drainAsyncIterable(
+                        client.tables.list({
+                            catalog_name: catalogName,
+                            schema_name: schemaName,
+                        })
+                    ),
+                    drainAsyncIterable(
+                        client.volumes.list({
+                            catalog_name: catalogName,
+                            schema_name: schemaName,
+                        })
+                    ),
+                    drainAsyncIterable(
+                        client.functions.list({
+                            catalog_name: catalogName,
+                            schema_name: schemaName,
+                        })
+                    ),
+                    drainAsyncIterable(
+                        client.registeredModels.list({
+                            catalog_name: catalogName,
+                            schema_name: schemaName,
+                        })
+                    ),
+                ]);
 
             const tableNodes: UnityCatalogTreeNode[] = tableRows
                 .filter((t) => t.name)
@@ -295,11 +314,38 @@ export class UnityCatalogTreeDataProvider
                     fullName: `${catalogName}.${schemaName}.${f.name}`,
                 }));
 
-            const kindOrder = {table: 0, volume: 1, function: 2} as Record<
-                string,
-                number
-            >;
-            const combined = [...tableNodes, ...volumeNodes, ...functionNodes];
+            const modelNodes: UnityCatalogTreeNode[] = modelRows
+                .filter((m) => m.name)
+                .map((m) => ({
+                    kind: "registeredModel" as const,
+                    catalogName,
+                    schemaName,
+                    name: m.name!,
+                    fullName:
+                        m.full_name ?? `${catalogName}.${schemaName}.${m.name}`,
+                    comment: m.comment,
+                    owner: m.owner,
+                    storageLocation: m.storage_location,
+                    aliases: m.aliases?.map((a) => ({
+                        alias_name: a.alias_name,
+                        version_num: a.version_num,
+                    })),
+                    createdAt: m.created_at,
+                    updatedAt: m.updated_at,
+                }));
+
+            const kindOrder = {
+                table: 0,
+                volume: 1,
+                function: 2,
+                registeredModel: 3,
+            } as Record<string, number>;
+            const combined = [
+                ...tableNodes,
+                ...volumeNodes,
+                ...functionNodes,
+                ...modelNodes,
+            ];
             if (combined.length === 0) {
                 return this.emptyNode("No items");
             }
@@ -307,13 +353,15 @@ export class UnityCatalogTreeDataProvider
                 const an =
                     a.kind === "table" ||
                     a.kind === "volume" ||
-                    a.kind === "function"
+                    a.kind === "function" ||
+                    a.kind === "registeredModel"
                         ? a.name
                         : "";
                 const bn =
                     b.kind === "table" ||
                     b.kind === "volume" ||
-                    b.kind === "function"
+                    b.kind === "function" ||
+                    b.kind === "registeredModel"
                         ? b.name
                         : "";
                 const c = an.localeCompare(bn);
@@ -323,7 +371,40 @@ export class UnityCatalogTreeDataProvider
                 return (kindOrder[a.kind] ?? 0) - (kindOrder[b.kind] ?? 0);
             });
         } catch (e) {
-            return this.errorChildren(e, "tables, volumes, and functions");
+            return this.errorChildren(
+                e,
+                "tables, volumes, functions, and registered models"
+            );
+        }
+    }
+
+    private async listModelVersions(
+        client: NonNullable<ConnectionManager["workspaceClient"]>,
+        model: Extract<UnityCatalogTreeNode, {kind: "registeredModel"}>
+    ): Promise<UnityCatalogTreeNode[] | undefined> {
+        try {
+            const rows = await drainAsyncIterable(
+                client.modelVersions.list({full_name: model.fullName})
+            );
+            const nodes = rows
+                .filter((v) => v.version !== undefined)
+                .map((v) => ({
+                    kind: "modelVersion" as const,
+                    catalogName: model.catalogName,
+                    schemaName: model.schemaName,
+                    modelName: model.name,
+                    fullName: model.fullName,
+                    version: v.version!,
+                    comment: v.comment,
+                    status: v.status,
+                    storageLocation: v.storage_location,
+                    createdAt: v.created_at,
+                    createdBy: v.created_by,
+                }))
+                .sort((a, b) => b.version - a.version);
+            return nodes.length > 0 ? nodes : this.emptyNode("No versions");
+        } catch (e) {
+            return this.errorChildren(e, "model versions");
         }
     }
 

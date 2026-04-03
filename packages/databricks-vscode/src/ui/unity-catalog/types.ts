@@ -57,6 +57,32 @@ export type UnityCatalogTreeNode =
           fullName: string;
       }
     | {
+          kind: "registeredModel";
+          catalogName: string;
+          schemaName: string;
+          name: string;
+          fullName: string;
+          comment?: string;
+          owner?: string;
+          storageLocation?: string;
+          aliases?: Array<{alias_name?: string; version_num?: number}>;
+          createdAt?: number;
+          updatedAt?: number;
+      }
+    | {
+          kind: "modelVersion";
+          catalogName: string;
+          schemaName: string;
+          modelName: string;
+          fullName: string;
+          version: number;
+          comment?: string;
+          status?: string;
+          storageLocation?: string;
+          createdAt?: number;
+          createdBy?: string;
+      }
+    | {
           kind: "column";
           tableFullName: string;
           name: string;
