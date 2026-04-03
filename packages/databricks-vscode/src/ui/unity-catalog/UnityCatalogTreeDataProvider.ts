@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiError, logging} from "@databricks/sdk-experimental";
+import {ApiError, logging, type iam} from "@databricks/sdk-experimental";
 import {Disposable, EventEmitter, TreeDataProvider} from "vscode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {Loggers} from "../../logger";
@@ -14,6 +14,20 @@ export type {
 } from "./types";
 
 const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
+
+function isOwnedByUser(
+    owner: string | undefined,
+    user: iam.User | undefined
+): boolean {
+    if (!owner || !user) {
+        return false;
+    }
+    if (owner === user.userName) {
+        return true;
+    }
+    console.log(`owner ${owner}`, JSON.stringify(user));
+    return (user.groups ?? []).some((g) => g.display === owner);
+}
 
 async function drainAsyncIterable<T>(iter: AsyncIterable<T>): Promise<T[]> {
     const out: T[] = [];
@@ -52,7 +66,11 @@ export class UnityCatalogTreeDataProvider
     }
 
     getNodeExploreUrl(node: UnityCatalogTreeNode): string | undefined {
-        if (node.kind === "error" || node.kind === "column" || node.kind === "empty") {
+        if (
+            node.kind === "error" ||
+            node.kind === "column" ||
+            node.kind === "empty"
+        ) {
             return undefined;
         }
         const fullNamePath = node.fullName.replaceAll(".", "/");
@@ -123,6 +141,8 @@ export class UnityCatalogTreeDataProvider
     ): Promise<UnityCatalogTreeNode[] | undefined> {
         try {
             const rows = await drainAsyncIterable(client.catalogs.list({}));
+            const currentUser =
+                this.connectionManager.databricksWorkspace?.user;
             const result = rows
                 .filter((c) => c.name)
                 .map((c) => ({
@@ -130,8 +150,18 @@ export class UnityCatalogTreeDataProvider
                     name: c.name!,
                     fullName: c.full_name ?? c.name!,
                     comment: c.comment,
+                    owner: c.owner,
+                    owned: isOwnedByUser(c.owner, currentUser),
                 }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+                .sort((a, b) => {
+                    if (a.owned && !b.owned) {
+                        return -1;
+                    }
+                    if (!a.owned && b.owned) {
+                        return 1;
+                    }
+                    return a.name.localeCompare(b.name);
+                });
             return result.length > 0
                 ? result
                 : this.emptyNode("No catalogs found");
@@ -148,6 +178,8 @@ export class UnityCatalogTreeDataProvider
             const rows = await drainAsyncIterable(
                 client.schemas.list({catalog_name: catalogName})
             );
+            const currentUser =
+                this.connectionManager.databricksWorkspace?.user;
             const pinned = new Set(
                 this.stateStorage.get(
                     "databricks.unityCatalog.pinnedSchemas"
@@ -155,22 +187,25 @@ export class UnityCatalogTreeDataProvider
             );
             const result = rows
                 .filter((s) => s.name)
-                .map((s) => ({
-                    kind: "schema" as const,
-                    catalogName,
-                    name: s.name!,
-                    fullName: s.full_name ?? `${catalogName}.${s.name}`,
-                    comment: s.comment,
-                    pinned: pinned.has(
-                        s.full_name ?? `${catalogName}.${s.name}`
-                    ),
-                }))
+                .map((s) => {
+                    const fullName = s.full_name ?? `${catalogName}.${s.name}`;
+                    return {
+                        kind: "schema" as const,
+                        catalogName,
+                        name: s.name!,
+                        fullName,
+                        comment: s.comment,
+                        owner: s.owner,
+                        pinned: pinned.has(fullName),
+                        owned: isOwnedByUser(s.owner, currentUser),
+                    };
+                })
                 .sort((a, b) => {
-                    if (a.pinned && !b.pinned) {
-                        return -1;
-                    }
-                    if (!a.pinned && b.pinned) {
-                        return 1;
+                    const rank = (n: typeof a) =>
+                        n.pinned ? 0 : n.owned ? 1 : 2;
+                    const r = rank(a) - rank(b);
+                    if (r !== 0) {
+                        return r;
                     }
                     return a.name.localeCompare(b.name);
                 });
@@ -268,27 +303,25 @@ export class UnityCatalogTreeDataProvider
             if (combined.length === 0) {
                 return this.emptyNode("No items");
             }
-            return combined.sort(
-                (a, b) => {
-                    const an =
-                        a.kind === "table" ||
-                        a.kind === "volume" ||
-                        a.kind === "function"
-                            ? a.name
-                            : "";
-                    const bn =
-                        b.kind === "table" ||
-                        b.kind === "volume" ||
-                        b.kind === "function"
-                            ? b.name
-                            : "";
-                    const c = an.localeCompare(bn);
-                    if (c !== 0) {
-                        return c;
-                    }
-                    return (kindOrder[a.kind] ?? 0) - (kindOrder[b.kind] ?? 0);
+            return combined.sort((a, b) => {
+                const an =
+                    a.kind === "table" ||
+                    a.kind === "volume" ||
+                    a.kind === "function"
+                        ? a.name
+                        : "";
+                const bn =
+                    b.kind === "table" ||
+                    b.kind === "volume" ||
+                    b.kind === "function"
+                        ? b.name
+                        : "";
+                const c = an.localeCompare(bn);
+                if (c !== 0) {
+                    return c;
                 }
-            );
+                return (kindOrder[a.kind] ?? 0) - (kindOrder[b.kind] ?? 0);
+            });
         } catch (e) {
             return this.errorChildren(e, "tables, volumes, and functions");
         }

@@ -51,6 +51,7 @@ function renderCatalog(
     }
     return {
         label: node.name,
+        description: node.owned ? "yours" : undefined,
         tooltip: tt,
         iconPath: new ThemeIcon(
             "library",
@@ -76,9 +77,17 @@ function renderSchema(
     const baseContextValue = exploreUrl
         ? "unityCatalog.schema.has-url"
         : "unityCatalog.schema";
+    let description: string | undefined;
+    if (node.pinned && node.owned) {
+        description = "★ · yours";
+    } else if (node.pinned) {
+        description = "★";
+    } else if (node.owned) {
+        description = "yours";
+    }
     return {
         label: node.name,
-        description: node.pinned ? "★" : undefined,
+        description,
         tooltip: tt,
         iconPath: new ThemeIcon(
             "folder-library",

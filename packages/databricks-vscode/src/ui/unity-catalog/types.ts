@@ -10,7 +10,7 @@ export interface ColumnData {
 }
 
 export type UnityCatalogTreeNode =
-    | {kind: "catalog"; name: string; fullName: string; comment?: string}
+    | {kind: "catalog"; name: string; fullName: string; comment?: string; owner?: string; owned?: boolean}
     | {
           kind: "schema";
           catalogName: string;
@@ -18,6 +18,8 @@ export type UnityCatalogTreeNode =
           fullName: string;
           comment?: string;
           pinned?: boolean;
+          owner?: string;
+          owned?: boolean;
       }
     | {
           kind: "table";
