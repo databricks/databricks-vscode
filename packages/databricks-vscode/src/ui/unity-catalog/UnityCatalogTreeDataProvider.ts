@@ -93,12 +93,12 @@ export class UnityCatalogTreeDataProvider
         return buildTreeItem(element, this.getNodeExploreUrl(element));
     }
 
-    getChildren(
+    async getChildren(
         element?: UnityCatalogTreeNode
-    ): Thenable<UnityCatalogTreeNode[] | undefined> {
+    ): Promise<UnityCatalogTreeNode[] | undefined> {
         const client = this.connectionManager.workspaceClient;
         if (!client) {
-            return Promise.resolve(undefined);
+            return undefined;
         }
 
         if (!element) {
@@ -106,7 +106,7 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "error") {
-            return Promise.resolve(undefined);
+            return undefined;
         }
 
         if (element.kind === "catalog") {
@@ -127,25 +127,23 @@ export class UnityCatalogTreeDataProvider
 
         if (element.kind === "table") {
             if (!element.columns?.length) {
-                return Promise.resolve(undefined);
+                return undefined;
             }
-            return Promise.resolve(
-                [...element.columns]
-                    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-                    .map((col) => ({
-                        kind: "column" as const,
-                        tableFullName: element.fullName,
-                        name: col.name,
-                        typeName: col.typeName,
-                        typeText: col.typeText,
-                        comment: col.comment,
-                        nullable: col.nullable,
-                        position: col.position,
-                    }))
-            );
+            return [...element.columns]
+                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                .map((col) => ({
+                    kind: "column" as const,
+                    tableFullName: element.fullName,
+                    name: col.name,
+                    typeName: col.typeName,
+                    typeText: col.typeText,
+                    comment: col.comment,
+                    nullable: col.nullable,
+                    position: col.position,
+                }));
         }
 
-        return Promise.resolve(undefined);
+        return undefined;
     }
 
     private async listCatalogs(
@@ -232,124 +230,158 @@ export class UnityCatalogTreeDataProvider
         catalogName: string,
         schemaName: string
     ): Promise<UnityCatalogTreeNode[] | undefined> {
-        try {
-            const [tableRows, volumeRows, functionRows, modelRows] =
-                await Promise.all([
-                    drainAsyncIterable(
-                        client.tables.list({
-                            catalog_name: catalogName,
-                            schema_name: schemaName,
-                        })
-                    ),
-                    drainAsyncIterable(
-                        client.volumes.list({
-                            catalog_name: catalogName,
-                            schema_name: schemaName,
-                        })
-                    ),
-                    drainAsyncIterable(
-                        client.functions.list({
-                            catalog_name: catalogName,
-                            schema_name: schemaName,
-                        })
-                    ),
-                    drainAsyncIterable(
-                        client.registeredModels.list({
-                            catalog_name: catalogName,
-                            schema_name: schemaName,
-                        })
-                    ),
-                ]);
+        const [tablesResult, volumesResult, functionsResult, modelsResult] =
+            await Promise.allSettled([
+                drainAsyncIterable(
+                    client.tables.list({
+                        catalog_name: catalogName,
+                        schema_name: schemaName,
+                    })
+                ),
+                drainAsyncIterable(
+                    client.volumes.list({
+                        catalog_name: catalogName,
+                        schema_name: schemaName,
+                    })
+                ),
+                drainAsyncIterable(
+                    client.functions.list({
+                        catalog_name: catalogName,
+                        schema_name: schemaName,
+                    })
+                ),
+                drainAsyncIterable(
+                    client.registeredModels.list({
+                        catalog_name: catalogName,
+                        schema_name: schemaName,
+                    })
+                ),
+            ]);
 
-            const tableNodes: UnityCatalogTreeNode[] = tableRows
-                .filter((t) => t.name)
-                .map((t) => ({
-                    kind: "table" as const,
-                    catalogName,
-                    schemaName,
-                    name: t.name!,
-                    fullName:
-                        t.full_name ?? `${catalogName}.${schemaName}.${t.name}`,
-                    tableType: t.table_type,
-                    comment: t.comment,
-                    dataSourceFormat: t.data_source_format,
-                    storageLocation: t.storage_location,
-                    viewDefinition: t.view_definition,
-                    owner: t.owner,
-                    createdBy: t.created_by,
-                    createdAt: t.created_at,
-                    updatedAt: t.updated_at,
-                    columns: (t.columns ?? []).map((col) => ({
-                        name: col.name!,
-                        typeName: col.type_name,
-                        typeText: col.type_text,
-                        comment: col.comment,
-                        nullable: col.nullable,
-                        position: col.position,
-                    })),
-                }));
+        const tableNodes: UnityCatalogTreeNode[] =
+            tablesResult.status === "fulfilled"
+                ? tablesResult.value
+                      .filter((t) => t.name)
+                      .map((t) => ({
+                          kind: "table" as const,
+                          catalogName,
+                          schemaName,
+                          name: t.name!,
+                          fullName:
+                              t.full_name ??
+                              `${catalogName}.${schemaName}.${t.name}`,
+                          tableType: t.table_type,
+                          comment: t.comment,
+                          dataSourceFormat: t.data_source_format,
+                          storageLocation: t.storage_location,
+                          viewDefinition: t.view_definition,
+                          owner: t.owner,
+                          createdBy: t.created_by,
+                          createdAt: t.created_at,
+                          updatedAt: t.updated_at,
+                          columns: (t.columns ?? []).map((col) => ({
+                              name: col.name!,
+                              typeName: col.type_name,
+                              typeText: col.type_text,
+                              comment: col.comment,
+                              nullable: col.nullable,
+                              position: col.position,
+                          })),
+                      }))
+                : [];
 
-            const volumeNodes: UnityCatalogTreeNode[] = volumeRows
-                .filter((v) => v.name)
-                .map((v) => ({
-                    kind: "volume" as const,
-                    catalogName,
-                    schemaName,
-                    name: v.name!,
-                    fullName:
-                        v.full_name ?? `${catalogName}.${schemaName}.${v.name}`,
-                    volumeType: v.volume_type,
-                    storageLocation: v.storage_location,
-                    comment: v.comment,
-                    owner: v.owner,
-                }));
+        const volumeNodes: UnityCatalogTreeNode[] =
+            volumesResult.status === "fulfilled"
+                ? volumesResult.value
+                      .filter((v) => v.name)
+                      .map((v) => ({
+                          kind: "volume" as const,
+                          catalogName,
+                          schemaName,
+                          name: v.name!,
+                          fullName:
+                              v.full_name ??
+                              `${catalogName}.${schemaName}.${v.name}`,
+                          volumeType: v.volume_type,
+                          storageLocation: v.storage_location,
+                          comment: v.comment,
+                          owner: v.owner,
+                      }))
+                : [];
 
-            const functionNodes: UnityCatalogTreeNode[] = functionRows
-                .filter((f) => f.name)
-                .map((f) => ({
-                    kind: "function" as const,
-                    catalogName,
-                    schemaName,
-                    name: f.name!,
-                    fullName: `${catalogName}.${schemaName}.${f.name}`,
-                }));
+        const functionNodes: UnityCatalogTreeNode[] =
+            functionsResult.status === "fulfilled"
+                ? functionsResult.value
+                      .filter((f) => f.name)
+                      .map((f) => ({
+                          kind: "function" as const,
+                          catalogName,
+                          schemaName,
+                          name: f.name!,
+                          fullName: `${catalogName}.${schemaName}.${f.name}`,
+                      }))
+                : [];
 
-            const modelNodes: UnityCatalogTreeNode[] = modelRows
-                .filter((m) => m.name)
-                .map((m) => ({
-                    kind: "registeredModel" as const,
-                    catalogName,
-                    schemaName,
-                    name: m.name!,
-                    fullName:
-                        m.full_name ?? `${catalogName}.${schemaName}.${m.name}`,
-                    comment: m.comment,
-                    owner: m.owner,
-                    storageLocation: m.storage_location,
-                    aliases: m.aliases?.map((a) => ({
-                        alias_name: a.alias_name,
-                        version_num: a.version_num,
-                    })),
-                    createdAt: m.created_at,
-                    updatedAt: m.updated_at,
-                }));
+        const modelNodes: UnityCatalogTreeNode[] =
+            modelsResult.status === "fulfilled"
+                ? modelsResult.value
+                      .filter((m) => m.name)
+                      .map((m) => ({
+                          kind: "registeredModel" as const,
+                          catalogName,
+                          schemaName,
+                          name: m.name!,
+                          fullName:
+                              m.full_name ??
+                              `${catalogName}.${schemaName}.${m.name}`,
+                          comment: m.comment,
+                          owner: m.owner,
+                          storageLocation: m.storage_location,
+                          aliases: m.aliases?.map((a) => ({
+                              alias_name: a.alias_name,
+                              version_num: a.version_num,
+                          })),
+                          createdAt: m.created_at,
+                          updatedAt: m.updated_at,
+                      }))
+                : [];
 
-            const kindOrder = {
-                table: 0,
-                volume: 1,
-                function: 2,
-                registeredModel: 3,
-            } as Record<string, number>;
-            const combined = [
-                ...tableNodes,
-                ...volumeNodes,
-                ...functionNodes,
-                ...modelNodes,
-            ];
-            if (combined.length === 0) {
-                return this.emptyNode("No items");
-            }
-            return combined.sort((a, b) => {
+        const errorNodes: UnityCatalogTreeNode[] = [
+            ...(tablesResult.status === "rejected"
+                ? (this.errorChildren(tablesResult.reason, "tables") ?? [])
+                : []),
+            ...(volumesResult.status === "rejected"
+                ? (this.errorChildren(volumesResult.reason, "volumes") ?? [])
+                : []),
+            ...(functionsResult.status === "rejected"
+                ? (this.errorChildren(functionsResult.reason, "functions") ??
+                  [])
+                : []),
+            ...(modelsResult.status === "rejected"
+                ? (this.errorChildren(
+                      modelsResult.reason,
+                      "registered models"
+                  ) ?? [])
+                : []),
+        ];
+
+        const kindOrder = {
+            table: 0,
+            volume: 1,
+            function: 2,
+            registeredModel: 3,
+        } as Record<string, number>;
+        const contentNodes = [
+            ...tableNodes,
+            ...volumeNodes,
+            ...functionNodes,
+            ...modelNodes,
+        ];
+        if (contentNodes.length === 0 && errorNodes.length === 0) {
+            return this.emptyNode("No items");
+        }
+        return [
+            ...contentNodes.sort((a, b) => {
                 const an =
                     a.kind === "table" ||
                     a.kind === "volume" ||
@@ -369,13 +401,9 @@ export class UnityCatalogTreeDataProvider
                     return c;
                 }
                 return (kindOrder[a.kind] ?? 0) - (kindOrder[b.kind] ?? 0);
-            });
-        } catch (e) {
-            return this.errorChildren(
-                e,
-                "tables, volumes, functions, and registered models"
-            );
-        }
+            }),
+            ...errorNodes,
+        ];
     }
 
     private async listModelVersions(
