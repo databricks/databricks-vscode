@@ -5,14 +5,34 @@ import {
     TreeItemCollapsibleState,
 } from "vscode";
 import {UnityCatalogTreeNode, UnityCatalogTreeItem} from "./types";
+import {formatTs} from "./utils";
 
-function formatTs(ms: number | undefined): string | undefined {
-    if (ms === undefined) {
-        return undefined;
+export function buildTreeItem(
+    node: UnityCatalogTreeNode,
+    exploreUrl: string | undefined
+): UnityCatalogTreeItem {
+    switch (node.kind) {
+        case "error":
+            return renderError(node);
+        case "empty":
+            return renderEmpty(node);
+        case "catalog":
+            return renderCatalog(node, exploreUrl);
+        case "schema":
+            return renderSchema(node, exploreUrl);
+        case "table":
+            return renderTable(node, exploreUrl);
+        case "volume":
+            return renderVolume(node, exploreUrl);
+        case "function":
+            return renderFunction(node, exploreUrl);
+        case "registeredModel":
+            return renderRegisteredModel(node, exploreUrl);
+        case "modelVersion":
+            return renderModelVersion(node, exploreUrl);
+        case "column":
+            return renderColumn(node);
     }
-    return (
-        new Date(ms).toISOString().replace("T", " ").substring(0, 19) + " UTC"
-    );
 }
 
 function renderError(
@@ -341,32 +361,4 @@ function renderColumn(
         collapsibleState: TreeItemCollapsibleState.None,
         copyText: node.name,
     };
-}
-
-export function buildTreeItem(
-    node: UnityCatalogTreeNode,
-    exploreUrl: string | undefined
-): UnityCatalogTreeItem {
-    switch (node.kind) {
-        case "error":
-            return renderError(node);
-        case "empty":
-            return renderEmpty(node);
-        case "catalog":
-            return renderCatalog(node, exploreUrl);
-        case "schema":
-            return renderSchema(node, exploreUrl);
-        case "table":
-            return renderTable(node, exploreUrl);
-        case "volume":
-            return renderVolume(node, exploreUrl);
-        case "function":
-            return renderFunction(node, exploreUrl);
-        case "registeredModel":
-            return renderRegisteredModel(node, exploreUrl);
-        case "modelVersion":
-            return renderModelVersion(node, exploreUrl);
-        case "column":
-            return renderColumn(node);
-    }
 }

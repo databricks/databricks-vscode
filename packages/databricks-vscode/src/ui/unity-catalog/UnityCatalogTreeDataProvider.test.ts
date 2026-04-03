@@ -7,6 +7,7 @@ import {WorkspaceClient} from "@databricks/sdk-experimental";
 import {
     CatalogsService,
     FunctionsService,
+    RegisteredModelsService,
     SchemasService,
     TablesService,
     VolumesService,
@@ -33,6 +34,7 @@ describe(__filename, () => {
     let mockTables: TablesService;
     let mockVolumes: VolumesService;
     let mockFunctions: FunctionsService;
+    let mockRegisteredModels: RegisteredModelsService;
     let onDidChangeStateHandler: (s: ConnectionState) => void;
 
     beforeEach(() => {
@@ -115,12 +117,23 @@ describe(__filename, () => {
             return impl();
         });
 
+        mockRegisteredModels = mock(RegisteredModelsService);
+        when(mockRegisteredModels.list(anything(), anything())).thenCall(() => {
+            async function* impl() {
+                /* empty */
+            }
+            return impl();
+        });
+
         mockWorkspaceClient = mock(WorkspaceClient);
         when(mockWorkspaceClient.catalogs).thenReturn(instance(mockCatalogs));
         when(mockWorkspaceClient.schemas).thenReturn(instance(mockSchemas));
         when(mockWorkspaceClient.tables).thenReturn(instance(mockTables));
         when(mockWorkspaceClient.volumes).thenReturn(instance(mockVolumes));
         when(mockWorkspaceClient.functions).thenReturn(instance(mockFunctions));
+        when(mockWorkspaceClient.registeredModels).thenReturn(
+            instance(mockRegisteredModels)
+        );
 
         mockConnectionManager = mock(ConnectionManager);
         when(mockConnectionManager.workspaceClient).thenReturn(
@@ -560,7 +573,9 @@ describe(__filename, () => {
         )) as UnityCatalogTreeNode[];
 
         assert(children);
-        assert.strictEqual(children.length, 1);
-        assert.strictEqual(children[0].kind, "error");
+        // allSettled: tables (t1) and volumes (v1) still succeed; only functions errors
+        assert.strictEqual(children.length, 3);
+        assert.notStrictEqual(children[0].kind, "error");
+        assert.strictEqual(children[children.length - 1].kind, "error");
     });
 });
