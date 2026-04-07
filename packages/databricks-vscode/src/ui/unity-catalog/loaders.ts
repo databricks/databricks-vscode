@@ -37,6 +37,16 @@ export async function loadCatalogs(
                 comment: c.comment,
                 owner: c.owner,
                 owned: isOwnedByUser(c.owner, currentUser),
+                catalogType: c.catalog_type,
+                isolationMode: c.isolation_mode,
+                storageLocation: c.storage_location,
+                createdAt: c.created_at,
+                createdBy: c.created_by,
+                updatedAt: c.updated_at,
+                updatedBy: c.updated_by,
+                connectionName: c.connection_name,
+                providerName: c.provider_name,
+                shareName: c.share_name,
             }))
             .sort((a, b) => {
                 if (a.owned && !b.owned) {
@@ -76,6 +86,11 @@ export async function loadSchemas(
                     owner: s.owner,
                     pinned: pinnedSchemas.has(fullName),
                     owned: isOwnedByUser(s.owner, currentUser),
+                    storageLocation: s.storage_location,
+                    createdAt: s.created_at,
+                    createdBy: s.created_by,
+                    updatedAt: s.updated_at,
+                    updatedBy: s.updated_by,
                 };
             })
             .sort((a, b) => {
@@ -146,6 +161,7 @@ export async function loadSchemaChildren(
                       createdBy: t.created_by,
                       createdAt: t.created_at,
                       updatedAt: t.updated_at,
+                      updatedBy: t.updated_by,
                       columns: (t.columns ?? []).map((col) => ({
                           name: col.name!,
                           typeName: col.type_name,
@@ -154,6 +170,7 @@ export async function loadSchemaChildren(
                           nullable: col.nullable,
                           position: col.position,
                       })),
+                      customProperties: t.properties,
                   }))
             : [];
 
@@ -173,6 +190,10 @@ export async function loadSchemaChildren(
                       storageLocation: v.storage_location,
                       comment: v.comment,
                       owner: v.owner,
+                      createdAt: v.created_at,
+                      createdBy: v.created_by,
+                      updatedAt: v.updated_at,
+                      updatedBy: v.updated_by,
                   }))
             : [];
 
@@ -186,6 +207,28 @@ export async function loadSchemaChildren(
                       schemaName,
                       name: f.name!,
                       fullName: `${catalogName}.${schemaName}.${f.name}`,
+                      comment: f.comment,
+                      owner: f.owner,
+                      routineBody: f.routine_body,
+                      routineDefinition: f.routine_definition,
+                      fullDataType: f.full_data_type,
+                      externalLanguage: f.external_language,
+                      isDeterministic: f.is_deterministic,
+                      inputParams: (f.input_params?.parameters ?? []).map(
+                          (p) => ({
+                              name: p.name,
+                              typeName: p.type_name
+                                  ? String(p.type_name)
+                                  : undefined,
+                              typeText: p.type_text,
+                              comment: p.comment,
+                              parameterDefault: p.parameter_default,
+                          })
+                      ),
+                      createdAt: f.created_at,
+                      createdBy: f.created_by,
+                      updatedAt: f.updated_at,
+                      updatedBy: f.updated_by,
                   }))
             : [];
 

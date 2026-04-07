@@ -80,6 +80,7 @@ import {
     UnityCatalogTreeDataProvider,
     UnityCatalogTreeNode,
 } from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
+import {registerDetailPanel} from "./ui/unity-catalog/registerDetailPanel";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -445,13 +446,10 @@ export async function activate(
                 await UrlUtils.openExternal(url);
             }
         ),
-        commands.registerCommand(
-            "databricks.unityCatalog.filter",
-            async () => {
-                await commands.executeCommand("unityCatalogView.focus");
-                await commands.executeCommand("list.find");
-            }
-        ),
+        commands.registerCommand("databricks.unityCatalog.filter", async () => {
+            await commands.executeCommand("unityCatalogView.focus");
+            await commands.executeCommand("list.find");
+        }),
         telemetry.registerCommand(
             "databricks.unityCatalog.pinSchema",
             (node: UnityCatalogTreeNode) => {
@@ -467,6 +465,14 @@ export async function activate(
                     return unityCatalogTreeDataProvider.unpinSchema(node);
                 }
             }
+        ),
+        ...registerDetailPanel(
+            context.extensionUri,
+            connectionManager,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            unityCatalogTreeView as any,
+            unityCatalogTreeDataProvider,
+            telemetry
         )
     );
 

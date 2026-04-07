@@ -9,8 +9,33 @@ export interface ColumnData {
     position?: number;
 }
 
+export interface FunctionParameterInfo {
+    name: string;
+    typeName?: string;
+    typeText?: string;
+    comment?: string;
+    parameterDefault?: string;
+}
+
 export type UnityCatalogTreeNode =
-    | {kind: "catalog"; name: string; fullName: string; comment?: string; owner?: string; owned?: boolean}
+    | {
+          kind: "catalog";
+          name: string;
+          fullName: string;
+          comment?: string;
+          owner?: string;
+          owned?: boolean;
+          catalogType?: string;
+          isolationMode?: string;
+          storageLocation?: string;
+          createdAt?: number;
+          createdBy?: string;
+          updatedAt?: number;
+          updatedBy?: string;
+          connectionName?: string;
+          providerName?: string;
+          shareName?: string;
+      }
     | {
           kind: "schema";
           catalogName: string;
@@ -20,6 +45,11 @@ export type UnityCatalogTreeNode =
           pinned?: boolean;
           owner?: string;
           owned?: boolean;
+          storageLocation?: string;
+          createdAt?: number;
+          createdBy?: string;
+          updatedAt?: number;
+          updatedBy?: string;
       }
     | {
           kind: "table";
@@ -36,7 +66,9 @@ export type UnityCatalogTreeNode =
           createdBy?: string;
           createdAt?: number;
           updatedAt?: number;
+          updatedBy?: string;
           columns?: ColumnData[];
+          customProperties?: Record<string, string>;
       }
     | {
           kind: "volume";
@@ -48,6 +80,10 @@ export type UnityCatalogTreeNode =
           storageLocation?: string;
           comment?: string;
           owner?: string;
+          createdAt?: number;
+          createdBy?: string;
+          updatedAt?: number;
+          updatedBy?: string;
       }
     | {
           kind: "function";
@@ -55,6 +91,18 @@ export type UnityCatalogTreeNode =
           schemaName: string;
           name: string;
           fullName: string;
+          comment?: string;
+          owner?: string;
+          routineBody?: string;
+          routineDefinition?: string;
+          fullDataType?: string;
+          externalLanguage?: string;
+          isDeterministic?: boolean;
+          inputParams?: FunctionParameterInfo[];
+          createdAt?: number;
+          createdBy?: string;
+          updatedAt?: number;
+          updatedBy?: string;
       }
     | {
           kind: "registeredModel";
