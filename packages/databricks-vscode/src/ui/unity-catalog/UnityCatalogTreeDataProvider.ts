@@ -25,6 +25,7 @@ export class UnityCatalogTreeDataProvider
     >();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
     private readonly disposables: Disposable[] = [];
+    private readonly childrenCache = new Map<string, UnityCatalogTreeNode[]>();
 
     constructor(
         private readonly connectionManager: ConnectionManager,
@@ -98,19 +99,30 @@ export class UnityCatalogTreeDataProvider
                     "databricks.unityCatalog.pinnedSchemas"
                 ) ?? []
             );
-            return loadSchemas(client, element.name, currentUser, pinned);
+            const result = await loadSchemas(
+                client,
+                element.name,
+                currentUser,
+                pinned
+            );
+            this.childrenCache.set(element.fullName, result);
+            return result;
         }
 
         if (element.kind === "schema") {
-            return loadSchemaChildren(
+            const result = await loadSchemaChildren(
                 client,
                 element.catalogName,
                 element.name
             );
+            this.childrenCache.set(element.fullName, result);
+            return result;
         }
 
         if (element.kind === "registeredModel") {
-            return loadModelVersions(client, element);
+            const result = await loadModelVersions(client, element);
+            this.childrenCache.set(element.fullName, result);
+            return result;
         }
 
         if (element.kind === "table") {
@@ -162,11 +174,19 @@ export class UnityCatalogTreeDataProvider
         this._onDidChangeTreeData.fire(undefined);
     }
 
+    getLoadedChildren(key: string): UnityCatalogTreeNode[] | undefined {
+        return this.childrenCache.get(key);
+    }
+
     refresh(): void {
+        this.childrenCache.clear();
         this._onDidChangeTreeData.fire(undefined);
     }
 
     refreshNode(element: UnityCatalogTreeNode): void {
+        if ("fullName" in element) {
+            this.childrenCache.delete(element.fullName);
+        }
         this._onDidChangeTreeData.fire(element);
     }
 

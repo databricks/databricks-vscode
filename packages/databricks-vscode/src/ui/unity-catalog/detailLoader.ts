@@ -23,6 +23,15 @@ export interface ConstraintSummary {
     parentColumns?: string[];
 }
 
+export interface ChildItem {
+    label: string;
+    subLabel?: string;
+    owner?: string;
+    status?: string;
+    createdBy?: string;
+    createdAt?: number;
+}
+
 export interface NodeEnrichments {
     tags?: Array<{key: string; value?: string}>;
     permissions?: Array<{principal: string; privileges: string[]}>;
@@ -31,6 +40,214 @@ export interface NodeEnrichments {
     customProperties?: Record<string, string>;
     rowFilter?: {functionName: string; usingColumns: string[]};
     pipelineId?: string;
+    children?: ChildItem[];
+    childrenTitle?: string;
+}
+
+async function loadChildrenForNode(
+    client: Client,
+    node: Exclude<
+        UnityCatalogTreeNode,
+        {kind: "error" | "empty" | "column" | "modelVersion"}
+    >,
+    cachedChildren?: UnityCatalogTreeNode[]
+): Promise<{title: string; items: ChildItem[]} | null> {
+    if (node.kind === "catalog") {
+        if (cachedChildren) {
+            return {
+                title: "Schemas",
+                items: cachedChildren
+                    .filter(
+                        (n): n is Extract<UnityCatalogTreeNode, {kind: "schema"}> =>
+                            n.kind === "schema"
+                    )
+                    .map((n) => ({
+                        label: n.name,
+                        owner: n.owner,
+                        createdAt: n.createdAt,
+                    }))
+                    .sort((a, b) => a.label.localeCompare(b.label)),
+            };
+        }
+        const rows = await drainAsyncIterable(
+            client.schemas.list({catalog_name: node.name})
+        );
+        return {
+            title: "Schemas",
+            items: rows
+                .filter((s) => s.name)
+                .map((s) => ({
+                    label: s.name!,
+                    owner: s.owner,
+                    createdAt: s.created_at,
+                }))
+                .sort((a, b) => a.label.localeCompare(b.label)),
+        };
+    }
+    if (node.kind === "schema") {
+        if (cachedChildren) {
+            const items: ChildItem[] = cachedChildren
+                .flatMap((n) => {
+                    if (n.kind === "table") {
+                        return [
+                            {
+                                label: n.name,
+                                subLabel: n.tableType ?? "TABLE",
+                                owner: n.owner,
+                                createdAt: n.createdAt,
+                            },
+                        ];
+                    }
+                    if (n.kind === "volume") {
+                        return [
+                            {
+                                label: n.name,
+                                subLabel: "VOLUME",
+                                owner: n.owner,
+                                createdAt: n.createdAt,
+                            },
+                        ];
+                    }
+                    if (n.kind === "function") {
+                        return [
+                            {
+                                label: n.name,
+                                subLabel: "FUNCTION",
+                                owner: n.owner,
+                                createdAt: n.createdAt,
+                            },
+                        ];
+                    }
+                    if (n.kind === "registeredModel") {
+                        return [
+                            {
+                                label: n.name,
+                                subLabel: "MODEL",
+                                owner: n.owner,
+                                createdAt: n.createdAt,
+                            },
+                        ];
+                    }
+                    return [];
+                })
+                .sort((a, b) => a.label.localeCompare(b.label));
+            return {title: "Contents", items};
+        }
+        const [tables, volumes, functions, models] = await Promise.allSettled([
+            drainAsyncIterable(
+                client.tables.list({
+                    catalog_name: node.catalogName,
+                    schema_name: node.name,
+                })
+            ),
+            drainAsyncIterable(
+                client.volumes.list({
+                    catalog_name: node.catalogName,
+                    schema_name: node.name,
+                })
+            ),
+            drainAsyncIterable(
+                client.functions.list({
+                    catalog_name: node.catalogName,
+                    schema_name: node.name,
+                })
+            ),
+            drainAsyncIterable(
+                client.registeredModels.list({
+                    catalog_name: node.catalogName,
+                    schema_name: node.name,
+                })
+            ),
+        ]);
+        const items: ChildItem[] = [
+            ...(tables.status === "fulfilled"
+                ? tables.value
+                      .filter((t) => t.name)
+                      .map((t) => ({
+                          label: t.name!,
+                          subLabel: t.table_type ?? "TABLE",
+                          owner: t.owner,
+                          createdAt: t.created_at,
+                      }))
+                : []),
+            ...(volumes.status === "fulfilled"
+                ? volumes.value
+                      .filter((v) => v.name)
+                      .map((v) => ({
+                          label: v.name!,
+                          subLabel: "VOLUME",
+                          owner: v.owner,
+                          createdAt: v.created_at,
+                      }))
+                : []),
+            ...(functions.status === "fulfilled"
+                ? functions.value
+                      .filter((f) => f.name)
+                      .map((f) => ({
+                          label: f.name!,
+                          subLabel: "FUNCTION",
+                          owner: f.owner,
+                          createdAt: f.created_at,
+                      }))
+                : []),
+            ...(models.status === "fulfilled"
+                ? models.value
+                      .filter((m) => m.name)
+                      .map((m) => ({
+                          label: m.name!,
+                          subLabel: "MODEL",
+                          owner: m.owner,
+                          createdAt: m.created_at,
+                      }))
+                : []),
+        ].sort((a, b) => a.label.localeCompare(b.label));
+        return {title: "Contents", items};
+    }
+    if (node.kind === "registeredModel") {
+        if (cachedChildren) {
+            return {
+                title: "Versions",
+                items: cachedChildren
+                    .filter(
+                        (n): n is Extract<
+                            UnityCatalogTreeNode,
+                            {kind: "modelVersion"}
+                        > => n.kind === "modelVersion"
+                    )
+                    .map((n) => ({
+                        label: `v${n.version}`,
+                        status: n.status,
+                        createdBy: n.createdBy,
+                        createdAt: n.createdAt,
+                    }))
+                    .sort(
+                        (a, b) =>
+                            parseInt(b.label.slice(1)) -
+                            parseInt(a.label.slice(1))
+                    ),
+            };
+        }
+        const rows = await drainAsyncIterable(
+            client.modelVersions.list({full_name: node.fullName})
+        );
+        return {
+            title: "Versions",
+            items: rows
+                .filter((v) => v.version !== undefined)
+                .map((v) => ({
+                    label: `v${v.version}`,
+                    status: v.status,
+                    createdBy: v.created_by,
+                    createdAt: v.created_at,
+                }))
+                .sort((a, b) => {
+                    const va = parseInt(a.label.slice(1));
+                    const vb = parseInt(b.label.slice(1));
+                    return vb - va;
+                }),
+        };
+    }
+    return null;
 }
 
 const SECURABLE_TYPE: Partial<Record<string, string>> = {
@@ -54,34 +271,41 @@ export async function loadNodeEnrichments(
     node: Exclude<
         UnityCatalogTreeNode,
         {kind: "error" | "empty" | "column" | "modelVersion"}
-    >
+    >,
+    cachedChildren?: UnityCatalogTreeNode[]
 ): Promise<NodeEnrichments> {
     const tagEntityType = TAG_ENTITY_TYPE[node.kind];
     const securableType = SECURABLE_TYPE[node.kind];
 
-    const [tagsResult, permissionsResult, tableDetailResult, monitorResult] =
-        await Promise.allSettled([
-            tagEntityType
-                ? drainAsyncIterable(
-                      client.entityTagAssignments.list({
-                          entity_name: node.fullName,
-                          entity_type: tagEntityType,
-                      })
-                  )
-                : Promise.reject(new Error("not applicable")),
-            securableType
-                ? client.grants.getEffective({
-                      full_name: node.fullName,
-                      securable_type: securableType,
+    const [
+        tagsResult,
+        permissionsResult,
+        tableDetailResult,
+        monitorResult,
+        childrenResult,
+    ] = await Promise.allSettled([
+        tagEntityType
+            ? drainAsyncIterable(
+                  client.entityTagAssignments.list({
+                      entity_name: node.fullName,
+                      entity_type: tagEntityType,
                   })
-                : Promise.reject(new Error("not applicable")),
-            node.kind === "table"
-                ? client.tables.get({full_name: node.fullName})
-                : Promise.reject(new Error("not applicable")),
-            node.kind === "table"
-                ? client.qualityMonitors.get({table_name: node.fullName})
-                : Promise.reject(new Error("not applicable")),
-        ]);
+              )
+            : Promise.reject(new Error("not applicable")),
+        securableType
+            ? client.grants.getEffective({
+                  full_name: node.fullName,
+                  securable_type: securableType,
+              })
+            : Promise.reject(new Error("not applicable")),
+        node.kind === "table"
+            ? client.tables.get({full_name: node.fullName})
+            : Promise.reject(new Error("not applicable")),
+        node.kind === "table"
+            ? client.qualityMonitors.get({table_name: node.fullName})
+            : Promise.reject(new Error("not applicable")),
+        loadChildrenForNode(client, node, cachedChildren),
+    ]);
 
     const enrichments: NodeEnrichments = {};
 
@@ -164,6 +388,11 @@ export async function loadNodeEnrichments(
         monitorResult.reason.statusCode === 404
     ) {
         enrichments.monitor = null;
+    }
+
+    if (childrenResult.status === "fulfilled" && childrenResult.value) {
+        enrichments.childrenTitle = childrenResult.value.title;
+        enrichments.children = childrenResult.value.items;
     }
 
     return enrichments;

@@ -29,7 +29,13 @@ export function registerDetailPanel(
         if (node.kind !== "modelVersion") {
             const client = connectionManager.workspaceClient;
             if (client) {
-                loadNodeEnrichments(client, node)
+                const cachedChildren =
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "registeredModel"
+                        ? treeDataProvider.getLoadedChildren(node.fullName)
+                        : undefined;
+                loadNodeEnrichments(client, node, cachedChildren)
                     .then((enrichments) => panel.enrichNode(enrichments))
                     .catch(() => {
                         /* silently ignore enrichment errors */

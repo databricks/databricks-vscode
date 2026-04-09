@@ -462,6 +462,7 @@ function resetForNewNode() {
     show("section-tags", false);
     show("section-extra-props", false);
     show("section-constraints", false);
+    show("section-children", false);
     showTabBtn("details", true);
     showTabBtn("permissions", false);
     showTabBtn("quality", false);
@@ -596,6 +597,78 @@ function renderConstraints(constraints) {
     showTabBtn("details", true);
 }
 
+function renderChildren(enrichments) {
+    const children = enrichments.children;
+    if (!children?.length) return;
+
+    const hasSubLabel = children.some((c) => c.subLabel);
+    const hasOwner = children.some((c) => c.owner);
+    const hasStatus = children.some((c) => c.status);
+    const hasCreatedBy = children.some((c) => c.createdBy);
+    const hasCreatedAt = children.some((c) => c.createdAt);
+
+    const thead = document.getElementById("children-thead");
+    thead.innerHTML = "";
+    const headerRow = document.createElement("tr");
+    const headers = ["Name"];
+    if (hasSubLabel) headers.push("Type");
+    if (hasOwner) headers.push("Owner");
+    if (hasStatus) headers.push("Status");
+    if (hasCreatedBy) headers.push("Created By");
+    if (hasCreatedAt) headers.push("Created At");
+    headers.forEach((h) => {
+        const th = document.createElement("th");
+        th.textContent = h;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+
+    const tbody = document.getElementById("children-body");
+    tbody.innerHTML = "";
+    setText("children-title", enrichments.childrenTitle ?? "Contents");
+    setText("children-count", String(children.length));
+
+    for (const child of children) {
+        const tr = document.createElement("tr");
+
+        const tdName = document.createElement("td");
+        tdName.className = "col-name";
+        tdName.textContent = child.label;
+        tr.appendChild(tdName);
+
+        if (hasSubLabel) {
+            const td = document.createElement("td");
+            td.style.whiteSpace = "nowrap";
+            if (child.subLabel) td.appendChild(makeTypeChip(child.subLabel));
+            tr.appendChild(td);
+        }
+        if (hasOwner) {
+            const td = document.createElement("td");
+            td.textContent = child.owner ?? "";
+            tr.appendChild(td);
+        }
+        if (hasStatus) {
+            const td = document.createElement("td");
+            td.textContent = child.status ?? "";
+            tr.appendChild(td);
+        }
+        if (hasCreatedBy) {
+            const td = document.createElement("td");
+            td.textContent = child.createdBy ?? "";
+            tr.appendChild(td);
+        }
+        if (hasCreatedAt) {
+            const td = document.createElement("td");
+            td.textContent = child.createdAt ? formatDate(child.createdAt) : "";
+            tr.appendChild(td);
+        }
+
+        tbody.appendChild(tr);
+    }
+
+    show("section-children", true);
+}
+
 function renderCustomProperties(enrichments) {
     const extraList = document.getElementById("extra-props-list");
     if (!extraList) return;
@@ -652,6 +725,7 @@ const page = {
         renderMonitor(enrichments.monitor);
         renderConstraints(enrichments.constraints);
         renderCustomProperties(enrichments);
+        renderChildren(enrichments);
     },
 };
 
