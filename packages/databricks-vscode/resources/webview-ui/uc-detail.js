@@ -216,6 +216,10 @@ function activateTab(tabId) {
         searchBar.style.display = tabId === "definition" ? "none" : "";
 
     const searchInput = document.getElementById("search-input");
+    const searchClear = document.getElementById("search-clear");
+    if (searchInput) searchInput.value = "";
+    if (searchClear) searchClear.style.display = "none";
+
     if (searchInput) filterContent(searchInput.value);
 }
 
@@ -458,7 +462,7 @@ function resetForNewNode() {
     show("section-tags", false);
     show("section-extra-props", false);
     show("section-constraints", false);
-    showTabBtn("details", false);
+    showTabBtn("details", true);
     showTabBtn("permissions", false);
     showTabBtn("quality", false);
 

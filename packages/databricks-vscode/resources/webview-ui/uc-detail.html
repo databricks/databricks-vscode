@@ -105,15 +105,8 @@
                 </div>
             </div>
 
-            <!-- Overview panel: properties + description + schema + tags -->
+            <!-- Overview panel: description + schema + tags -->
             <div id="tab-overview" class="tab-panel active">
-                <div id="section-properties" class="section">
-                    <div class="section-header">
-                        <span class="section-title">Properties</span>
-                    </div>
-                    <div id="props-list" class="props-list"></div>
-                </div>
-
                 <div id="section-comment" class="section" style="display: none">
                     <div class="section-header">
                         <span class="section-title">Description</span>
@@ -189,8 +182,16 @@
                 </div>
             </div>
 
-            <!-- Details panel: enrichment props + constraints -->
+            <!-- Details panel: basic props + enrichment props + constraints -->
             <div id="tab-details" class="tab-panel">
+                <!-- Moved from overview: basic kind properties -->
+                <div id="section-properties" class="section">
+                    <div class="section-header">
+                        <span class="section-title">About this table</span>
+                    </div>
+                    <div id="props-list" class="props-list"></div>
+                </div>
+
                 <!-- Enrichment: custom properties, row filter, pipeline -->
                 <div
                     id="section-extra-props"
@@ -198,7 +199,7 @@
                     style="display: none"
                 >
                     <div class="section-header">
-                        <span class="section-title">Additional Properties</span>
+                        <span class="section-title">Properties</span>
                     </div>
                     <div id="extra-props-list" class="props-list"></div>
                 </div>
