@@ -13,9 +13,10 @@ on:
 
 jobs:
   publish-to-openvsx:
+    if: false # Temporarily disabled — pending secure release repo migration
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
 
     environment: Production
 
