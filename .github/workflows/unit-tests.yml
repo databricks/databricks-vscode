@@ -12,19 +12,17 @@ jobs:
       matrix:
         arch:
           - cli_arch: linux_amd64
-            os: linux-ubuntu-latest
-            runner:
-              group: databricks-protected-runner-group
-              labels: linux-ubuntu-latest
+            runner_group: databricks-protected-runner-group
+            runner_labels: linux-ubuntu-latest
           - cli_arch: windows_amd64
-            os: windows-server-latest-large
-            runner:
-              group: databricks-protected-runner-group-large
-              labels: windows-server-latest-large
+            runner_group: databricks-protected-runner-group-large
+            runner_labels: windows-server-latest-large
         node-version: [22.x]
         vscode-version: [stable]
 
-    runs-on: ${{ matrix.arch.runner }}
+    runs-on:
+      group: ${{ matrix.arch.runner_group }}
+      labels: ${{ matrix.arch.runner_labels }}
 
     permissions:
       id-token: write
