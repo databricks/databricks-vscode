@@ -73,10 +73,13 @@ jobs:
         run: yarn run build
 
       - name: Unit Tests with Coverage
-        uses: coactions/setup-xvfb@v1
-        with:
-          run: yarn run test:cov
-          working-directory: packages/databricks-vscode
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
+            export DISPLAY=:99
+          fi
+          yarn run test:cov
+        working-directory: packages/databricks-vscode
 
       - name: Install Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
