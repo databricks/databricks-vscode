@@ -3,6 +3,7 @@ import {posix} from "path";
 import {
     Disposable,
     EventEmitter,
+    MarkdownString,
     TreeDataProvider,
     TreeItem,
     ThemeIcon,
@@ -37,10 +38,16 @@ export class WorkspaceFsDataProvider
     getTreeItem(
         element: WorkspaceFsEntity
     ): IFsTreeItem | Thenable<IFsTreeItem> {
+        const wsfsUri = Uri.from({scheme: "wsfs", path: element.path});
         let treeItem: IFsTreeItem = {
             label: posix.basename(element.path),
-            path: Uri.from({scheme: "wsfs", path: element.path}),
+            path: wsfsUri,
             url: element.url,
+            tooltip: new MarkdownString(
+                `**${posix.basename(element.path)}**\n\n` +
+                    `Path: \`${element.path}\`\n\n` +
+                    `Type: ${element.type}`
+            ),
         };
         switch (element.type) {
             case "DIRECTORY":
@@ -72,6 +79,12 @@ export class WorkspaceFsDataProvider
                         "file",
                         new ThemeColor("charts.blue")
                     ),
+                    contextValue: "wsfs.file",
+                    command: {
+                        command: "vscode.open",
+                        title: "Open File",
+                        arguments: [wsfsUri],
+                    },
                 };
                 break;
             case "NOTEBOOK":
@@ -81,6 +94,12 @@ export class WorkspaceFsDataProvider
                         "notebook",
                         new ThemeColor("charts.orange")
                     ),
+                    contextValue: "wsfs.notebook",
+                    command: {
+                        command: "databricks.wsfs.openInBrowser",
+                        title: "Open in Browser",
+                        arguments: [element],
+                    },
                 };
                 break;
         }

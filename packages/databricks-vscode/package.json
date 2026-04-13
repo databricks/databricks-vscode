@@ -190,6 +190,36 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.wsfs.openInBrowser",
+                "title": "Open in Browser",
+                "icon": "$(link-external)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.copyPath",
+                "title": "Copy Path",
+                "icon": "$(copy)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.delete",
+                "title": "Delete",
+                "icon": "$(trash)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.uploadFile",
+                "title": "Upload File",
+                "icon": "$(cloud-upload)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.downloadFile",
+                "title": "Download",
+                "icon": "$(cloud-download)",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.call",
                 "title": "Call",
                 "enablement": "databricks.context.activated",
@@ -210,7 +240,6 @@
                 "icon": "$(gear)",
                 "title": "Select a Declarative Automation Bundle target",
                 "enablement": "databricks.context.activated && !databricks.context.remoteMode",
-
                 "category": "Databricks"
             },
             {
@@ -451,7 +480,7 @@
                 {
                     "id": "workspaceFsView",
                     "name": "Workspace explorer",
-                    "when": "databricks.feature.views.workspace && !databricks.context.remoteMode"
+                    "when": "!databricks.context.remoteMode"
                 },
                 {
                     "id": "databricksDocsView",
@@ -538,6 +567,11 @@
                     "group": "navigation@1"
                 },
                 {
+                    "command": "databricks.wsfs.uploadFile",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "databricks.bundle.refreshRemoteState",
                     "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@1"
@@ -583,6 +617,36 @@
                 }
             ],
             "view/item/context": [
+                {
+                    "command": "databricks.wsfs.copyPath",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs\\./",
+                    "group": "wsfs_nav@0"
+                },
+                {
+                    "command": "databricks.wsfs.openInBrowser",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs\\./",
+                    "group": "wsfs_nav@1"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "view == workspaceFsView && (viewItem == wsfs.directory || viewItem == wsfs.repo)",
+                    "group": "wsfs_mut@0"
+                },
+                {
+                    "command": "databricks.wsfs.uploadFile",
+                    "when": "view == workspaceFsView && (viewItem == wsfs.directory || viewItem == wsfs.repo)",
+                    "group": "wsfs_mut@1"
+                },
+                {
+                    "command": "databricks.wsfs.downloadFile",
+                    "when": "view == workspaceFsView && (viewItem == wsfs.file || viewItem == wsfs.notebook)",
+                    "group": "wsfs_mut@0"
+                },
+                {
+                    "command": "databricks.wsfs.delete",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs\\./",
+                    "group": "wsfs_danger@0"
+                },
                 {
                     "command": "databricks.utils.openExternal",
                     "when": "viewItem =~ /^databricks.*\\.(has-url).*$/ && databricks.context.bundle.deploymentState == idle",
@@ -840,6 +904,26 @@
                 {
                     "command": "databricks.wsfs.refresh",
                     "when": "config.databricks.sync.destinationType == workspace"
+                },
+                {
+                    "command": "databricks.wsfs.delete",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.downloadFile",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.copyPath",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.openInBrowser",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.uploadFile",
+                    "when": "false"
                 },
                 {
                     "command": "databricks.utils.openExternal",
