@@ -12,10 +12,17 @@ registry=${JFROG_NPM_REGISTRY}
 always-auth=true
 EOF
 
-# Configure Yarn Berry (v2+) — does not read ~/.npmrc for registry
-{
-  echo "YARN_NPM_REGISTRY_SERVER=${JFROG_NPM_REGISTRY}"
-  echo "YARN_NPM_AUTH_TOKEN=${JFROG_ACCESS_TOKEN}"
-} >> "$GITHUB_ENV"
+# Configure Yarn Berry (v2+).
+# YARN_NPM_AUTH_TOKEN env var is not reliably scoped to a custom
+# YARN_NPM_REGISTRY_SERVER in Yarn 3 — write ~/.yarnrc.yml directly so the
+# auth token is co-located with the registry entry, which is how Yarn Berry
+# handles scoped registry auth.
+cat >> ~/.yarnrc.yml << EOF
+npmRegistryServer: "${JFROG_NPM_REGISTRY}"
+npmRegistries:
+  "${JFROG_NPM_REGISTRY}":
+    npmAuthToken: "${JFROG_ACCESS_TOKEN}"
+    npmAlwaysAuth: true
+EOF
 
 echo "npm/yarn configured to use JFrog registry (db-npm)"
