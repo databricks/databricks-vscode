@@ -6,7 +6,7 @@ import {isDirectory, isFile} from "./utils";
 
 export class WorkspaceFsDir extends WorkspaceFsEntity {
     override async generateUrl(host: URL): Promise<string> {
-        return `${host.host}/browse/folders/${this.details.object_id}`;
+        return `${host.origin}/browse/folders/${this.details.object_id}`;
     }
 
     public getAbsoluteChildPath(path: string) {
