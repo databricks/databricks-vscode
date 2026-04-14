@@ -15,8 +15,8 @@ jobs:
             runner_group: databricks-protected-runner-group
             runner_labels: linux-ubuntu-latest
           - cli_arch: windows_amd64
-            runner_group: databricks-protected-runner-group-large
-            runner_labels: windows-server-latest-large
+            runner_group: databricks-protected-runner-group
+            runner_labels: windows-server-latest
         node-version: [22.x]
         vscode-version: [stable]
 
