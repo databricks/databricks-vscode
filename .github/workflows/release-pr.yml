@@ -18,8 +18,12 @@ on:
 jobs:
   release-pr:
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
 
     strategy:
       matrix:
@@ -43,6 +47,12 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: "yarn"
+
+      - name: Obtain JFrog OIDC token
+        run: bash .github/scripts/jfrog-oidc-token.sh
+
+      - name: Configure JFrog npm registry
+        run: bash .github/scripts/configure-npm.sh
 
       - run: yarn install --immutable
 
