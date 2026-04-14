@@ -9,13 +9,11 @@ ID_TOKEN=$(curl -sLS \
   -H "User-Agent: actions/oidc-client" \
   -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
   "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=jfrog-github" | jq .value | tr -d '"')
-echo "::add-mask::${ID_TOKEN}"
 
 # Exchange for JFrog access token
 ACCESS_TOKEN=$(curl -sLS -XPOST -H "Content-Type: application/json" \
   "https://databricks.jfrog.io/access/api/v1/oidc/token" \
   -d "{\"grant_type\": \"urn:ietf:params:oauth:grant-type:token-exchange\", \"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\", \"subject_token\": \"${ID_TOKEN}\", \"provider_name\": \"github-actions\"}" | jq .access_token | tr -d '"')
-echo "::add-mask::${ACCESS_TOKEN}"
 
 if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
   echo "FAIL: Could not extract JFrog access token"
