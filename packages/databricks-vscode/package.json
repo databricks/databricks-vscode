@@ -479,7 +479,7 @@
                 },
                 {
                     "id": "workspaceFsView",
-                    "name": "Workspace explorer",
+                    "name": "Workspace file system",
                     "when": "!databricks.context.remoteMode"
                 },
                 {
