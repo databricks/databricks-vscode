@@ -10,8 +10,12 @@ on:
 jobs:
   update-cli-version:
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
 
     strategy:
       matrix:

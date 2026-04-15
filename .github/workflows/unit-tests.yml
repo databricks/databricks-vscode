@@ -11,14 +11,22 @@ jobs:
       fail-fast: false
       matrix:
         arch:
-          - cli_arch: darwin_amd64
-            os: macos-latest
+          - cli_arch: linux_amd64
+            runner_group: databricks-protected-runner-group
+            runner_labels: linux-ubuntu-latest
           - cli_arch: windows_amd64
-            os: windows-latest
+            runner_group: databricks-protected-runner-group
+            runner_labels: windows-server-latest
         node-version: [22.x]
         vscode-version: [stable]
 
-    runs-on: ${{ matrix.arch.os }}
+    runs-on:
+      group: ${{ matrix.arch.runner_group }}
+      labels: ${{ matrix.arch.runner_labels }}
+
+    permissions:
+      id-token: write
+      contents: read
 
     env:
       VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
@@ -30,6 +38,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Obtain JFrog OIDC token
+        run: bash .github/scripts/jfrog-oidc-token.sh
+
+      - name: Configure JFrog npm registry
+        run: bash .github/scripts/configure-npm.sh
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -59,15 +73,21 @@ jobs:
         run: yarn run build
 
       - name: Unit Tests with Coverage
-        uses: coactions/setup-xvfb@b6b4fcfb9f5a895edadc3bc76318fae0ac17c8b3 # v1.0.1
-        with:
-          run: yarn run test:cov
-          working-directory: packages/databricks-vscode
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
+            export DISPLAY=:99
+          fi
+          yarn run test:cov
+        working-directory: packages/databricks-vscode
 
       - name: Install Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12" # 3.13+ is not yet supported by the latest DBR
+
+      - name: Configure JFrog pip registry
+        run: bash .github/scripts/configure-pip.sh
 
       - name: Install Python dependencies
         run: pip install ipython==9.11.0
