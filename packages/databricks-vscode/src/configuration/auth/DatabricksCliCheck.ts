@@ -84,12 +84,22 @@ export class DatabricksCliCheck implements Disposable {
                 host: this.authProvider.host.toString(),
                 authType: "databricks-cli",
                 databricksCliPath: this.authProvider.cliPath,
+                profile: this.authProvider.profile,
             },
             {
                 product: "databricks-vscode",
                 productVersion: extensionVersion,
             }
         );
+
+        // TODO: Temporary workaround until the JS SDK supports passing a profile
+        // directly to the databricks-cli auth type. Once supported, remove process.env mutation
+        const profile = this.authProvider.profile;
+        if (profile) {
+            process.env["DATABRICKS_CONFIG_PROFILE"] = profile;
+        } else {
+            delete process.env["DATABRICKS_CONFIG_PROFILE"];
+        }
 
         try {
             await workspaceClient.currentUser.me(
@@ -105,9 +115,16 @@ export class DatabricksCliCheck implements Disposable {
     private async login(cancellationToken?: CancellationToken): Promise<void> {
         try {
             const host = this.authProvider.host.toString().replace(/\/+$/, "");
+            const profile = this.authProvider.profile;
+            const args = ["auth", "login"];
+            if (profile) {
+                args.push("--profile", profile);
+            } else {
+                args.push("--host", host);
+            }
             await execFile(
                 this.authProvider.cliPath,
-                ["auth", "login", "--host", host],
+                args,
                 {},
                 cancellationToken
             );
