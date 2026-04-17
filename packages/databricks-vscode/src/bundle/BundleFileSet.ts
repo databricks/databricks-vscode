@@ -100,17 +100,6 @@ export class BundleFileSet {
         return bundle.include;
     }
 
-    async getIncludedFilesGlob() {
-        const patterns = await this.getIncludePatterns();
-        if (patterns.length === 0) {
-            return undefined;
-        }
-        if (patterns.length === 1) {
-            return patterns[0];
-        }
-        return `{${patterns.join(",")}}`;
-    }
-
     async getIncludedFiles() {
         const patterns = await this.getIncludePatterns();
         if (patterns.length === 0) {

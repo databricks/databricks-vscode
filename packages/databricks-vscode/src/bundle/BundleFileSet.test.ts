@@ -87,7 +87,10 @@ describe(__filename, async function () {
             await fs.writeFile(sharedFile2, "");
 
             const rootBundleData: BundleSchema = {
-                include: ["../../shared/config.yml", "../../shared/config2.yml"],
+                include: [
+                    "../../shared/config.yml",
+                    "../../shared/config2.yml",
+                ],
             };
             await fs.writeFile(
                 path.join(projectDir, "databricks.yml"),
@@ -158,30 +161,6 @@ describe(__filename, async function () {
             await fs.writeFile(
                 path.join(tmpdir.path, "includes", "included.yaml"),
                 ""
-            );
-        });
-
-        it("should return correct included files", async () => {
-            const tmpdirUri = Uri.file(tmpdir.path);
-            const bundleFileSet = new BundleFileSet(
-                getWorkspaceFolderManagerMock()
-            );
-
-            expect(await bundleFileSet.getIncludedFilesGlob()).to.equal(
-                `{included.yaml,${path.join("includes", "**", "*.yaml")}}`
-            );
-
-            const actual = (await bundleFileSet.getIncludedFiles())?.map(
-                (v) => v.fsPath
-            );
-            const expected = [
-                Uri.file(path.join(tmpdirUri.fsPath, "included.yaml")),
-                Uri.file(
-                    path.join(tmpdirUri.fsPath, "includes", "included.yaml")
-                ),
-            ].map((v) => v.fsPath);
-            expect(Array.from(new Set(actual).values()).sort()).to.deep.equal(
-                Array.from(new Set(expected).values()).sort()
             );
         });
 
