@@ -78,6 +78,15 @@ export abstract class AuthProvider {
             return true;
         }
 
+        // TODO: Temporary workaround until the JS SDK supports passing a profile
+        // directly to auth types. Once supported, remove this env mutation.
+        const profile = this.toJSON()["profile"];
+        if (profile !== undefined) {
+            process.env["DATABRICKS_CONFIG_PROFILE"] = profile;
+        } else {
+            delete process.env["DATABRICKS_CONFIG_PROFILE"];
+        }
+
         const checkFn = async (token?: CancellationToken) => {
             this.checked = await this._check(token);
         };
@@ -165,7 +174,8 @@ export abstract class AuthProvider {
                 return new DatabricksCliAuthProvider(
                     host,
                     json.databricksPath ?? cli.cliPath,
-                    cli
+                    cli,
+                    json.profile
                 );
 
             case "profile":
@@ -198,7 +208,8 @@ export abstract class AuthProvider {
                 return new DatabricksCliAuthProvider(
                     host,
                     config.databricksCliPath ?? cli.cliPath,
-                    cli
+                    cli,
+                    config.profile
                 );
 
             default:
@@ -308,7 +319,8 @@ export class DatabricksCliAuthProvider extends AuthProvider {
     constructor(
         host: URL,
         readonly cliPath: string,
-        cli: CliWrapper
+        cli: CliWrapper,
+        readonly profile?: string
     ) {
         super(host, "databricks-cli", cli);
     }
@@ -322,6 +334,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
             host: this.host.toString(),
             authType: this.authType,
             databricksPath: this.cliPath,
+            ...(this.profile ? {profile: this.profile} : {}),
         };
     }
 
@@ -330,14 +343,19 @@ export class DatabricksCliAuthProvider extends AuthProvider {
             host: this.host.toString(),
             authType: "databricks-cli",
             databricksCliPath: this.cliPath,
+            ...(this.profile ? {profile: this.profile} : {}),
         });
     }
 
     toEnv(): Record<string, string> {
-        return {
+        const env: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: "databricks-cli",
         };
+        if (this.profile) {
+            env["DATABRICKS_CONFIG_PROFILE"] = this.profile;
+        }
+        return env;
     }
 
     toIni() {
