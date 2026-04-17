@@ -92,15 +92,6 @@ export class DatabricksCliCheck implements Disposable {
             }
         );
 
-        // TODO: Temporary workaround until the JS SDK supports passing a profile
-        // directly to the databricks-cli auth type. Once supported, remove process.env mutation
-        const profile = this.authProvider.profile;
-        if (profile) {
-            process.env["DATABRICKS_CONFIG_PROFILE"] = profile;
-        } else {
-            delete process.env["DATABRICKS_CONFIG_PROFILE"];
-        }
-
         try {
             await workspaceClient.currentUser.me(
                 new Context({cancellationToken})

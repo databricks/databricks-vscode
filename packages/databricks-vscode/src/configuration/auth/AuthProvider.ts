@@ -78,6 +78,15 @@ export abstract class AuthProvider {
             return true;
         }
 
+        // TODO: Temporary workaround until the JS SDK supports passing a profile
+        // directly to auth types. Once supported, remove this env mutation.
+        const profile = this.toJSON()["profile"];
+        if (profile !== undefined) {
+            process.env["DATABRICKS_CONFIG_PROFILE"] = profile;
+        } else {
+            delete process.env["DATABRICKS_CONFIG_PROFILE"];
+        }
+
         const checkFn = async (token?: CancellationToken) => {
             this.checked = await this._check(token);
         };
