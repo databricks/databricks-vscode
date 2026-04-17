@@ -227,6 +227,41 @@ export async function activate(
 
     cli.setPythonExtension(pythonExtensionWrapper);
 
+    // When running inside a Databricks Remote SSH session, activate only the
+    // venv and show a placeholder UI. All other features are inapplicable.
+    const venvPath = process.env["DATABRICKS_VIRTUAL_ENV"];
+    logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+        "Remote mode check",
+        {
+            databricksRemoteEnv: process.env["DATABRICKS_REMOTE_ENV"],
+            databricksVirtualEnv: venvPath ?? "(not set)",
+        }
+    );
+    if (process.env["DATABRICKS_REMOTE_ENV"] === "1" && venvPath) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            "Entering remote mode",
+            {venvPath}
+        );
+        customWhenContext.setRemoteMode(true);
+
+        try {
+            await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
+                venvPath
+            );
+        } catch (e) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Failed to update active python environment",
+                e
+            );
+        }
+
+        customWhenContext.setActivated(true);
+        return;
+    }
+    logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+        "Remote mode not activated, continuing normal initialization"
+    );
+
     // manage contexts for experimental features
     function updateFeatureContexts() {
         customWhenContext.updateShowClusterView();
