@@ -42,13 +42,21 @@ export interface NodeEnrichments {
     pipelineId?: string;
     children?: ChildItem[];
     childrenTitle?: string;
+    columns?: Array<{
+        name: string;
+        typeName?: string;
+        typeText?: string;
+        comment?: string;
+        nullable?: boolean;
+        position?: number;
+    }>;
 }
 
 async function loadChildrenForNode(
     client: Client,
     node: Exclude<
         UnityCatalogTreeNode,
-        {kind: "error" | "empty" | "column" | "modelVersion"}
+        {kind: "error" | "empty" | "column" | "modelVersion" | "favorites"}
     >,
     cachedChildren?: UnityCatalogTreeNode[]
 ): Promise<{title: string; items: ChildItem[]} | null> {
@@ -58,8 +66,12 @@ async function loadChildrenForNode(
                 title: "Schemas",
                 items: cachedChildren
                     .filter(
-                        (n): n is Extract<UnityCatalogTreeNode, {kind: "schema"}> =>
-                            n.kind === "schema"
+                        (
+                            n
+                        ): n is Extract<
+                            UnityCatalogTreeNode,
+                            {kind: "schema"}
+                        > => n.kind === "schema"
                     )
                     .map((n) => ({
                         label: n.name,
@@ -209,7 +221,9 @@ async function loadChildrenForNode(
                 title: "Versions",
                 items: cachedChildren
                     .filter(
-                        (n): n is Extract<
+                        (
+                            n
+                        ): n is Extract<
                             UnityCatalogTreeNode,
                             {kind: "modelVersion"}
                         > => n.kind === "modelVersion"
@@ -270,7 +284,7 @@ export async function loadNodeEnrichments(
     client: Client,
     node: Exclude<
         UnityCatalogTreeNode,
-        {kind: "error" | "empty" | "column" | "modelVersion"}
+        {kind: "error" | "empty" | "column" | "modelVersion" | "favorites"}
     >,
     cachedChildren?: UnityCatalogTreeNode[]
 ): Promise<NodeEnrichments> {
@@ -337,6 +351,23 @@ export async function loadNodeEnrichments(
 
     if (tableDetailResult.status === "fulfilled") {
         const t = tableDetailResult.value;
+        if (
+            node.kind === "table" &&
+            !node.columns?.length &&
+            t.columns?.length
+        ) {
+            enrichments.columns = t.columns
+                .filter((c) => c.name)
+                .map((c) => ({
+                    name: c.name!,
+                    typeName: c.type_name ? String(c.type_name) : undefined,
+                    typeText: c.type_text,
+                    comment: c.comment,
+                    nullable: c.nullable,
+                    position: c.position,
+                }))
+                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+        }
         if (t.table_constraints && t.table_constraints.length > 0) {
             enrichments.constraints = t.table_constraints
                 .map((c): ConstraintSummary | null => {

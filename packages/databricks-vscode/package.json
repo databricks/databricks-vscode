@@ -224,14 +224,14 @@
                 "category": "Databricks"
             },
             {
-                "command": "databricks.unityCatalog.pinSchema",
-                "title": "Pin Schema",
+                "command": "databricks.unityCatalog.pin",
+                "title": "Add to Favorites",
                 "icon": "$(star-empty)",
                 "category": "Databricks"
             },
             {
-                "command": "databricks.unityCatalog.unpinSchema",
-                "title": "Unpin Schema",
+                "command": "databricks.unityCatalog.unpin",
+                "title": "Remove from Favorites",
                 "icon": "$(star-full)",
                 "category": "Databricks"
             },
@@ -262,7 +262,6 @@
                 "icon": "$(gear)",
                 "title": "Select a Declarative Automation Bundle target",
                 "enablement": "databricks.context.activated && !databricks.context.remoteMode",
-
                 "category": "Databricks"
             },
             {
@@ -786,23 +785,23 @@
                     "group": "inline@2"
                 },
                 {
-                    "command": "databricks.unityCatalog.pinSchema",
-                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.schema/ && !(viewItem =~ /\\.is-pinned/)",
+                    "command": "databricks.unityCatalog.pin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion)/ && !(viewItem =~ /\\.is-pinned/)",
                     "group": "inline@3"
                 },
                 {
-                    "command": "databricks.unityCatalog.unpinSchema",
-                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.schema.*\\.is-pinned/",
+                    "command": "databricks.unityCatalog.unpin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion).*\\.is-pinned/",
                     "group": "inline@3"
                 },
                 {
-                    "command": "databricks.unityCatalog.pinSchema",
-                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.schema/ && !(viewItem =~ /\\.is-pinned/)",
+                    "command": "databricks.unityCatalog.pin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion)/ && !(viewItem =~ /\\.is-pinned/)",
                     "group": "navigation_2@4"
                 },
                 {
-                    "command": "databricks.unityCatalog.unpinSchema",
-                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.schema.*\\.is-pinned/",
+                    "command": "databricks.unityCatalog.unpin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion).*\\.is-pinned/",
                     "group": "navigation_2@4"
                 },
                 {

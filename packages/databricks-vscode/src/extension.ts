@@ -456,7 +456,11 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.unityCatalog.copyName",
             async (node: UnityCatalogTreeNode) => {
-                if (node.kind === "error" || node.kind === "empty") {
+                if (
+                    node.kind === "error" ||
+                    node.kind === "empty" ||
+                    node.kind === "favorites"
+                ) {
                     return;
                 }
                 const text = node.kind === "column" ? node.name : node.fullName;
@@ -486,18 +490,34 @@ export async function activate(
             await commands.executeCommand("list.find");
         }),
         telemetry.registerCommand(
-            "databricks.unityCatalog.pinSchema",
+            "databricks.unityCatalog.pin",
             (node: UnityCatalogTreeNode) => {
-                if (node.kind === "schema") {
-                    return unityCatalogTreeDataProvider.pinSchema(node);
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.pin(node);
                 }
             }
         ),
         telemetry.registerCommand(
-            "databricks.unityCatalog.unpinSchema",
+            "databricks.unityCatalog.unpin",
             (node: UnityCatalogTreeNode) => {
-                if (node.kind === "schema") {
-                    return unityCatalogTreeDataProvider.unpinSchema(node);
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.unpin(node);
                 }
             }
         ),

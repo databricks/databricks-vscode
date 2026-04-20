@@ -720,6 +720,10 @@ const page = {
     },
 
     renderEnrichments(enrichments) {
+        if (enrichments.columns?.length) {
+            buildColumns(enrichments.columns);
+            show("section-columns", true);
+        }
         renderTags(enrichments.tags);
         renderPermissions(enrichments.permissions);
         renderMonitor(enrichments.monitor);

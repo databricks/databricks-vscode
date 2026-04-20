@@ -288,7 +288,10 @@ describe(__filename, () => {
             },
         } as unknown as ConnectionManager;
 
-        const provider = new UnityCatalogTreeDataProvider(stubManager, stubStateStorage);
+        const provider = new UnityCatalogTreeDataProvider(
+            stubManager,
+            stubStateStorage
+        );
         disposables.push(provider);
 
         const catalog: UnityCatalogTreeNode = {
@@ -657,13 +660,14 @@ describe(__filename, () => {
         }
     });
 
-    it("pinSchema adds fullName to stateStorage and fires tree change", async () => {
-        const stored: string[] = [];
+    it("pin adds schema to favorites and fires tree change", async () => {
+        const storageMap = new Map<string, unknown>([
+            ["databricks.unityCatalog.favorites", []],
+        ]);
         const spyStorage = {
-            get: () => stored,
-            set: async (_key: string, val: string[]) => {
-                stored.length = 0;
-                stored.push(...val);
+            get: (key: string) => storageMap.get(key) ?? [],
+            set: async (key: string, val: unknown) => {
+                storageMap.set(key, val);
             },
             onDidChange: () => ({dispose() {}}),
         } as unknown as StateStorage;
@@ -673,25 +677,50 @@ describe(__filename, () => {
         );
         disposables.push(p);
         let fired = 0;
-        disposables.push(p.onDidChangeTreeData(() => {fired++;}));
+        disposables.push(
+            p.onDidChangeTreeData(() => {
+                fired++;
+            })
+        );
         const schema = {
             kind: "schema" as const,
             catalogName: "cat",
             name: "sch",
             fullName: "cat.sch",
         };
-        await p.pinSchema(schema);
-        assert(stored.includes("cat.sch"));
+        await p.pin(schema);
+        assert(
+            (
+                storageMap.get("databricks.unityCatalog.favorites") as any[]
+            ).some((f) => f.fullName === "cat.sch")
+        );
         assert.strictEqual(fired, 1);
     });
 
-    it("unpinSchema removes fullName from stateStorage and fires tree change", async () => {
-        const stored: string[] = ["cat.sch", "cat.other"];
+    it("unpin removes schema from favorites and fires tree change", async () => {
+        const storageMap = new Map<string, unknown>([
+            [
+                "databricks.unityCatalog.favorites",
+                [
+                    {
+                        kind: "schema",
+                        catalogName: "cat",
+                        name: "sch",
+                        fullName: "cat.sch",
+                    },
+                    {
+                        kind: "schema",
+                        catalogName: "cat",
+                        name: "other",
+                        fullName: "cat.other",
+                    },
+                ],
+            ],
+        ]);
         const spyStorage = {
-            get: () => [...stored],
-            set: async (_key: string, val: string[]) => {
-                stored.length = 0;
-                stored.push(...val);
+            get: (key: string) => storageMap.get(key) ?? [],
+            set: async (key: string, val: unknown) => {
+                storageMap.set(key, val);
             },
             onDidChange: () => ({dispose() {}}),
         } as unknown as StateStorage;
@@ -701,29 +730,36 @@ describe(__filename, () => {
         );
         disposables.push(p);
         let fired = 0;
-        disposables.push(p.onDidChangeTreeData(() => {fired++;}));
+        disposables.push(
+            p.onDidChangeTreeData(() => {
+                fired++;
+            })
+        );
         const schema = {
             kind: "schema" as const,
             catalogName: "cat",
             name: "sch",
             fullName: "cat.sch",
         };
-        await p.unpinSchema(schema);
-        assert(!stored.includes("cat.sch"));
-        assert(stored.includes("cat.other"));
-        assert.strictEqual(fired, 1);
+        await p.unpin(schema);
+        const favorites = storageMap.get(
+            "databricks.unityCatalog.favorites"
+        ) as any[];
+        assert(!favorites.some((f) => f.fullName === "cat.sch"));
+        assert(favorites.some((f) => f.fullName === "cat.other"));
+        assert(fired >= 1);
     });
 
-    it("pinned schema sorts before owned, owned before unowned", async () => {
-        const pinnedStorage = {
-            get: () => ["cat.s_b"],
+    it("owned schema sorts before unowned", async () => {
+        const noFavStorage = {
+            get: () => [],
             set: async () => {},
             onDidChange: () => ({dispose() {}}),
         } as unknown as StateStorage;
         when(mockSchemas.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {name: "s_c", full_name: "cat.s_c", owner: "carol"};
-                yield {name: "s_b", full_name: "cat.s_b", owner: "bob"}; // pinned
+                yield {name: "s_b", full_name: "cat.s_b", owner: "bob"};
                 yield {name: "s_a", full_name: "cat.s_a", owner: "alice"}; // owned
             }
             return impl();
@@ -733,7 +769,7 @@ describe(__filename, () => {
             workspaceClient: instance(mockWorkspaceClient),
             databricksWorkspace: {user: {userName: "alice"}},
         } as unknown as ConnectionManager;
-        const p = new UnityCatalogTreeDataProvider(stubManager, pinnedStorage);
+        const p = new UnityCatalogTreeDataProvider(stubManager, noFavStorage);
         disposables.push(p);
         const catalog: UnityCatalogTreeNode = {
             kind: "catalog",
@@ -743,8 +779,8 @@ describe(__filename, () => {
         const children = (await resolveProviderResult(
             p.getChildren(catalog)
         )) as UnityCatalogTreeNode[];
-        assert.strictEqual((children[0] as any).name, "s_b"); // pinned first
-        assert.strictEqual((children[1] as any).name, "s_a"); // owned second
-        assert.strictEqual((children[2] as any).name, "s_c"); // unowned last
+        assert.strictEqual((children[0] as any).name, "s_a"); // owned first
+        assert.strictEqual((children[1] as any).name, "s_b"); // alphabetical
+        assert.strictEqual((children[2] as any).name, "s_c"); // alphabetical
     });
 });

@@ -66,8 +66,7 @@ export async function loadCatalogs(
 export async function loadSchemas(
     client: Client,
     catalogName: string,
-    currentUser: iam.User | undefined,
-    pinnedSchemas: Set<string>
+    currentUser: iam.User | undefined
 ): Promise<UnityCatalogTreeNode[]> {
     try {
         const rows = await drainAsyncIterable(
@@ -75,30 +74,23 @@ export async function loadSchemas(
         );
         const result = rows
             .filter((s) => s.name)
-            .map((s) => {
-                const fullName = s.full_name ?? `${catalogName}.${s.name}`;
-                return {
-                    kind: "schema" as const,
-                    catalogName,
-                    name: s.name!,
-                    fullName,
-                    comment: s.comment,
-                    owner: s.owner,
-                    pinned: pinnedSchemas.has(fullName),
-                    owned: isOwnedByUser(s.owner, currentUser),
-                    storageLocation: s.storage_location,
-                    createdAt: s.created_at,
-                    createdBy: s.created_by,
-                    updatedAt: s.updated_at,
-                    updatedBy: s.updated_by,
-                };
-            })
+            .map((s) => ({
+                kind: "schema" as const,
+                catalogName,
+                name: s.name!,
+                fullName: s.full_name ?? `${catalogName}.${s.name}`,
+                comment: s.comment,
+                owner: s.owner,
+                owned: isOwnedByUser(s.owner, currentUser),
+                storageLocation: s.storage_location,
+                createdAt: s.created_at,
+                createdBy: s.created_by,
+                updatedAt: s.updated_at,
+                updatedBy: s.updated_by,
+            }))
             .sort((a, b) => {
-                const rank = (n: typeof a) => (n.pinned ? 0 : n.owned ? 1 : 2);
-                const r = rank(a) - rank(b);
-                if (r !== 0) {
-                    return r;
-                }
+                if (a.owned && !b.owned) return -1;
+                if (!a.owned && b.owned) return 1;
                 return a.name.localeCompare(b.name);
             });
         return result.length > 0 ? result : emptyNode("No schemas");

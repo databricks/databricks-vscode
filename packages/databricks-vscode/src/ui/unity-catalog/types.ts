@@ -42,7 +42,6 @@ export type UnityCatalogTreeNode =
           name: string;
           fullName: string;
           comment?: string;
-          pinned?: boolean;
           owner?: string;
           owned?: boolean;
           storageLocation?: string;
@@ -141,7 +140,24 @@ export type UnityCatalogTreeNode =
           position?: number;
       }
     | {kind: "error"; message: string}
-    | {kind: "empty"; message: string};
+    | {kind: "empty"; message: string}
+    | {kind: "favorites"};
+
+export type PinnableNodeKind =
+    | "catalog"
+    | "schema"
+    | "table"
+    | "volume"
+    | "function"
+    | "registeredModel"
+    | "modelVersion";
+
+export type StoredFavoriteNode = {
+    [K in PinnableNodeKind]: Omit<
+        Extract<UnityCatalogTreeNode, {kind: K}>,
+        "columns"
+    >;
+}[PinnableNodeKind];
 
 export interface UnityCatalogTreeItem extends TreeItem {
     url?: string;

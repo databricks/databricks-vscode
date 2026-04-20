@@ -2,7 +2,12 @@
 import {Disposable, EventEmitter, TreeDataProvider} from "vscode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {buildTreeItem} from "./nodeRenderer";
-import {UnityCatalogTreeItem, UnityCatalogTreeNode} from "./types";
+import {
+    PinnableNodeKind,
+    StoredFavoriteNode,
+    UnityCatalogTreeItem,
+    UnityCatalogTreeNode,
+} from "./types";
 import {StateStorage} from "../../vscode-objs/StateStorage";
 import {
     loadCatalogs,
@@ -13,6 +18,8 @@ import {
 
 export type {
     ColumnData,
+    PinnableNodeKind,
+    StoredFavoriteNode,
     UnityCatalogTreeItem,
     UnityCatalogTreeNode,
 } from "./types";
@@ -26,6 +33,10 @@ export class UnityCatalogTreeDataProvider
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
     private readonly disposables: Disposable[] = [];
     private readonly childrenCache = new Map<string, UnityCatalogTreeNode[]>();
+    private readonly favoritesRootNode: UnityCatalogTreeNode = {
+        kind: "favorites",
+    };
+    private catalogsCache: UnityCatalogTreeNode[] | undefined = undefined;
 
     constructor(
         private readonly connectionManager: ConnectionManager,
@@ -33,9 +44,40 @@ export class UnityCatalogTreeDataProvider
     ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
+                this.catalogsCache = undefined;
                 this._onDidChangeTreeData.fire(undefined);
             })
         );
+        this.migratePinnedSchemas();
+    }
+
+    private async migratePinnedSchemas(): Promise<void> {
+        const legacy =
+            this.stateStorage.get("databricks.unityCatalog.pinnedSchemas") ??
+            [];
+        if (!legacy.length) {
+            return;
+        }
+        const existing =
+            this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
+        const existingKeys = new Set(existing.map((f) => f.fullName));
+        const toAdd: StoredFavoriteNode[] = legacy
+            .filter((fn) => !existingKeys.has(fn))
+            .map((fn) => {
+                const [catalogName = "", name = fn] = fn.split(".");
+                return {
+                    kind: "schema" as const,
+                    catalogName,
+                    name,
+                    fullName: fn,
+                };
+            });
+        if (toAdd.length) {
+            await this.stateStorage.set("databricks.unityCatalog.favorites", [
+                ...existing,
+                ...toAdd,
+            ]);
+        }
     }
 
     private getExploreUrl(path: string): string | undefined {
@@ -50,7 +92,8 @@ export class UnityCatalogTreeDataProvider
         if (
             node.kind === "error" ||
             node.kind === "column" ||
-            node.kind === "empty"
+            node.kind === "empty" ||
+            node.kind === "favorites"
         ) {
             return undefined;
         }
@@ -71,7 +114,23 @@ export class UnityCatalogTreeDataProvider
     }
 
     getTreeItem(element: UnityCatalogTreeNode): UnityCatalogTreeItem {
-        return buildTreeItem(element, this.getNodeExploreUrl(element));
+        if (element.kind === "favorites") {
+            return buildTreeItem(element, undefined, false);
+        }
+        const favorites =
+            this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
+        const isPinned =
+            "fullName" in element &&
+            favorites.some(
+                (f) =>
+                    favoriteKey(f) ===
+                    favoriteKey(element as StoredFavoriteNode)
+            );
+        return buildTreeItem(
+            element,
+            this.getNodeExploreUrl(element),
+            isPinned
+        );
     }
 
     async getChildren(
@@ -82,11 +141,27 @@ export class UnityCatalogTreeDataProvider
             return undefined;
         }
 
-        const currentUser =
-            this.connectionManager.databricksWorkspace?.user;
+        const currentUser = this.connectionManager.databricksWorkspace?.user;
 
         if (!element) {
-            return loadCatalogs(client, currentUser);
+            if (!this.catalogsCache) {
+                this.catalogsCache = await loadCatalogs(client, currentUser);
+            }
+            const favorites =
+                this.stateStorage.get("databricks.unityCatalog.favorites") ??
+                [];
+            return favorites.length > 0
+                ? [this.favoritesRootNode, ...this.catalogsCache]
+                : [...this.catalogsCache];
+        }
+
+        if (element.kind === "favorites") {
+            const favorites =
+                this.stateStorage.get("databricks.unityCatalog.favorites") ??
+                [];
+            return favorites.length > 0
+                ? (favorites as UnityCatalogTreeNode[])
+                : [{kind: "empty", message: "No favorites yet"}];
         }
 
         if (element.kind === "error") {
@@ -94,17 +169,7 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "catalog") {
-            const pinned = new Set(
-                this.stateStorage.get(
-                    "databricks.unityCatalog.pinnedSchemas"
-                ) ?? []
-            );
-            const result = await loadSchemas(
-                client,
-                element.name,
-                currentUser,
-                pinned
-            );
+            const result = await loadSchemas(client, element.name, currentUser);
             this.childrenCache.set(element.fullName, result);
             return result;
         }
@@ -126,10 +191,28 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "table") {
-            if (!element.columns?.length) {
+            let columns = element.columns;
+            if (!columns?.length) {
+                try {
+                    const t = await client.tables.get({
+                        full_name: element.fullName,
+                    });
+                    columns = (t.columns ?? []).map((col) => ({
+                        name: col.name!,
+                        typeName: col.type_name,
+                        typeText: col.type_text,
+                        comment: col.comment,
+                        nullable: col.nullable,
+                        position: col.position,
+                    }));
+                } catch {
+                    return undefined;
+                }
+            }
+            if (!columns.length) {
                 return undefined;
             }
-            return [...element.columns]
+            return [...columns]
                 .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
                 .map((col) => ({
                     kind: "column" as const,
@@ -146,32 +229,63 @@ export class UnityCatalogTreeDataProvider
         return undefined;
     }
 
-    async pinSchema(
-        node: Extract<UnityCatalogTreeNode, {kind: "schema"}>
+    async pin(
+        node: Extract<UnityCatalogTreeNode, {kind: PinnableNodeKind}>
     ): Promise<void> {
-        const current =
-            this.stateStorage.get("databricks.unityCatalog.pinnedSchemas") ??
-            [];
-        if (!current.includes(node.fullName)) {
-            await this.stateStorage.set(
-                "databricks.unityCatalog.pinnedSchemas",
-                [...current, node.fullName]
-            );
+        const favorites =
+            this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
+        const nodeAsStored = node as StoredFavoriteNode;
+        if (
+            favorites.some((f) => favoriteKey(f) === favoriteKey(nodeAsStored))
+        ) {
+            return;
         }
-        this._onDidChangeTreeData.fire(undefined);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const stored: StoredFavoriteNode = {...node} as StoredFavoriteNode;
+        if ("columns" in stored) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            delete (stored as any).columns;
+        }
+
+        const wasEmpty = favorites.length === 0;
+        await this.stateStorage.set("databricks.unityCatalog.favorites", [
+            ...favorites,
+            stored,
+        ]);
+
+        if (wasEmpty) {
+            this._onDidChangeTreeData.fire(undefined);
+        } else {
+            this._onDidChangeTreeData.fire(this.favoritesRootNode);
+            this._onDidChangeTreeData.fire(node);
+        }
     }
 
-    async unpinSchema(
-        node: Extract<UnityCatalogTreeNode, {kind: "schema"}>
+    async unpin(
+        node: Extract<UnityCatalogTreeNode, {kind: PinnableNodeKind}>
     ): Promise<void> {
-        const current =
-            this.stateStorage.get("databricks.unityCatalog.pinnedSchemas") ??
-            [];
-        await this.stateStorage.set(
-            "databricks.unityCatalog.pinnedSchemas",
-            current.filter((n) => n !== node.fullName)
+        const favorites =
+            this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
+        const nodeAsStored = node as StoredFavoriteNode;
+        const updated = favorites.filter(
+            (f) => favoriteKey(f) !== favoriteKey(nodeAsStored)
         );
-        this._onDidChangeTreeData.fire(undefined);
+        if (updated.length === favorites.length) {
+            return;
+        }
+
+        await this.stateStorage.set(
+            "databricks.unityCatalog.favorites",
+            updated
+        );
+
+        if (updated.length === 0) {
+            this._onDidChangeTreeData.fire(undefined);
+        } else {
+            this._onDidChangeTreeData.fire(this.favoritesRootNode);
+            this._onDidChangeTreeData.fire(node);
+        }
     }
 
     getLoadedChildren(key: string): UnityCatalogTreeNode[] | undefined {
@@ -180,6 +294,7 @@ export class UnityCatalogTreeDataProvider
 
     refresh(): void {
         this.childrenCache.clear();
+        this.catalogsCache = undefined;
         this._onDidChangeTreeData.fire(undefined);
     }
 
@@ -193,4 +308,10 @@ export class UnityCatalogTreeDataProvider
     dispose(): void {
         this.disposables.forEach((d) => d.dispose());
     }
+}
+
+function favoriteKey(node: StoredFavoriteNode): string {
+    return node.kind === "modelVersion"
+        ? `${node.fullName}@v${node.version}`
+        : node.fullName;
 }
