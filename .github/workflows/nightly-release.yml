@@ -33,10 +33,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: nightly-${{ github.ref_name }}
         run: |
-          if gh release view "$TAG" &>/dev/null; then
-            gh release upload "$TAG" --clobber packages/databricks-vscode/databricks*/*.vsix
+          REPO=databricks/databricks-vscode
+          if gh release view "$TAG" --repo "$REPO" &>/dev/null; then
+            gh release upload "$TAG" --repo "$REPO" --clobber packages/databricks-vscode/databricks*/*.vsix
           else
             gh release create "$TAG" \
+              --repo "$REPO" \
               --title "Nightly - ${{ github.ref_name }}" \
               --prerelease \
               --target "${{ github.sha }}" \
