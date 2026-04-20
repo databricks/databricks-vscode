@@ -433,9 +433,7 @@ export const config: Options.Testrunner = {
                             f.endsWith("-universal.vsix")
                     );
                 if (vsix) {
-                    console.log(
-                        `Using vendored VSIX for ${extId}: ${vsix}`
-                    );
+                    console.log(`Using vendored VSIX for ${extId}: ${vsix}`);
                     extensionDependencies.push(
                         "--install-extension",
                         path.resolve(vsixDir, vsix)
@@ -444,10 +442,7 @@ export const config: Options.Testrunner = {
                     console.log(
                         `WARNING: no vendored VSIX for ${extId}, falling back to marketplace`
                     );
-                    extensionDependencies.push(
-                        "--install-extension",
-                        extId
-                    );
+                    extensionDependencies.push("--install-extension", extId);
                 }
             } else {
                 extensionDependencies.push("--install-extension", extId);

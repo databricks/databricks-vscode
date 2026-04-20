@@ -210,7 +210,6 @@
                 "icon": "$(gear)",
                 "title": "Select a Declarative Automation Bundle target",
                 "enablement": "databricks.context.activated && !databricks.context.remoteMode",
-
                 "category": "Databricks"
             },
             {
