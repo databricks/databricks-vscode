@@ -29,10 +29,19 @@ jobs:
       - run: ls -lR packages/databricks-vscode
 
       - name: Update nightly release
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
-        with:
-          name: Nightly - ${{ github.ref_name }}
-          prerelease: true
-          tag_name: nightly-${{ github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: "packages/databricks-vscode/databricks*/*.vsix"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: nightly-${{ github.ref_name }}
+        run: |
+          REPO=databricks/databricks-vscode
+          if gh release view "$TAG" --repo "$REPO" &>/dev/null; then
+            gh release upload "$TAG" --repo "$REPO" --clobber packages/databricks-vscode/databricks*/*.vsix
+          else
+            gh release create "$TAG" \
+              --repo "$REPO" \
+              --title "Nightly - ${{ github.ref_name }}" \
+              --prerelease \
+              --target "${{ github.sha }}" \
+              --notes "Nightly build from ${{ github.ref_name }}" \
+              packages/databricks-vscode/databricks*/*.vsix
+          fi
