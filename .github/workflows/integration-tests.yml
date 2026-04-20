@@ -33,8 +33,8 @@ jobs:
             echo "has_token=true" >> $GITHUB_OUTPUT
           fi
 
-  trigger-tests:
-    name: Trigger Tests
+  create-check:
+    name: Create Check Run
 
     runs-on:
       group: databricks-protected-runner-group
@@ -47,6 +47,8 @@ jobs:
     needs: check-token
     if: github.event_name == 'pull_request'  && needs.check-token.outputs.has_token == 'true'
     environment: "test-trigger-is"
+    outputs:
+      check_run_id: ${{ steps.create-check.outputs.check_run_id }}
 
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -75,6 +77,24 @@ jobs:
         check_run_id=$(echo "$response" | jq -r .id)
         echo "check_run_id=$check_run_id" >> $GITHUB_OUTPUT
 
+  trigger-tests:
+    name: Trigger Tests
+
+    runs-on:
+      group: databricks-release-runner-group-emu-access
+      labels: linux-ubuntu-latest-emu-access
+
+    permissions:
+      id-token: write
+      contents: read
+
+    needs: [check-token, create-check]
+    if: github.event_name == 'pull_request'  && needs.check-token.outputs.has_token == 'true'
+    environment: "test-trigger-is"
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
     - name: Generate GitHub App Token for Workflow Trigger
       id: generate-token
       uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
@@ -92,7 +112,7 @@ jobs:
         --ref main \
         -f pull_request_number=${{ github.event.pull_request.number }} \
         -f commit_sha=${{ github.event.pull_request.head.sha }} \
-        -f check_run_id=${{ steps.create-check.outputs.check_run_id }}
+        -f check_run_id=${{ needs.create-check.outputs.check_run_id }}
 
   # The hash for the merge queue may not be the same as the hash for the PR.
   # Auto approve the check for the merge queue to avoid running integration tests twice.
