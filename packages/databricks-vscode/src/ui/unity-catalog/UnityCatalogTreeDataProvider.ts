@@ -48,36 +48,6 @@ export class UnityCatalogTreeDataProvider
                 this._onDidChangeTreeData.fire(undefined);
             })
         );
-        this.migratePinnedSchemas();
-    }
-
-    private async migratePinnedSchemas(): Promise<void> {
-        const legacy =
-            this.stateStorage.get("databricks.unityCatalog.pinnedSchemas") ??
-            [];
-        if (!legacy.length) {
-            return;
-        }
-        const existing =
-            this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
-        const existingKeys = new Set(existing.map((f) => f.fullName));
-        const toAdd: StoredFavoriteNode[] = legacy
-            .filter((fn) => !existingKeys.has(fn))
-            .map((fn) => {
-                const [catalogName = "", name = fn] = fn.split(".");
-                return {
-                    kind: "schema" as const,
-                    catalogName,
-                    name,
-                    fullName: fn,
-                };
-            });
-        if (toAdd.length) {
-            await this.stateStorage.set("databricks.unityCatalog.favorites", [
-                ...existing,
-                ...toAdd,
-            ]);
-        }
     }
 
     private getExploreUrl(path: string): string | undefined {
