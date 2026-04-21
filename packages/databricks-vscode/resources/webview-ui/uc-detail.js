@@ -707,6 +707,15 @@ const page = {
     renderNode(data) {
         document.body.className = "content";
 
+        const KIND_LABEL = {
+            registeredModel: "model",
+            modelVersion: "model version",
+        };
+        const titleEl = document.getElementById("section-properties-title");
+        if (titleEl) {
+            titleEl.textContent = `About this ${KIND_LABEL[data.kind] ?? data.kind}`;
+        }
+
         renderHeader(data);
 
         const propsList = document.getElementById("props-list");
