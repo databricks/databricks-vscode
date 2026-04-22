@@ -1,3 +1,4 @@
+import * as path from "path";
 import {
     MarkdownString,
     ThemeColor,
@@ -7,10 +8,46 @@ import {
 import {UnityCatalogTreeNode, UnityCatalogTreeItem} from "./types";
 import {formatTs} from "./utils";
 
+function ucIconPath(
+    extensionPath: string,
+    file: string
+): {dark: string; light: string} {
+    return {
+        dark: path.join(
+            extensionPath,
+            "resources",
+            "dark",
+            "unity-catalog",
+            file
+        ),
+        light: path.join(
+            extensionPath,
+            "resources",
+            "light",
+            "unity-catalog",
+            file
+        ),
+    };
+}
+
+function catalogIconFile(name: string): string {
+    switch (name) {
+        case "main":
+            return "catalog-main.svg";
+        case "samples":
+            return "catalog-samples.svg";
+        case "system":
+            return "catalog-system.svg";
+        default:
+            return "catalog.svg";
+    }
+}
+
 export function buildTreeItem(
     node: UnityCatalogTreeNode,
     exploreUrl: string | undefined,
-    isPinned: boolean = false
+    isPinned: boolean = false,
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     switch (node.kind) {
         case "error":
@@ -20,17 +57,22 @@ export function buildTreeItem(
         case "favorites":
             return renderFavorites();
         case "catalog":
-            return renderCatalog(node, exploreUrl, isPinned);
+            return renderCatalog(node, exploreUrl, isPinned, extensionPath);
         case "schema":
-            return renderSchema(node, exploreUrl, isPinned);
+            return renderSchema(node, exploreUrl, isPinned, extensionPath);
         case "table":
-            return renderTable(node, exploreUrl, isPinned);
+            return renderTable(node, exploreUrl, isPinned, extensionPath);
         case "volume":
-            return renderVolume(node, exploreUrl, isPinned);
+            return renderVolume(node, exploreUrl, isPinned, extensionPath);
         case "function":
-            return renderFunction(node, exploreUrl, isPinned);
+            return renderFunction(node, exploreUrl, isPinned, extensionPath);
         case "registeredModel":
-            return renderRegisteredModel(node, exploreUrl, isPinned);
+            return renderRegisteredModel(
+                node,
+                exploreUrl,
+                isPinned,
+                extensionPath
+            );
         case "modelVersion":
             return renderModelVersion(node, exploreUrl, isPinned);
         case "column":
@@ -76,7 +118,8 @@ function renderEmpty(
 function renderCatalog(
     node: Extract<UnityCatalogTreeNode, {kind: "catalog"}>,
     exploreUrl: string | undefined,
-    isPinned: boolean = false
+    isPinned: boolean = false,
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     const tt = new MarkdownString(`**${node.fullName}**`);
     if (node.comment) {
@@ -97,10 +140,7 @@ function renderCatalog(
         label: node.name,
         description,
         tooltip: tt,
-        iconPath: new ThemeIcon(
-            "library",
-            new ThemeColor("databricks.unityCatalog.catalog")
-        ),
+        iconPath: ucIconPath(extensionPath, catalogIconFile(node.name)),
         contextValue: isPinned
             ? baseContextValue + ".is-pinned"
             : baseContextValue,
@@ -113,7 +153,8 @@ function renderCatalog(
 function renderSchema(
     node: Extract<UnityCatalogTreeNode, {kind: "schema"}>,
     exploreUrl: string | undefined,
-    isPinned: boolean = false
+    isPinned: boolean = false,
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     const tt = new MarkdownString(`**${node.fullName}**`);
     if (node.comment) {
@@ -135,10 +176,7 @@ function renderSchema(
         label: node.name,
         description,
         tooltip: tt,
-        iconPath: new ThemeIcon(
-            "folder-library",
-            new ThemeColor("databricks.unityCatalog.schema")
-        ),
+        iconPath: ucIconPath(extensionPath, "schema.svg"),
         contextValue: effectivePinned
             ? baseContextValue + ".is-pinned"
             : baseContextValue,
@@ -151,7 +189,8 @@ function renderSchema(
 function renderTable(
     node: Extract<UnityCatalogTreeNode, {kind: "table"}>,
     exploreUrl: string | undefined,
-    isPinned: boolean = false
+    isPinned: boolean = false,
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     const typeSuffix =
         node.tableType && node.tableType !== "MANAGED"
@@ -209,10 +248,7 @@ function renderTable(
         label: `${node.name}${typeSuffix}`,
         description: tableDescription,
         tooltip: tt,
-        iconPath: new ThemeIcon(
-            "table",
-            new ThemeColor("databricks.unityCatalog.table")
-        ),
+        iconPath: ucIconPath(extensionPath, "table.svg"),
         contextValue: flags.join("."),
         collapsibleState: hasColumns
             ? TreeItemCollapsibleState.Collapsed
@@ -227,7 +263,8 @@ function renderTable(
 function renderVolume(
     node: Extract<UnityCatalogTreeNode, {kind: "volume"}>,
     exploreUrl: string | undefined,
-    isPinned: boolean = false
+    isPinned: boolean = false,
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     const isExternal =
         node.volumeType !== undefined && node.volumeType !== "MANAGED";
@@ -256,10 +293,7 @@ function renderVolume(
         label,
         description: isPinned ? "★" : undefined,
         tooltip: tt,
-        iconPath: new ThemeIcon(
-            "package",
-            new ThemeColor("databricks.unityCatalog.volume")
-        ),
+        iconPath: ucIconPath(extensionPath, "volume.svg"),
         contextValue: flags.join("."),
         collapsibleState: TreeItemCollapsibleState.None,
         url: exploreUrl,
@@ -271,7 +305,8 @@ function renderVolume(
 function renderFunction(
     node: Extract<UnityCatalogTreeNode, {kind: "function"}>,
     exploreUrl: string | undefined,
-    isPinned: boolean = false
+    isPinned: boolean = false,
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     const baseContextValue = exploreUrl
         ? "unityCatalog.function.has-url"
@@ -280,10 +315,7 @@ function renderFunction(
         label: node.name,
         description: isPinned ? "★" : undefined,
         tooltip: node.fullName,
-        iconPath: new ThemeIcon(
-            "symbol-function",
-            new ThemeColor("databricks.unityCatalog.function")
-        ),
+        iconPath: ucIconPath(extensionPath, "function.svg"),
         contextValue: isPinned
             ? baseContextValue + ".is-pinned"
             : baseContextValue,
@@ -296,7 +328,8 @@ function renderFunction(
 function renderRegisteredModel(
     node: Extract<UnityCatalogTreeNode, {kind: "registeredModel"}>,
     exploreUrl: string | undefined,
-    isPinned: boolean = false
+    isPinned: boolean = false,
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     const tt = new MarkdownString(`**${node.fullName}**`);
     if (node.owner) {
@@ -333,10 +366,7 @@ function renderRegisteredModel(
         label: node.name,
         description: isPinned ? "★" : undefined,
         tooltip: tt,
-        iconPath: new ThemeIcon(
-            "beaker",
-            new ThemeColor("databricks.unityCatalog.registeredModel")
-        ),
+        iconPath: ucIconPath(extensionPath, "registered-model.svg"),
         contextValue: isPinned
             ? baseContextValue + ".is-pinned"
             : baseContextValue,

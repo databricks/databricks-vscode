@@ -414,7 +414,8 @@ export async function activate(
 
     const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
         connectionManager,
-        stateStorage
+        stateStorage,
+        context.extensionPath
     );
     const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
         treeDataProvider: unityCatalogTreeDataProvider,

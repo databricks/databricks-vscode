@@ -40,7 +40,8 @@ export class UnityCatalogTreeDataProvider
 
     constructor(
         private readonly connectionManager: ConnectionManager,
-        private readonly stateStorage: StateStorage
+        private readonly stateStorage: StateStorage,
+        private readonly extensionPath: string = ""
     ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
@@ -85,7 +86,7 @@ export class UnityCatalogTreeDataProvider
 
     getTreeItem(element: UnityCatalogTreeNode): UnityCatalogTreeItem {
         if (element.kind === "favorites") {
-            return buildTreeItem(element, undefined, false);
+            return buildTreeItem(element, undefined, false, this.extensionPath);
         }
         const favorites =
             this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
@@ -99,7 +100,8 @@ export class UnityCatalogTreeDataProvider
         return buildTreeItem(
             element,
             this.getNodeExploreUrl(element),
-            isPinned
+            isPinned,
+            this.extensionPath
         );
     }
 
