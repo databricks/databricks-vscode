@@ -88,33 +88,36 @@ export class BundleFileSet {
         return Uri.file(rootFile[0]);
     }
 
-    async getIncludedFilesGlob() {
+    private async getIncludePatterns(): Promise<string[]> {
         const rootFile = await this.getRootFile();
         if (rootFile === undefined) {
-            return undefined;
+            return [];
         }
-        const bundle = await parseBundleYaml(Uri.file(rootFile.fsPath));
-        if (bundle?.include === undefined || bundle?.include.length === 0) {
-            return undefined;
+        const bundle = await parseBundleYaml(rootFile);
+        if (!bundle?.include?.length) {
+            return [];
         }
-        if (bundle?.include.length === 1) {
-            return bundle.include[0];
-        }
-        return `{${bundle.include.join(",")}}`;
+        return bundle.include;
     }
 
     async getIncludedFiles() {
-        const includedFilesGlob = await this.getIncludedFilesGlob();
-        if (includedFilesGlob !== undefined) {
-            return (
-                await glob.glob(
-                    toGlobPath(
-                        path.join(this.projectRoot.fsPath, includedFilesGlob)
-                    ),
-                    {nocase: process.platform === "win32"}
-                )
-            ).map((i) => Uri.file(i));
+        const patterns = await this.getIncludePatterns();
+        if (patterns.length === 0) {
+            return undefined;
         }
+
+        const allFiles: string[] = [];
+        for (const pattern of patterns) {
+            const absolutePattern = toGlobPath(
+                path.resolve(this.projectRoot.fsPath, pattern)
+            );
+            const files = await glob.glob(absolutePattern, {
+                nocase: process.platform === "win32",
+            });
+            allFiles.push(...files);
+        }
+
+        return [...new Set(allFiles)].map((f) => Uri.file(f));
     }
 
     async allFiles() {
@@ -152,15 +155,16 @@ export class BundleFileSet {
     }
 
     async isIncludedBundleFile(e: Uri) {
-        let includedFilesGlob = await this.getIncludedFilesGlob();
-        if (includedFilesGlob === undefined) {
-            return false;
+        const patterns = await this.getIncludePatterns();
+        for (const pattern of patterns) {
+            const absolutePattern = toGlobPath(
+                path.resolve(this.projectRoot.fsPath, pattern)
+            );
+            if (minimatch(toGlobPath(e.fsPath), absolutePattern)) {
+                return true;
+            }
         }
-        includedFilesGlob = getAbsoluteGlobPath(
-            includedFilesGlob,
-            this.projectRoot
-        );
-        return minimatch(e.fsPath, toGlobPath(includedFilesGlob));
+        return false;
     }
 
     async isBundleFile(e: Uri) {
