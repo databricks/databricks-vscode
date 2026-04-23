@@ -253,9 +253,35 @@ function initTabs() {
 
 /* ── renderNode helpers ── */
 
+function getIconUri(kind, name) {
+    const uris = window.UC_ICON_URIS;
+    if (!uris) return null;
+    const theme = document.body.classList.contains("vscode-light") ? "light" : "dark";
+    const themeUris = uris[theme];
+    if (!themeUris) return null;
+    if (kind === "catalog") {
+        const key = "catalog-" + name;
+        return themeUris[key] ?? themeUris["catalog"] ?? null;
+    }
+    return themeUris[kind] ?? null;
+}
+
 function renderHeader(data) {
-    document.getElementById("header-svg").innerHTML =
-        KIND_SVGS[data.kind] ?? "";
+    const img = document.getElementById("header-icon");
+    const svg = document.getElementById("header-svg");
+    const wrap = document.getElementById("header-icon-wrap");
+    const uri = getIconUri(data.kind, data.name);
+    if (uri) {
+        img.src = uri;
+        img.style.display = "";
+        svg.style.display = "none";
+        wrap.classList.add("has-custom");
+    } else {
+        svg.innerHTML = KIND_SVGS[data.kind] ?? "";
+        svg.style.display = "";
+        img.style.display = "none";
+        wrap.classList.remove("has-custom");
+    }
 
     setText("header-name", data.name ?? data.fullName ?? "");
     setText("header-kind-badge", data.kind);

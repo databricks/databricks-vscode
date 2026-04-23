@@ -85,6 +85,17 @@ body.content #state-content {
     stroke-linejoin: round;
 }
 
+#header-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+#header-icon-wrap.has-custom {
+    background: transparent;
+    opacity: 1;
+}
+
 #header-text {
     flex: 1;
     min-width: 0;

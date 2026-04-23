@@ -33,7 +33,14 @@ export class UnityCatalogDetailPanel implements Disposable {
             UnityCatalogDetailPanel.VIEW_TYPE,
             "Unity Catalog",
             {viewColumn: ViewColumn.Beside, preserveFocus: true},
-            {enableScripts: true, retainContextWhenHidden: true}
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true,
+                localResourceRoots: [
+                    Uri.joinPath(extensionUri, "resources"),
+                    Uri.joinPath(extensionUri, "out"),
+                ],
+            }
         );
         const content = await UnityCatalogDetailPanel.getWebviewContent(
             panel,
@@ -104,6 +111,34 @@ export class UnityCatalogDetailPanel implements Disposable {
         );
     }
 
+    private static buildIconUriMap(
+        panel: WebviewPanel,
+        extensionUri: Uri
+    ): Record<string, Record<string, string>> {
+        const iconFiles: Array<{key: string; file: string}> = [
+            {key: "catalog", file: "catalog.svg"},
+            {key: "catalog-main", file: "catalog-main.svg"},
+            {key: "catalog-samples", file: "catalog-samples.svg"},
+            {key: "catalog-system", file: "catalog-system.svg"},
+            {key: "schema", file: "schema.svg"},
+            {key: "table", file: "table.svg"},
+            {key: "volume", file: "volume.svg"},
+            {key: "function", file: "function.svg"},
+            {key: "registeredModel", file: "registered-model.svg"},
+        ];
+        const result: Record<string, Record<string, string>> = {dark: {}, light: {}};
+        for (const theme of ["dark", "light"] as const) {
+            for (const {key, file} of iconFiles) {
+                result[theme][key] = panel.webview
+                    .asWebviewUri(
+                        Uri.joinPath(extensionUri, "resources", theme, "unity-catalog", file)
+                    )
+                    .toString();
+            }
+        }
+        return result;
+    }
+
     private static async getWebviewContent(
         panel: WebviewPanel,
         extensionUri: Uri
@@ -114,8 +149,13 @@ export class UnityCatalogDetailPanel implements Disposable {
             fs.readFile(Uri.joinPath(webviewDir, "uc-detail.css").fsPath, "utf8"),
             fs.readFile(Uri.joinPath(webviewDir, "uc-detail.js").fsPath, "utf8"),
         ]);
+        const iconUris = UnityCatalogDetailPanel.buildIconUriMap(panel, extensionUri);
         return html
             .replace("<!--STYLES-->", `<style>\n${css}\n</style>`)
+            .replace(
+                "<!--ICON-URIS-->",
+                `<script>window.UC_ICON_URIS = ${JSON.stringify(iconUris)};</script>`
+            )
             .replace("<!--SCRIPTS-->", `<script>\n${js}\n</script>`)
             .replace(
                 /src="[^"]*\/toolkit\.js"/g,
