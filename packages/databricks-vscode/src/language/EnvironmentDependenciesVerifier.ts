@@ -156,19 +156,30 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         return this.acceptStep("checkWorkspaceHasUc");
     }
 
+    private isGlobalInterpreter(env?: ResolvedEnvironment): boolean {
+        return (
+            !!env && !env.environment && !!env.version && !!env.executable?.uri
+        );
+    }
+
     private matchEnvironmentVersion(
         env: ResolvedEnvironment | undefined,
         major: number,
         minor: number
     ): boolean {
-        if (!env || !env.version || !env.environment) {
+        if (
+            !env ||
+            !env.version ||
+            (!env.environment && !this.isGlobalInterpreter(env))
+        ) {
             return false;
         }
         return env.version.major === major && env.version.minor === minor;
     }
 
     private getCurrentPythonVersionMessage(env?: ResolvedEnvironment): string {
-        return env?.version && env.environment
+        return env?.version &&
+            (env.environment || this.isGlobalInterpreter(env))
             ? `Current Python version is ${env.version.major}.${env.version.minor}.${env.version.micro}.`
             : "No active environments found.";
     }
@@ -224,7 +235,10 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             }
             const expectedPythonVersion =
                 this.getExpectedPythonVersionMessage(dbrVersion);
-            if (!env?.environment || envVersionTooLow) {
+            if (
+                (!env?.environment && !this.isGlobalInterpreter(env)) ||
+                envVersionTooLow
+            ) {
                 return this.rejectStep(
                     "checkPythonEnvironment",
                     `Activate an environment with Python ${expectedPythonVersion}`,
@@ -235,7 +249,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 );
             }
             const executable = await this.pythonExtension.getPythonExecutable();
-            if (!executable) {
+            if (!env || !executable) {
                 return this.rejectStep(
                     "checkPythonEnvironment",
                     `Activate an environment with Python ${expectedPythonVersion}`,
@@ -248,9 +262,11 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 env,
                 this.getCurrentPythonVersionMessage(env)
             );
+            const envDisplayName =
+                env.environment?.name ?? env.executable.uri?.fsPath ?? env.path;
             return this.acceptStep(
                 "checkPythonEnvironment",
-                `Active Environment: ${env.environment.name}`,
+                `Active Environment: ${envDisplayName}`,
                 env.executable.uri?.fsPath,
                 warning
             );
