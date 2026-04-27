@@ -74,9 +74,9 @@ export function buildTreeItem(
                 extensionPath
             );
         case "modelVersion":
-            return renderModelVersion(node, exploreUrl, isPinned);
+            return renderModelVersion(node, exploreUrl, isPinned, extensionPath);
         case "column":
-            return renderColumn(node);
+            return renderColumn(node, extensionPath);
     }
 }
 
@@ -379,7 +379,8 @@ function renderRegisteredModel(
 function renderModelVersion(
     node: Extract<UnityCatalogTreeNode, {kind: "modelVersion"}>,
     exploreUrl: string | undefined,
-    isPinned: boolean = false
+    isPinned: boolean = false,
+    extensionPath: string = "",
 ): UnityCatalogTreeItem {
     const tt = new MarkdownString(`**v${node.version}**`);
     if (node.status) {
@@ -409,10 +410,7 @@ function renderModelVersion(
         label: `v${node.version}`,
         description: modelVersionDescription,
         tooltip: tt,
-        iconPath: new ThemeIcon(
-            "tag",
-            new ThemeColor("databricks.unityCatalog.modelVersion")
-        ),
+        iconPath: ucIconPath(extensionPath, "model-version.svg"),
         contextValue: isPinned
             ? baseContextValue + ".is-pinned"
             : baseContextValue,
@@ -423,18 +421,9 @@ function renderModelVersion(
 }
 
 function renderColumn(
-    node: Extract<UnityCatalogTreeNode, {kind: "column"}>
+    node: Extract<UnityCatalogTreeNode, {kind: "column"}>,
+    extensionPath: string
 ): UnityCatalogTreeItem {
-    const icon =
-        node.nullable === false
-            ? new ThemeIcon(
-                  "symbol-key",
-                  new ThemeColor("databricks.unityCatalog.columnKey")
-              )
-            : new ThemeIcon(
-                  "symbol-field",
-                  new ThemeColor("databricks.unityCatalog.column")
-              );
     const typeLabel = node.typeText ?? node.typeName ?? "";
     const tt = new MarkdownString(`**${node.name}** \`${typeLabel}\``);
     if (node.nullable === false) {
@@ -447,7 +436,7 @@ function renderColumn(
         label: node.name,
         description: typeLabel,
         tooltip: tt,
-        iconPath: icon,
+        iconPath: ucIconPath(extensionPath, "column.svg"),
         contextValue: "unityCatalog.column",
         collapsibleState: TreeItemCollapsibleState.None,
         copyText: node.name,

@@ -125,6 +125,8 @@ export class UnityCatalogDetailPanel implements Disposable {
             {key: "volume", file: "volume.svg"},
             {key: "function", file: "function.svg"},
             {key: "registeredModel", file: "registered-model.svg"},
+            {key: "modelVersion", file: "model-version.svg"},
+            {key: "column", file: "column.svg"},
         ];
         const result: Record<string, Record<string, string>> = {dark: {}, light: {}};
         for (const theme of ["dark", "light"] as const) {
