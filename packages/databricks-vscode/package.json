@@ -190,6 +190,58 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.unityCatalog.filter",
+                "title": "Filter",
+                "icon": "$(search)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.refresh",
+                "title": "Refresh Unity Catalog view",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.copyStorageLocation",
+                "title": "Copy storage location",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.copyViewSql",
+                "title": "Copy view SQL",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.copyName",
+                "title": "Copy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.refreshNode",
+                "title": "Refresh",
+                "icon": "$(refresh)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.pin",
+                "title": "Add to Favorites",
+                "icon": "$(star-empty)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.unpin",
+                "title": "Remove from Favorites",
+                "icon": "$(star-full)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.openExternal",
+                "title": "Open in Databricks",
+                "icon": "$(link-external)",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.call",
                 "title": "Call",
                 "enablement": "databricks.context.activated",
@@ -453,12 +505,107 @@
                     "when": "databricks.feature.views.workspace && !databricks.context.remoteMode"
                 },
                 {
+                    "id": "unityCatalogView",
+                    "name": "Unity Catalog",
+                    "when": "databricks.context.activated && databricks.context.loggedIn"
+                },
+                {
                     "id": "databricksDocsView",
                     "name": "Documentation",
                     "when": "!databricks.context.remoteMode"
                 }
             ]
         },
+        "colors": [
+            {
+                "id": "databricks.unityCatalog.catalog",
+                "description": "Icon color for Unity Catalog catalog nodes",
+                "defaults": {
+                    "dark": "#9B6CF7",
+                    "light": "#6B2FD4",
+                    "highContrast": "#C586C0",
+                    "highContrastLight": "#6B2FD4"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.schema",
+                "description": "Icon color for Unity Catalog schema nodes",
+                "defaults": {
+                    "dark": "#0DB7C4",
+                    "light": "#007A85",
+                    "highContrast": "#4EC9B0",
+                    "highContrastLight": "#007A85"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.table",
+                "description": "Icon color for Unity Catalog table nodes",
+                "defaults": {
+                    "dark": "#FF6B2C",
+                    "light": "#C84B0A",
+                    "highContrast": "#FF6B2C",
+                    "highContrastLight": "#C84B0A"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.volume",
+                "description": "Icon color for Unity Catalog volume nodes",
+                "defaults": {
+                    "dark": "#4FC1E9",
+                    "light": "#0E6FA0",
+                    "highContrast": "#4FC1E9",
+                    "highContrastLight": "#0E6FA0"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.function",
+                "description": "Icon color for Unity Catalog function nodes",
+                "defaults": {
+                    "dark": "#FFB347",
+                    "light": "#A06000",
+                    "highContrast": "#FFCA28",
+                    "highContrastLight": "#A06000"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.columnKey",
+                "description": "Icon color for Unity Catalog non-nullable (key) column nodes",
+                "defaults": {
+                    "dark": "#F47C7C",
+                    "light": "#C0392B",
+                    "highContrast": "#F47C7C",
+                    "highContrastLight": "#C0392B"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.column",
+                "description": "Icon color for Unity Catalog nullable column nodes",
+                "defaults": {
+                    "dark": "#8EAFC2",
+                    "light": "#4A6B82",
+                    "highContrast": "#8EAFC2",
+                    "highContrastLight": "#4A6B82"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.registeredModel",
+                "description": "Color for registered model nodes in the Unity Catalog view",
+                "defaults": {
+                    "dark": "#C586C0",
+                    "light": "#AF00DB",
+                    "highContrast": "#C586C0"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.modelVersion",
+                "description": "Color for model version nodes in the Unity Catalog view",
+                "defaults": {
+                    "dark": "#B5CEA8",
+                    "light": "#008000",
+                    "highContrast": "#B5CEA8"
+                }
+            }
+        ],
         "viewsWelcome": [
             {
                 "view": "configurationView",
@@ -537,6 +684,16 @@
                     "group": "navigation@1"
                 },
                 {
+                    "command": "databricks.unityCatalog.filter",
+                    "when": "view == unityCatalogView",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.unityCatalog.refresh",
+                    "when": "view == unityCatalogView",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "databricks.bundle.refreshRemoteState",
                     "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@1"
@@ -591,6 +748,61 @@
                     "command": "databricks.utils.openExternal",
                     "when": "viewItem =~ /^databricks.*\\.(has-url).*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.unityCatalog.openExternal",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.has-url/",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.unityCatalog.openExternal",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.has-url/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyName",
+                    "when": "view == unityCatalogView && viewItem =~ /unityCatalog/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyStorageLocation",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.has-storage/",
+                    "group": "navigation_2@1"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyViewSql",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.is-view/",
+                    "group": "navigation_2@2"
+                },
+                {
+                    "command": "databricks.unityCatalog.refreshNode",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column)/",
+                    "group": "navigation_2@3"
+                },
+                {
+                    "command": "databricks.unityCatalog.refreshNode",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column)/",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.unityCatalog.pin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion)/ && !(viewItem =~ /\\.is-pinned/)",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "databricks.unityCatalog.unpin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion).*\\.is-pinned/",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "databricks.unityCatalog.pin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion)/ && !(viewItem =~ /\\.is-pinned/)",
+                    "group": "navigation_2@4"
+                },
+                {
+                    "command": "databricks.unityCatalog.unpin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion).*\\.is-pinned/",
+                    "group": "navigation_2@4"
                 },
                 {
                     "command": "databricks.utils.goToDefinition",
@@ -1158,7 +1370,7 @@
         "version": "0.297.2"
     },
     "scripts": {
-        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run generate-telemetry",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run generate-telemetry",
         "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-main}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode",
         "package:linux:x64": "./scripts/package-vsix.sh linux-x64",
         "package:linux:arm64": "./scripts/package-vsix.sh linux-arm64",
@@ -1174,9 +1386,10 @@
         "package:bundle-schema:write": "yarn package:cli:fetch && ts-node ./scripts/writeBundleSchema.ts ./bin/databricks ./src/bundle/BundleSchema.ts",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
+        "package:copy-markdown-it": "cp ./node_modules/markdown-it/dist/markdown-it.min.js ./out/markdown-it.min.js",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
-        "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && tsc --build --watch --verbose",
+        "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && tsc --build --watch --verbose",
         "fix": "eslint src --ext ts --fix && prettier . --write",
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",
@@ -1203,6 +1416,7 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^2.4.3",
         "lodash": "^4.17.21",
+        "markdown-it": "^12.3.2",
         "minimatch": "^10.0.1",
         "shell-quote": "^1.8.1",
         "triple-beam": "^1.4.1",

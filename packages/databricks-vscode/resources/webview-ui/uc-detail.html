@@ -1,0 +1,273 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <script
+            type="module"
+            src="../node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js"
+        ></script>
+        <script src="../node_modules/markdown-it/dist/markdown-it.min.js"></script>
+        <!--STYLES-->
+    </head>
+    <body class="loading">
+        <!-- Loading state -->
+        <div id="state-loading">
+            <vscode-progress-ring></vscode-progress-ring>
+            <span>Loading…</span>
+        </div>
+
+        <!-- Content state -->
+        <div id="state-content">
+            <!-- Header -->
+            <div id="header">
+                <div id="header-icon-wrap">
+                    <img id="header-icon" style="display:none" />
+                    <svg id="header-svg" viewBox="0 0 24 24"></svg>
+                </div>
+                <div id="header-text">
+                    <h1 id="header-name"></h1>
+                    <div id="header-breadcrumb"></div>
+                    <div id="header-badges">
+                        <span id="header-kind-badge" class="kind-badge"></span>
+                        <span
+                            id="header-status-badge"
+                            class="status-badge"
+                            style="display: none"
+                        ></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div id="header-actions">
+                <button class="action-btn primary" id="btn-copy">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path
+                            d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                        />
+                    </svg>
+                    Copy full name
+                </button>
+                <span id="link-external"></span>
+            </div>
+
+            <!-- Tab bar -->
+            <div id="tab-bar">
+                <button class="tab-btn active" data-tab="overview">
+                    Overview
+                </button>
+                <button
+                    class="tab-btn"
+                    data-tab="definition"
+                    style="display: none"
+                >
+                    Definition
+                </button>
+                <button
+                    class="tab-btn"
+                    data-tab="details"
+                    style="display: none"
+                >
+                    Details
+                </button>
+                <button
+                    class="tab-btn"
+                    data-tab="permissions"
+                    style="display: none"
+                >
+                    Permissions
+                </button>
+                <button
+                    class="tab-btn"
+                    data-tab="quality"
+                    style="display: none"
+                >
+                    Quality
+                </button>
+            </div>
+
+            <!-- Search bar -->
+            <div id="search-bar">
+                <div id="search-input-wrap">
+                    <svg class="search-icon" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input
+                        id="search-input"
+                        type="text"
+                        placeholder="Search…"
+                        autocomplete="off"
+                        spellcheck="false"
+                    />
+                    <button id="search-clear" title="Clear">&#x00D7;</button>
+                </div>
+            </div>
+
+            <!-- Overview panel: description + schema + tags -->
+            <div id="tab-overview" class="tab-panel active">
+                <div id="section-comment" class="section" style="display: none">
+                    <div class="section-header">
+                        <span class="section-title">Description</span>
+                    </div>
+                    <div id="comment-text" class="comment-block"></div>
+                </div>
+
+                <!-- Children (schemas / schema contents / model versions) -->
+                <div id="section-children" class="section" style="display: none">
+                    <div class="section-header">
+                        <span class="section-title" id="children-title"></span>
+                        <span id="children-count" class="section-count"></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead id="children-thead"></thead>
+                            <tbody id="children-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Columns (tables) -->
+                <div id="section-columns" class="section" style="display: none">
+                    <div class="section-header">
+                        <span class="section-title">Schema</span>
+                        <span id="columns-count" class="section-count"></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Comment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="columns-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Parameters (functions) -->
+                <div id="section-params" class="section" style="display: none">
+                    <div class="section-header">
+                        <span class="section-title">Parameters</span>
+                        <span id="params-count" class="section-count"></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Default</th>
+                                    <th>Comment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="params-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tags (appear when enrichment loads) -->
+                <div id="section-tags" class="section" style="display: none">
+                    <div class="section-header">
+                        <span class="section-title">Tags</span>
+                    </div>
+                    <div id="tags-body" class="tags-wrap"></div>
+                </div>
+            </div>
+
+            <!-- Definition panel: view / routine SQL -->
+            <div id="tab-definition" class="tab-panel">
+                <div id="section-sql" class="section">
+                    <div class="section-header">
+                        <span class="section-title" id="sql-title"
+                            >Definition</span
+                        >
+                    </div>
+                    <div class="code-wrap">
+                        <button class="code-copy-btn" id="sql-copy-btn">
+                            Copy
+                        </button>
+                        <pre id="sql-body" class="code-block"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details panel: basic props + enrichment props + constraints -->
+            <div id="tab-details" class="tab-panel">
+                <!-- Moved from overview: basic kind properties -->
+                <div id="section-properties" class="section">
+                    <div class="section-header">
+                        <span class="section-title" id="section-properties-title">About this table</span>
+                    </div>
+                    <div id="props-list" class="props-list"></div>
+                </div>
+
+                <!-- Enrichment: custom properties, row filter, pipeline -->
+                <div
+                    id="section-extra-props"
+                    class="section"
+                    style="display: none"
+                >
+                    <div class="section-header">
+                        <span class="section-title">Properties</span>
+                    </div>
+                    <div id="extra-props-list" class="props-list"></div>
+                </div>
+
+                <!-- Enrichment: constraints -->
+                <div
+                    id="section-constraints"
+                    class="section"
+                    style="display: none"
+                >
+                    <div class="section-header">
+                        <span class="section-title">Constraints</span>
+                    </div>
+                    <div id="constraints-body" class="constraints-wrap"></div>
+                </div>
+            </div>
+
+            <!-- Permissions panel -->
+            <div id="tab-permissions" class="tab-panel">
+                <div id="section-permissions" class="section">
+                    <div class="section-header">
+                        <span class="section-title">Effective Permissions</span>
+                        <span
+                            id="permissions-count"
+                            class="section-count"
+                        ></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Principal</th>
+                                    <th>Privileges</th>
+                                </tr>
+                            </thead>
+                            <tbody id="permissions-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quality panel -->
+            <div id="tab-quality" class="tab-panel">
+                <div id="section-monitor" class="section">
+                    <div class="section-header">
+                        <span class="section-title">Quality Monitor</span>
+                    </div>
+                    <div id="monitor-body"></div>
+                </div>
+            </div>
+        </div>
+
+        <!--ICON-URIS-->
+        <!--SCRIPTS-->
+    </body>
+</html>
