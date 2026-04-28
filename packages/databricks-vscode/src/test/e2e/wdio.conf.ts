@@ -11,7 +11,7 @@ import fs from "fs/promises";
 import {Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile as execFileCb} from "node:child_process";
-import {cpSync, mkdirSync, readdirSync, rmSync} from "node:fs";
+import {cpSync, mkdirSync, readdirSync, readFileSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
@@ -23,15 +23,16 @@ const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const {version, name, engines} = packageJson;
+const {engines} = packageJson;
 
 const EXTENSIONS_DIR = path.resolve(tmpdir(), "extension test", "extension");
+const PACKAGE_ROOT = path.resolve(__dirname, "..", "..", "..");
 const VSIX_PATH = path.resolve(
-    __dirname,
-    "..",
-    "..",
-    "..",
-    `${name}-${version}.vsix`
+    PACKAGE_ROOT,
+    readFileSync(
+        path.resolve(PACKAGE_ROOT, ".build", "test-vsix-path"),
+        "utf-8"
+    ).trim()
 );
 const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
 
