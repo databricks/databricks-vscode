@@ -127,9 +127,15 @@ function spawn(command: string, args: string[], options: any = {}) {
     const child = spawnSync(command, args, options);
     if (child.error) {
         throw child.error;
-    } else {
-        return child;
     }
+    if (child.status !== 0) {
+        throw new Error(
+            `${command} ${args.join(" ")} exited with status ${child.status}\n` +
+                `stdout: ${child.stdout?.toString() ?? ""}\n` +
+                `stderr: ${child.stderr?.toString() ?? ""}`
+        );
+    }
+    return child;
 }
 
 main();
