@@ -60,11 +60,11 @@ async function main() {
     const arch = argv.arch!;
     const terraformZip = `terraform_${terraform.version}_${arch}.zip`;
     const terraformUrl = `https://releases.hashicorp.com/terraform/${terraform.version}/${terraformZip}`;
-    spawn("curl", ["-sLO", terraformUrl], {cwd: tempDir});
+    spawn("curl", ["-sLO", "--fail", terraformUrl], {cwd: tempDir});
     // Check sha of the archive
     const shasumsFile = `terraform_${terraform.version}_SHA256SUMS`;
     const shasumsUrl = `https://releases.hashicorp.com/terraform/${terraform.version}/${shasumsFile}`;
-    spawn("curl", ["-sLO", shasumsUrl], {cwd: tempDir});
+    spawn("curl", ["-sLO", "--fail", shasumsUrl], {cwd: tempDir});
     await verifySha256(
         path.join(tempDir, terraformZip),
         path.join(tempDir, shasumsFile),
@@ -79,19 +79,8 @@ async function main() {
 
     // Download databricks provider archive for the selected arch
     const providerZip = `terraform-provider-databricks_${terraform.providerVersion}_${arch}.zip`;
-    spawn(
-        "gh",
-        [
-            "release",
-            "download",
-            `v${terraform.providerVersion}`,
-            "--pattern",
-            providerZip,
-            "--repo",
-            "databricks/terraform-provider-databricks",
-        ],
-        {cwd: tempDir}
-    );
+    const providerUrl = `https://github.com/databricks/terraform-provider-databricks/releases/download/v${terraform.providerVersion}/${providerZip}`;
+    spawn("curl", ["-sLO", "--fail", providerUrl], {cwd: tempDir});
     const providersMirrorRelPath = path.join(depsDir, "providers");
     const databricksProviderDir = path.join(
         providersMirrorRelPath,
