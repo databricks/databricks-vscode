@@ -123,6 +123,14 @@ export const workspaceConfigs = {
         return dir;
     },
 
+    get serverlessDbconnectVersion(): string {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<string>("connect.serverlessDbconnectVersion") ?? "17.3"
+        );
+    },
+
     get bundleRemoteStateRefreshInterval(): number {
         const config =
             workspace
