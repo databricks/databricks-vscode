@@ -149,7 +149,9 @@ function spawn(command: string, args: string[], options: any = {}) {
     }
     if (child.status !== 0) {
         throw new Error(
-            `${command} ${args.join(" ")} exited with status ${child.status}\n` +
+            `${command} ${args.join(" ")} exited with status ${
+                child.status
+            }\n` +
                 `stdout: ${child.stdout?.toString() ?? ""}\n` +
                 `stderr: ${child.stderr?.toString() ?? ""}`
         );
