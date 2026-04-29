@@ -1,3 +1,11 @@
+# Release: v2.10.7
+
+## packages/databricks-vscode-types
+
+## (2026-04-29)
+
+-   Fix typos in Markdown files (#1862) ([3556953](https://github.com/databricks/databricks-vscode/commit/3556953)), closes [#1862](https://github.com/databricks/databricks-vscode/issues/1862)
+
 # Release: v2.10.6
 
 ## packages/databricks-vscode-types
