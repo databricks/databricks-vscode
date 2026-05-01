@@ -313,24 +313,34 @@ export async function executeCommandWhenAvailable(command: string) {
 export async function waitForNotification(message: string, action?: string) {
     await browser.waitUntil(
         async () => {
-            const workbench = await browser.getWorkbench();
-            for (const notification of await workbench.getNotifications()) {
-                const label = await notification.getMessage();
-                console.log("Checking notification message:", label);
-                if (label.includes(message)) {
-                    console.log(`Notification with "${message}" found.`);
-                    if (action) {
-                        console.log(`Taking action: ${action}`);
-                        await notification.takeAction(action);
+            try {
+                const workbench = await browser.getWorkbench();
+                for (const notification of await workbench.getNotifications()) {
+                    try {
+                        const label = await notification.getMessage();
+                        console.log("Checking notification message:", label);
+                        if (label.includes(message)) {
+                            console.log(`Notification with "${message}" found.`);
+                            if (action) {
+                                console.log(`Taking action: ${action}`);
+                                await notification.takeAction(action);
+                            }
+                            return true;
+                        }
+                    } catch (e) {
+                        // Notification may have been dismissed between collecting
+                        // elements and reading its message — skip it and continue
+                        console.log("Skipping stale notification element:", e);
                     }
-                    return true;
                 }
+            } catch (e) {
+                console.log("Error fetching notifications, will retry:", e);
             }
             return false;
         },
         {
             timeout: 60_000,
-            interval: 2000,
+            interval: 500,
             timeoutMsg: `Notification with message "${message}" not found`,
         }
     );
