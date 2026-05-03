@@ -1131,6 +1131,11 @@
                         "default": true,
                         "markdownDescription": "Show PySpark progress bar when using Databricks Connect. Requires `ipywidgets` package and `pyspark@3.5.0+`."
                     },
+                    "databricks.connect.serverlessDbconnectVersion": {
+                        "type": "string",
+                        "default": "17.3",
+                        "markdownDescription": "Default `databricks-connect` version for serverless compute. Determines required Python version and suggested package version. Minimum supported value is `15.4`."
+                    },
                     "databricks.ipythonDir": {
                         "type": "string",
                         "description": "Absolute path to a directory for storing IPython files. Defaults to IPYTHONDIR environment variable (if set) or ~/.ipython."
@@ -1181,7 +1186,7 @@
         "test:lint": "eslint src --ext ts && prettier . -c",
         "test:unit": "yarn run build && node ./out/test/runTest.js",
         "test:python": "DATABRICKS_EXTENSION_UNIT_TESTS=1 python -B -m unittest discover -s ./src/test/python -p '*_test.py'",
-        "test:integ:prepare": "yarn run package",
+        "test:integ:prepare": "./scripts/package-vsix-tests.sh",
         "test:integ:extension": "yarn run test:integ:prepare && wdio run src/test/e2e/wdio.conf.ts",
         "test:integ:sdk": "ts-mocha --type-check 'src/sdk-extensions/**/*.integ.ts'",
         "test:integ": "yarn run test:integ:extension && yarn run test:integ:sdk",
@@ -1238,6 +1243,7 @@
         "esbuild": "^0.25.0",
         "eslint": "^8.55.0",
         "eslint-plugin-local-rules": "^2.0.1",
+        "extract-zip": "^2.0.1",
         "fs-extra": "^11.2.0",
         "glob": "^10.3.10",
         "mocha": "^10.2.0",
