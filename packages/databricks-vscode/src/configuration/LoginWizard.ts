@@ -311,7 +311,8 @@ export class LoginWizard {
                 authProvider = new DatabricksCliAuthProvider(
                     this.state.host!,
                     this.cliWrapper.cliPath,
-                    this.cliWrapper
+                    this.cliWrapper,
+                    profileName
                 );
                 break;
 
