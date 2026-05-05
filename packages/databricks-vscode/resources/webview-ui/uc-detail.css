@@ -731,21 +731,55 @@ pre.code-block {
 /* Syntax highlighting (highlight.js) */
 /* VS Code sets data-vscode-theme-kind attribute on body, not a CSS class */
 body[data-vscode-theme-kind="vscode-dark"] .hljs-keyword,
-body[data-vscode-theme-kind="vscode-dark"] .hljs-operator   { color: #569cd6; }
-body[data-vscode-theme-kind="vscode-dark"] .hljs-string     { color: #ce9178; }
-body[data-vscode-theme-kind="vscode-dark"] .hljs-comment    { color: #6a9955; font-style: italic; }
-body[data-vscode-theme-kind="vscode-dark"] .hljs-number     { color: #b5cea8; }
-body[data-vscode-theme-kind="vscode-dark"] .hljs-built_in   { color: #4ec9b0; }
-body[data-vscode-theme-kind="vscode-dark"] .hljs-type       { color: #4ec9b0; }
-body[data-vscode-theme-kind="vscode-dark"] .hljs-title      { color: #dcdcaa; }
-body[data-vscode-theme-kind="vscode-dark"] .hljs-variable   { color: #9cdcfe; }
+body[data-vscode-theme-kind="vscode-dark"] .hljs-operator {
+    color: #569cd6;
+}
+body[data-vscode-theme-kind="vscode-dark"] .hljs-string {
+    color: #ce9178;
+}
+body[data-vscode-theme-kind="vscode-dark"] .hljs-comment {
+    color: #6a9955;
+    font-style: italic;
+}
+body[data-vscode-theme-kind="vscode-dark"] .hljs-number {
+    color: #b5cea8;
+}
+body[data-vscode-theme-kind="vscode-dark"] .hljs-built_in {
+    color: #4ec9b0;
+}
+body[data-vscode-theme-kind="vscode-dark"] .hljs-type {
+    color: #4ec9b0;
+}
+body[data-vscode-theme-kind="vscode-dark"] .hljs-title {
+    color: #dcdcaa;
+}
+body[data-vscode-theme-kind="vscode-dark"] .hljs-variable {
+    color: #9cdcfe;
+}
 
 body[data-vscode-theme-kind="vscode-light"] .hljs-keyword,
-body[data-vscode-theme-kind="vscode-light"] .hljs-operator  { color: #0000ff; }
-body[data-vscode-theme-kind="vscode-light"] .hljs-string    { color: #a31515; }
-body[data-vscode-theme-kind="vscode-light"] .hljs-comment   { color: #008000; font-style: italic; }
-body[data-vscode-theme-kind="vscode-light"] .hljs-number    { color: #098658; }
-body[data-vscode-theme-kind="vscode-light"] .hljs-built_in  { color: #267f99; }
-body[data-vscode-theme-kind="vscode-light"] .hljs-type      { color: #267f99; }
-body[data-vscode-theme-kind="vscode-light"] .hljs-title     { color: #795e26; }
-body[data-vscode-theme-kind="vscode-light"] .hljs-variable  { color: #001080; }
+body[data-vscode-theme-kind="vscode-light"] .hljs-operator {
+    color: #0000ff;
+}
+body[data-vscode-theme-kind="vscode-light"] .hljs-string {
+    color: #a31515;
+}
+body[data-vscode-theme-kind="vscode-light"] .hljs-comment {
+    color: #008000;
+    font-style: italic;
+}
+body[data-vscode-theme-kind="vscode-light"] .hljs-number {
+    color: #098658;
+}
+body[data-vscode-theme-kind="vscode-light"] .hljs-built_in {
+    color: #267f99;
+}
+body[data-vscode-theme-kind="vscode-light"] .hljs-type {
+    color: #267f99;
+}
+body[data-vscode-theme-kind="vscode-light"] .hljs-title {
+    color: #795e26;
+}
+body[data-vscode-theme-kind="vscode-light"] .hljs-variable {
+    color: #001080;
+}
