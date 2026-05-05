@@ -196,12 +196,12 @@ body.content #state-content {
 }
 
 #extra-props-list .prop-row {
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: minmax(150px, 70%) 1fr;
 }
 
 .prop-row {
     display: grid;
-    grid-template-columns: 130px 1fr;
+    grid-template-columns: minmax(130px, 45%) 1fr;
     border-bottom: 1px solid
         var(--vscode-settings-dropdownListBorder, transparent);
     transition: background 0.1s;
