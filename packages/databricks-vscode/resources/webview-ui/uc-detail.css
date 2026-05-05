@@ -647,8 +647,6 @@ pre.code-block {
     background: var(--vscode-editor-background);
     border-bottom: 1px solid
         var(--vscode-settings-dropdownListBorder, transparent);
-    display: flex;
-    justify-content: flex-end;
 }
 #search-input-wrap {
     position: relative;
