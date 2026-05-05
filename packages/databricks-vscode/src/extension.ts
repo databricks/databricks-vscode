@@ -29,7 +29,11 @@ import {
     UtilsCommands,
 } from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
-import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
+import {
+    WorkspaceFsCommands,
+    WorkspaceFsDataProvider,
+    WorkspaceFsFileSystemProvider,
+} from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
@@ -265,7 +269,6 @@ export async function activate(
     // manage contexts for experimental features
     function updateFeatureContexts() {
         customWhenContext.updateShowClusterView();
-        customWhenContext.updateShowWorkspaceView();
     }
 
     function updateStrictSSLEnv() {
@@ -382,13 +385,19 @@ export async function activate(
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager
     );
+    const workspaceFsFsp = new WorkspaceFsFileSystemProvider(connectionManager);
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspaceFolderManager,
         connectionManager,
-        workspaceFsDataProvider
+        workspaceFsDataProvider,
+        workspaceFsFsp
     );
 
     context.subscriptions.push(
+        workspace.registerFileSystemProvider("wsfs", workspaceFsFsp, {
+            isCaseSensitive: true,
+        }),
+        workspaceFsFsp,
         window.registerTreeDataProvider(
             "workspaceFsView",
             workspaceFsDataProvider
@@ -401,6 +410,31 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.wsfs.createFolder",
             workspaceFsCommands.createFolder,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.openInBrowser",
+            workspaceFsCommands.openInBrowser,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.copyPath",
+            workspaceFsCommands.copyPath,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.delete",
+            workspaceFsCommands.deleteItem,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.uploadFile",
+            workspaceFsCommands.uploadFile,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.downloadFile",
+            workspaceFsCommands.downloadFile,
             workspaceFsCommands
         )
     );

@@ -85,16 +85,6 @@ export class CustomWhenContext {
         );
     }
 
-    updateShowWorkspaceView() {
-        commands.executeCommand(
-            "setContext",
-            "databricks.feature.views.workspace",
-            workspaceConfigs.experimetalFeatureOverides.includes(
-                "views.workspace"
-            )
-        );
-    }
-
     setIsActiveFileInActiveWorkspace(value: boolean) {
         commands.executeCommand(
             "setContext",
