@@ -57,6 +57,7 @@ body.content #state-content {
 #header {
     display: flex;
     align-items: flex-start;
+    flex-wrap: wrap;
     gap: 12px;
     padding: 18px 16px 14px;
     border-bottom: 1px solid
@@ -462,6 +463,7 @@ pre.code-block {
     flex-wrap: wrap;
     flex-shrink: 0;
     align-self: flex-start;
+    margin-left: auto;
     padding: 0;
 }
 
