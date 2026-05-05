@@ -21,7 +21,8 @@ export function registerDetailPanel(
             node.kind === "error" ||
             node.kind === "empty" ||
             node.kind === "column" ||
-            node.kind === "favorites"
+            node.kind === "favorites" ||
+            node.kind === "group"
         ) {
             return;
         }
@@ -57,7 +58,8 @@ export function registerDetailPanel(
                 node.kind === "error" ||
                 node.kind === "empty" ||
                 node.kind === "column" ||
-                node.kind === "favorites"
+                node.kind === "favorites" ||
+                node.kind === "group"
             ) {
                 return;
             }

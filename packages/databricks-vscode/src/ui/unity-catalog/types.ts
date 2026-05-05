@@ -139,6 +139,14 @@ export type UnityCatalogTreeNode =
           nullable?: boolean;
           position?: number;
       }
+    | {
+          kind: "group";
+          groupType: "tables" | "volumes" | "functions" | "models";
+          catalogName: string;
+          schemaName: string;
+          schemaFullName: string;
+          count: number;
+      }
     | {kind: "error"; message: string}
     | {kind: "empty"; message: string}
     | {kind: "favorites"};

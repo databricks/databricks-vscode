@@ -74,9 +74,16 @@ export function buildTreeItem(
                 extensionPath
             );
         case "modelVersion":
-            return renderModelVersion(node, exploreUrl, isPinned, extensionPath);
+            return renderModelVersion(
+                node,
+                exploreUrl,
+                isPinned,
+                extensionPath
+            );
         case "column":
             return renderColumn(node, extensionPath);
+        case "group":
+            return renderGroup(node, extensionPath);
     }
 }
 
@@ -380,7 +387,7 @@ function renderModelVersion(
     node: Extract<UnityCatalogTreeNode, {kind: "modelVersion"}>,
     exploreUrl: string | undefined,
     isPinned: boolean = false,
-    extensionPath: string = "",
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     const tt = new MarkdownString(`**v${node.version}**`);
     if (node.status) {
@@ -417,6 +424,30 @@ function renderModelVersion(
         collapsibleState: TreeItemCollapsibleState.None,
         url: exploreUrl,
         copyText: node.fullName,
+    };
+}
+
+function renderGroup(
+    node: Extract<UnityCatalogTreeNode, {kind: "group"}>,
+    extensionPath: string
+): UnityCatalogTreeItem {
+    const labels = {
+        tables: "Tables",
+        volumes: "Volumes",
+        functions: "Functions",
+        models: "Models",
+    };
+    const iconFiles = {
+        tables: "table.svg",
+        volumes: "volume.svg",
+        functions: "function.svg",
+        models: "registered-model.svg",
+    };
+    return {
+        label: `${labels[node.groupType]} (${node.count})`,
+        iconPath: ucIconPath(extensionPath, iconFiles[node.groupType]),
+        contextValue: `unityCatalog.group.${node.groupType}`,
+        collapsibleState: TreeItemCollapsibleState.Collapsed,
     };
 }
 

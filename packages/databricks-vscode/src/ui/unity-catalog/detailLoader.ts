@@ -284,7 +284,7 @@ export async function loadNodeEnrichments(
     client: Client,
     node: Exclude<
         UnityCatalogTreeNode,
-        {kind: "error" | "empty" | "column" | "modelVersion" | "favorites"}
+        {kind: "error" | "empty" | "column" | "modelVersion" | "favorites" | "group"}
     >,
     cachedChildren?: UnityCatalogTreeNode[]
 ): Promise<NodeEnrichments> {

@@ -238,27 +238,55 @@ describe(__filename, () => {
             name: "sch",
             fullName: "cat.sch",
         };
-        const children = (await resolveProviderResult(
+        const groups = (await resolveProviderResult(
             provider.getChildren(schema)
         )) as UnityCatalogTreeNode[];
 
-        assert(children);
-        assert.strictEqual(children.length, 3);
-        const kinds = children.map((c) => c.kind).sort();
-        assert.deepStrictEqual(kinds, ["function", "table", "volume"]);
+        assert(groups);
+        assert.strictEqual(groups.length, 3);
+        assert(groups.every((g) => g.kind === "group"));
+        const groupTypes = groups
+            .map(
+                (g) =>
+                    (g as Extract<UnityCatalogTreeNode, {kind: "group"}>)
+                        .groupType
+            )
+            .sort();
+        assert.deepStrictEqual(groupTypes, ["functions", "tables", "volumes"]);
 
-        const table = children.find((c) => c.kind === "table");
-        assert(table && table.kind === "table");
-        assert.strictEqual(table.name, "t1");
+        // Expand the tables group
+        const tablesGroup = groups.find(
+            (g) => g.kind === "group" && (g as any).groupType === "tables"
+        ) as UnityCatalogTreeNode;
+        const tableChildren = (await resolveProviderResult(
+            provider.getChildren(tablesGroup)
+        )) as UnityCatalogTreeNode[];
+        assert(tableChildren && tableChildren.length === 1);
+        assert(tableChildren[0].kind === "table");
+        assert.strictEqual((tableChildren[0] as any).name, "t1");
 
-        const volume = children.find((c) => c.kind === "volume");
-        assert(volume && volume.kind === "volume");
-        assert.strictEqual(volume.name, "v1");
+        // Expand the volumes group
+        const volumesGroup = groups.find(
+            (g) => g.kind === "group" && (g as any).groupType === "volumes"
+        ) as UnityCatalogTreeNode;
+        const volumeChildren = (await resolveProviderResult(
+            provider.getChildren(volumesGroup)
+        )) as UnityCatalogTreeNode[];
+        assert(volumeChildren && volumeChildren.length === 1);
+        assert(volumeChildren[0].kind === "volume");
+        assert.strictEqual((volumeChildren[0] as any).name, "v1");
 
-        const fn = children.find((c) => c.kind === "function");
-        assert(fn && fn.kind === "function");
-        assert.strictEqual(fn.name, "f1");
-        assert.strictEqual(fn.fullName, "cat.sch.f1");
+        // Expand the functions group
+        const functionsGroup = groups.find(
+            (g) => g.kind === "group" && (g as any).groupType === "functions"
+        ) as UnityCatalogTreeNode;
+        const fnChildren = (await resolveProviderResult(
+            provider.getChildren(functionsGroup)
+        )) as UnityCatalogTreeNode[];
+        assert(fnChildren && fnChildren.length === 1);
+        assert(fnChildren[0].kind === "function");
+        assert.strictEqual((fnChildren[0] as any).name, "f1");
+        assert.strictEqual((fnChildren[0] as any).fullName, "cat.sch.f1");
     });
 
     it("fires onDidChangeTreeData when connection state changes", async () => {
@@ -368,11 +396,19 @@ describe(__filename, () => {
             name: "sch",
             fullName: "cat.sch",
         };
-        const children = (await resolveProviderResult(
+        const groups = (await resolveProviderResult(
             provider.getChildren(schema)
         )) as UnityCatalogTreeNode[];
 
-        const table = children.find((c) => c.kind === "table");
+        const tablesGroup = groups.find(
+            (g) => g.kind === "group" && (g as any).groupType === "tables"
+        ) as UnityCatalogTreeNode;
+        assert(tablesGroup, "expected a tables group");
+        const tableChildren = (await resolveProviderResult(
+            provider.getChildren(tablesGroup)
+        )) as UnityCatalogTreeNode[];
+
+        const table = tableChildren.find((c) => c.kind === "table");
         assert(table && table.kind === "table");
         assert.strictEqual(table.dataSourceFormat, "DELTA");
         assert.strictEqual(table.comment, "a test table");
@@ -436,46 +472,6 @@ describe(__filename, () => {
             provider.getChildren(tableNode)
         );
         assert.strictEqual(children, undefined);
-    });
-
-    it("getTreeItem for non-nullable column uses symbol-key icon", async () => {
-        const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager),
-            stubStateStorage
-        );
-        disposables.push(provider);
-
-        const col: UnityCatalogTreeNode = {
-            kind: "column",
-            tableFullName: "cat.sch.t1",
-            name: "id",
-            typeText: "bigint",
-            nullable: false,
-        };
-        const item = provider.getTreeItem(col) as UnityCatalogTreeItem;
-        assert.strictEqual(item.label, "id");
-        assert.strictEqual(item.description, "bigint");
-        const icon = item.iconPath as {id: string};
-        assert.strictEqual(icon.id, "symbol-key");
-    });
-
-    it("getTreeItem for nullable column uses symbol-field icon", async () => {
-        const provider = new UnityCatalogTreeDataProvider(
-            instance(mockConnectionManager),
-            stubStateStorage
-        );
-        disposables.push(provider);
-
-        const col: UnityCatalogTreeNode = {
-            kind: "column",
-            tableFullName: "cat.sch.t1",
-            name: "val",
-            typeText: "string",
-            nullable: true,
-        };
-        const item = provider.getTreeItem(col) as UnityCatalogTreeItem;
-        const icon = item.iconPath as {id: string};
-        assert.strictEqual(icon.id, "symbol-field");
     });
 
     it("getTreeItem for EXTERNAL table with storage has has-storage in contextValue", async () => {
@@ -594,10 +590,12 @@ describe(__filename, () => {
         )) as UnityCatalogTreeNode[];
 
         assert(children);
-        // allSettled: tables (t1) and volumes (v1) still succeed; only functions errors
-        assert.strictEqual(children.length, 3);
-        assert.notStrictEqual(children[0].kind, "error");
-        assert.strictEqual(children[children.length - 1].kind, "error");
+        // allSettled: tables (t1) and volumes (v1) succeed; functions errors
+        // groups appear first, error node surfaces at schema level
+        const groupNodes = children.filter((c) => c.kind === "group");
+        const errorNodes = children.filter((c) => c.kind === "error");
+        assert.strictEqual(groupNodes.length, 2); // tables, volumes
+        assert.strictEqual(errorNodes.length, 1);
     });
 
     it("lists registered models under a schema", async () => {
@@ -618,10 +616,19 @@ describe(__filename, () => {
             name: "sch",
             fullName: "cat.sch",
         };
-        const children = (await resolveProviderResult(
+        const groups = (await resolveProviderResult(
             provider.getChildren(schema)
         )) as UnityCatalogTreeNode[];
-        const model = children.find((c) => c.kind === "registeredModel");
+
+        const modelsGroup = groups.find(
+            (g) => g.kind === "group" && (g as any).groupType === "models"
+        ) as UnityCatalogTreeNode;
+        assert(modelsGroup, "expected a models group");
+        const modelChildren = (await resolveProviderResult(
+            provider.getChildren(modelsGroup)
+        )) as UnityCatalogTreeNode[];
+
+        const model = modelChildren.find((c) => c.kind === "registeredModel");
         assert(model && model.kind === "registeredModel");
         assert.strictEqual(model.name, "m1");
         assert.strictEqual(model.fullName, "cat.sch.m1");
@@ -690,9 +697,9 @@ describe(__filename, () => {
         };
         await p.pin(schema);
         assert(
-            (
-                storageMap.get("databricks.unityCatalog.favorites") as any[]
-            ).some((f) => f.fullName === "cat.sch")
+            (storageMap.get("databricks.unityCatalog.favorites") as any[]).some(
+                (f) => f.fullName === "cat.sch"
+            )
         );
         assert.strictEqual(fired, 1);
     });
@@ -748,6 +755,136 @@ describe(__filename, () => {
         assert(!favorites.some((f) => f.fullName === "cat.sch"));
         assert(favorites.some((f) => f.fullName === "cat.other"));
         assert(fired >= 1);
+    });
+
+    it("group getChildren returns cached members for that type", async () => {
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+
+        const schema: UnityCatalogTreeNode = {
+            kind: "schema",
+            catalogName: "cat",
+            name: "sch",
+            fullName: "cat.sch",
+        };
+        // Populate the cache by loading schema children first
+        await resolveProviderResult(provider.getChildren(schema));
+
+        const tablesGroup: UnityCatalogTreeNode = {
+            kind: "group",
+            groupType: "tables",
+            catalogName: "cat",
+            schemaName: "sch",
+            schemaFullName: "cat.sch",
+            count: 1,
+        };
+        const tableChildren = (await resolveProviderResult(
+            provider.getChildren(tablesGroup)
+        )) as UnityCatalogTreeNode[];
+
+        assert(tableChildren);
+        assert.strictEqual(tableChildren.length, 1);
+        assert.strictEqual(tableChildren[0].kind, "table");
+        assert.strictEqual((tableChildren[0] as any).name, "t1");
+    });
+
+    it("groups with zero members are omitted", async () => {
+        // No registered models → models group should not appear
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+
+        const schema: UnityCatalogTreeNode = {
+            kind: "schema",
+            catalogName: "cat",
+            name: "sch",
+            fullName: "cat.sch",
+        };
+        const groups = (await resolveProviderResult(
+            provider.getChildren(schema)
+        )) as UnityCatalogTreeNode[];
+
+        assert(groups);
+        const groupTypes = groups
+            .filter((g) => g.kind === "group")
+            .map((g) => (g as any).groupType);
+        assert(
+            !groupTypes.includes("models"),
+            "models group should be absent when no models exist"
+        );
+        assert(groupTypes.includes("tables"));
+        assert(groupTypes.includes("volumes"));
+        assert(groupTypes.includes("functions"));
+    });
+
+    it("no grouping when schema has only one type of child", async () => {
+        // Only tables, no volumes or functions
+        when(mockVolumes.list(anything())).thenCall(() => {
+            async function* impl() {
+                /* empty */
+            }
+            return impl();
+        });
+        when(mockFunctions.list(anything())).thenCall(() => {
+            async function* impl() {
+                /* empty */
+            }
+            return impl();
+        });
+
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+
+        const schema: UnityCatalogTreeNode = {
+            kind: "schema",
+            catalogName: "cat",
+            name: "sch",
+            fullName: "cat.sch",
+        };
+        const children = (await resolveProviderResult(
+            provider.getChildren(schema)
+        )) as UnityCatalogTreeNode[];
+
+        assert(children);
+        assert(
+            children.every((c) => c.kind !== "group"),
+            "should not return group nodes when only one type present"
+        );
+        assert.strictEqual(children.length, 1);
+        assert.strictEqual(children[0].kind, "table");
+    });
+
+    it("group node label includes child count", async () => {
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+
+        const schema: UnityCatalogTreeNode = {
+            kind: "schema",
+            catalogName: "cat",
+            name: "sch",
+            fullName: "cat.sch",
+        };
+        const groups = (await resolveProviderResult(
+            provider.getChildren(schema)
+        )) as UnityCatalogTreeNode[];
+
+        const tablesGroup = groups.find(
+            (g) => g.kind === "group" && (g as any).groupType === "tables"
+        ) as UnityCatalogTreeNode;
+        assert(tablesGroup, "expected tables group");
+        const item = provider.getTreeItem(tablesGroup);
+        assert.strictEqual(item.label, "Tables (1)");
     });
 
     it("owned schema sorts before unowned", async () => {

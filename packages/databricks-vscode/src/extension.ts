@@ -460,7 +460,8 @@ export async function activate(
                 if (
                     node.kind === "error" ||
                     node.kind === "empty" ||
-                    node.kind === "favorites"
+                    node.kind === "favorites" ||
+                    node.kind === "group"
                 ) {
                     return;
                 }

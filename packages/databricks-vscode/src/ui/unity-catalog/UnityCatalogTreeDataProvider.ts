@@ -64,7 +64,8 @@ export class UnityCatalogTreeDataProvider
             node.kind === "error" ||
             node.kind === "column" ||
             node.kind === "empty" ||
-            node.kind === "favorites"
+            node.kind === "favorites" ||
+            node.kind === "group"
         ) {
             return undefined;
         }
@@ -147,13 +148,87 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "schema") {
-            const result = await loadSchemaChildren(
+            const flat = await loadSchemaChildren(
                 client,
                 element.catalogName,
                 element.name
             );
-            this.childrenCache.set(element.fullName, result);
-            return result;
+
+            // Preserve flat list for getLoadedChildren() (used by detail panel)
+            this.childrenCache.set(element.fullName, flat);
+
+            // Partition by type
+            const tables = flat.filter((n) => n.kind === "table");
+            const volumes = flat.filter((n) => n.kind === "volume");
+            const functions = flat.filter((n) => n.kind === "function");
+            const models = flat.filter((n) => n.kind === "registeredModel");
+            const errors = flat.filter((n) => n.kind === "error");
+
+            this.childrenCache.set(`${element.fullName}/.tables`, tables);
+            this.childrenCache.set(`${element.fullName}/.volumes`, volumes);
+            this.childrenCache.set(`${element.fullName}/.functions`, functions);
+            this.childrenCache.set(`${element.fullName}/.models`, models);
+
+            const typedArrays = [tables, volumes, functions, models];
+            const nonEmptyCount = typedArrays.filter(
+                (arr) => arr.length > 0
+            ).length;
+
+            // Only group when there are multiple types of children
+            if (nonEmptyCount <= 1) {
+                return [
+                    ...tables,
+                    ...volumes,
+                    ...functions,
+                    ...models,
+                    ...errors,
+                ];
+            }
+
+            const base = {
+                kind: "group" as const,
+                catalogName: element.catalogName,
+                schemaName: element.name,
+                schemaFullName: element.fullName,
+            };
+
+            const groups: UnityCatalogTreeNode[] = [];
+            if (tables.length > 0) {
+                groups.push({
+                    ...base,
+                    groupType: "tables",
+                    count: tables.length,
+                });
+            }
+            if (volumes.length > 0) {
+                groups.push({
+                    ...base,
+                    groupType: "volumes",
+                    count: volumes.length,
+                });
+            }
+            if (functions.length > 0) {
+                groups.push({
+                    ...base,
+                    groupType: "functions",
+                    count: functions.length,
+                });
+            }
+            if (models.length > 0) {
+                groups.push({
+                    ...base,
+                    groupType: "models",
+                    count: models.length,
+                });
+            }
+
+            return [...groups, ...errors];
+        }
+
+        if (element.kind === "group") {
+            return this.childrenCache.get(
+                `${element.schemaFullName}/.${element.groupType}`
+            );
         }
 
         if (element.kind === "registeredModel") {
@@ -273,6 +348,11 @@ export class UnityCatalogTreeDataProvider
     refreshNode(element: UnityCatalogTreeNode): void {
         if ("fullName" in element) {
             this.childrenCache.delete(element.fullName);
+            if (element.kind === "schema") {
+                for (const g of ["tables", "volumes", "functions", "models"]) {
+                    this.childrenCache.delete(`${element.fullName}/.${g}`);
+                }
+            }
         }
         this._onDidChangeTreeData.fire(element);
     }
