@@ -166,6 +166,10 @@ export class UnityCatalogDetailPanel implements Disposable {
             .replace(
                 /src="[^"]*\/markdown-it\.min\.js"/g,
                 `src="${UnityCatalogDetailPanel.getAssetUri(panel, extensionUri, "markdown-it.min.js")}"`
+            )
+            .replace(
+                /src="[^"]*\/highlight\.min\.js"/g,
+                `src="${UnityCatalogDetailPanel.getAssetUri(panel, extensionUri, "highlight.min.js")}"`
             );
     }
 }

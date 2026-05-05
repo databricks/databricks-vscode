@@ -256,7 +256,10 @@ function initTabs() {
 function getIconUri(kind, name) {
     const uris = window.UC_ICON_URIS;
     if (!uris) return null;
-    const theme = document.body.classList.contains("vscode-light") ? "light" : "dark";
+    const theme =
+        document.body.getAttribute("data-vscode-theme-kind") === "vscode-light"
+            ? "light"
+            : "dark";
     const themeUris = uris[theme];
     if (!themeUris) return null;
     if (kind === "catalog") {
@@ -443,7 +446,12 @@ function renderDefinition(data) {
             "sql-title",
             data.kind === "function" ? "Routine Definition" : "View Definition"
         );
-        setText("sql-body", definition);
+        const pre = document.getElementById("sql-body");
+        if (window.hljs) {
+            pre.innerHTML = hljs.highlightAuto(definition).value;
+        } else {
+            pre.textContent = definition;
+        }
         document.getElementById("sql-copy-btn").onclick = () => {
             if (!vscode) return;
             vscode.postMessage({command: "copyText", text: definition});
@@ -739,7 +747,9 @@ const page = {
         };
         const titleEl = document.getElementById("section-properties-title");
         if (titleEl) {
-            titleEl.textContent = `About this ${KIND_LABEL[data.kind] ?? data.kind}`;
+            titleEl.textContent = `About this ${
+                KIND_LABEL[data.kind] ?? data.kind
+            }`;
         }
 
         renderHeader(data);
