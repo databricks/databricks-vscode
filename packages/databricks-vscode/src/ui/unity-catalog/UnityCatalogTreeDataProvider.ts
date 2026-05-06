@@ -157,6 +157,10 @@ export class UnityCatalogTreeDataProvider
             // Preserve flat list for getLoadedChildren() (used by detail panel)
             this.childrenCache.set(element.fullName, flat);
 
+            if (flat.length === 1 && flat[0].kind === "empty") {
+                return flat;
+            }
+
             // Partition by type
             const tables = flat.filter((n) => n.kind === "table");
             const volumes = flat.filter((n) => n.kind === "volume");

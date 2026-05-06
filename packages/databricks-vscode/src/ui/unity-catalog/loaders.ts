@@ -276,7 +276,7 @@ export async function loadSchemaChildren(
         ...modelNodes,
     ];
     if (contentNodes.length === 0 && errNodes.length === 0) {
-        return emptyNode("No items");
+        return emptyNode("No data");
     }
     return [
         ...contentNodes.sort((a, b) => {

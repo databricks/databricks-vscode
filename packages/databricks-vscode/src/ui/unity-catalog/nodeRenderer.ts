@@ -53,7 +53,7 @@ export function buildTreeItem(
         case "error":
             return renderError(node);
         case "empty":
-            return renderEmpty(node);
+            return renderEmpty(node, extensionPath);
         case "favorites":
             return renderFavorites();
         case "catalog":
@@ -110,14 +110,12 @@ function renderError(
 }
 
 function renderEmpty(
-    node: Extract<UnityCatalogTreeNode, {kind: "empty"}>
+    node: Extract<UnityCatalogTreeNode, {kind: "empty"}>,
+    extensionPath: string = ""
 ): UnityCatalogTreeItem {
     return {
         label: node.message,
-        iconPath: new ThemeIcon(
-            "info",
-            new ThemeColor("descriptionForeground")
-        ),
+        iconPath: ucIconPath(extensionPath, "no-data.svg"),
         collapsibleState: TreeItemCollapsibleState.None,
     };
 }
