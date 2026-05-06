@@ -97,6 +97,14 @@ body.content #state-content {
     opacity: 1;
 }
 
+#header-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 160px;
+}
+
 #header-text {
     flex: 1;
     min-width: 0;
@@ -107,7 +115,10 @@ body.content #state-content {
     font-size: 1.05em;
     font-weight: 700;
     line-height: 1.3;
-    word-break: break-all;
+    /* word-break: keep-all */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--vscode-editor-foreground);
     letter-spacing: -0.01em;
 }
@@ -115,7 +126,10 @@ body.content #state-content {
 #header-breadcrumb {
     font-size: 0.78em;
     color: var(--vscode-descriptionForeground);
-    word-break: break-all;
+    /* word-break: keep-all; */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-family: var(--vscode-editor-font-family, monospace);
     opacity: 0.85;
     margin-bottom: 6px;
@@ -326,7 +340,7 @@ body.content #state-content {
 .table-wrap {
     border: 1px solid var(--vscode-settings-dropdownListBorder, transparent);
     border-radius: 5px;
-    overflow: hidden;
+    overflow: auto;
     background: var(--vscode-editor-background);
 }
 
@@ -463,7 +477,6 @@ pre.code-block {
     flex-wrap: wrap;
     flex-shrink: 0;
     align-self: flex-start;
-    margin-left: auto;
     padding: 0;
 }
 
@@ -652,7 +665,8 @@ pre.code-block {
     position: relative;
     display: flex;
     align-items: center;
-    width: 220px;
+    width: 100%;
+    max-width: 320px;
 }
 .search-icon {
     position: absolute;
@@ -780,4 +794,89 @@ body[data-vscode-theme-kind="vscode-light"] .hljs-title {
 }
 body[data-vscode-theme-kind="vscode-light"] .hljs-variable {
     color: #001080;
+}
+
+/* ─── Narrow / split-view layout ──────────────── */
+/*
+ * Triggered when the detail panel is narrow (e.g. opened beside a notebook
+ * or query editor). Tighter spacing prevents unnecessary vertical scrolling
+ * and keeps the most important content above the fold.
+ */
+@media (max-width: 420px) {
+    #header {
+        padding: 12px 12px 10px;
+        gap: 8px;
+    }
+
+    #header-main {
+        gap: 8px;
+    }
+
+    #search-bar {
+        padding: 6px 12px;
+    }
+
+    .section {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .section + .section {
+        padding-top: 12px;
+    }
+
+    .tab-btn {
+        padding: 7px 10px 6px;
+    }
+
+    /* Narrower label column so values have more room */
+    .prop-row {
+        grid-template-columns: minmax(80px, 38%) 1fr;
+    }
+
+    #extra-props-list .prop-row {
+        grid-template-columns: minmax(100px, 55%) 1fr;
+    }
+
+    /* Allow column names to wrap rather than forcing horizontal scroll */
+    td.col-name {
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    /* Truncate long comments to a single line so rows stay compact */
+    td.col-comment {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* Very narrow: collapse action button labels to icon-only */
+@media (max-width: 360px) {
+    .btn-label {
+        display: none;
+    }
+
+    .action-btn {
+        padding: 5px 7px;
+    }
+
+    /* Reduce header icon to reclaim ~8px of horizontal space */
+    #header-icon-wrap {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+    }
+
+    #header-icon-wrap svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    #header-icon {
+        width: 22px;
+        height: 22px;
+    }
 }

@@ -22,23 +22,25 @@
         <div id="state-content">
             <!-- Header -->
             <div id="header">
-                <div id="header-icon-wrap">
-                    <img id="header-icon" style="display:none" />
-                    <svg id="header-svg" viewBox="0 0 24 24"></svg>
-                </div>
-                <div id="header-text">
-                    <h1 id="header-name"></h1>
-                    <div id="header-breadcrumb"></div>
-                    <div id="header-badges">
-                        <span id="header-kind-badge" class="kind-badge"></span>
-                        <span
-                            id="header-status-badge"
-                            class="status-badge"
-                            style="display: none"
-                        ></span>
+                <div id="header-main">
+                    <div id="header-icon-wrap">
+                        <img id="header-icon" style="display: none" />
+                        <svg id="header-svg" viewBox="0 0 24 24"></svg>
+                    </div>
+                    <div id="header-text">
+                        <h1 id="header-name"></h1>
+                        <div id="header-breadcrumb"></div>
+                        <div id="header-badges">
+                            <span id="header-kind-badge" class="kind-badge"></span>
+                            <span
+                                id="header-status-badge"
+                                class="status-badge"
+                                style="display: none"
+                            ></span>
+                        </div>
                     </div>
                 </div>
-                <!-- Actions — moved inside header, naturally right-aligned -->
+                <!-- Actions — wrap to next line when space is tight -->
                 <div id="header-actions">
                     <button class="action-btn primary" id="btn-copy">
                         <svg viewBox="0 0 24 24">
@@ -47,7 +49,7 @@
                                 d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
                             />
                         </svg>
-                        Copy full name
+                        <span class="btn-label">Copy full name</span>
                     </button>
                     <span id="link-external"></span>
                 </div>
@@ -116,7 +118,11 @@
                 </div>
 
                 <!-- Children (schemas / schema contents / model versions) -->
-                <div id="section-children" class="section" style="display: none">
+                <div
+                    id="section-children"
+                    class="section"
+                    style="display: none"
+                >
                     <div class="section-header">
                         <span class="section-title" id="children-title"></span>
                         <span id="children-count" class="section-count"></span>
@@ -202,7 +208,11 @@
                 <!-- Moved from overview: basic kind properties -->
                 <div id="section-properties" class="section">
                     <div class="section-header">
-                        <span class="section-title" id="section-properties-title">About this table</span>
+                        <span
+                            class="section-title"
+                            id="section-properties-title"
+                            >About this table</span
+                        >
                     </div>
                     <div id="props-list" class="props-list"></div>
                 </div>
