@@ -1,10 +1,13 @@
 import {mkdirp} from "fs-extra";
 import assert from "node:assert";
 import {spawnSync} from "node:child_process";
+import {createHash} from "node:crypto";
+import {createReadStream} from "node:fs";
 import {cp, readFile, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import yargs from "yargs";
+import extract from "extract-zip";
 import type {
     TerraformMetadata,
     TerraformMetadataFromCli,
@@ -57,21 +60,17 @@ async function main() {
     const arch = argv.arch!;
     const terraformZip = `terraform_${terraform.version}_${arch}.zip`;
     const terraformUrl = `https://releases.hashicorp.com/terraform/${terraform.version}/${terraformZip}`;
-    spawn("curl", ["-sLO", terraformUrl], {cwd: tempDir});
+    spawn("curl", ["-sLO", "--fail", terraformUrl], {cwd: tempDir});
     // Check sha of the archive
     const shasumsFile = `terraform_${terraform.version}_SHA256SUMS`;
     const shasumsUrl = `https://releases.hashicorp.com/terraform/${terraform.version}/${shasumsFile}`;
-    spawn("curl", ["-sLO", shasumsUrl], {cwd: tempDir});
-    const shasumRes = spawn(
-        "shasum",
-        ["--algorithm", "256", "--check", shasumsFile],
-        {cwd: tempDir}
+    spawn("curl", ["-sLO", "--fail", shasumsUrl], {cwd: tempDir});
+    await verifySha256(
+        path.join(tempDir, terraformZip),
+        path.join(tempDir, shasumsFile),
+        terraformZip
     );
-    assert(
-        shasumRes.output.toString().includes(`${terraformZip}: OK`),
-        "sha256sum check failed"
-    );
-    spawn("unzip", ["-q", terraformZip], {cwd: tempDir});
+    await extract(path.join(tempDir, terraformZip), {dir: tempDir});
     const fileExt = arch.includes("windows") ? ".exe" : "";
     const terraformBinRelPath = path.join(depsDir, `terraform${fileExt}`);
     await cp(`${tempDir}/terraform${fileExt}`, terraformBinRelPath);
@@ -80,19 +79,8 @@ async function main() {
 
     // Download databricks provider archive for the selected arch
     const providerZip = `terraform-provider-databricks_${terraform.providerVersion}_${arch}.zip`;
-    spawn(
-        "gh",
-        [
-            "release",
-            "download",
-            `v${terraform.providerVersion}`,
-            "--pattern",
-            providerZip,
-            "--repo",
-            "databricks/terraform-provider-databricks",
-        ],
-        {cwd: tempDir}
-    );
+    const providerUrl = `https://github.com/databricks/terraform-provider-databricks/releases/download/v${terraform.providerVersion}/${providerZip}`;
+    spawn("curl", ["-sLO", "--fail", providerUrl], {cwd: tempDir});
     const providersMirrorRelPath = path.join(depsDir, "providers");
     const databricksProviderDir = path.join(
         providersMirrorRelPath,
@@ -123,13 +111,52 @@ async function main() {
     });
 }
 
+async function sha256OfFile(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const hash = createHash("sha256");
+        const stream = createReadStream(filePath);
+        stream.on("error", reject);
+        stream.on("data", (chunk) => hash.update(chunk));
+        stream.on("end", () => resolve(hash.digest("hex")));
+    });
+}
+
+async function verifySha256(
+    filePath: string,
+    sumsFile: string,
+    expectedFilename: string
+) {
+    const sumsContent = await readFile(sumsFile, {encoding: "utf-8"});
+    const line = sumsContent
+        .split("\n")
+        .find((l) => l.trim().endsWith(expectedFilename));
+    assert(
+        line,
+        `Could not find ${expectedFilename} in ${path.basename(sumsFile)}`
+    );
+    const expected = line.trim().split(/\s+/)[0];
+    const actual = await sha256OfFile(filePath);
+    assert(
+        actual === expected,
+        `SHA256 mismatch for ${expectedFilename}: expected ${expected}, got ${actual}`
+    );
+}
+
 function spawn(command: string, args: string[], options: any = {}) {
     const child = spawnSync(command, args, options);
     if (child.error) {
         throw child.error;
-    } else {
-        return child;
     }
+    if (child.status !== 0) {
+        throw new Error(
+            `${command} ${args.join(" ")} exited with status ${
+                child.status
+            }\n` +
+                `stdout: ${child.stdout?.toString() ?? ""}\n` +
+                `stderr: ${child.stderr?.toString() ?? ""}`
+        );
+    }
+    return child;
 }
 
 main();

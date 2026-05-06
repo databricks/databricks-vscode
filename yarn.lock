@@ -3782,6 +3782,7 @@ __metadata:
     esbuild: ^0.25.0
     eslint: ^8.55.0
     eslint-plugin-local-rules: ^2.0.1
+    extract-zip: ^2.0.1
     fs-extra: ^11.2.0
     glob: ^10.3.10
     highlight.js: ^11.10.0
@@ -4865,7 +4866,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"extract-zip@npm:2.0.1":
+"extract-zip@npm:2.0.1, extract-zip@npm:^2.0.1":
   version: 2.0.1
   resolution: "extract-zip@npm:2.0.1"
   dependencies:
