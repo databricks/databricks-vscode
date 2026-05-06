@@ -46,6 +46,8 @@ export function registerDetailPanel(
         }
     }
 
+    UnityCatalogDetailPanel.setNavigationHandler(showDetail);
+
     return [
         telemetry.registerCommand(
             "databricks.unityCatalog.showDetail",

@@ -30,6 +30,7 @@ export interface ChildItem {
     status?: string;
     createdBy?: string;
     createdAt?: number;
+    nodeData?: Extract<UnityCatalogTreeNode, {kind: "modelVersion"}>;
 }
 
 export interface NodeEnrichments {
@@ -233,6 +234,7 @@ async function loadChildrenForNode(
                         status: n.status,
                         createdBy: n.createdBy,
                         createdAt: n.createdAt,
+                        nodeData: n,
                     }))
                     .sort(
                         (a, b) =>
@@ -253,6 +255,19 @@ async function loadChildrenForNode(
                     status: v.status,
                     createdBy: v.created_by,
                     createdAt: v.created_at,
+                    nodeData: {
+                        kind: "modelVersion" as const,
+                        catalogName: node.catalogName,
+                        schemaName: node.schemaName,
+                        modelName: node.name,
+                        fullName: node.fullName,
+                        version: v.version!,
+                        comment: v.comment,
+                        status: v.status,
+                        storageLocation: v.storage_location,
+                        createdBy: v.created_by,
+                        createdAt: v.created_at,
+                    },
                 }))
                 .sort((a, b) => {
                     const va = parseInt(a.label.slice(1));

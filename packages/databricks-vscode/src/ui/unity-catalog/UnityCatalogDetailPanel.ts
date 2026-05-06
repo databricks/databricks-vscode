@@ -6,6 +6,15 @@ import {NodeEnrichments} from "./detailLoader";
 export class UnityCatalogDetailPanel implements Disposable {
     private static readonly VIEW_TYPE = "databricks.unityCatalogDetail";
     private static instance: UnityCatalogDetailPanel | undefined;
+    private static navigationHandler:
+        | ((node: UnityCatalogTreeNode) => void)
+        | undefined;
+
+    static setNavigationHandler(
+        handler: (node: UnityCatalogTreeNode) => void
+    ): void {
+        UnityCatalogDetailPanel.navigationHandler = handler;
+    }
 
     private constructor(
         private panel: WebviewPanel,
@@ -15,6 +24,12 @@ export class UnityCatalogDetailPanel implements Disposable {
         panel.webview.onDidReceiveMessage((msg) => {
             if (msg.command === "copyText") {
                 env.clipboard.writeText(msg.text);
+            }
+            if (
+                msg.command === "navigate" &&
+                UnityCatalogDetailPanel.navigationHandler
+            ) {
+                UnityCatalogDetailPanel.navigationHandler(msg.nodeData);
             }
         });
         panel.onDidDispose(() => {

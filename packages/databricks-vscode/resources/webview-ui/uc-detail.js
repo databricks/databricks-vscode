@@ -668,7 +668,17 @@ function renderChildren(enrichments) {
 
         const tdName = document.createElement("td");
         tdName.className = "col-name";
-        tdName.textContent = child.label;
+        if (child.nodeData) {
+            const btn = document.createElement("button");
+            btn.className = "child-link";
+            btn.textContent = child.label;
+            btn.addEventListener("click", () => {
+                vscode?.postMessage({command: "navigate", nodeData: child.nodeData});
+            });
+            tdName.appendChild(btn);
+        } else {
+            tdName.textContent = child.label;
+        }
         tr.appendChild(tdName);
 
         if (hasSubLabel) {

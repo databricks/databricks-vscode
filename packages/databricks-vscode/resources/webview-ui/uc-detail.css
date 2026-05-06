@@ -405,6 +405,23 @@ td.col-name {
     white-space: nowrap;
 }
 
+.child-link {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--vscode-textLink-foreground);
+    font: inherit;
+    font-weight: 600;
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 0.95em;
+    text-align: left;
+}
+.child-link:hover {
+    text-decoration: underline;
+    color: var(--vscode-textLink-activeForeground);
+}
+
 td.col-comment {
     color: var(--vscode-descriptionForeground);
     font-style: italic;
