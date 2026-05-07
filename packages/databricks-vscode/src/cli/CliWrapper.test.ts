@@ -180,7 +180,7 @@ nothing = true
 host = https://cloud.databricks.com/
 token = dapitest1234
 
-[profile-with-accunt-id]
+[profile-with-account-id]
 host = https://accounts.cloud.databricks.com/
 account_id = 1234567890
 token = dapitest5678
@@ -192,7 +192,7 @@ token = dapitest5678
 
             assert.equal(profiles.length, 2);
             assert.equal(profiles[0].name, "regular-profile");
-            assert.equal(profiles[1].name, "profile-with-accunt-id");
+            assert.equal(profiles[1].name, "profile-with-account-id");
             assert.equal(profiles[1].accountId, "1234567890");
         });
     });
