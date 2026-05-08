@@ -776,12 +776,12 @@
                 },
                 {
                     "command": "databricks.unityCatalog.refreshNode",
-                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column)/",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column|table)/",
                     "group": "navigation_2@3"
                 },
                 {
                     "command": "databricks.unityCatalog.refreshNode",
-                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column)/",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column|table)/",
                     "group": "inline@2"
                 },
                 {
