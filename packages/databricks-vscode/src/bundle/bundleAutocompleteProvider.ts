@@ -16,7 +16,7 @@ export async function registerBundleAutocompleteProvider(
     const dabsUriScheme = "dabs";
 
     // URI for bundle root config json schema
-    const rootConfigSchemaUri = `${dabsUriScheme}:///databricks-asset-bundles.json`;
+    const rootConfigSchemaUri = `${dabsUriScheme}:///declarative-automation-bundles.json`;
 
     const extensionYaml = extensions.getExtension("redhat.vscode-yaml");
     if (extensionYaml) {
