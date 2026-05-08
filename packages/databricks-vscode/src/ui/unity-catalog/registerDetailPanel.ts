@@ -33,10 +33,13 @@ export function registerDetailPanel(
     treeDataProvider: UnityCatalogTreeDataProvider,
     telemetry: Telemetry
 ): Disposable[] {
+    let enrichmentGeneration = 0;
+
     async function showDetail(node: UnityCatalogTreeNode) {
         if (!isDetailable(node)) {
             return;
         }
+        const generation = ++enrichmentGeneration;
         const panel = await UnityCatalogDetailPanel.getOrCreate(extensionUri);
         panel.showNode(node, treeDataProvider.getNodeExploreUrl(node));
         if (node.kind !== "modelVersion") {
@@ -49,7 +52,12 @@ export function registerDetailPanel(
                         ? treeDataProvider.getLoadedChildren(node.fullName)
                         : undefined;
                 loadNodeEnrichments(client, node, cachedChildren)
-                    .then((enrichments) => panel.enrichNode(enrichments))
+                    .then((enrichments) => {
+                        if (generation !== enrichmentGeneration) {
+                            return;
+                        }
+                        panel.enrichNode(enrichments);
+                    })
                     .catch(() => {
                         /* silently ignore enrichment errors */
                     });
