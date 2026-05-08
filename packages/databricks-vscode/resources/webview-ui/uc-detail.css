@@ -871,7 +871,7 @@ body[data-vscode-theme-kind="vscode-light"] .hljs-variable {
 }
 
 /* Very narrow: collapse action button labels to icon-only */
-@media (max-width: 360px) {
+@media (max-width: 480px) {
     .btn-label {
         display: none;
     }
