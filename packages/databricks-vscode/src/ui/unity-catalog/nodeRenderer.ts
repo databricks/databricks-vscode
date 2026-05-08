@@ -55,7 +55,7 @@ export function buildTreeItem(
         case "empty":
             return renderEmpty(node, extensionPath);
         case "favorites":
-            return renderFavorites();
+            return renderFavorites(extensionPath);
         case "catalog":
             return renderCatalog(node, exploreUrl, isPinned, extensionPath);
         case "schema":
@@ -87,10 +87,10 @@ export function buildTreeItem(
     }
 }
 
-function renderFavorites(): UnityCatalogTreeItem {
+function renderFavorites(extensionPath: string = ""): UnityCatalogTreeItem {
     return {
         label: "Favorites",
-        iconPath: new ThemeIcon("star-full"),
+        iconPath: ucIconPath(extensionPath, "favorites.svg"),
         contextValue: "unityCatalog.favorites",
         collapsibleState: TreeItemCollapsibleState.Expanded,
     };
