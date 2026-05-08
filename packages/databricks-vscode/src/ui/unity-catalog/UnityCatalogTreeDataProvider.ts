@@ -142,12 +142,23 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "catalog") {
+            const cached = this.childrenCache.get(element.fullName);
+            if (cached) {
+                return cached;
+            }
             const result = await loadSchemas(client, element.name, currentUser);
             this.childrenCache.set(element.fullName, result);
             return result;
         }
 
         if (element.kind === "schema") {
+            const groupedCached = this.childrenCache.get(
+                `${element.fullName}/.grouped`
+            );
+            if (groupedCached) {
+                return groupedCached;
+            }
+
             const flat = await loadSchemaChildren(
                 client,
                 element.catalogName,
@@ -158,6 +169,7 @@ export class UnityCatalogTreeDataProvider
             this.childrenCache.set(element.fullName, flat);
 
             if (flat.length === 1 && flat[0].kind === "empty") {
+                this.childrenCache.set(`${element.fullName}/.grouped`, flat);
                 return flat;
             }
 
@@ -180,13 +192,15 @@ export class UnityCatalogTreeDataProvider
 
             // Only group when there are multiple types of children
             if (nonEmptyCount <= 1) {
-                return [
+                const result = [
                     ...tables,
                     ...volumes,
                     ...functions,
                     ...models,
                     ...errors,
                 ];
+                this.childrenCache.set(`${element.fullName}/.grouped`, result);
+                return result;
             }
 
             const base = {
@@ -226,7 +240,9 @@ export class UnityCatalogTreeDataProvider
                 });
             }
 
-            return [...groups, ...errors];
+            const result = [...groups, ...errors];
+            this.childrenCache.set(`${element.fullName}/.grouped`, result);
+            return result;
         }
 
         if (element.kind === "group") {
@@ -236,6 +252,10 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "registeredModel") {
+            const cached = this.childrenCache.get(element.fullName);
+            if (cached) {
+                return cached;
+            }
             const result = await loadModelVersions(client, element);
             this.childrenCache.set(element.fullName, result);
             return result;
@@ -353,7 +373,13 @@ export class UnityCatalogTreeDataProvider
         if ("fullName" in element) {
             this.childrenCache.delete(element.fullName);
             if (element.kind === "schema") {
-                for (const g of ["tables", "volumes", "functions", "models"]) {
+                for (const g of [
+                    "tables",
+                    "volumes",
+                    "functions",
+                    "models",
+                    "grouped",
+                ]) {
                     this.childrenCache.delete(`${element.fullName}/.${g}`);
                 }
             }
