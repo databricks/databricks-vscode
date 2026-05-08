@@ -51,6 +51,35 @@ export class UnityCatalogTreeDataProvider
         );
     }
 
+    private getFavorites(): StoredFavoriteNode[] {
+        return this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
+    }
+
+    private fireFavoritesChanged(
+        treeNeedsFullRefresh: boolean,
+        node: Extract<UnityCatalogTreeNode, {kind: PinnableNodeKind}>
+    ): void {
+        if (treeNeedsFullRefresh) {
+            this._onDidChangeTreeData.fire(undefined);
+        } else {
+            this._onDidChangeTreeData.fire(this.favoritesRootNode);
+            this._onDidChangeTreeData.fire(node);
+        }
+    }
+
+    private async getChildrenCached(
+        key: string,
+        loader: () => Promise<UnityCatalogTreeNode[]>
+    ): Promise<UnityCatalogTreeNode[]> {
+        const cached = this.childrenCache.get(key);
+        if (cached) {
+            return cached;
+        }
+        const result = await loader();
+        this.childrenCache.set(key, result);
+        return result;
+    }
+
     private getExploreUrl(path: string): string | undefined {
         const host = this.connectionManager.databricksWorkspace?.host;
         if (!host) {
@@ -89,8 +118,7 @@ export class UnityCatalogTreeDataProvider
         if (element.kind === "favorites") {
             return buildTreeItem(element, undefined, false, this.extensionPath);
         }
-        const favorites =
-            this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
+        const favorites = this.getFavorites();
         const isPinned =
             "fullName" in element &&
             favorites.some(
@@ -120,18 +148,14 @@ export class UnityCatalogTreeDataProvider
             if (!this.catalogsCache) {
                 this.catalogsCache = await loadCatalogs(client, currentUser);
             }
-            const favorites =
-                this.stateStorage.get("databricks.unityCatalog.favorites") ??
-                [];
+            const favorites = this.getFavorites();
             return favorites.length > 0
                 ? [this.favoritesRootNode, ...this.catalogsCache]
                 : [...this.catalogsCache];
         }
 
         if (element.kind === "favorites") {
-            const favorites =
-                this.stateStorage.get("databricks.unityCatalog.favorites") ??
-                [];
+            const favorites = this.getFavorites();
             return favorites.length > 0
                 ? (favorites as UnityCatalogTreeNode[])
                 : [{kind: "empty", message: "No favorites yet"}];
@@ -142,13 +166,9 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "catalog") {
-            const cached = this.childrenCache.get(element.fullName);
-            if (cached) {
-                return cached;
-            }
-            const result = await loadSchemas(client, element.name, currentUser);
-            this.childrenCache.set(element.fullName, result);
-            return result;
+            return this.getChildrenCached(element.fullName, () =>
+                loadSchemas(client, element.name, currentUser)
+            );
         }
 
         if (element.kind === "schema") {
@@ -180,10 +200,16 @@ export class UnityCatalogTreeDataProvider
             const models = flat.filter((n) => n.kind === "registeredModel");
             const errors = flat.filter((n) => n.kind === "error");
 
-            this.childrenCache.set(`${element.fullName}/.tables`, tables);
-            this.childrenCache.set(`${element.fullName}/.volumes`, volumes);
-            this.childrenCache.set(`${element.fullName}/.functions`, functions);
-            this.childrenCache.set(`${element.fullName}/.models`, models);
+            const groupTypes = [
+                {key: "tables", items: tables},
+                {key: "volumes", items: volumes},
+                {key: "functions", items: functions},
+                {key: "models", items: models},
+            ] as const;
+
+            for (const {key, items} of groupTypes) {
+                this.childrenCache.set(`${element.fullName}/.${key}`, items);
+            }
 
             const typedArrays = [tables, volumes, functions, models];
             const nonEmptyCount = typedArrays.filter(
@@ -211,33 +237,10 @@ export class UnityCatalogTreeDataProvider
             };
 
             const groups: UnityCatalogTreeNode[] = [];
-            if (tables.length > 0) {
-                groups.push({
-                    ...base,
-                    groupType: "tables",
-                    count: tables.length,
-                });
-            }
-            if (volumes.length > 0) {
-                groups.push({
-                    ...base,
-                    groupType: "volumes",
-                    count: volumes.length,
-                });
-            }
-            if (functions.length > 0) {
-                groups.push({
-                    ...base,
-                    groupType: "functions",
-                    count: functions.length,
-                });
-            }
-            if (models.length > 0) {
-                groups.push({
-                    ...base,
-                    groupType: "models",
-                    count: models.length,
-                });
+            for (const {key, items} of groupTypes) {
+                if (items.length > 0) {
+                    groups.push({...base, groupType: key, count: items.length});
+                }
             }
 
             const result = [...groups, ...errors];
@@ -252,13 +255,9 @@ export class UnityCatalogTreeDataProvider
         }
 
         if (element.kind === "registeredModel") {
-            const cached = this.childrenCache.get(element.fullName);
-            if (cached) {
-                return cached;
-            }
-            const result = await loadModelVersions(client, element);
-            this.childrenCache.set(element.fullName, result);
-            return result;
+            return this.getChildrenCached(element.fullName, () =>
+                loadModelVersions(client, element)
+            );
         }
 
         if (element.kind === "table") {
@@ -303,8 +302,7 @@ export class UnityCatalogTreeDataProvider
     async pin(
         node: Extract<UnityCatalogTreeNode, {kind: PinnableNodeKind}>
     ): Promise<void> {
-        const favorites =
-            this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
+        const favorites = this.getFavorites();
         const nodeAsStored = node as StoredFavoriteNode;
         if (
             favorites.some((f) => favoriteKey(f) === favoriteKey(nodeAsStored))
@@ -325,19 +323,13 @@ export class UnityCatalogTreeDataProvider
             stored,
         ]);
 
-        if (wasEmpty) {
-            this._onDidChangeTreeData.fire(undefined);
-        } else {
-            this._onDidChangeTreeData.fire(this.favoritesRootNode);
-            this._onDidChangeTreeData.fire(node);
-        }
+        this.fireFavoritesChanged(wasEmpty, node);
     }
 
     async unpin(
         node: Extract<UnityCatalogTreeNode, {kind: PinnableNodeKind}>
     ): Promise<void> {
-        const favorites =
-            this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
+        const favorites = this.getFavorites();
         const nodeAsStored = node as StoredFavoriteNode;
         const updated = favorites.filter(
             (f) => favoriteKey(f) !== favoriteKey(nodeAsStored)
@@ -351,12 +343,7 @@ export class UnityCatalogTreeDataProvider
             updated
         );
 
-        if (updated.length === 0) {
-            this._onDidChangeTreeData.fire(undefined);
-        } else {
-            this._onDidChangeTreeData.fire(this.favoritesRootNode);
-            this._onDidChangeTreeData.fire(node);
-        }
+        this.fireFavoritesChanged(updated.length === 0, node);
     }
 
     getLoadedChildren(key: string): UnityCatalogTreeNode[] | undefined {

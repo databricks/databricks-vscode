@@ -43,6 +43,28 @@ function catalogIconFile(name: string): string {
     }
 }
 
+function pinnedOwnedDescription(
+    isPinned: boolean,
+    owned: boolean | undefined
+): string | undefined {
+    if (isPinned && owned) return "★ · yours";
+    if (isPinned) return "★";
+    if (owned) return "yours";
+    return undefined;
+}
+
+function starDescription(
+    isPinned: boolean,
+    detail: string | undefined
+): string | undefined {
+    if (!isPinned) return detail;
+    return detail ? `★ · ${detail}` : "★";
+}
+
+function withPin(base: string, isPinned: boolean): string {
+    return isPinned ? `${base}.is-pinned` : base;
+}
+
 export function buildTreeItem(
     node: UnityCatalogTreeNode,
     exploreUrl: string | undefined,
@@ -130,25 +152,15 @@ function renderCatalog(
     if (node.comment) {
         tt.appendMarkdown(`\n\n${node.comment}`);
     }
-    let description: string | undefined;
-    if (isPinned && node.owned) {
-        description = "★ · yours";
-    } else if (isPinned) {
-        description = "★";
-    } else if (node.owned) {
-        description = "yours";
-    }
     const baseContextValue = exploreUrl
         ? "unityCatalog.catalog.has-url"
         : "unityCatalog.catalog";
     return {
         label: node.name,
-        description,
+        description: pinnedOwnedDescription(isPinned, node.owned),
         tooltip: tt,
         iconPath: ucIconPath(extensionPath, catalogIconFile(node.name)),
-        contextValue: isPinned
-            ? baseContextValue + ".is-pinned"
-            : baseContextValue,
+        contextValue: withPin(baseContextValue, isPinned),
         collapsibleState: TreeItemCollapsibleState.Collapsed,
         url: exploreUrl,
         copyText: node.fullName,
@@ -168,23 +180,12 @@ function renderSchema(
     const baseContextValue = exploreUrl
         ? "unityCatalog.schema.has-url"
         : "unityCatalog.schema";
-    const effectivePinned = isPinned;
-    let description: string | undefined;
-    if (effectivePinned && node.owned) {
-        description = "★ · yours";
-    } else if (effectivePinned) {
-        description = "★";
-    } else if (node.owned) {
-        description = "yours";
-    }
     return {
         label: node.name,
-        description,
+        description: pinnedOwnedDescription(isPinned, node.owned),
         tooltip: tt,
         iconPath: ucIconPath(extensionPath, "schema.svg"),
-        contextValue: effectivePinned
-            ? baseContextValue + ".is-pinned"
-            : baseContextValue,
+        contextValue: withPin(baseContextValue, isPinned),
         collapsibleState: TreeItemCollapsibleState.Collapsed,
         url: exploreUrl,
         copyText: node.fullName,
@@ -244,11 +245,7 @@ function renderTable(
 
     // columns===undefined means not yet fetched (e.g. stored favorite); treat as expandable
     const hasColumns = node.columns === undefined || node.columns.length > 0;
-    const tableDescription = isPinned
-        ? isPinned && node.dataSourceFormat
-            ? `★ · ${node.dataSourceFormat}`
-            : "★"
-        : node.dataSourceFormat;
+    const tableDescription = starDescription(isPinned, node.dataSourceFormat);
     return {
         label: `${node.name}${typeSuffix}`,
         description: tableDescription,
@@ -321,9 +318,7 @@ function renderFunction(
         description: isPinned ? "★" : undefined,
         tooltip: node.fullName,
         iconPath: ucIconPath(extensionPath, "function.svg"),
-        contextValue: isPinned
-            ? baseContextValue + ".is-pinned"
-            : baseContextValue,
+        contextValue: withPin(baseContextValue, isPinned),
         collapsibleState: TreeItemCollapsibleState.None,
         url: exploreUrl,
         copyText: node.fullName,
@@ -372,9 +367,7 @@ function renderRegisteredModel(
         description: isPinned ? "★" : undefined,
         tooltip: tt,
         iconPath: ucIconPath(extensionPath, "registered-model.svg"),
-        contextValue: isPinned
-            ? baseContextValue + ".is-pinned"
-            : baseContextValue,
+        contextValue: withPin(baseContextValue, isPinned),
         collapsibleState: TreeItemCollapsibleState.Collapsed,
         url: exploreUrl,
         copyText: node.fullName,
@@ -401,24 +394,17 @@ function renderModelVersion(
     if (cAt) {
         tt.appendMarkdown(`\n\n*Created:* ${cAt}`);
     }
-    const baseModelVersionDescription =
+    const statusDetail =
         node.status && node.status !== "READY" ? node.status : undefined;
-    const modelVersionDescription = isPinned
-        ? baseModelVersionDescription
-            ? `★ · ${baseModelVersionDescription}`
-            : "★"
-        : baseModelVersionDescription;
     const baseContextValue = exploreUrl
         ? "unityCatalog.modelVersion.has-url"
         : "unityCatalog.modelVersion";
     return {
         label: `v${node.version}`,
-        description: modelVersionDescription,
+        description: starDescription(isPinned, statusDetail),
         tooltip: tt,
         iconPath: ucIconPath(extensionPath, "model-version.svg"),
-        contextValue: isPinned
-            ? baseContextValue + ".is-pinned"
-            : baseContextValue,
+        contextValue: withPin(baseContextValue, isPinned),
         collapsibleState: TreeItemCollapsibleState.None,
         url: exploreUrl,
         copyText: node.fullName,

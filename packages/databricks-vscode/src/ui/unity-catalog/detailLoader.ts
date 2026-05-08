@@ -99,50 +99,35 @@ async function loadChildrenForNode(
     }
     if (node.kind === "schema") {
         if (cachedChildren) {
+            type SchemaChild = Extract<
+                UnityCatalogTreeNode,
+                {kind: "table" | "volume" | "function" | "registeredModel"}
+            >;
+            const subLabelByKind: Partial<Record<SchemaChild["kind"], string>> =
+                {
+                    volume: "VOLUME",
+                    function: "FUNCTION",
+                    registeredModel: "MODEL",
+                };
             const items: ChildItem[] = cachedChildren
-                .flatMap((n) => {
-                    if (n.kind === "table") {
-                        return [
-                            {
-                                label: n.name,
-                                subLabel: n.tableType ?? "TABLE",
-                                owner: n.owner,
-                                createdAt: n.createdAt,
-                            },
-                        ];
-                    }
-                    if (n.kind === "volume") {
-                        return [
-                            {
-                                label: n.name,
-                                subLabel: "VOLUME",
-                                owner: n.owner,
-                                createdAt: n.createdAt,
-                            },
-                        ];
-                    }
-                    if (n.kind === "function") {
-                        return [
-                            {
-                                label: n.name,
-                                subLabel: "FUNCTION",
-                                owner: n.owner,
-                                createdAt: n.createdAt,
-                            },
-                        ];
-                    }
-                    if (n.kind === "registeredModel") {
-                        return [
-                            {
-                                label: n.name,
-                                subLabel: "MODEL",
-                                owner: n.owner,
-                                createdAt: n.createdAt,
-                            },
-                        ];
-                    }
-                    return [];
-                })
+                .filter(
+                    (n): n is SchemaChild =>
+                        n.kind === "table" ||
+                        n.kind === "volume" ||
+                        n.kind === "function" ||
+                        n.kind === "registeredModel"
+                )
+                .map(
+                    (n): ChildItem => ({
+                        label: n.name,
+                        subLabel:
+                            n.kind === "table"
+                                ? n.tableType ?? "TABLE"
+                                : subLabelByKind[n.kind],
+                        owner: n.owner,
+                        createdAt: n.createdAt,
+                    })
+                )
                 .sort((a, b) => a.label.localeCompare(b.label));
             return {title: "Contents", items};
         }

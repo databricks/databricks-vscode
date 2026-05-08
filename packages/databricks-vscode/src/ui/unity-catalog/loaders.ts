@@ -9,6 +9,19 @@ const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
 
 type Client = NonNullable<ConnectionManager["workspaceClient"]>;
 
+function compareOwnedFirst(
+    a: {owned?: boolean; name: string},
+    b: {owned?: boolean; name: string}
+): number {
+    if (a.owned && !b.owned) return -1;
+    if (!a.owned && b.owned) return 1;
+    return a.name.localeCompare(b.name);
+}
+
+function nodeName(n: UnityCatalogTreeNode): string {
+    return (n as {name?: string}).name ?? "";
+}
+
 function emptyNode(message: string): UnityCatalogTreeNode[] {
     return [{kind: "empty", message}];
 }
@@ -48,15 +61,7 @@ export async function loadCatalogs(
                 providerName: c.provider_name,
                 shareName: c.share_name,
             }))
-            .sort((a, b) => {
-                if (a.owned && !b.owned) {
-                    return -1;
-                }
-                if (!a.owned && b.owned) {
-                    return 1;
-                }
-                return a.name.localeCompare(b.name);
-            });
+            .sort(compareOwnedFirst);
         return result.length > 0 ? result : emptyNode("No catalogs found");
     } catch (e) {
         return errorNode(e, "catalogs");
@@ -88,11 +93,7 @@ export async function loadSchemas(
                 updatedAt: s.updated_at,
                 updatedBy: s.updated_by,
             }))
-            .sort((a, b) => {
-                if (a.owned && !b.owned) return -1;
-                if (!a.owned && b.owned) return 1;
-                return a.name.localeCompare(b.name);
-            });
+            .sort(compareOwnedFirst);
         return result.length > 0 ? result : emptyNode("No schemas");
     } catch (e) {
         return errorNode(e, "schemas");
@@ -248,20 +249,16 @@ export async function loadSchemaChildren(
                   }))
             : [];
 
-    const errNodes: UnityCatalogTreeNode[] = [
-        ...(tablesResult.status === "rejected"
-            ? errorNode(tablesResult.reason, "tables")
-            : []),
-        ...(volumesResult.status === "rejected"
-            ? errorNode(volumesResult.reason, "volumes")
-            : []),
-        ...(functionsResult.status === "rejected"
-            ? errorNode(functionsResult.reason, "functions")
-            : []),
-        ...(modelsResult.status === "rejected"
-            ? errorNode(modelsResult.reason, "registered models")
-            : []),
-    ];
+    const errNodes: UnityCatalogTreeNode[] = (
+        [
+            [tablesResult, "tables"],
+            [volumesResult, "volumes"],
+            [functionsResult, "functions"],
+            [modelsResult, "registered models"],
+        ] as const
+    ).flatMap(([result, label]) =>
+        result.status === "rejected" ? errorNode(result.reason, label) : []
+    );
 
     const kindOrder = {
         table: 0,
@@ -280,21 +277,7 @@ export async function loadSchemaChildren(
     }
     return [
         ...contentNodes.sort((a, b) => {
-            const an =
-                a.kind === "table" ||
-                a.kind === "volume" ||
-                a.kind === "function" ||
-                a.kind === "registeredModel"
-                    ? a.name
-                    : "";
-            const bn =
-                b.kind === "table" ||
-                b.kind === "volume" ||
-                b.kind === "function" ||
-                b.kind === "registeredModel"
-                    ? b.name
-                    : "";
-            const c = an.localeCompare(bn);
+            const c = nodeName(a).localeCompare(nodeName(b));
             if (c !== 0) {
                 return c;
             }

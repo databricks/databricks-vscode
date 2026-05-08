@@ -8,6 +8,24 @@ import {
 import {UnityCatalogDetailPanel} from "./UnityCatalogDetailPanel";
 import {loadNodeEnrichments} from "./detailLoader";
 
+type DetailableNode = Exclude<
+    UnityCatalogTreeNode,
+    {kind: "error" | "empty" | "column" | "favorites" | "group"}
+>;
+
+function isDetailable(
+    node: UnityCatalogTreeNode | undefined
+): node is DetailableNode {
+    return (
+        !!node &&
+        node.kind !== "error" &&
+        node.kind !== "empty" &&
+        node.kind !== "column" &&
+        node.kind !== "favorites" &&
+        node.kind !== "group"
+    );
+}
+
 export function registerDetailPanel(
     extensionUri: Uri,
     connectionManager: ConnectionManager,
@@ -16,14 +34,7 @@ export function registerDetailPanel(
     telemetry: Telemetry
 ): Disposable[] {
     async function showDetail(node: UnityCatalogTreeNode) {
-        if (
-            !node ||
-            node.kind === "error" ||
-            node.kind === "empty" ||
-            node.kind === "column" ||
-            node.kind === "favorites" ||
-            node.kind === "group"
-        ) {
+        if (!isDetailable(node)) {
             return;
         }
         const panel = await UnityCatalogDetailPanel.getOrCreate(extensionUri);
@@ -55,23 +66,12 @@ export function registerDetailPanel(
         ),
         treeView.onDidChangeSelection(async (event) => {
             const node = event.selection[0] as UnityCatalogTreeNode;
-            if (
-                !node ||
-                node.kind === "error" ||
-                node.kind === "empty" ||
-                node.kind === "column" ||
-                node.kind === "favorites" ||
-                node.kind === "group"
-            ) {
+            if (!isDetailable(node)) {
                 return;
             }
             const panel =
                 await UnityCatalogDetailPanel.getOrCreate(extensionUri);
-            panel.showLoading(
-                node.kind === "modelVersion"
-                    ? node.fullName
-                    : node.fullName ?? node.name ?? ""
-            );
+            panel.showLoading(node.fullName);
             await showDetail(node);
         }),
     ];
