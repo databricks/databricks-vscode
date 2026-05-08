@@ -81,7 +81,10 @@ export class UnityCatalogDetailPanel implements Disposable {
     }
 
     enrichNode(enrichments: NodeEnrichments): void {
-        this.panel.webview.postMessage({fn: "renderEnrichments", args: [enrichments]});
+        this.panel.webview.postMessage({
+            fn: "renderEnrichments",
+            args: [enrichments],
+        });
     }
 
     showLoading(title: string): void {
@@ -112,7 +115,7 @@ export class UnityCatalogDetailPanel implements Disposable {
         const name =
             node.kind === "modelVersion"
                 ? `v${node.version}`
-                : (node.name ?? node.fullName ?? "");
+                : node.name ?? node.fullName ?? "";
         return `${label}: ${name}`;
     }
 
@@ -143,12 +146,21 @@ export class UnityCatalogDetailPanel implements Disposable {
             {key: "modelVersion", file: "model-version.svg"},
             {key: "column", file: "column.svg"},
         ];
-        const result: Record<string, Record<string, string>> = {dark: {}, light: {}};
+        const result: Record<string, Record<string, string>> = {
+            dark: {},
+            light: {},
+        };
         for (const theme of ["dark", "light"] as const) {
             for (const {key, file} of iconFiles) {
                 result[theme][key] = panel.webview
                     .asWebviewUri(
-                        Uri.joinPath(extensionUri, "resources", theme, "unity-catalog", file)
+                        Uri.joinPath(
+                            extensionUri,
+                            "resources",
+                            theme,
+                            "unity-catalog",
+                            file
+                        )
                     )
                     .toString();
             }
@@ -160,31 +172,61 @@ export class UnityCatalogDetailPanel implements Disposable {
         panel: WebviewPanel,
         extensionUri: Uri
     ): Promise<string> {
-        const webviewDir = Uri.joinPath(extensionUri, "resources", "webview-ui");
+        const webviewDir = Uri.joinPath(
+            extensionUri,
+            "resources",
+            "webview-ui"
+        );
         const [html, css, js] = await Promise.all([
-            fs.readFile(Uri.joinPath(webviewDir, "uc-detail.html").fsPath, "utf8"),
-            fs.readFile(Uri.joinPath(webviewDir, "uc-detail.css").fsPath, "utf8"),
-            fs.readFile(Uri.joinPath(webviewDir, "uc-detail.js").fsPath, "utf8"),
+            fs.readFile(
+                Uri.joinPath(webviewDir, "uc-detail.html").fsPath,
+                "utf8"
+            ),
+            fs.readFile(
+                Uri.joinPath(webviewDir, "uc-detail.css").fsPath,
+                "utf8"
+            ),
+            fs.readFile(
+                Uri.joinPath(webviewDir, "uc-detail.js").fsPath,
+                "utf8"
+            ),
         ]);
-        const iconUris = UnityCatalogDetailPanel.buildIconUriMap(panel, extensionUri);
+        const iconUris = UnityCatalogDetailPanel.buildIconUriMap(
+            panel,
+            extensionUri
+        );
         return html
             .replace("<!--STYLES-->", `<style>\n${css}\n</style>`)
             .replace(
                 "<!--ICON-URIS-->",
-                `<script>window.UC_ICON_URIS = ${JSON.stringify(iconUris)};</script>`
+                `<script>window.UC_ICON_URIS = ${JSON.stringify(
+                    iconUris
+                )};</script>`
             )
             .replace("<!--SCRIPTS-->", `<script>\n${js}\n</script>`)
             .replace(
                 /src="[^"]*\/toolkit\.js"/g,
-                `src="${UnityCatalogDetailPanel.getAssetUri(panel, extensionUri, "toolkit.js")}"`
+                `src="${UnityCatalogDetailPanel.getAssetUri(
+                    panel,
+                    extensionUri,
+                    "toolkit.js"
+                )}"`
             )
             .replace(
                 /src="[^"]*\/markdown-it\.min\.js"/g,
-                `src="${UnityCatalogDetailPanel.getAssetUri(panel, extensionUri, "markdown-it.min.js")}"`
+                `src="${UnityCatalogDetailPanel.getAssetUri(
+                    panel,
+                    extensionUri,
+                    "markdown-it.min.js"
+                )}"`
             )
             .replace(
                 /src="[^"]*\/highlight\.min\.js"/g,
-                `src="${UnityCatalogDetailPanel.getAssetUri(panel, extensionUri, "highlight.min.js")}"`
+                `src="${UnityCatalogDetailPanel.getAssetUri(
+                    panel,
+                    extensionUri,
+                    "highlight.min.js"
+                )}"`
             );
     }
 }

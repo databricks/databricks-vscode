@@ -13,8 +13,12 @@ function compareOwnedFirst(
     a: {owned?: boolean; name: string},
     b: {owned?: boolean; name: string}
 ): number {
-    if (a.owned && !b.owned) return -1;
-    if (!a.owned && b.owned) return 1;
+    if (a.owned && !b.owned) {
+        return -1;
+    }
+    if (!a.owned && b.owned) {
+        return 1;
+    }
     return a.name.localeCompare(b.name);
 }
 
