@@ -12,6 +12,7 @@ import {
     findUCItem,
     getUCSection,
     getVisibleLabels,
+    openUCPath,
 } from "./utils/unityCatalogUtils.ts";
 
 describe("Unity Catalog tree view", async function () {
@@ -39,10 +40,10 @@ describe("Unity Catalog tree view", async function () {
 
     it("should expand 'system' catalog to show schemas including 'access'", async () => {
         const section = await getUCSection();
-        let children: Awaited<ReturnType<typeof section.openItem>> = [];
+        let children: Awaited<ReturnType<typeof openUCPath>> = [];
         await browser.waitUntil(
             async () => {
-                children = await section.openItem("system");
+                children = await openUCPath(section, "system");
                 return children.length > 0;
             },
             {
@@ -60,10 +61,10 @@ describe("Unity Catalog tree view", async function () {
 
     it("should expand 'system.access' schema to show group nodes or tables", async () => {
         const section = await getUCSection();
-        let children: Awaited<ReturnType<typeof section.openItem>> = [];
+        let children: Awaited<ReturnType<typeof openUCPath>> = [];
         await browser.waitUntil(
             async () => {
-                children = await section.openItem("system", "access");
+                children = await openUCPath(section, "system", "access");
                 return children.length > 0;
             },
             {
@@ -77,10 +78,10 @@ describe("Unity Catalog tree view", async function () {
 
     it("should expand Tables group in 'system.access' if grouped", async () => {
         const section = await getUCSection();
-        let accessChildren: Awaited<ReturnType<typeof section.openItem>> = [];
+        let accessChildren: Awaited<ReturnType<typeof openUCPath>> = [];
         await browser.waitUntil(
             async () => {
-                accessChildren = await section.openItem("system", "access");
+                accessChildren = await openUCPath(section, "system", "access");
                 return accessChildren.length > 0;
             },
             {
@@ -99,10 +100,11 @@ describe("Unity Catalog tree view", async function () {
             return;
         }
 
-        let tableChildren: Awaited<ReturnType<typeof section.openItem>> = [];
+        let tableChildren: Awaited<ReturnType<typeof openUCPath>> = [];
         await browser.waitUntil(
             async () => {
-                tableChildren = await section.openItem(
+                tableChildren = await openUCPath(
+                    section,
                     "system",
                     "access",
                     groupLabel
@@ -121,10 +123,10 @@ describe("Unity Catalog tree view", async function () {
     it("should expand a table in 'system.access' to show columns with type descriptions", async () => {
         const section = await getUCSection();
 
-        let accessChildren: Awaited<ReturnType<typeof section.openItem>> = [];
+        let accessChildren: Awaited<ReturnType<typeof openUCPath>> = [];
         await browser.waitUntil(
             async () => {
-                accessChildren = await section.openItem("system", "access");
+                accessChildren = await openUCPath(section, "system", "access");
                 return accessChildren.length > 0;
             },
             {
@@ -141,11 +143,11 @@ describe("Unity Catalog tree view", async function () {
 
         let tableName: string;
         if (groupLabel) {
-            let tableChildren: Awaited<ReturnType<typeof section.openItem>> =
-                [];
+            let tableChildren: Awaited<ReturnType<typeof openUCPath>> = [];
             await browser.waitUntil(
                 async () => {
-                    tableChildren = await section.openItem(
+                    tableChildren = await openUCPath(
+                        section,
                         "system",
                         "access",
                         groupLabel
@@ -167,10 +169,10 @@ describe("Unity Catalog tree view", async function () {
             ? ["system", "access", groupLabel, tableName]
             : ["system", "access", tableName];
 
-        let columns: Awaited<ReturnType<typeof section.openItem>> = [];
+        let columns: Awaited<ReturnType<typeof openUCPath>> = [];
         await browser.waitUntil(
             async () => {
-                columns = await section.openItem(...colPath);
+                columns = await openUCPath(section, ...colPath);
                 return columns.length > 0;
             },
             {
@@ -190,10 +192,10 @@ describe("Unity Catalog tree view", async function () {
     it("should open detail panel when clicking a table", async () => {
         const section = await getUCSection();
 
-        let accessChildren: Awaited<ReturnType<typeof section.openItem>> = [];
+        let accessChildren: Awaited<ReturnType<typeof openUCPath>> = [];
         await browser.waitUntil(
             async () => {
-                accessChildren = await section.openItem("system", "access");
+                accessChildren = await openUCPath(section, "system", "access");
                 return accessChildren.length > 0;
             },
             {
@@ -210,11 +212,11 @@ describe("Unity Catalog tree view", async function () {
 
         let tableItem: (typeof accessChildren)[0];
         if (groupLabel) {
-            let tableChildren: Awaited<ReturnType<typeof section.openItem>> =
-                [];
+            let tableChildren: Awaited<ReturnType<typeof openUCPath>> = [];
             await browser.waitUntil(
                 async () => {
-                    tableChildren = await section.openItem(
+                    tableChildren = await openUCPath(
+                        section,
                         "system",
                         "access",
                         groupLabel
