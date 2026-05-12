@@ -131,9 +131,24 @@ describe("Bundle Variables", async function () {
                 "databricks.bundle.variable.openFile"
             );
         });
-        const editor = (await workbench
-            .getEditorView()
-            .openEditor("vscode.bundlevars.json")) as TextEditor;
+        let editor: TextEditor | undefined;
+        await browser.waitUntil(
+            async () => {
+                try {
+                    editor = (await workbench
+                        .getEditorView()
+                        .openEditor("vscode.bundlevars.json")) as TextEditor;
+                    return editor !== undefined;
+                } catch (e) {
+                    return false;
+                }
+            },
+            {
+                timeout: 10_000,
+                interval: 500,
+                timeoutMsg: "Editor 'vscode.bundlevars.json' did not open",
+            }
+        );
         assert(editor);
 
         await editor.clearText();
