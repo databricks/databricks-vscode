@@ -1,3 +1,17 @@
+# Release: v2.10.7
+
+## packages/databricks-vscode
+
+## (2026-05-07)
+
+-   Add remote mode for initial Remote Development compatibility (#1861) ([9e768db](https://github.com/databricks/databricks-vscode/commit/9e768db))
+-   Rename "Databricks Asset Bundles" → "Declarative Automation Bundles" (#1864) ([62a94e1](https://github.com/databricks/databricks-vscode/commit/62a94e1))
+-   Preserve profile name in Databricks CLI auth provider (#1877) ([3f54441](https://github.com/databricks/databricks-vscode/commit/3f54441))
+-   Fix new profile sign in using already existing host under different profile (#1893) ([c4c25fb](https://github.com/databricks/databricks-vscode/commit/c4c25fb))
+-   Include profiles with `account_id` in `listProfiles` results (#1894) ([d6e2e5d](https://github.com/databricks/databricks-vscode/commit/d6e2e5d))
+-   Update minimal python and dbconnect versions for serverless (#1884) ([5a1a1d5](https://github.com/databricks/databricks-vscode/commit/5a1a1d5))
+-   Update Databricks CLI to v0.297.2 (#1882) ([ea77424](https://github.com/databricks/databricks-vscode/commit/ea77424)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes since v0.286.0
+
 # Release: v2.10.6
 
 ## packages/databricks-vscode
