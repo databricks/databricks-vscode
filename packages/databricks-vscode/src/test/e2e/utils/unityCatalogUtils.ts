@@ -55,6 +55,12 @@ export async function findUCItem(
     // Slow path: scroll through the list.
     // Focus the tree so keyboard navigation works, then jump to End.
     if (initial.length > 0) {
+        // The item may be positioned outside the viewport in VS Code's virtual
+        // scroll container (e.g. top: 11572px).  scrollIntoView() tells the
+        // scroll container to bring it into view before we click it, preventing
+        // the pane header from intercepting the click.
+        await initial[0].elem.scrollIntoView();
+        await browser.pause(200);
         await initial[0].elem.click();
         await browser.pause(200);
     }
