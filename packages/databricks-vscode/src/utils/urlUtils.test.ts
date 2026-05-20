@@ -47,18 +47,24 @@ describe(__filename, () => {
         const spogUrl = "https://accounts.cloud.databricks.com/?w=abc123";
         const normalized = normalizeHost(spogUrl);
         assert.strictEqual(normalized.searchParams.get("w"), "abc123");
-        assert.strictEqual(normalized.hostname, "accounts.cloud.databricks.com");
+        assert.strictEqual(
+            normalized.hostname,
+            "accounts.cloud.databricks.com"
+        );
     });
 
     it("should not preserve query params other than w", () => {
-        const url = "https://dbc-123456789012345.cloud.databricks.com/?o=789&other=foo";
+        const url =
+            "https://dbc-123456789012345.cloud.databricks.com/?o=789&other=foo";
         const normalized = normalizeHost(url);
         assert.strictEqual(normalized.search, "");
     });
 
     it("should identify SPOG hosts by w parameter", () => {
         const spog = new URL("https://accounts.cloud.databricks.com/?w=abc123");
-        const nonSpog = new URL("https://dbc-123456789012345.cloud.databricks.com/");
+        const nonSpog = new URL(
+            "https://dbc-123456789012345.cloud.databricks.com/"
+        );
         assert.ok(isSpogHost(spog));
         assert.ok(!isSpogHost(nonSpog));
     });
