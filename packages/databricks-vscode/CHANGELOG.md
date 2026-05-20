@@ -1,3 +1,11 @@
+# Release: v2.10.8
+
+## packages/databricks-vscode
+
+## (2026-05-20)
+
+-   Bump Databricks JS SDK to 0.17.0 (#1898) ([6da3894](https://github.com/databricks/databricks-vscode/commit/6da3894)), closes [#1898](https://github.com/databricks/databricks-vscode/issues/1898)
+
 # Release: v2.10.7
 
 ## packages/databricks-vscode
