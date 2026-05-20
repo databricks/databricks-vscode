@@ -29,6 +29,11 @@ export function normalizeHost(host: string): URL {
         throw new UrlError("Invalid protocol");
     }
 
+    // SPOG URLs use ?w=<workspace-id> to identify the workspace on a shared host.
+    const w = url.searchParams.get("w");
+    if (w) {
+        return new URL(`https://${url.hostname}/?w=${w}`);
+    }
     return new URL(`https://${url.hostname}`);
 }
 
@@ -46,4 +51,8 @@ export function isAwsHost(url: URL): boolean {
     return !!url.hostname.match(
         /(\.cloud\.databricks\.com|\.dev\.databricks\.com)$/
     );
+}
+
+export function isSpogHost(url: URL): boolean {
+    return url.searchParams.has("w");
 }
