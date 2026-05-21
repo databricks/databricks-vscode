@@ -43,35 +43,33 @@ describe(__filename, () => {
         });
     });
 
-    it("should preserve the w parameter for SPOG urls", () => {
-        const spogUrl = "https://accounts.cloud.databricks.com/?w=abc123";
-        const normalized = normalizeHost(spogUrl);
-        assert.strictEqual(normalized.searchParams.get("w"), "abc123");
-        assert.strictEqual(
-            normalized.hostname,
-            "accounts.cloud.databricks.com"
-        );
-    });
-
-    it("should not preserve query params other than w", () => {
+    it("should strip query params from host", () => {
         const url =
             "https://dbc-123456789012345.cloud.databricks.com/?o=789&other=foo";
         const normalized = normalizeHost(url);
         assert.strictEqual(normalized.search, "");
     });
 
-    it("should identify SPOG hosts by w parameter", () => {
-        const spog = new URL("https://accounts.cloud.databricks.com/?w=abc123");
-        const nonSpog = new URL(
-            "https://dbc-123456789012345.cloud.databricks.com/"
-        );
-        assert.ok(isSpogHost(spog));
-        assert.ok(!isSpogHost(nonSpog));
+    it("should identify SPOG hosts by *.databricks.com hostname", () => {
+        assert.ok(isSpogHost(new URL("https://db-deco-test.databricks.com")));
+        assert.ok(isSpogHost(new URL("https://demo-spog.databricks.com")));
     });
 
-    it("should treat two SPOG urls with different w as different hosts", () => {
-        const a = normalizeHost("https://accounts.cloud.databricks.com/?w=ws1");
-        const b = normalizeHost("https://accounts.cloud.databricks.com/?w=ws2");
-        assert.notStrictEqual(a.toString(), b.toString());
+    it("should not classify standard cloud hosts as SPOG", () => {
+        assert.ok(
+            !isSpogHost(
+                new URL("https://dbc-123456789012345.cloud.databricks.com")
+            )
+        );
+        assert.ok(
+            !isSpogHost(
+                new URL("https://dbc-123456789012345.gcp.databricks.com")
+            )
+        );
+        assert.ok(
+            !isSpogHost(
+                new URL("https://dbc-123456789012345.dev.databricks.com")
+            )
+        );
     });
 });

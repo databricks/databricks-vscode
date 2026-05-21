@@ -143,6 +143,12 @@ export abstract class AuthProvider {
         if (config.databricksCliPath === undefined) {
             config.databricksCliPath = this._cli.cliPath;
         }
+        // Profiles with workspace_id target a specific workspace on a unified (SPOG)
+        // host. The SDK only sends X-Databricks-Org-Id when experimentalIsUnifiedHost
+        // is true, so we set it here after the profile has been loaded.
+        if (config.workspaceId) {
+            config.experimentalIsUnifiedHost = true;
+        }
 
         return config;
     }
@@ -175,7 +181,8 @@ export abstract class AuthProvider {
                     host,
                     json.databricksPath ?? cli.cliPath,
                     cli,
-                    json.profile
+                    json.profile,
+                    json.workspaceId
                 );
 
             case "profile":
@@ -209,7 +216,8 @@ export abstract class AuthProvider {
                     host,
                     config.databricksCliPath ?? cli.cliPath,
                     cli,
-                    config.profile
+                    config.profile,
+                    config.workspaceId
                 );
 
             default:
@@ -222,6 +230,8 @@ export abstract class AuthProvider {
 }
 
 export class ProfileAuthProvider extends AuthProvider {
+    private _workspaceId?: string;
+
     static async from(profile: string, cli: CliWrapper, checked = false) {
         const host = await ProfileAuthProvider.getSdkConfig(profile).getHost();
         return new ProfileAuthProvider(host, profile, cli, checked);
@@ -249,10 +259,15 @@ export class ProfileAuthProvider extends AuthProvider {
     }
 
     toEnv(): Record<string, string> {
-        return {
+        const env: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_CONFIG_PROFILE: this.profile,
         };
+        if (this._workspaceId) {
+            env["DATABRICKS_WORKSPACE_ID"] = this._workspaceId;
+            env["DATABRICKS_EXPERIMENTAL_IS_UNIFIED_HOST"] = "true";
+        }
+        return env;
     }
 
     toIni() {
@@ -275,6 +290,9 @@ export class ProfileAuthProvider extends AuthProvider {
         while (cancellationToken?.isCancellationRequested !== true) {
             try {
                 const sdkConfig = await this.getSdkConfig();
+                // Cache workspace_id so toEnv() can include SPOG routing vars
+                // for bundle commands that use the Go CLI directly.
+                this._workspaceId = sdkConfig.workspaceId;
                 const authProvider = AuthProvider.fromSdkConfig(
                     sdkConfig,
                     this.cli
@@ -320,7 +338,8 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         host: URL,
         readonly cliPath: string,
         cli: CliWrapper,
-        readonly profile?: string
+        readonly profile?: string,
+        readonly workspaceId?: string
     ) {
         super(host, "databricks-cli", cli);
     }
@@ -335,6 +354,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
             authType: this.authType,
             databricksPath: this.cliPath,
             ...(this.profile ? {profile: this.profile} : {}),
+            ...(this.workspaceId ? {workspaceId: this.workspaceId} : {}),
         };
     }
 
@@ -344,6 +364,12 @@ export class DatabricksCliAuthProvider extends AuthProvider {
             authType: "databricks-cli",
             databricksCliPath: this.cliPath,
             ...(this.profile ? {profile: this.profile} : {}),
+            ...(this.workspaceId
+                ? {
+                      workspaceId: this.workspaceId,
+                      experimentalIsUnifiedHost: true,
+                  }
+                : {}),
         });
     }
 
@@ -354,6 +380,10 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         };
         if (this.profile) {
             env["DATABRICKS_CONFIG_PROFILE"] = this.profile;
+        }
+        if (this.workspaceId) {
+            env["DATABRICKS_WORKSPACE_ID"] = this.workspaceId;
+            env["DATABRICKS_EXPERIMENTAL_IS_UNIFIED_HOST"] = "true";
         }
         return env;
     }
