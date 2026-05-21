@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.10.7",
+    "version": "2.10.8",
     "engines": {
         "vscode": "^1.86.0",
         "node": ">=22.0"
@@ -1412,7 +1412,7 @@
     },
     "dependencies": {
         "@databricks/databricks-vscode-types": "workspace:^",
-        "@databricks/sdk-experimental": "^0.16.0",
+        "@databricks/sdk-experimental": "^0.17.0",
         "@types/lodash": "^4.14.202",
         "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",
