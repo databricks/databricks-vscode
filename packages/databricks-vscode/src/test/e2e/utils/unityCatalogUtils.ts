@@ -42,32 +42,11 @@ export async function getUCSection(
 export async function findUCItem(
     section: CustomTreeSection,
     label: string,
-    timeoutMs = 30_000
+    timeoutMs = 90_000
 ): Promise<TreeItem> {
-    // Fast path: item is already visible
-    const initial = await section.getVisibleItems();
-    for (const item of initial) {
-        if ((await item.getLabel()) === label) {
-            return item;
-        }
-    }
-
-    // Slow path: scroll through the list.
-    // Focus the tree so keyboard navigation works, then jump to End.
-    if (initial.length > 0) {
-        // The item may be positioned outside the viewport in VS Code's virtual
-        // scroll container (e.g. top: 11572px).  scrollIntoView() tells the
-        // scroll container to bring it into view before we click it, preventing
-        // the pane header from intercepting the click.
-        await initial[0].elem.scrollIntoView();
-        await browser.pause(200);
-        await initial[0].elem.click();
-        await browser.pause(200);
-    }
-    await browser.keys(["End"]);
-    await browser.pause(400);
-
     let found: TreeItem | undefined;
+    let scrolledToBottom = false;
+
     await browser.waitUntil(
         async () => {
             const items = await section.getVisibleItems();
@@ -77,18 +56,60 @@ export async function findUCItem(
                     return true;
                 }
             }
-            // Not found on this page — scroll up and retry
-            await browser.keys(["PageUp"]);
-            await browser.pause(300);
+
+            if (!scrolledToBottom && items.length > 0) {
+                scrolledToBottom = true;
+                // Focus the list via JS so browser.keys() is directed at the
+                // tree. Avoids clicking a list item (which can expand a catalog
+                // and disrupt the layout), and avoids JS scrollTop which
+                // desynchronises Monaco's internal scroll model.
+                const list = await section.elem.$(".monaco-list");
+                if (await list.isExisting()) {
+                    await browser.execute(
+                        (el: HTMLElement) => el.focus(),
+                        list
+                    );
+                    await browser.pause(100);
+                }
+                await browser.keys(["End"]);
+                await browser.pause(500);
+            } else if (scrolledToBottom) {
+                await browser.keys(["PageUp"]);
+                await browser.pause(400);
+            }
+
             return false;
         },
         {
             timeout: timeoutMs,
-            interval: 800,
+            interval: 600,
             timeoutMsg: `No visible UNITY CATALOG item with label "${label}"`,
         }
     );
     return found!;
+}
+
+/**
+ * Finds an action button on a hovered tree item by label.
+ * Works around wdio-vscode-service reading null 'title' attributes in VSCode 1.120+.
+ * The item must already be hovered (call item.elem.moveTo() before this).
+ */
+export async function getUCActionButton(
+    item: TreeItem,
+    label: string
+): Promise<WebdriverIO.Element | undefined> {
+    // Search anywhere inside the item element; don't require .actions-container
+    // parent or role="button" — both can be absent in VS Code 1.120+.
+    const buttons = await item.elem.$$("a.action-label");
+    for (const btn of buttons) {
+        const ariaLabel = await btn.getAttribute("aria-label");
+        const title = await btn.getAttribute("title");
+        const btnLabel = ariaLabel || title;
+        if (btnLabel && btnLabel.includes(label)) {
+            return btn;
+        }
+    }
+    return undefined;
 }
 
 /**
@@ -121,7 +142,9 @@ export async function openUCPath(
             {
                 timeout: 30_000,
                 interval: 1000,
-                timeoutMsg: `No children found under "${path.slice(0, i + 1).join(".")}"`,
+                timeoutMsg: `No children found under "${path
+                    .slice(0, i + 1)
+                    .join(".")}"`,
             }
         );
 
@@ -140,13 +163,38 @@ export async function openUCPath(
         }
         if (!next) {
             throw new Error(
-                `Item "${nextLabel}" not found under "${path.slice(0, i + 1).join(".")}"`
+                `Item "${nextLabel}" not found under "${path
+                    .slice(0, i + 1)
+                    .join(".")}"`
             );
         }
         current = next;
     }
 
     return [];
+}
+
+/**
+ * Scrolls the section's list to the top, then returns the visible item labels.
+ * Use this when the tree may be scrolled past the items you want to check
+ * (e.g., verifying a "Favorites" group that appears at the top of the list).
+ */
+export async function getTopVisibleLabels(
+    section: CustomTreeSection
+): Promise<string[]> {
+    // Scroll to the top via keyboard Home so the "Favorites" group (or any
+    // group added at the top of the tree) is in the viewport.
+    // We use JS focus + browser.keys() instead of JS scrollTop to avoid
+    // desynchronising Monaco's internal scroll model.
+    const list = await section.elem.$(".monaco-list");
+    if (await list.isExisting()) {
+        await browser.execute((el: HTMLElement) => el.focus(), list);
+        await browser.pause(100);
+        await browser.keys(["Home"]);
+        await browser.pause(200);
+    }
+    const items = await section.getVisibleItems();
+    return Promise.all(items.map((i) => i.getLabel()));
 }
 
 /**

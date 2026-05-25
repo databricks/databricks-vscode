@@ -10,8 +10,9 @@ import {
 } from "./utils/dabsFixtures.ts";
 import {
     findUCItem,
+    getUCActionButton,
     getUCSection,
-    getVisibleLabels,
+    getTopVisibleLabels,
     openUCPath,
 } from "./utils/unityCatalogUtils.ts";
 
@@ -242,17 +243,22 @@ describe("Unity Catalog tree view", async function () {
         const section = await getUCSection();
         const systemItem = await findUCItem(section, "system");
 
+        await systemItem.elem.scrollIntoView();
+        await browser.pause(200);
         await systemItem.elem.moveTo();
-        const pinBtn = await systemItem.getActionButton("Add to Favorites");
+        await browser.pause(500); // wait for hover action buttons to render
+        const pinBtn = await getUCActionButton(systemItem, "Add to Favorites");
         assert(
             pinBtn,
             "'Add to Favorites' action button not found on 'system'"
         );
-        await pinBtn.elem.click();
+        await pinBtn.click();
 
         await browser.waitUntil(
             async () => {
-                const labels = await getVisibleLabels(section);
+                // Scroll to top: "Favorites" group appears at the top of the
+                // tree and may not be in the viewport after scrolling to "system".
+                const labels = await getTopVisibleLabels(section);
                 return labels.includes("Favorites");
             },
             {
@@ -268,19 +274,24 @@ describe("Unity Catalog tree view", async function () {
         const section = await getUCSection();
         const systemItem = await findUCItem(section, "system");
 
+        await systemItem.elem.scrollIntoView();
+        await browser.pause(200);
         await systemItem.elem.moveTo();
-        const unpinBtn = await systemItem.getActionButton(
+        await browser.pause(500); // wait for hover action buttons to render
+        const unpinBtn = await getUCActionButton(
+            systemItem,
             "Remove from Favorites"
         );
         assert(
             unpinBtn,
             "'Remove from Favorites' action button not found on 'system'"
         );
-        await unpinBtn.elem.click();
+        await unpinBtn.click();
 
         await browser.waitUntil(
             async () => {
-                const labels = await getVisibleLabels(section);
+                // Scroll to top so we can confirm "Favorites" is truly gone.
+                const labels = await getTopVisibleLabels(section);
                 return !labels.includes("Favorites");
             },
             {
