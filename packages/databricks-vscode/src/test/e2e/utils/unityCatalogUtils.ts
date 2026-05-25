@@ -66,7 +66,7 @@ export async function findUCItem(
                 const list = await section.elem.$(".monaco-list");
                 if (await list.isExisting()) {
                     await browser.execute(
-                        (el: HTMLElement) => el.focus(),
+                        (el: any) => el.focus(),
                         list
                     );
                     await browser.pause(100);
@@ -125,23 +125,78 @@ export async function openUCPath(
     section: CustomTreeSection,
     ...path: [string, ...string[]]
 ): Promise<TreeItem[]> {
-    let current: TreeItem = await findUCItem(section, path[0]);
+    // Ensure the root item is visible using Monaco-native keyboard scroll.
+    await findUCItem(section, path[0]);
 
     for (let i = 0; i < path.length; i++) {
-        // Bring item into view before interacting with it
-        await current.elem.scrollIntoView({block: "start"});
-        await browser.pause(200);
-
+        const expectedLevel = i + 1; // catalogs=1, schemas=2, groups=3, …
         let children: TreeItem[] = [];
+
         await browser.waitUntil(
             async () => {
-                // getChildren() calls expand() internally then queries DOM rows
-                children = await (current as any).getChildren();
-                return children.length > 0;
+                // Step 1: fresh DOM reference — avoids stale element after re-render
+                const visItems = await section.getVisibleItems();
+                let freshItem: TreeItem | undefined;
+                for (const vi of visItems) {
+                    if (
+                        (await vi.getLabel()) === path[i] &&
+                        +(await vi.elem.getAttribute("aria-level") ?? "0") ===
+                            expectedLevel
+                    ) {
+                        freshItem = vi;
+                        break;
+                    }
+                }
+
+                // Step 2: item scrolled out of view — use keyboard to bring it back
+                if (!freshItem) {
+                    const list = await section.elem.$(".monaco-list");
+                    if (await list.isExisting()) {
+                        await browser.execute(
+                            (el: any) => el.focus(),
+                            list
+                        );
+                        await browser.pause(100);
+                    }
+                    await browser.keys(["End"]);
+                    await browser.pause(400);
+                    return false;
+                }
+
+                // Step 3: expand if not yet expanded (may trigger async data load)
+                const isExpanded =
+                    (await freshItem.elem.getAttribute("aria-expanded")) ===
+                    "true";
+                if (!isExpanded) {
+                    await (freshItem as any).expand();
+                    await browser.pause(600);
+                    return false;
+                }
+
+                // Step 4: query children
+                children = await (freshItem as any).getChildren();
+                if (children.length > 0) {
+                    return true;
+                }
+
+                // Step 5: expanded but children below the fold — scroll up one row
+                // so the item moves away from the viewport bottom edge and children
+                // become visible on the next retry.
+                const list2 = await section.elem.$(".monaco-list");
+                if (await list2.isExisting()) {
+                    await browser.execute(
+                        (el: any) => el.focus(),
+                        list2
+                    );
+                    await browser.pause(100);
+                }
+                await browser.keys(["ArrowUp"]);
+                await browser.pause(300);
+                return false;
             },
             {
                 timeout: 30_000,
-                interval: 1000,
+                interval: 1_000,
                 timeoutMsg: `No children found under "${path
                     .slice(0, i + 1)
                     .join(".")}"`,
@@ -152,7 +207,6 @@ export async function openUCPath(
             return children;
         }
 
-        // Descend into the next path segment
         const nextLabel = path[i + 1];
         let next: TreeItem | undefined;
         for (const child of children) {
@@ -168,7 +222,6 @@ export async function openUCPath(
                     .join(".")}"`
             );
         }
-        current = next;
     }
 
     return [];
@@ -188,7 +241,7 @@ export async function getTopVisibleLabels(
     // desynchronising Monaco's internal scroll model.
     const list = await section.elem.$(".monaco-list");
     if (await list.isExisting()) {
-        await browser.execute((el: HTMLElement) => el.focus(), list);
+        await browser.execute((el: any) => el.focus(), list);
         await browser.pause(100);
         await browser.keys(["Home"]);
         await browser.pause(200);
