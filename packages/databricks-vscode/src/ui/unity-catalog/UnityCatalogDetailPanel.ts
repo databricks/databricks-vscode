@@ -4,7 +4,7 @@ import {UnityCatalogTreeNode} from "./types";
 import {NodeEnrichments} from "./detailLoader";
 
 export class UnityCatalogDetailPanel implements Disposable {
-    private static readonly VIEW_TYPE = "databricks.unityCatalogDetail";
+    private static readonly viewType = "databricks.unityCatalogDetail";
     private static instance: UnityCatalogDetailPanel | undefined;
     private static navigationHandler:
         | ((node: UnityCatalogTreeNode) => void)
@@ -45,7 +45,7 @@ export class UnityCatalogDetailPanel implements Disposable {
             return UnityCatalogDetailPanel.instance;
         }
         const panel = window.createWebviewPanel(
-            UnityCatalogDetailPanel.VIEW_TYPE,
+            UnityCatalogDetailPanel.viewType,
             "Unity Catalog",
             {viewColumn: ViewColumn.Beside, preserveFocus: true},
             {

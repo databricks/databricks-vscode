@@ -245,8 +245,8 @@ export async function loadSchemaChildren(
                       owner: m.owner,
                       storageLocation: m.storage_location,
                       aliases: m.aliases?.map((a) => ({
-                          alias_name: a.alias_name,
-                          version_num: a.version_num,
+                          aliasName: a.alias_name,
+                          versionNum: a.version_num,
                       })),
                       createdAt: m.created_at,
                       updatedAt: m.updated_at,

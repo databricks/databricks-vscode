@@ -47,9 +47,15 @@ function pinnedOwnedDescription(
     isPinned: boolean,
     owned: boolean | undefined
 ): string | undefined {
-    if (isPinned && owned) return "★ · yours";
-    if (isPinned) return "★";
-    if (owned) return "yours";
+    if (isPinned && owned) {
+        return "★ · yours";
+    }
+    if (isPinned) {
+        return "★";
+    }
+    if (owned) {
+        return "yours";
+    }
     return undefined;
 }
 
@@ -57,7 +63,9 @@ function starDescription(
     isPinned: boolean,
     detail: string | undefined
 ): string | undefined {
-    if (!isPinned) return detail;
+    if (!isPinned) {
+        return detail;
+    }
     return detail ? `★ · ${detail}` : "★";
 }
 
@@ -340,11 +348,11 @@ function renderRegisteredModel(
     }
     if (node.aliases && node.aliases.length > 0) {
         const aliasList = node.aliases
-            .filter((a) => a.alias_name)
+            .filter((a) => a.aliasName)
             .map((a) =>
-                a.version_num !== undefined
-                    ? `${a.alias_name} → v${a.version_num}`
-                    : a.alias_name!
+                a.versionNum !== undefined
+                    ? `${a.aliasName} → v${a.versionNum}`
+                    : a.aliasName!
             )
             .join(", ");
         if (aliasList) {

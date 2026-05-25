@@ -112,7 +112,7 @@ export type UnityCatalogTreeNode =
           comment?: string;
           owner?: string;
           storageLocation?: string;
-          aliases?: Array<{alias_name?: string; version_num?: number}>;
+          aliases?: Array<{aliasName?: string; versionNum?: number}>;
           createdAt?: number;
           updatedAt?: number;
       }

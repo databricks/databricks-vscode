@@ -129,7 +129,7 @@ export async function openUCPath(
 
     for (let i = 0; i < path.length; i++) {
         // Bring item into view before interacting with it
-        await current.elem.scrollIntoView();
+        await current.elem.scrollIntoView({block: "start"});
         await browser.pause(200);
 
         let children: TreeItem[] = [];
