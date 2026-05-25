@@ -1,3 +1,17 @@
+# Release: v2.10.8
+
+## packages/databricks-vscode-types
+
+## (2026-05-20)
+
+-   Bump Databricks JS SDK to 0.17.0
+
+# Release: v2.10.7
+
+## packages/databricks-vscode-types
+
+## (2026-05-07)
+
 # Release: v2.10.6
 
 ## packages/databricks-vscode-types

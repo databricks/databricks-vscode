@@ -4,6 +4,7 @@ import {Disposable} from "vscode";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {DATABRICKS_CONNECT_VERSION as DATABRICKS_CONNECT_MINIMAL_VERSION} from "../utils/constants";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 export class EnvironmentDependenciesInstaller implements Disposable {
     private disposables: Disposable[] = [];
@@ -67,7 +68,12 @@ export class EnvironmentDependenciesInstaller implements Disposable {
 
     async getSuggestedVersion() {
         if (this.connectionManager.serverless) {
-            return "15.1.*";
+            const serverlessVersion =
+                workspaceConfigs.serverlessDbconnectVersion;
+            const parts = serverlessVersion.split(".");
+            const major = parts[0];
+            const minor = parts[1] ?? "3";
+            return `${major}.${minor}.*`;
         }
         const dbrVersionParts =
             this.connectionManager.cluster?.dbrVersion || [];

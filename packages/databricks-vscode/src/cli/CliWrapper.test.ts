@@ -169,6 +169,34 @@ nothing = true
         });
     });
 
+    it("should include profiles with account id", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+
+        await withFile(async ({path}) => {
+            writeFileSync(
+                path,
+                `[regular-profile]
+host = https://cloud.databricks.com/
+token = dapitest1234
+
+[profile-with-account-id]
+host = https://accounts.cloud.databricks.com/
+account_id = 1234567890
+token = dapitest5678
+`,
+                "utf-8"
+            );
+
+            const profiles = await cli.listProfiles(path);
+
+            assert.equal(profiles.length, 2);
+            assert.equal(profiles[0].name, "regular-profile");
+            assert.equal(profiles[1].name, "profile-with-account-id");
+            assert.equal(profiles[1].accountId, "1234567890");
+        });
+    });
+
     it("should show error for corrupted config file and return empty profile list", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);

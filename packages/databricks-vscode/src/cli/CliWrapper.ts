@@ -404,10 +404,7 @@ export class CliWrapper {
             return [];
         }
 
-        let profiles = JSON.parse(res.stdout).profiles || [];
-
-        // filter out account profiles
-        profiles = profiles.filter((p: any) => !p.account_id);
+        const profiles = JSON.parse(res.stdout).profiles || [];
 
         const result = [];
         let hasError = false;
