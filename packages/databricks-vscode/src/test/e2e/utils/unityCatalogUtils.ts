@@ -132,9 +132,25 @@ export async function openUCPath(
         await current.elem.scrollIntoView({block: "start"});
         await browser.pause(200);
 
+        // Trigger expansion once before the retry loop.  If aria-expanded
+        // lags behind the click during lazy loading, the expand() call
+        // inside getChildren() would otherwise toggle the item closed on
+        // every retry.
+        await (current as any).expand();
+        await browser.pause(500);
+
         let children: TreeItem[] = [];
         await browser.waitUntil(
             async () => {
+                // Re-scroll the item to the top of the viewport on every
+                // retry.  VS Code virtual lists only render rows that are
+                // inside the current scroll window; after expansion the list
+                // may have scrolled so that the item's children are below the
+                // rendered region and therefore absent from the DOM.  Keeping
+                // the parent item at the top ensures its immediate children
+                // are rendered.
+                await current.elem.scrollIntoView({block: "start"});
+                await browser.pause(100);
                 // getChildren() calls expand() internally then queries DOM rows
                 children = await (current as any).getChildren();
                 return children.length > 0;
