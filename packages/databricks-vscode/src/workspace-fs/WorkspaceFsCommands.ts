@@ -23,7 +23,7 @@ export class WorkspaceFsCommands implements Disposable {
         private workspaceFolderManager: WorkspaceFolderManager,
         private connectionManager: ConnectionManager,
         private workspaceFsDataProvider: WorkspaceFsDataProvider,
-        private fsp?: WorkspaceFsFileSystemProvider
+        private fsp: WorkspaceFsFileSystemProvider
     ) {}
 
     @withLogContext(Loggers.Extension)
@@ -77,26 +77,29 @@ export class WorkspaceFsCommands implements Disposable {
             this.connectionManager.databricksWorkspace?.currentFsRoot.path;
 
         const root = await this.getValidRoot(rootPath, ctx);
+        if (!root) {
+            return;
+        }
 
         const inputPath = await createDirWizard(
             this.workspaceFolderManager.activeProjectUri,
             "Directory Name",
             root
         );
-        let created: WorkspaceFsEntity | undefined;
 
-        if (inputPath !== undefined) {
-            try {
-                if (root) {
-                    created = await root.mkdir(inputPath);
-                }
-            } catch (e: unknown) {
-                if (e instanceof ApiError) {
-                    window.showErrorMessage(
-                        `Can't create directory ${inputPath}: ${e.message}`
-                    );
-                    return;
-                }
+        if (inputPath === undefined) {
+            return;
+        }
+
+        let created: WorkspaceFsEntity | undefined;
+        try {
+            created = await root.mkdir(inputPath);
+        } catch (e: unknown) {
+            if (e instanceof ApiError) {
+                window.showErrorMessage(
+                    `Can't create directory ${inputPath}: ${e.message}`
+                );
+                return;
             }
         }
 
@@ -164,7 +167,7 @@ export class WorkspaceFsCommands implements Disposable {
 
         this.workspaceFsDataProvider.refresh();
         const uri = Uri.from({scheme: "wsfs", path: element.path});
-        this.fsp?.notifyDeleted(uri);
+        this.fsp.notifyDeleted(uri);
     }
 
     async uploadFile(element?: WorkspaceFsEntity) {
@@ -196,10 +199,9 @@ export class WorkspaceFsCommands implements Disposable {
         const srcUri = picked[0];
         const fileName = srcUri.path.split("/").pop() ?? "file";
         const contentBytes = await workspace.fs.readFile(srcUri);
-        const contentStr = Buffer.from(contentBytes).toString();
 
         try {
-            await root.createFile(fileName, contentStr, true);
+            await root.createFile(fileName, contentBytes, true);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             window.showErrorMessage(`Failed to upload "${fileName}": ${msg}`);
@@ -211,7 +213,7 @@ export class WorkspaceFsCommands implements Disposable {
             scheme: "wsfs",
             path: `${root.path}/${fileName}`,
         });
-        this.fsp?.notifyCreated(uri);
+        this.fsp.notifyCreated(uri);
     }
 
     async downloadFile(element: WorkspaceFsEntity) {

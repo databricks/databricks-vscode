@@ -100,7 +100,8 @@ describe("WSFS Explorer", async function () {
     });
 
     it("should create a folder via command", async function () {
-        const fullPath = `/Users/${userName}/${folderName}`;
+        const newFolderName = getUniqueResourceName("wsfs_created");
+        const fullPath = `/Users/${userName}/${newFolderName}`;
 
         await browser.executeWorkbench((vscode) => {
             vscode.commands.executeCommand("databricks.wsfs.createFolder");
@@ -108,7 +109,7 @@ describe("WSFS Explorer", async function () {
 
         const input = await waitForInput();
 
-        await browser.keys(folderName.split(""));
+        await browser.keys(newFolderName.split(""));
         await input.confirm();
 
         await browser.waitUntil(
@@ -117,20 +118,29 @@ describe("WSFS Explorer", async function () {
                 const labels = await Promise.all(
                     items.map((i) => i.getLabel())
                 );
-                return labels.some((l) => l === folderName);
+                return labels.some((l) => l === newFolderName);
             },
             {
                 timeout: 30_000,
                 interval: 1_000,
-                timeoutMsg: `Folder "${folderName}" did not appear in the tree view`,
+                timeoutMsg: `Folder "${newFolderName}" did not appear in the tree view`,
             }
         );
 
-        // Verify via API that the folder was actually created
         const stat = await workspaceClient.workspace.getStatus({
             path: fullPath,
         });
         assert.strictEqual(stat.object_type, "DIRECTORY");
+
+        // Cleanup
+        try {
+            await workspaceClient.workspace.delete({
+                path: fullPath,
+                recursive: true,
+            });
+        } catch {
+            // ignore
+        }
     });
 
     it("should open a file in the editor when clicked in the tree", async function () {

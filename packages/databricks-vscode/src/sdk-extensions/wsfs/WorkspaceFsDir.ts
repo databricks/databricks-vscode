@@ -73,7 +73,7 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
     @logging.withLogContext(logging.ExposedLoggers.SDK)
     async createFile(
         path: string,
-        content: string,
+        content: string | Uint8Array,
         overwrite = true,
         @context ctx?: Context
     ) {

@@ -1,3 +1,4 @@
+import {posix} from "path";
 import {
     Disposable,
     EventEmitter,
@@ -41,8 +42,8 @@ export class WorkspaceFsFileSystemProvider
             entity.type === "DIRECTORY" || entity.type === "REPO";
         return {
             type: isDir ? FileType.Directory : FileType.File,
-            ctime: 0,
-            mtime: 0,
+            ctime: entity.details.created_at ?? 0,
+            mtime: entity.details.modified_at ?? 0,
             size: 0,
         };
     }
@@ -62,28 +63,33 @@ export class WorkspaceFsFileSystemProvider
     async writeFile(
         uri: Uri,
         content: Uint8Array,
-        _options: {create: boolean; overwrite: boolean}
+        options: {create: boolean; overwrite: boolean}
     ): Promise<void> {
         const client = this.requireClient();
-        const entity = await WorkspaceFsEntity.fromPath(client, uri.path);
-        if (!entity) {
-            throw FileSystemError.FileNotFound(uri);
-        }
-        const parent = await entity.parent;
-        if (!parent) {
-            throw FileSystemError.FileNotFound(uri);
-        }
         const {WorkspaceFsDir} = await import(
             "../sdk-extensions/wsfs/WorkspaceFsDir"
         );
-        if (!(parent instanceof WorkspaceFsDir)) {
+
+        // Resolve parent directory — works for both existing and new files.
+        const parentPath = posix.dirname(uri.path);
+        const parentEntity = await WorkspaceFsEntity.fromPath(
+            client,
+            parentPath
+        );
+        if (!parentEntity) {
+            throw FileSystemError.FileNotFound(uri);
+        }
+        if (!(parentEntity instanceof WorkspaceFsDir)) {
             throw FileSystemError.NoPermissions(uri);
         }
-        await parent.createFile(
-            entity.basename,
-            Buffer.from(content).toString(),
-            true
-        );
+
+        // If the file doesn't exist and create is not requested, reject.
+        const existing = await WorkspaceFsEntity.fromPath(client, uri.path);
+        if (!existing && !options.create) {
+            throw FileSystemError.FileNotFound(uri);
+        }
+
+        await parentEntity.createFile(posix.basename(uri.path), content, true);
         this.notifyChanged(uri);
     }
 
