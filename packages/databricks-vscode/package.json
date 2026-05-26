@@ -179,7 +179,7 @@
                 "command": "databricks.wsfs.refresh",
                 "title": "Refresh workspace filesystem view",
                 "icon": "$(refresh)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && config.databricks.sync.destinationType == workspace && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
@@ -899,11 +899,11 @@
                 },
                 {
                     "command": "databricks.wsfs.createFolder",
-                    "when": "config.databricks.sync.destinationType == workspace"
+                    "when": "!databricks.context.remoteMode"
                 },
                 {
                     "command": "databricks.wsfs.refresh",
-                    "when": "config.databricks.sync.destinationType == workspace"
+                    "when": "!databricks.context.remoteMode"
                 },
                 {
                     "command": "databricks.wsfs.delete",
