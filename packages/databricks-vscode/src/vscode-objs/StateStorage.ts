@@ -67,11 +67,6 @@ const StorageConfigurations = {
         location: "workspace",
     }),
 
-    "databricks.unityCatalog.pinnedSchemas": withType<string[]>()({
-        location: "workspace",
-        defaultValue: [],
-    }),
-
     "databricks.unityCatalog.favorites": withType<StoredFavoriteNode[]>()({
         location: "workspace",
         defaultValue: [],

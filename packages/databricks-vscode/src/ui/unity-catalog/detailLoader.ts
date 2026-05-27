@@ -270,7 +270,6 @@ const SECURABLE_TYPE: Partial<Record<string, string>> = {
     table: "TABLE",
     volume: "VOLUME",
     function: "FUNCTION",
-    registeredModel: "FUNCTION",
 };
 
 const TAG_ENTITY_TYPE: Partial<Record<string, string>> = {
@@ -284,7 +283,15 @@ export async function loadNodeEnrichments(
     client: Client,
     node: Exclude<
         UnityCatalogTreeNode,
-        {kind: "error" | "empty" | "column" | "modelVersion" | "favorites" | "group"}
+        {
+            kind:
+                | "error"
+                | "empty"
+                | "column"
+                | "modelVersion"
+                | "favorites"
+                | "group";
+        }
     >,
     cachedChildren?: UnityCatalogTreeNode[]
 ): Promise<NodeEnrichments> {

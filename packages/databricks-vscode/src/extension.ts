@@ -417,11 +417,10 @@ export async function activate(
         stateStorage,
         context.extensionPath
     );
+
     const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
         treeDataProvider: unityCatalogTreeDataProvider,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        filterOnType: true,
-    } as any);
+    });
     context.subscriptions.push(
         unityCatalogTreeDataProvider,
         unityCatalogTreeView,
@@ -443,6 +442,7 @@ export async function activate(
                     node.storageLocation
                 ) {
                     await env.clipboard.writeText(node.storageLocation);
+                    window.showInformationMessage("Copied to clipboard");
                 }
             }
         ),
@@ -451,6 +451,7 @@ export async function activate(
             async (node: UnityCatalogTreeNode) => {
                 if (node.kind === "table" && node.viewDefinition) {
                     await env.clipboard.writeText(node.viewDefinition);
+                    window.showInformationMessage("Copied to clipboard");
                 }
             }
         ),
@@ -526,8 +527,7 @@ export async function activate(
         ...registerDetailPanel(
             context.extensionUri,
             connectionManager,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            unityCatalogTreeView as any,
+            unityCatalogTreeView,
             unityCatalogTreeDataProvider,
             telemetry
         )
