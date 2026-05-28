@@ -45,6 +45,7 @@ export class UnityCatalogTreeDataProvider
     ) {
         this.disposables.push(
             this.connectionManager.onDidChangeState(() => {
+                this.childrenCache.clear();
                 this.catalogsCache = undefined;
                 this._onDidChangeTreeData.fire(undefined);
             })
