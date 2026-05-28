@@ -673,7 +673,10 @@ function renderChildren(enrichments) {
             btn.className = "child-link";
             btn.textContent = child.label;
             btn.addEventListener("click", () => {
-                vscode?.postMessage({command: "navigate", nodeData: child.nodeData});
+                vscode?.postMessage({
+                    command: "navigate",
+                    nodeData: child.nodeData,
+                });
             });
             tdName.appendChild(btn);
         } else {
