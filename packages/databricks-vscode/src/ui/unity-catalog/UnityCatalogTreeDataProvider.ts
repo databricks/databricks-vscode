@@ -77,7 +77,9 @@ export class UnityCatalogTreeDataProvider
             return cached;
         }
         const result = await loader();
-        this.childrenCache.set(key, result);
+        if (!result.some((n) => n.kind === "error")) {
+            this.childrenCache.set(key, result);
+        }
         return result;
     }
 
@@ -146,10 +148,16 @@ export class UnityCatalogTreeDataProvider
         const currentUser = this.connectionManager.databricksWorkspace?.user;
 
         if (!element) {
-            if (!this.catalogsCache) {
-                this.catalogsCache = await loadCatalogs(client, currentUser);
-            }
             const favorites = this.getFavorites();
+            if (!this.catalogsCache) {
+                const catalogs = await loadCatalogs(client, currentUser);
+                if (!catalogs.some((n) => n.kind === "error")) {
+                    this.catalogsCache = catalogs;
+                }
+                return favorites.length > 0
+                    ? [this.favoritesRootNode, ...catalogs]
+                    : [...catalogs];
+            }
             return favorites.length > 0
                 ? [this.favoritesRootNode, ...this.catalogsCache]
                 : [...this.catalogsCache];
@@ -186,20 +194,21 @@ export class UnityCatalogTreeDataProvider
                 element.name
             );
 
-            // Preserve flat list for getLoadedChildren() (used by detail panel)
-            this.childrenCache.set(element.fullName, flat);
-
-            if (flat.length === 1 && flat[0].kind === "empty") {
-                this.childrenCache.set(`${element.fullName}/.grouped`, flat);
-                return flat;
-            }
-
             // Partition by type
             const tables = flat.filter((n) => n.kind === "table");
             const volumes = flat.filter((n) => n.kind === "volume");
             const functions = flat.filter((n) => n.kind === "function");
             const models = flat.filter((n) => n.kind === "registeredModel");
             const errors = flat.filter((n) => n.kind === "error");
+
+            const hasErrors = errors.length > 0;
+
+            if (flat.length === 1 && flat[0].kind === "empty") {
+                if (!hasErrors) {
+                    this.childrenCache.set(`${element.fullName}/.grouped`, flat);
+                }
+                return flat;
+            }
 
             const groupTypes = [
                 {key: "tables", items: tables},
@@ -208,8 +217,13 @@ export class UnityCatalogTreeDataProvider
                 {key: "models", items: models},
             ] as const;
 
-            for (const {key, items} of groupTypes) {
-                this.childrenCache.set(`${element.fullName}/.${key}`, items);
+            if (!hasErrors) {
+                // Preserve flat list for getLoadedChildren() (used by detail panel)
+                this.childrenCache.set(element.fullName, flat);
+
+                for (const {key, items} of groupTypes) {
+                    this.childrenCache.set(`${element.fullName}/.${key}`, items);
+                }
             }
 
             const typedArrays = [tables, volumes, functions, models];
@@ -226,7 +240,9 @@ export class UnityCatalogTreeDataProvider
                     ...models,
                     ...errors,
                 ];
-                this.childrenCache.set(`${element.fullName}/.grouped`, result);
+                if (!hasErrors) {
+                    this.childrenCache.set(`${element.fullName}/.grouped`, result);
+                }
                 return result;
             }
 
@@ -245,7 +261,9 @@ export class UnityCatalogTreeDataProvider
             }
 
             const result = [...groups, ...errors];
-            this.childrenCache.set(`${element.fullName}/.grouped`, result);
+            if (!hasErrors) {
+                this.childrenCache.set(`${element.fullName}/.grouped`, result);
+            }
             return result;
         }
 
