@@ -77,7 +77,7 @@ export class UnityCatalogTreeDataProvider
             return cached;
         }
         const result = await loader();
-        if (!result.some((n) => n.kind === "error")) {
+        if (!this.hasErrorNode(result)) {
             this.childrenCache.set(key, result);
         }
         return result;
@@ -89,6 +89,10 @@ export class UnityCatalogTreeDataProvider
             return undefined;
         }
         return `${host.toString()}explore/data/${path}`;
+    }
+
+    private hasErrorNode(nodes: UnityCatalogTreeNode[]): boolean {
+        return nodes.some((n) => n.kind === "error");
     }
 
     getNodeExploreUrl(node: UnityCatalogTreeNode): string | undefined {
@@ -151,7 +155,7 @@ export class UnityCatalogTreeDataProvider
             const favorites = this.getFavorites();
             if (!this.catalogsCache) {
                 const catalogs = await loadCatalogs(client, currentUser);
-                if (!catalogs.some((n) => n.kind === "error")) {
+                if (!this.hasErrorNode(catalogs)) {
                     this.catalogsCache = catalogs;
                 }
                 return favorites.length > 0
@@ -205,7 +209,10 @@ export class UnityCatalogTreeDataProvider
 
             if (flat.length === 1 && flat[0].kind === "empty") {
                 if (!hasErrors) {
-                    this.childrenCache.set(`${element.fullName}/.grouped`, flat);
+                    this.childrenCache.set(
+                        `${element.fullName}/.grouped`,
+                        flat
+                    );
                 }
                 return flat;
             }
@@ -222,7 +229,10 @@ export class UnityCatalogTreeDataProvider
                 this.childrenCache.set(element.fullName, flat);
 
                 for (const {key, items} of groupTypes) {
-                    this.childrenCache.set(`${element.fullName}/.${key}`, items);
+                    this.childrenCache.set(
+                        `${element.fullName}/.${key}`,
+                        items
+                    );
                 }
             }
 
@@ -241,7 +251,10 @@ export class UnityCatalogTreeDataProvider
                     ...errors,
                 ];
                 if (!hasErrors) {
-                    this.childrenCache.set(`${element.fullName}/.grouped`, result);
+                    this.childrenCache.set(
+                        `${element.fullName}/.grouped`,
+                        result
+                    );
                 }
                 return result;
             }
