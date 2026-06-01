@@ -380,6 +380,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@databricks/sdk-experimental@npm:^0.18.0":
+  version: 0.18.0
+  resolution: "@databricks/sdk-experimental@npm:0.18.0"
+  dependencies:
+    google-auth-library: ^10.5.0
+    ini: ^6.0.0
+    reflect-metadata: ^0.2.2
+    semver: ^7.7.3
+  checksum: eefb552284eaa5577baaa173f1612611833bd805cbd822f11373223d74b2e2b37d2a6dbe7bdf522312339bcecf8384a2510c5a74b51612664ddca7a4b51fa503
+  languageName: node
+  linkType: hard
+
 "@esbuild/aix-ppc64@npm:0.25.0":
   version: 0.25.0
   resolution: "@esbuild/aix-ppc64@npm:0.25.0"
@@ -3745,7 +3757,7 @@ __metadata:
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
     "@databricks/databricks-vscode-types": "workspace:^"
-    "@databricks/sdk-experimental": ^0.17.0
+    "@databricks/sdk-experimental": ^0.18.0
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^11.2.2
     "@types/bcryptjs": ^2.4.6
