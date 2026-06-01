@@ -61,7 +61,7 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
 
     // For SPOG (unified host) connections the Go CLI SDK must know the
     // workspace_id so it can add the X-Databricks-Org-Id routing header.
-    const workspaceId = connectionManager.apiClient?.config.workspaceId;
+    const workspaceId = connectionManager.apiClient?.config?.workspaceId;
 
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
