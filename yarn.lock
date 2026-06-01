@@ -343,7 +343,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
-    "@databricks/sdk-experimental": ^0.17.0
+    "@databricks/sdk-experimental": ^0.18.0
     "@types/vscode": 1.86.0
     databricks: "workspace:^"
     eslint: ^8.55.0
