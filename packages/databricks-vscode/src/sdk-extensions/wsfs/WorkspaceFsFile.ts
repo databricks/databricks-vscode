@@ -22,4 +22,8 @@ export class WorkspaceFsNotebook extends WorkspaceFsFile {
     get language() {
         return this.details.language;
     }
+
+    override async generateUrl(host: URL): Promise<string> {
+        return `${host.origin}/editor/notebooks/${this.details.object_id}`;
+    }
 }
