@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiError} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
-import {mapColumn, mapModelVersion} from "./mappers";
+import {mapColumn} from "./mappers";
 import {UnityCatalogTreeNode} from "./types";
 import {drainAsyncIterable} from "./utils";
+import {loadSchemas, loadSchemaChildren, loadModelVersions} from "./loaders";
 
 type Client = NonNullable<ConnectionManager["workspaceClient"]>;
 
@@ -63,197 +64,80 @@ async function loadChildrenForNode(
     cachedChildren?: UnityCatalogTreeNode[]
 ): Promise<{title: string; items: ChildItem[]} | null> {
     if (node.kind === "catalog") {
-        if (cachedChildren) {
-            return {
-                title: "Schemas",
-                items: cachedChildren
-                    .filter(
-                        (
-                            n
-                        ): n is Extract<
-                            UnityCatalogTreeNode,
-                            {kind: "schema"}
-                        > => n.kind === "schema"
-                    )
-                    .map((n) => ({
-                        label: n.name,
-                        owner: n.owner,
-                        createdAt: n.createdAt,
-                    }))
-                    .sort((a, b) => a.label.localeCompare(b.label)),
-            };
-        }
-        const rows = await drainAsyncIterable(
-            client.schemas.list({catalog_name: node.name})
-        );
+        const children =
+            cachedChildren ?? (await loadSchemas(client, node.name, undefined));
         return {
             title: "Schemas",
-            items: rows
-                .filter((s) => s.name)
-                .map((s) => ({
-                    label: s.name!,
-                    owner: s.owner,
-                    createdAt: s.created_at,
+            items: children
+                .filter(
+                    (n): n is Extract<UnityCatalogTreeNode, {kind: "schema"}> =>
+                        n.kind === "schema"
+                )
+                .map((n) => ({
+                    label: n.name,
+                    owner: n.owner,
+                    createdAt: n.createdAt,
                 }))
                 .sort((a, b) => a.label.localeCompare(b.label)),
         };
     }
     if (node.kind === "schema") {
-        if (cachedChildren) {
-            type SchemaChild = Extract<
-                UnityCatalogTreeNode,
-                {kind: "table" | "volume" | "function" | "registeredModel"}
-            >;
-            const subLabelByKind: Partial<Record<SchemaChild["kind"], string>> =
-                {
-                    volume: "VOLUME",
-                    function: "FUNCTION",
-                    registeredModel: "MODEL",
-                };
-            const items: ChildItem[] = cachedChildren
-                .filter(
-                    (n): n is SchemaChild =>
-                        n.kind === "table" ||
-                        n.kind === "volume" ||
-                        n.kind === "function" ||
-                        n.kind === "registeredModel"
-                )
-                .map(
-                    (n): ChildItem => ({
-                        label: n.name,
-                        subLabel:
-                            n.kind === "table"
-                                ? n.tableType ?? "TABLE"
-                                : subLabelByKind[n.kind],
-                        owner: n.owner,
-                        createdAt: n.createdAt,
-                    })
-                )
-                .sort((a, b) => a.label.localeCompare(b.label));
-            return {title: "Contents", items};
-        }
-        const [tables, volumes, functions, models] = await Promise.allSettled([
-            drainAsyncIterable(
-                client.tables.list({
-                    catalog_name: node.catalogName,
-                    schema_name: node.name,
+        type SchemaChild = Extract<
+            UnityCatalogTreeNode,
+            {kind: "table" | "volume" | "function" | "registeredModel"}
+        >;
+        const subLabelByKind: Partial<Record<SchemaChild["kind"], string>> = {
+            volume: "VOLUME",
+            function: "FUNCTION",
+            registeredModel: "MODEL",
+        };
+        const children =
+            cachedChildren ??
+            (await loadSchemaChildren(client, node.catalogName, node.name));
+        const items: ChildItem[] = children
+            .filter(
+                (n): n is SchemaChild =>
+                    n.kind === "table" ||
+                    n.kind === "volume" ||
+                    n.kind === "function" ||
+                    n.kind === "registeredModel"
+            )
+            .map(
+                (n): ChildItem => ({
+                    label: n.name,
+                    subLabel:
+                        n.kind === "table"
+                            ? n.tableType ?? "TABLE"
+                            : subLabelByKind[n.kind],
+                    owner: n.owner,
+                    createdAt: n.createdAt,
                 })
-            ),
-            drainAsyncIterable(
-                client.volumes.list({
-                    catalog_name: node.catalogName,
-                    schema_name: node.name,
-                })
-            ),
-            drainAsyncIterable(
-                client.functions.list({
-                    catalog_name: node.catalogName,
-                    schema_name: node.name,
-                })
-            ),
-            drainAsyncIterable(
-                client.registeredModels.list({
-                    catalog_name: node.catalogName,
-                    schema_name: node.name,
-                })
-            ),
-        ]);
-        const items: ChildItem[] = [
-            ...(tables.status === "fulfilled"
-                ? tables.value
-                      .filter((t) => t.name)
-                      .map((t) => ({
-                          label: t.name!,
-                          subLabel: t.table_type ?? "TABLE",
-                          owner: t.owner,
-                          createdAt: t.created_at,
-                      }))
-                : []),
-            ...(volumes.status === "fulfilled"
-                ? volumes.value
-                      .filter((v) => v.name)
-                      .map((v) => ({
-                          label: v.name!,
-                          subLabel: "VOLUME",
-                          owner: v.owner,
-                          createdAt: v.created_at,
-                      }))
-                : []),
-            ...(functions.status === "fulfilled"
-                ? functions.value
-                      .filter((f) => f.name)
-                      .map((f) => ({
-                          label: f.name!,
-                          subLabel: "FUNCTION",
-                          owner: f.owner,
-                          createdAt: f.created_at,
-                      }))
-                : []),
-            ...(models.status === "fulfilled"
-                ? models.value
-                      .filter((m) => m.name)
-                      .map((m) => ({
-                          label: m.name!,
-                          subLabel: "MODEL",
-                          owner: m.owner,
-                          createdAt: m.created_at,
-                      }))
-                : []),
-        ].sort((a, b) => a.label.localeCompare(b.label));
+            )
+            .sort((a, b) => a.label.localeCompare(b.label));
         return {title: "Contents", items};
     }
     if (node.kind === "registeredModel") {
-        if (cachedChildren) {
-            return {
-                title: "Versions",
-                items: cachedChildren
-                    .filter(
-                        (
-                            n
-                        ): n is Extract<
-                            UnityCatalogTreeNode,
-                            {kind: "modelVersion"}
-                        > => n.kind === "modelVersion"
-                    )
-                    .map((n) => ({
-                        label: `v${n.version}`,
-                        status: n.status,
-                        createdBy: n.createdBy,
-                        createdAt: n.createdAt,
-                        nodeData: n,
-                    }))
-                    .sort(
-                        (a, b) =>
-                            parseInt(b.label.slice(1)) -
-                            parseInt(a.label.slice(1))
-                    ),
-            };
-        }
-        const rows = await drainAsyncIterable(
-            client.modelVersions.list({full_name: node.fullName})
-        );
+        const children =
+            cachedChildren ?? (await loadModelVersions(client, node));
         return {
             title: "Versions",
-            items: rows
-                .filter((v) => v.version !== undefined)
-                .map((v) => ({
-                    label: `v${v.version}`,
-                    status: v.status,
-                    createdBy: v.created_by,
-                    createdAt: v.created_at,
-                    nodeData: mapModelVersion(
-                        v,
-                        node.catalogName,
-                        node.schemaName,
-                        node.name,
-                        node.fullName
-                    ),
+            items: children
+                .filter(
+                    (
+                        n
+                    ): n is Extract<
+                        UnityCatalogTreeNode,
+                        {kind: "modelVersion"}
+                    > => n.kind === "modelVersion"
+                )
+                .map((n) => ({
+                    label: `v${n.version}`,
+                    status: n.status,
+                    createdBy: n.createdBy,
+                    createdAt: n.createdAt,
+                    nodeData: n,
                 }))
-                .sort((a, b) => {
-                    const va = parseInt(a.label.slice(1));
-                    const vb = parseInt(b.label.slice(1));
-                    return vb - va;
-                }),
+                .sort((a, b) => b.nodeData!.version - a.nodeData!.version),
         };
     }
     return null;
