@@ -138,8 +138,7 @@ export class WorkspaceFsCommands implements Disposable {
     }
 
     async deleteItem(element: WorkspaceFsEntity) {
-        const isDir =
-            element.type === "DIRECTORY" || element.type === "REPO";
+        const isDir = element.type === "DIRECTORY" || element.type === "REPO";
         const label = element.basename;
 
         const answer = await window.showWarningMessage(
@@ -199,6 +198,21 @@ export class WorkspaceFsCommands implements Disposable {
         const srcUri = picked[0];
         const fileName = srcUri.path.split("/").pop() ?? "file";
         const contentBytes = await workspace.fs.readFile(srcUri);
+
+        const existing = await WorkspaceFsEntity.fromPath(
+            client,
+            `${root.path}/${fileName}`
+        );
+        if (existing) {
+            const answer = await window.showWarningMessage(
+                `"${fileName}" already exists in the workspace. Overwrite it?`,
+                {modal: true},
+                "Overwrite"
+            );
+            if (answer !== "Overwrite") {
+                return;
+            }
+        }
 
         try {
             await root.createFile(fileName, contentBytes, true);

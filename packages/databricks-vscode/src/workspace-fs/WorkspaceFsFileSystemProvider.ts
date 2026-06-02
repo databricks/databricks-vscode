@@ -38,13 +38,12 @@ export class WorkspaceFsFileSystemProvider
         if (!entity) {
             throw FileSystemError.FileNotFound(uri);
         }
-        const isDir =
-            entity.type === "DIRECTORY" || entity.type === "REPO";
+        const isDir = entity.type === "DIRECTORY" || entity.type === "REPO";
         return {
             type: isDir ? FileType.Directory : FileType.File,
             ctime: entity.details.created_at ?? 0,
             mtime: entity.details.modified_at ?? 0,
-            size: 0,
+            size: entity.details.size ?? 0,
         };
     }
 
@@ -89,7 +88,11 @@ export class WorkspaceFsFileSystemProvider
             throw FileSystemError.FileNotFound(uri);
         }
 
-        await parentEntity.createFile(posix.basename(uri.path), content, true);
+        await parentEntity.createFile(
+            posix.basename(uri.path),
+            content,
+            options.overwrite
+        );
         this.notifyChanged(uri);
     }
 
@@ -101,8 +104,7 @@ export class WorkspaceFsFileSystemProvider
         }
         const children = await entity.children;
         return children.map((child) => {
-            const isDir =
-                child.type === "DIRECTORY" || child.type === "REPO";
+            const isDir = child.type === "DIRECTORY" || child.type === "REPO";
             return [child.basename, isDir ? FileType.Directory : FileType.File];
         });
     }
