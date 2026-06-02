@@ -160,12 +160,9 @@ export type PinnableNodeKind =
     | "registeredModel"
     | "modelVersion";
 
-export type StoredFavoriteNode = {
-    [K in PinnableNodeKind]: Omit<
-        Extract<UnityCatalogTreeNode, {kind: K}>,
-        "columns"
-    >;
-}[PinnableNodeKind];
+export type StoredFavoriteRef =
+    | {kind: Exclude<PinnableNodeKind, "modelVersion">; fullName: string}
+    | {kind: "modelVersion"; fullName: string; version: number};
 
 export interface UnityCatalogTreeItem extends TreeItem {
     url?: string;

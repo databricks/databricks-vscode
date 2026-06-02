@@ -4,13 +4,14 @@ import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {buildTreeItem} from "./nodeRenderer";
 import {
     PinnableNodeKind,
-    StoredFavoriteNode,
+    StoredFavoriteRef,
     UnityCatalogTreeItem,
     UnityCatalogTreeNode,
 } from "./types";
 import {StateStorage} from "../../vscode-objs/StateStorage";
 import {
     loadCatalogs,
+    loadFavoriteNode,
     loadSchemas,
     loadSchemaChildren,
     loadModelVersions,
@@ -19,7 +20,7 @@ import {
 export type {
     ColumnData,
     PinnableNodeKind,
-    StoredFavoriteNode,
+    StoredFavoriteRef,
     UnityCatalogTreeItem,
     UnityCatalogTreeNode,
 } from "./types";
@@ -52,7 +53,7 @@ export class UnityCatalogTreeDataProvider
         );
     }
 
-    private getFavorites(): StoredFavoriteNode[] {
+    private getFavorites(): StoredFavoriteRef[] {
         return this.stateStorage.get("databricks.unityCatalog.favorites") ?? [];
     }
 
@@ -130,8 +131,7 @@ export class UnityCatalogTreeDataProvider
             "fullName" in element &&
             favorites.some(
                 (f) =>
-                    favoriteKey(f) ===
-                    favoriteKey(element as StoredFavoriteNode)
+                    favoriteKey(f) === favoriteKey(element as StoredFavoriteRef)
             );
         return buildTreeItem(
             element,
@@ -148,211 +148,245 @@ export class UnityCatalogTreeDataProvider
         if (!client) {
             return undefined;
         }
-
         const currentUser = this.connectionManager.databricksWorkspace?.user;
 
         if (!element) {
-            const favorites = this.getFavorites();
-            if (!this.catalogsCache) {
-                const catalogs = await loadCatalogs(client, currentUser);
-                if (!this.hasErrorNode(catalogs)) {
-                    this.catalogsCache = catalogs;
-                }
-                return favorites.length > 0
-                    ? [this.favoritesRootNode, ...catalogs]
-                    : [...catalogs];
-            }
-            return favorites.length > 0
-                ? [this.favoritesRootNode, ...this.catalogsCache]
-                : [...this.catalogsCache];
+            return this.getRootChildren(client, currentUser);
         }
-
         if (element.kind === "favorites") {
-            const favorites = this.getFavorites();
-            return favorites.length > 0
-                ? (favorites as UnityCatalogTreeNode[])
-                : [{kind: "empty", message: "No favorites yet"}];
+            return this.getFavoriteChildren(client, currentUser);
         }
-
         if (element.kind === "error") {
             return undefined;
         }
-
         if (element.kind === "catalog") {
             return this.getChildrenCached(element.fullName, () =>
                 loadSchemas(client, element.name, currentUser)
             );
         }
-
         if (element.kind === "schema") {
-            const groupedCached = this.childrenCache.get(
-                `${element.fullName}/.grouped`
+            return this.getSchemaChildren(client, element);
+        }
+        if (element.kind === "group") {
+            return this.childrenCache.get(
+                `${element.schemaFullName}/.${element.groupType}`
             );
-            if (groupedCached) {
-                return groupedCached;
-            }
-
-            const flat = await loadSchemaChildren(
-                client,
-                element.catalogName,
-                element.name
+        }
+        if (element.kind === "registeredModel") {
+            return this.getChildrenCached(element.fullName, () =>
+                loadModelVersions(client, element)
             );
+        }
+        if (element.kind === "table") {
+            return this.getTableChildren(client, element);
+        }
+        return undefined;
+    }
 
-            // Partition by type
-            const tables = flat.filter((n) => n.kind === "table");
-            const volumes = flat.filter((n) => n.kind === "volume");
-            const functions = flat.filter((n) => n.kind === "function");
-            const models = flat.filter((n) => n.kind === "registeredModel");
-            const errors = flat.filter((n) => n.kind === "error");
-
-            const hasErrors = errors.length > 0;
-
-            if (flat.length === 1 && flat[0].kind === "empty") {
-                if (!hasErrors) {
-                    this.childrenCache.set(
-                        `${element.fullName}/.grouped`,
-                        flat
-                    );
-                }
-                return flat;
+    private async getRootChildren(
+        client: NonNullable<ConnectionManager["workspaceClient"]>,
+        currentUser:
+            | NonNullable<ConnectionManager["databricksWorkspace"]>["user"]
+            | undefined
+    ): Promise<UnityCatalogTreeNode[]> {
+        const favorites = this.getFavorites();
+        if (!this.catalogsCache) {
+            const catalogs = await loadCatalogs(client, currentUser);
+            if (!this.hasErrorNode(catalogs)) {
+                this.catalogsCache = catalogs;
             }
+            return favorites.length > 0
+                ? [this.favoritesRootNode, ...catalogs]
+                : [...catalogs];
+        }
+        return favorites.length > 0
+            ? [this.favoritesRootNode, ...this.catalogsCache]
+            : [...this.catalogsCache];
+    }
 
-            const groupTypes = [
-                {key: "tables", items: tables},
-                {key: "volumes", items: volumes},
-                {key: "functions", items: functions},
-                {key: "models", items: models},
-            ] as const;
+    private async getFavoriteChildren(
+        client: NonNullable<ConnectionManager["workspaceClient"]>,
+        currentUser:
+            | NonNullable<ConnectionManager["databricksWorkspace"]>["user"]
+            | undefined
+    ): Promise<UnityCatalogTreeNode[]> {
+        const refs = this.getFavorites();
+        if (refs.length === 0) {
+            return [{kind: "empty", message: "No favorites yet"}];
+        }
 
+        const results = await Promise.all(
+            refs.map((ref) => loadFavoriteNode(client, ref, currentUser))
+        );
+
+        const valid = results.filter(
+            (n) => n !== null
+        ) as UnityCatalogTreeNode[];
+        const staleKeys = new Set(
+            refs.filter((_, i) => results[i] === null).map(favoriteKey)
+        );
+        if (staleKeys.size > 0) {
+            const cleaned = refs.filter((r) => !staleKeys.has(favoriteKey(r)));
+            await this.stateStorage.set(
+                "databricks.unityCatalog.favorites",
+                cleaned
+            );
+        }
+
+        return valid.length > 0
+            ? valid
+            : [{kind: "empty", message: "No favorites yet"}];
+    }
+
+    private async getSchemaChildren(
+        client: NonNullable<ConnectionManager["workspaceClient"]>,
+        element: Extract<UnityCatalogTreeNode, {kind: "schema"}>
+    ): Promise<UnityCatalogTreeNode[]> {
+        const groupedCached = this.childrenCache.get(
+            `${element.fullName}/.grouped`
+        );
+        if (groupedCached) {
+            return groupedCached;
+        }
+
+        const flat = await loadSchemaChildren(
+            client,
+            element.catalogName,
+            element.name
+        );
+
+        // Partition by type
+        const tables = flat.filter((n) => n.kind === "table");
+        const volumes = flat.filter((n) => n.kind === "volume");
+        const functions = flat.filter((n) => n.kind === "function");
+        const models = flat.filter((n) => n.kind === "registeredModel");
+        const errors = flat.filter((n) => n.kind === "error");
+
+        const hasErrors = errors.length > 0;
+
+        if (flat.length === 1 && flat[0].kind === "empty") {
             if (!hasErrors) {
-                // Preserve flat list for getLoadedChildren() (used by detail panel)
-                this.childrenCache.set(element.fullName, flat);
-
-                for (const {key, items} of groupTypes) {
-                    this.childrenCache.set(
-                        `${element.fullName}/.${key}`,
-                        items
-                    );
-                }
+                this.childrenCache.set(`${element.fullName}/.grouped`, flat);
             }
+            return flat;
+        }
 
-            const typedArrays = [tables, volumes, functions, models];
-            const nonEmptyCount = typedArrays.filter(
-                (arr) => arr.length > 0
-            ).length;
+        const groupTypes = [
+            {key: "tables", items: tables},
+            {key: "volumes", items: volumes},
+            {key: "functions", items: functions},
+            {key: "models", items: models},
+        ] as const;
 
-            // Only group when there are multiple types of children
-            if (nonEmptyCount <= 1) {
-                const result = [
-                    ...tables,
-                    ...volumes,
-                    ...functions,
-                    ...models,
-                    ...errors,
-                ];
-                if (!hasErrors) {
-                    this.childrenCache.set(
-                        `${element.fullName}/.grouped`,
-                        result
-                    );
-                }
-                return result;
-            }
+        if (!hasErrors) {
+            // Preserve flat list for getLoadedChildren() (used by detail panel)
+            this.childrenCache.set(element.fullName, flat);
 
-            const base = {
-                kind: "group" as const,
-                catalogName: element.catalogName,
-                schemaName: element.name,
-                schemaFullName: element.fullName,
-            };
-
-            const groups: UnityCatalogTreeNode[] = [];
             for (const {key, items} of groupTypes) {
-                if (items.length > 0) {
-                    groups.push({...base, groupType: key, count: items.length});
-                }
+                this.childrenCache.set(`${element.fullName}/.${key}`, items);
             }
+        }
 
-            const result = [...groups, ...errors];
+        const typedArrays = [tables, volumes, functions, models];
+        const nonEmptyCount = typedArrays.filter(
+            (arr) => arr.length > 0
+        ).length;
+
+        // Only group when there are multiple types of children
+        if (nonEmptyCount <= 1) {
+            const result = [
+                ...tables,
+                ...volumes,
+                ...functions,
+                ...models,
+                ...errors,
+            ];
             if (!hasErrors) {
                 this.childrenCache.set(`${element.fullName}/.grouped`, result);
             }
             return result;
         }
 
-        if (element.kind === "group") {
-            return this.childrenCache.get(
-                `${element.schemaFullName}/.${element.groupType}`
-            );
+        const base = {
+            kind: "group" as const,
+            catalogName: element.catalogName,
+            schemaName: element.name,
+            schemaFullName: element.fullName,
+        };
+
+        const groups: UnityCatalogTreeNode[] = [];
+        for (const {key, items} of groupTypes) {
+            if (items.length > 0) {
+                groups.push({...base, groupType: key, count: items.length});
+            }
         }
 
-        if (element.kind === "registeredModel") {
-            return this.getChildrenCached(element.fullName, () =>
-                loadModelVersions(client, element)
-            );
+        const result = [...groups, ...errors];
+        if (!hasErrors) {
+            this.childrenCache.set(`${element.fullName}/.grouped`, result);
         }
+        return result;
+    }
 
-        if (element.kind === "table") {
-            let columns = element.columns;
-            if (!columns?.length) {
-                try {
-                    const t = await client.tables.get({
-                        full_name: element.fullName,
-                    });
-                    columns = (t.columns ?? []).map((col) => ({
-                        name: col.name!,
-                        typeName: col.type_name,
-                        typeText: col.type_text,
-                        comment: col.comment,
-                        nullable: col.nullable,
-                        position: col.position,
-                    }));
-                } catch {
-                    return undefined;
-                }
-            }
-            if (!columns.length) {
-                return undefined;
-            }
-            return [...columns]
-                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-                .map((col) => ({
-                    kind: "column" as const,
-                    tableFullName: element.fullName,
-                    name: col.name,
-                    typeName: col.typeName,
-                    typeText: col.typeText,
+    private async getTableChildren(
+        client: NonNullable<ConnectionManager["workspaceClient"]>,
+        element: Extract<UnityCatalogTreeNode, {kind: "table"}>
+    ): Promise<UnityCatalogTreeNode[] | undefined> {
+        let columns = element.columns;
+        if (!columns?.length) {
+            try {
+                const t = await client.tables.get({
+                    full_name: element.fullName,
+                });
+                columns = (t.columns ?? []).map((col) => ({
+                    name: col.name!,
+                    typeName: col.type_name,
+                    typeText: col.type_text,
                     comment: col.comment,
                     nullable: col.nullable,
                     position: col.position,
                 }));
+            } catch {
+                return undefined;
+            }
         }
-
-        return undefined;
+        if (!columns.length) {
+            return undefined;
+        }
+        return [...columns]
+            .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+            .map((col) => ({
+                kind: "column" as const,
+                tableFullName: element.fullName,
+                name: col.name,
+                typeName: col.typeName,
+                typeText: col.typeText,
+                comment: col.comment,
+                nullable: col.nullable,
+                position: col.position,
+            }));
     }
 
     async pin(
         node: Extract<UnityCatalogTreeNode, {kind: PinnableNodeKind}>
     ): Promise<void> {
         const favorites = this.getFavorites();
-        const nodeAsStored = node as StoredFavoriteNode;
-        if (
-            favorites.some((f) => favoriteKey(f) === favoriteKey(nodeAsStored))
-        ) {
+        const ref: StoredFavoriteRef =
+            node.kind === "modelVersion"
+                ? {
+                      kind: "modelVersion",
+                      fullName: node.fullName,
+                      version: node.version,
+                  }
+                : {kind: node.kind, fullName: node.fullName};
+        if (favorites.some((f) => favoriteKey(f) === favoriteKey(ref))) {
             return;
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const stored: StoredFavoriteNode = {...node} as StoredFavoriteNode;
-        if ("columns" in stored) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            delete (stored as any).columns;
         }
 
         const wasEmpty = favorites.length === 0;
         await this.stateStorage.set("databricks.unityCatalog.favorites", [
             ...favorites,
-            stored,
+            ref,
         ]);
 
         this.fireFavoritesChanged(wasEmpty, node);
@@ -362,9 +396,16 @@ export class UnityCatalogTreeDataProvider
         node: Extract<UnityCatalogTreeNode, {kind: PinnableNodeKind}>
     ): Promise<void> {
         const favorites = this.getFavorites();
-        const nodeAsStored = node as StoredFavoriteNode;
+        const ref: StoredFavoriteRef =
+            node.kind === "modelVersion"
+                ? {
+                      kind: "modelVersion",
+                      fullName: node.fullName,
+                      version: node.version,
+                  }
+                : {kind: node.kind, fullName: node.fullName};
         const updated = favorites.filter(
-            (f) => favoriteKey(f) !== favoriteKey(nodeAsStored)
+            (f) => favoriteKey(f) !== favoriteKey(ref)
         );
         if (updated.length === favorites.length) {
             return;
@@ -411,7 +452,7 @@ export class UnityCatalogTreeDataProvider
     }
 }
 
-function favoriteKey(node: StoredFavoriteNode): string {
+function favoriteKey(node: StoredFavoriteRef): string {
     return node.kind === "modelVersion"
         ? `${node.fullName}@v${node.version}`
         : node.fullName;

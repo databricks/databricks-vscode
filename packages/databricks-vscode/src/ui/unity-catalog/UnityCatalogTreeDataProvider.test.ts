@@ -49,6 +49,7 @@ describe(__filename, () => {
         } as unknown as StateStorage;
 
         mockCatalogs = mock(CatalogsService);
+        when(mockCatalogs.get(anything())).thenReject(new Error("not found"));
         when(mockCatalogs.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {name: "c_b", full_name: "c_b"};
@@ -58,6 +59,7 @@ describe(__filename, () => {
         });
 
         mockSchemas = mock(SchemasService);
+        when(mockSchemas.get(anything())).thenReject(new Error("not found"));
         when(mockSchemas.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {name: "s_b", full_name: "cat.s_b"};
@@ -67,6 +69,7 @@ describe(__filename, () => {
         });
 
         mockTables = mock(TablesService);
+        when(mockTables.get(anything())).thenReject(new Error("not found"));
         when(mockTables.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {
@@ -96,6 +99,7 @@ describe(__filename, () => {
         });
 
         mockVolumes = mock(VolumesService);
+        when(mockVolumes.read(anything())).thenReject(new Error("not found"));
         when(mockVolumes.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {
@@ -108,6 +112,7 @@ describe(__filename, () => {
         });
 
         mockFunctions = mock(FunctionsService);
+        when(mockFunctions.get(anything())).thenReject(new Error("not found"));
         when(mockFunctions.list(anything())).thenCall(() => {
             async function* impl() {
                 yield {
@@ -120,6 +125,9 @@ describe(__filename, () => {
         });
 
         mockRegisteredModels = mock(RegisteredModelsService);
+        when(mockRegisteredModels.get(anything())).thenReject(
+            new Error("not found")
+        );
         when(mockRegisteredModels.list(anything())).thenCall(() => {
             async function* impl() {
                 /* empty */
@@ -128,6 +136,9 @@ describe(__filename, () => {
         });
 
         mockModelVersions = mock(ModelVersionsService);
+        when(mockModelVersions.get(anything())).thenReject(
+            new Error("not found")
+        );
         when(mockModelVersions.list(anything())).thenCall(() => {
             async function* impl() {
                 /* empty */
@@ -885,6 +896,177 @@ describe(__filename, () => {
         assert(tablesGroup, "expected tables group");
         const item = provider.getTreeItem(tablesGroup);
         assert.strictEqual(item.label, "Tables (1)");
+    });
+
+    it("favorites getChildren rehydrates nodes via fresh API call", async () => {
+        const storageMap = new Map<string, unknown>([
+            [
+                "databricks.unityCatalog.favorites",
+                [{kind: "schema", fullName: "cat.sch"}],
+            ],
+        ]);
+        const spyStorage = {
+            get: (key: string) => storageMap.get(key) ?? [],
+            set: async (key: string, val: unknown) => {
+                storageMap.set(key, val);
+            },
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
+
+        when(mockSchemas.get(anything())).thenResolve({
+            name: "sch",
+            full_name: "cat.sch",
+            comment: "fresh comment",
+            owner: "bob",
+        });
+
+        const p = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            spyStorage
+        );
+        disposables.push(p);
+
+        const favNode: UnityCatalogTreeNode = {kind: "favorites"};
+        const children = (await resolveProviderResult(
+            p.getChildren(favNode)
+        )) as UnityCatalogTreeNode[];
+
+        assert(children);
+        assert.strictEqual(children.length, 1);
+        assert.strictEqual(children[0].kind, "schema");
+        if (children[0].kind === "schema") {
+            assert.strictEqual(children[0].comment, "fresh comment");
+            assert.strictEqual(children[0].fullName, "cat.sch");
+        }
+    });
+
+    it("favorites getChildren auto-removes stale refs that return null", async () => {
+        const storageMap = new Map<string, unknown>([
+            [
+                "databricks.unityCatalog.favorites",
+                [
+                    {kind: "schema", fullName: "cat.deleted"},
+                    {kind: "schema", fullName: "cat.sch"},
+                ],
+            ],
+        ]);
+        const spyStorage = {
+            get: (key: string) => storageMap.get(key) ?? [],
+            set: async (key: string, val: unknown) => {
+                storageMap.set(key, val);
+            },
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
+
+        when(mockSchemas.get(anything())).thenCall((req: any) => {
+            if (req.full_name === "cat.deleted") {
+                return Promise.reject(new Error("Not found"));
+            }
+            return Promise.resolve({name: "sch", full_name: "cat.sch"});
+        });
+
+        const p = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            spyStorage
+        );
+        disposables.push(p);
+
+        const favNode: UnityCatalogTreeNode = {kind: "favorites"};
+        const children = (await resolveProviderResult(
+            p.getChildren(favNode)
+        )) as UnityCatalogTreeNode[];
+
+        // Only the valid ref should be returned
+        assert(children);
+        assert.strictEqual(children.length, 1);
+        assert.strictEqual(children[0].kind, "schema");
+
+        // Stale ref should be removed from storage
+        const saved = storageMap.get(
+            "databricks.unityCatalog.favorites"
+        ) as any[];
+        assert(!saved.some((r: any) => r.fullName === "cat.deleted"));
+        assert(saved.some((r: any) => r.fullName === "cat.sch"));
+    });
+
+    it("favorites getChildren returns empty node when all refs are stale", async () => {
+        const storageMap = new Map<string, unknown>([
+            [
+                "databricks.unityCatalog.favorites",
+                [{kind: "schema", fullName: "cat.gone"}],
+            ],
+        ]);
+        const spyStorage = {
+            get: (key: string) => storageMap.get(key) ?? [],
+            set: async (key: string, val: unknown) => {
+                storageMap.set(key, val);
+            },
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
+
+        // Default mock already rejects
+
+        const p = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            spyStorage
+        );
+        disposables.push(p);
+
+        const favNode: UnityCatalogTreeNode = {kind: "favorites"};
+        const children = (await resolveProviderResult(
+            p.getChildren(favNode)
+        )) as UnityCatalogTreeNode[];
+
+        assert(children);
+        assert.strictEqual(children.length, 1);
+        assert.strictEqual(children[0].kind, "empty");
+
+        const saved = storageMap.get(
+            "databricks.unityCatalog.favorites"
+        ) as any[];
+        assert.strictEqual(saved.length, 0);
+    });
+
+    it("pin stores only minimal ref (kind + fullName)", async () => {
+        const storageMap = new Map<string, unknown>([
+            ["databricks.unityCatalog.favorites", []],
+        ]);
+        const spyStorage = {
+            get: (key: string) => storageMap.get(key) ?? [],
+            set: async (key: string, val: unknown) => {
+                storageMap.set(key, val);
+            },
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
+
+        const p = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            spyStorage
+        );
+        disposables.push(p);
+
+        const table: UnityCatalogTreeNode = {
+            kind: "table",
+            catalogName: "cat",
+            schemaName: "sch",
+            name: "t1",
+            fullName: "cat.sch.t1",
+            comment: "should not be stored",
+            owner: "alice",
+            columns: [{name: "id", typeText: "bigint"}],
+        };
+        await p.pin(table);
+
+        const saved = storageMap.get(
+            "databricks.unityCatalog.favorites"
+        ) as any[];
+        assert.strictEqual(saved.length, 1);
+        assert.strictEqual(saved[0].kind, "table");
+        assert.strictEqual(saved[0].fullName, "cat.sch.t1");
+        // Should NOT store mutable fields
+        assert.strictEqual(saved[0].comment, undefined);
+        assert.strictEqual(saved[0].owner, undefined);
+        assert.strictEqual(saved[0].columns, undefined);
     });
 
     it("owned schema sorts before unowned", async () => {

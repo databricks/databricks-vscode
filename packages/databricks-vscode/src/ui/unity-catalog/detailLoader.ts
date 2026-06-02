@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {ApiError} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
+import {mapColumn, mapModelVersion} from "./mappers";
 import {UnityCatalogTreeNode} from "./types";
 import {drainAsyncIterable} from "./utils";
 
@@ -240,19 +241,13 @@ async function loadChildrenForNode(
                     status: v.status,
                     createdBy: v.created_by,
                     createdAt: v.created_at,
-                    nodeData: {
-                        kind: "modelVersion" as const,
-                        catalogName: node.catalogName,
-                        schemaName: node.schemaName,
-                        modelName: node.name,
-                        fullName: node.fullName,
-                        version: v.version!,
-                        comment: v.comment,
-                        status: v.status,
-                        storageLocation: v.storage_location,
-                        createdBy: v.created_by,
-                        createdAt: v.created_at,
-                    },
+                    nodeData: mapModelVersion(
+                        v,
+                        node.catalogName,
+                        node.schemaName,
+                        node.name,
+                        node.fullName
+                    ),
                 }))
                 .sort((a, b) => {
                     const va = parseInt(a.label.slice(1));
@@ -365,14 +360,7 @@ export async function loadNodeEnrichments(
         ) {
             enrichments.columns = t.columns
                 .filter((c) => c.name)
-                .map((c) => ({
-                    name: c.name!,
-                    typeName: c.type_name ? String(c.type_name) : undefined,
-                    typeText: c.type_text,
-                    comment: c.comment,
-                    nullable: c.nullable,
-                    position: c.position,
-                }))
+                .map(mapColumn)
                 .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         }
         if (t.table_constraints && t.table_constraints.length > 0) {

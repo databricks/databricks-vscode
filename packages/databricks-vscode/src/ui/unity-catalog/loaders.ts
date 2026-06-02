@@ -2,8 +2,17 @@
 import {ApiError, logging, type iam} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {Loggers} from "../../logger";
-import {UnityCatalogTreeNode} from "./types";
-import {drainAsyncIterable, isOwnedByUser} from "./utils";
+import {
+    mapCatalog,
+    mapSchema,
+    mapTable,
+    mapVolume,
+    mapFunction,
+    mapRegisteredModel,
+    mapModelVersion,
+} from "./mappers";
+import {StoredFavoriteRef, UnityCatalogTreeNode} from "./types";
+import {drainAsyncIterable} from "./utils";
 
 const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
 
@@ -47,24 +56,7 @@ export async function loadCatalogs(
         const rows = await drainAsyncIterable(client.catalogs.list({}));
         const result = rows
             .filter((c) => c.name)
-            .map((c) => ({
-                kind: "catalog" as const,
-                name: c.name!,
-                fullName: c.full_name ?? c.name!,
-                comment: c.comment,
-                owner: c.owner,
-                owned: isOwnedByUser(c.owner, currentUser),
-                catalogType: c.catalog_type,
-                isolationMode: c.isolation_mode,
-                storageLocation: c.storage_location,
-                createdAt: c.created_at,
-                createdBy: c.created_by,
-                updatedAt: c.updated_at,
-                updatedBy: c.updated_by,
-                connectionName: c.connection_name,
-                providerName: c.provider_name,
-                shareName: c.share_name,
-            }))
+            .map((c) => mapCatalog(c, currentUser))
             .sort(compareOwnedFirst);
         return result.length > 0 ? result : emptyNode("No catalogs found");
     } catch (e) {
@@ -83,20 +75,7 @@ export async function loadSchemas(
         );
         const result = rows
             .filter((s) => s.name)
-            .map((s) => ({
-                kind: "schema" as const,
-                catalogName,
-                name: s.name!,
-                fullName: s.full_name ?? `${catalogName}.${s.name}`,
-                comment: s.comment,
-                owner: s.owner,
-                owned: isOwnedByUser(s.owner, currentUser),
-                storageLocation: s.storage_location,
-                createdAt: s.created_at,
-                createdBy: s.created_by,
-                updatedAt: s.updated_at,
-                updatedBy: s.updated_by,
-            }))
+            .map((s) => mapSchema(s, catalogName, currentUser))
             .sort(compareOwnedFirst);
         return result.length > 0 ? result : emptyNode("No schemas");
     } catch (e) {
@@ -141,116 +120,28 @@ export async function loadSchemaChildren(
         tablesResult.status === "fulfilled"
             ? tablesResult.value
                   .filter((t) => t.name)
-                  .map((t) => ({
-                      kind: "table" as const,
-                      catalogName,
-                      schemaName,
-                      name: t.name!,
-                      fullName:
-                          t.full_name ??
-                          `${catalogName}.${schemaName}.${t.name}`,
-                      tableType: t.table_type,
-                      comment: t.comment,
-                      dataSourceFormat: t.data_source_format,
-                      storageLocation: t.storage_location,
-                      viewDefinition: t.view_definition,
-                      owner: t.owner,
-                      createdBy: t.created_by,
-                      createdAt: t.created_at,
-                      updatedAt: t.updated_at,
-                      updatedBy: t.updated_by,
-                      columns: (t.columns ?? []).map((col) => ({
-                          name: col.name!,
-                          typeName: col.type_name,
-                          typeText: col.type_text,
-                          comment: col.comment,
-                          nullable: col.nullable,
-                          position: col.position,
-                      })),
-                      customProperties: t.properties,
-                  }))
+                  .map((t) => mapTable(t, catalogName, schemaName))
             : [];
 
     const volumeNodes: UnityCatalogTreeNode[] =
         volumesResult.status === "fulfilled"
             ? volumesResult.value
                   .filter((v) => v.name)
-                  .map((v) => ({
-                      kind: "volume" as const,
-                      catalogName,
-                      schemaName,
-                      name: v.name!,
-                      fullName:
-                          v.full_name ??
-                          `${catalogName}.${schemaName}.${v.name}`,
-                      volumeType: v.volume_type,
-                      storageLocation: v.storage_location,
-                      comment: v.comment,
-                      owner: v.owner,
-                      createdAt: v.created_at,
-                      createdBy: v.created_by,
-                      updatedAt: v.updated_at,
-                      updatedBy: v.updated_by,
-                  }))
+                  .map((v) => mapVolume(v, catalogName, schemaName))
             : [];
 
     const functionNodes: UnityCatalogTreeNode[] =
         functionsResult.status === "fulfilled"
             ? functionsResult.value
                   .filter((f) => f.name)
-                  .map((f) => ({
-                      kind: "function" as const,
-                      catalogName,
-                      schemaName,
-                      name: f.name!,
-                      fullName: `${catalogName}.${schemaName}.${f.name}`,
-                      comment: f.comment,
-                      owner: f.owner,
-                      routineBody: f.routine_body,
-                      routineDefinition: f.routine_definition,
-                      fullDataType: f.full_data_type,
-                      externalLanguage: f.external_language,
-                      isDeterministic: f.is_deterministic,
-                      inputParams: (f.input_params?.parameters ?? []).map(
-                          (p) => ({
-                              name: p.name,
-                              typeName: p.type_name
-                                  ? String(p.type_name)
-                                  : undefined,
-                              typeText: p.type_text,
-                              comment: p.comment,
-                              parameterDefault: p.parameter_default,
-                          })
-                      ),
-                      createdAt: f.created_at,
-                      createdBy: f.created_by,
-                      updatedAt: f.updated_at,
-                      updatedBy: f.updated_by,
-                  }))
+                  .map((f) => mapFunction(f, catalogName, schemaName))
             : [];
 
     const modelNodes: UnityCatalogTreeNode[] =
         modelsResult.status === "fulfilled"
             ? modelsResult.value
                   .filter((m) => m.name)
-                  .map((m) => ({
-                      kind: "registeredModel" as const,
-                      catalogName,
-                      schemaName,
-                      name: m.name!,
-                      fullName:
-                          m.full_name ??
-                          `${catalogName}.${schemaName}.${m.name}`,
-                      comment: m.comment,
-                      owner: m.owner,
-                      storageLocation: m.storage_location,
-                      aliases: m.aliases?.map((a) => ({
-                          aliasName: a.alias_name,
-                          versionNum: a.version_num,
-                      })),
-                      createdAt: m.created_at,
-                      updatedAt: m.updated_at,
-                  }))
+                  .map((m) => mapRegisteredModel(m, catalogName, schemaName))
             : [];
 
     const errNodes: UnityCatalogTreeNode[] = (
@@ -291,6 +182,85 @@ export async function loadSchemaChildren(
     ];
 }
 
+export async function loadFavoriteNode(
+    client: Client,
+    ref: StoredFavoriteRef,
+    currentUser: iam.User | undefined
+): Promise<UnityCatalogTreeNode | null> {
+    try {
+        switch (ref.kind) {
+            case "catalog": {
+                const c = await client.catalogs.get({name: ref.fullName});
+                if (!c.name) {
+                    return null;
+                }
+                return mapCatalog(c, currentUser);
+            }
+            case "schema": {
+                const s = await client.schemas.get({full_name: ref.fullName});
+                if (!s.name) {
+                    return null;
+                }
+                const catalogName = ref.fullName.split(".")[0];
+                return mapSchema(s, catalogName, currentUser);
+            }
+            case "table": {
+                const t = await client.tables.get({full_name: ref.fullName});
+                if (!t.name) {
+                    return null;
+                }
+                const [tCatalog, tSchema] = ref.fullName.split(".");
+                return mapTable(t, tCatalog, tSchema);
+            }
+            case "volume": {
+                const v = await client.volumes.read({name: ref.fullName});
+                if (!v.name) {
+                    return null;
+                }
+                const [vCatalog, vSchema] = ref.fullName.split(".");
+                return mapVolume(v, vCatalog, vSchema);
+            }
+            case "function": {
+                const f = await client.functions.get({name: ref.fullName});
+                if (!f.name) {
+                    return null;
+                }
+                const [fCatalog, fSchema] = ref.fullName.split(".");
+                return mapFunction(f, fCatalog, fSchema);
+            }
+            case "registeredModel": {
+                const m = await client.registeredModels.get({
+                    full_name: ref.fullName,
+                });
+                if (!m.name) {
+                    return null;
+                }
+                const [mCatalog, mSchema] = ref.fullName.split(".");
+                return mapRegisteredModel(m, mCatalog, mSchema);
+            }
+            case "modelVersion": {
+                const mv = await client.modelVersions.get({
+                    full_name: ref.fullName,
+                    version: ref.version,
+                });
+                if (mv.version === undefined) {
+                    return null;
+                }
+                const [mvCatalog, mvSchema, mvModel] = ref.fullName.split(".");
+                return mapModelVersion(
+                    mv,
+                    mvCatalog,
+                    mvSchema,
+                    mvModel,
+                    ref.fullName
+                );
+            }
+        }
+    } catch {
+        return null;
+    }
+}
+
 export async function loadModelVersions(
     client: Client,
     model: Extract<UnityCatalogTreeNode, {kind: "registeredModel"}>
@@ -301,19 +271,15 @@ export async function loadModelVersions(
         );
         const nodes = rows
             .filter((v) => v.version !== undefined)
-            .map((v) => ({
-                kind: "modelVersion" as const,
-                catalogName: model.catalogName,
-                schemaName: model.schemaName,
-                modelName: model.name,
-                fullName: model.fullName,
-                version: v.version!,
-                comment: v.comment,
-                status: v.status,
-                storageLocation: v.storage_location,
-                createdAt: v.created_at,
-                createdBy: v.created_by,
-            }))
+            .map((v) =>
+                mapModelVersion(
+                    v,
+                    model.catalogName,
+                    model.schemaName,
+                    model.name,
+                    model.fullName
+                )
+            )
             .sort((a, b) => b.version - a.version);
         return nodes.length > 0 ? nodes : emptyNode("No versions");
     } catch (e) {
