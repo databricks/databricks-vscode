@@ -394,7 +394,7 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        workspace.registerFileSystemProvider("wsfs", workspaceFsFsp, {
+        workspace.registerFileSystemProvider(WorkspaceFsFileSystemProvider.scheme, workspaceFsFsp, {
             isCaseSensitive: true,
         }),
         workspaceFsFsp,

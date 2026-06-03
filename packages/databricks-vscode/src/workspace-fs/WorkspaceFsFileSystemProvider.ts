@@ -17,6 +17,8 @@ import {WorkspaceFsFile} from "../sdk-extensions/wsfs/WorkspaceFsFile";
 export class WorkspaceFsFileSystemProvider
     implements FileSystemProvider, Disposable
 {
+    static readonly scheme = "databricks-wsfs";
+
     private _onDidChangeFile = new EventEmitter<FileChangeEvent[]>();
     readonly onDidChangeFile = this._onDidChangeFile.event;
 
@@ -115,16 +117,19 @@ export class WorkspaceFsFileSystemProvider
         );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     delete(_uri: Uri, _options: {recursive: boolean}): void {
         throw FileSystemError.NoPermissions(
             "Use the Delete command to delete items"
         );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     rename(_oldUri: Uri, _newUri: Uri, _options: {overwrite: boolean}): void {
         throw FileSystemError.NoPermissions("Rename is not supported");
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     watch(_uri: Uri): Disposable {
         return new Disposable(() => {});
     }

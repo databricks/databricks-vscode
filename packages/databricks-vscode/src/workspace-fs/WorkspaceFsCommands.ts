@@ -165,7 +165,10 @@ export class WorkspaceFsCommands implements Disposable {
         }
 
         this.workspaceFsDataProvider.refresh();
-        const uri = Uri.from({scheme: "wsfs", path: element.path});
+        const uri = Uri.from({
+            scheme: WorkspaceFsFileSystemProvider.scheme,
+            path: element.path,
+        });
         this.fsp.notifyDeleted(uri);
     }
 
@@ -224,7 +227,7 @@ export class WorkspaceFsCommands implements Disposable {
 
         this.workspaceFsDataProvider.refresh();
         const uri = Uri.from({
-            scheme: "wsfs",
+            scheme: WorkspaceFsFileSystemProvider.scheme,
             path: `${root.path}/${fileName}`,
         });
         this.fsp.notifyCreated(uri);

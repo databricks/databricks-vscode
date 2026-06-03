@@ -12,6 +12,7 @@ import {
     Uri,
 } from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {WorkspaceFsFileSystemProvider} from "./WorkspaceFsFileSystemProvider";
 
 export interface IFsTreeItem extends TreeItem {
     path: Uri;
@@ -38,7 +39,7 @@ export class WorkspaceFsDataProvider
     getTreeItem(
         element: WorkspaceFsEntity
     ): IFsTreeItem | Thenable<IFsTreeItem> {
-        const wsfsUri = Uri.from({scheme: "wsfs", path: element.path});
+        const wsfsUri = Uri.from({scheme: WorkspaceFsFileSystemProvider.scheme, path: element.path});
         let treeItem: IFsTreeItem = {
             label: posix.basename(element.path),
             path: wsfsUri,
