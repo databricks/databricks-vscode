@@ -208,7 +208,10 @@ describe("WSFS Explorer", async function () {
         // than clipboard-based editor interaction in headless test environments.
         await browser.executeWorkbench(
             async (vscode, wsfsPath, wsfsContent) => {
-                const uri = vscode.Uri.from({scheme: "databricks-wsfs", path: wsfsPath});
+                const uri = vscode.Uri.from({
+                    scheme: "databricks-wsfs",
+                    path: wsfsPath,
+                });
                 await vscode.workspace.fs.writeFile(
                     uri,
                     Buffer.from(wsfsContent)

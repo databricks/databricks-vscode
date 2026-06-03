@@ -394,9 +394,13 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        workspace.registerFileSystemProvider(WorkspaceFsFileSystemProvider.scheme, workspaceFsFsp, {
-            isCaseSensitive: true,
-        }),
+        workspace.registerFileSystemProvider(
+            WorkspaceFsFileSystemProvider.scheme,
+            workspaceFsFsp,
+            {
+                isCaseSensitive: true,
+            }
+        ),
         workspaceFsFsp,
         window.registerTreeDataProvider(
             "workspaceFsView",

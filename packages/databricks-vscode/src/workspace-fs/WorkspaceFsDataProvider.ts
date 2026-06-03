@@ -39,7 +39,10 @@ export class WorkspaceFsDataProvider
     getTreeItem(
         element: WorkspaceFsEntity
     ): IFsTreeItem | Thenable<IFsTreeItem> {
-        const wsfsUri = Uri.from({scheme: WorkspaceFsFileSystemProvider.scheme, path: element.path});
+        const wsfsUri = Uri.from({
+            scheme: WorkspaceFsFileSystemProvider.scheme,
+            path: element.path,
+        });
         let treeItem: IFsTreeItem = {
             label: posix.basename(element.path),
             path: wsfsUri,
