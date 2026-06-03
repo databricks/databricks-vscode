@@ -3,7 +3,7 @@
 import assert from "assert";
 import {anything, instance, mock, when} from "ts-mockito";
 import {Disposable} from "vscode";
-import {WorkspaceClient} from "@databricks/sdk-experimental";
+import {ApiError, WorkspaceClient} from "@databricks/sdk-experimental";
 import {
     CatalogsService,
     FunctionsService,
@@ -960,7 +960,15 @@ describe(__filename, () => {
 
         when(mockSchemas.get(anything())).thenCall((req: any) => {
             if (req.full_name === "cat.deleted") {
-                return Promise.reject(new Error("Not found"));
+                return Promise.reject(
+                    new ApiError(
+                        "Not found",
+                        "RESOURCE_DOES_NOT_EXIST",
+                        404,
+                        undefined,
+                        []
+                    )
+                );
             }
             return Promise.resolve({name: "sch", full_name: "cat.sch"});
         });
@@ -1004,7 +1012,15 @@ describe(__filename, () => {
             onDidChange: () => ({dispose() {}}),
         } as unknown as StateStorage;
 
-        // Default mock already rejects
+        when(mockSchemas.get(anything())).thenReject(
+            new ApiError(
+                "Not found",
+                "RESOURCE_DOES_NOT_EXIST",
+                404,
+                undefined,
+                []
+            )
+        );
 
         const p = new UnityCatalogTreeDataProvider(
             instance(mockConnectionManager),
@@ -1025,6 +1041,56 @@ describe(__filename, () => {
             "databricks.unityCatalog.favorites"
         ) as any[];
         assert.strictEqual(saved.length, 0);
+    });
+
+    it("favorites getChildren keeps ref and shows error node on transient error", async () => {
+        const storageMap = new Map<string, unknown>([
+            [
+                "databricks.unityCatalog.favorites",
+                [
+                    {kind: "schema", fullName: "cat.sch"},
+                    {kind: "schema", fullName: "cat.flaky"},
+                ],
+            ],
+        ]);
+        const spyStorage = {
+            get: (key: string) => storageMap.get(key) ?? [],
+            set: async (key: string, val: unknown) => {
+                storageMap.set(key, val);
+            },
+            onDidChange: () => ({dispose() {}}),
+        } as unknown as StateStorage;
+
+        when(mockSchemas.get(anything())).thenCall((req: any) => {
+            if (req.full_name === "cat.flaky") {
+                return Promise.reject(new Error("network timeout"));
+            }
+            return Promise.resolve({name: "sch", full_name: "cat.sch"});
+        });
+
+        const p = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            spyStorage
+        );
+        disposables.push(p);
+
+        const favNode: UnityCatalogTreeNode = {kind: "favorites"};
+        const children = (await resolveProviderResult(
+            p.getChildren(favNode)
+        )) as UnityCatalogTreeNode[];
+
+        // Both nodes shown: valid schema + error placeholder
+        assert(children);
+        assert.strictEqual(children.length, 2);
+        assert(children.some((c) => c.kind === "schema"));
+        assert(children.some((c) => c.kind === "error"));
+
+        // Flaky ref must NOT be pruned from storage
+        const saved = storageMap.get(
+            "databricks.unityCatalog.favorites"
+        ) as any[];
+        assert(saved.some((r: any) => r.fullName === "cat.flaky"));
+        assert(saved.some((r: any) => r.fullName === "cat.sch"));
     });
 
     it("pin stores only minimal ref (kind + fullName)", async () => {

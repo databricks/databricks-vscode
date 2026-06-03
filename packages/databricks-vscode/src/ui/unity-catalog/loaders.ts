@@ -18,6 +18,11 @@ const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
 
 type Client = NonNullable<ConnectionManager["workspaceClient"]>;
 
+export type FavoriteNodeResult =
+    | {status: "ok"; node: UnityCatalogTreeNode}
+    | {status: "gone"}
+    | {status: "error"; ref: StoredFavoriteRef};
+
 function compareOwnedFirst(
     a: {owned?: boolean; name: string},
     b: {owned?: boolean; name: string}
@@ -186,57 +191,63 @@ export async function loadFavoriteNode(
     client: Client,
     ref: StoredFavoriteRef,
     currentUser: iam.User | undefined
-): Promise<UnityCatalogTreeNode | null> {
+): Promise<FavoriteNodeResult> {
     try {
         switch (ref.kind) {
             case "catalog": {
                 const c = await client.catalogs.get({name: ref.fullName});
                 if (!c.name) {
-                    return null;
+                    return {status: "gone"};
                 }
-                return mapCatalog(c, currentUser);
+                return {status: "ok", node: mapCatalog(c, currentUser)};
             }
             case "schema": {
                 const s = await client.schemas.get({full_name: ref.fullName});
                 if (!s.name) {
-                    return null;
+                    return {status: "gone"};
                 }
                 const catalogName = ref.fullName.split(".")[0];
-                return mapSchema(s, catalogName, currentUser);
+                return {
+                    status: "ok",
+                    node: mapSchema(s, catalogName, currentUser),
+                };
             }
             case "table": {
                 const t = await client.tables.get({full_name: ref.fullName});
                 if (!t.name) {
-                    return null;
+                    return {status: "gone"};
                 }
                 const [tCatalog, tSchema] = ref.fullName.split(".");
-                return mapTable(t, tCatalog, tSchema);
+                return {status: "ok", node: mapTable(t, tCatalog, tSchema)};
             }
             case "volume": {
                 const v = await client.volumes.read({name: ref.fullName});
                 if (!v.name) {
-                    return null;
+                    return {status: "gone"};
                 }
                 const [vCatalog, vSchema] = ref.fullName.split(".");
-                return mapVolume(v, vCatalog, vSchema);
+                return {status: "ok", node: mapVolume(v, vCatalog, vSchema)};
             }
             case "function": {
                 const f = await client.functions.get({name: ref.fullName});
                 if (!f.name) {
-                    return null;
+                    return {status: "gone"};
                 }
                 const [fCatalog, fSchema] = ref.fullName.split(".");
-                return mapFunction(f, fCatalog, fSchema);
+                return {status: "ok", node: mapFunction(f, fCatalog, fSchema)};
             }
             case "registeredModel": {
                 const m = await client.registeredModels.get({
                     full_name: ref.fullName,
                 });
                 if (!m.name) {
-                    return null;
+                    return {status: "gone"};
                 }
                 const [mCatalog, mSchema] = ref.fullName.split(".");
-                return mapRegisteredModel(m, mCatalog, mSchema);
+                return {
+                    status: "ok",
+                    node: mapRegisteredModel(m, mCatalog, mSchema),
+                };
             }
             case "modelVersion": {
                 const mv = await client.modelVersions.get({
@@ -244,20 +255,26 @@ export async function loadFavoriteNode(
                     version: ref.version,
                 });
                 if (mv.version === undefined) {
-                    return null;
+                    return {status: "gone"};
                 }
                 const [mvCatalog, mvSchema, mvModel] = ref.fullName.split(".");
-                return mapModelVersion(
-                    mv,
-                    mvCatalog,
-                    mvSchema,
-                    mvModel,
-                    ref.fullName
-                );
+                return {
+                    status: "ok",
+                    node: mapModelVersion(
+                        mv,
+                        mvCatalog,
+                        mvSchema,
+                        mvModel,
+                        ref.fullName
+                    ),
+                };
             }
         }
-    } catch {
-        return null;
+    } catch (e) {
+        if (e instanceof ApiError && e.statusCode === 404) {
+            return {status: "gone"};
+        }
+        return {status: "error", ref};
     }
 }
 

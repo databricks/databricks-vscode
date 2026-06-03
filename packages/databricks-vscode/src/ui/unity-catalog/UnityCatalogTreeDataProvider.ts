@@ -219,12 +219,24 @@ export class UnityCatalogTreeDataProvider
             refs.map((ref) => loadFavoriteNode(client, ref, currentUser))
         );
 
-        const valid = results.filter(
-            (n) => n !== null
-        ) as UnityCatalogTreeNode[];
-        const staleKeys = new Set(
-            refs.filter((_, i) => results[i] === null).map(favoriteKey)
-        );
+        const valid: UnityCatalogTreeNode[] = [];
+        const staleKeys = new Set<string>();
+
+        for (let i = 0; i < results.length; i++) {
+            const r = results[i];
+            if (r.status === "ok") {
+                valid.push(r.node);
+            } else if (r.status === "gone") {
+                staleKeys.add(favoriteKey(refs[i]));
+            } else {
+                // transient error. keep the ref, show a placeholder
+                valid.push({
+                    kind: "error",
+                    message: `Could not load ${refs[i].fullName}`,
+                });
+            }
+        }
+
         if (staleKeys.size > 0) {
             const cleaned = refs.filter((r) => !staleKeys.has(favoriteKey(r)));
             await this.stateStorage.set(
