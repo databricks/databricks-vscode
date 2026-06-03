@@ -111,6 +111,7 @@ export class WorkspaceFsFileSystemProvider
         });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     createDirectory(_uri: Uri): void {
         throw FileSystemError.NoPermissions(
             "Use the Create Folder command to create directories"
