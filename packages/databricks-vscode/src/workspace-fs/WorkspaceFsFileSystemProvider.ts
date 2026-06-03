@@ -67,6 +67,7 @@ export class WorkspaceFsFileSystemProvider
         options: {create: boolean; overwrite: boolean}
     ): Promise<void> {
         const client = this.requireClient();
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         const {WorkspaceFsDir} = await import(
             "../sdk-extensions/wsfs/WorkspaceFsDir"
         );
