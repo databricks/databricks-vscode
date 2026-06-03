@@ -86,10 +86,7 @@ export class DatabricksCliCheck implements Disposable {
                 databricksCliPath: this.authProvider.cliPath,
                 profile: this.authProvider.profile,
                 ...(this.authProvider.workspaceId
-                    ? {
-                          workspaceId: this.authProvider.workspaceId,
-                          experimentalIsUnifiedHost: true,
-                      }
+                    ? {workspaceId: this.authProvider.workspaceId}
                     : {}),
             },
             {

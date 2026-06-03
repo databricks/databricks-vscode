@@ -134,13 +134,6 @@ export abstract class AuthProvider {
         if (config.databricksCliPath === undefined) {
             config.databricksCliPath = this._cli.cliPath;
         }
-        // Profiles with workspace_id target a specific workspace on a unified (SPOG)
-        // host. The SDK only sends X-Databricks-Org-Id when experimentalIsUnifiedHost
-        // is true, so we set it here after the profile has been loaded.
-        if (config.workspaceId) {
-            config.experimentalIsUnifiedHost = true;
-        }
-
         return config;
     }
 
@@ -256,7 +249,6 @@ export class ProfileAuthProvider extends AuthProvider {
         };
         if (this._workspaceId) {
             env["DATABRICKS_WORKSPACE_ID"] = this._workspaceId;
-            env["DATABRICKS_EXPERIMENTAL_IS_UNIFIED_HOST"] = "true";
         }
         return env;
     }
@@ -355,12 +347,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
             authType: "databricks-cli",
             databricksCliPath: this.cliPath,
             ...(this.profile ? {profile: this.profile} : {}),
-            ...(this.workspaceId
-                ? {
-                      workspaceId: this.workspaceId,
-                      experimentalIsUnifiedHost: true,
-                  }
-                : {}),
+            ...(this.workspaceId ? {workspaceId: this.workspaceId} : {}),
         });
     }
 
@@ -374,7 +361,6 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         }
         if (this.workspaceId) {
             env["DATABRICKS_WORKSPACE_ID"] = this.workspaceId;
-            env["DATABRICKS_EXPERIMENTAL_IS_UNIFIED_HOST"] = "true";
         }
         return env;
     }

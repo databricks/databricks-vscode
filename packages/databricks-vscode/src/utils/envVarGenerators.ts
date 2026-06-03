@@ -68,12 +68,7 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
         DATABRICKS_HOST: host,
         DATABRICKS_AUTH_TYPE: "metadata-service",
         DATABRICKS_METADATA_SERVICE_URL: connectionManager.metadataServiceUrl,
-        ...(workspaceId
-            ? {
-                  DATABRICKS_WORKSPACE_ID: workspaceId,
-                  DATABRICKS_EXPERIMENTAL_IS_UNIFIED_HOST: "true",
-              }
-            : {}),
+        ...(workspaceId ? {DATABRICKS_WORKSPACE_ID: workspaceId} : {}),
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }
