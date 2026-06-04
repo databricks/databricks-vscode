@@ -1,3 +1,11 @@
+# Release: v2.11.0
+
+## packages/databricks-vscode-types
+
+## (2026-06-04)
+
+-   Add support for SPOG host URLs (#1897) ([4094143](https://github.com/databricks/databricks-vscode/commit/4094143)), closes [#1897](https://github.com/databricks/databricks-vscode/issues/1897)
+
 # Release: v2.10.8
 
 ## packages/databricks-vscode-types
