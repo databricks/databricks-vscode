@@ -1457,7 +1457,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "0.297.2"
+        "version": "1.2.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
@@ -1497,7 +1497,7 @@
     },
     "dependencies": {
         "@databricks/databricks-vscode-types": "workspace:^",
-        "@databricks/sdk-experimental": "^0.17.0",
+        "@databricks/sdk-experimental": "^0.18.0",
         "@types/lodash": "^4.14.202",
         "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",

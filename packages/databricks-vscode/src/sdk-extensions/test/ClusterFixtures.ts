@@ -9,7 +9,7 @@ import {
     anything,
     objectContaining,
 } from "ts-mockito";
-import {compute, ApiClient} from "@databricks/sdk-experimental";
+import {compute, ApiClient, Config} from "@databricks/sdk-experimental";
 
 const testClusterDetails: compute.ClusterDetails = {
     cluster_id: "testClusterId",
@@ -18,6 +18,9 @@ const testClusterDetails: compute.ClusterDetails = {
 
 export async function getMockTestCluster() {
     const mockedClient = mock(ApiClient);
+    const mockedConfig = mock(Config);
+    when(mockedConfig.ensureResolved()).thenResolve();
+    when(mockedClient.config).thenReturn(instance(mockedConfig));
     when(
         mockedClient.request(
             objectContaining({
