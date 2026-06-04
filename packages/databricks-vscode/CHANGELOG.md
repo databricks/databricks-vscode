@@ -4,9 +4,10 @@
 
 ## (2026-06-04)
 
--   Add support for SPOG host URLs (#1897) ([4094143](https://github.com/databricks/databricks-vscode/commit/4094143)), closes [#1897](https://github.com/databricks/databricks-vscode/issues/1897)
--   Unity catalog explorer (#1871) ([949cfff](https://github.com/databricks/databricks-vscode/commit/949cfff)), closes [#1871](https://github.com/databricks/databricks-vscode/issues/1871)
--   Workspace Explorer (#1874) ([5c2a44f](https://github.com/databricks/databricks-vscode/commit/5c2a44f)), closes [#1874](https://github.com/databricks/databricks-vscode/issues/1874)
+-   Unity catalog explorer
+-   Workspace filesystem explorer
+-   Add support for SPOG host URLs
+-   Bump Databricks CLI version to 1.2.0
 
 # Release: v2.10.8
 
