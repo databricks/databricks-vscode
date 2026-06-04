@@ -4,8 +4,8 @@
 
 ## (2026-06-04)
 
--   Unity catalog explorer
--   Workspace filesystem explorer
+-   New feature: Unity catalog explorer
+-   New feature: Workspace filesystem explorer
 -   Add support for SPOG host URLs
 -   Bump Databricks CLI version to 1.2.0
 
