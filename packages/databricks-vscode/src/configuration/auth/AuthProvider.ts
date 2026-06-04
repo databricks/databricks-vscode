@@ -355,6 +355,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         const env: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: "databricks-cli",
+            DATABRICKS_CLI_PATH: this.cliPath,
         };
         if (this.profile) {
             env["DATABRICKS_CONFIG_PROFILE"] = this.profile;
