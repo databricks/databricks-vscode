@@ -1,3 +1,14 @@
+# Release: v2.11.0
+
+## packages/databricks-vscode
+
+## (2026-06-04)
+
+-   New feature: Unity catalog explorer
+-   New feature: Workspace filesystem explorer
+-   Add support for SPOG host URLs
+-   Bump Databricks CLI version to 1.2.0
+
 # Release: v2.10.8
 
 ## packages/databricks-vscode
