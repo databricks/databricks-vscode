@@ -1,6 +1,7 @@
 import {
     commands,
     debug,
+    env,
     ExtensionContext,
     extensions,
     window,
@@ -26,6 +27,7 @@ import {
     FileUtils,
     PackageJsonUtils,
     TerraformUtils,
+    UrlUtils,
     UtilsCommands,
 } from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
@@ -78,6 +80,11 @@ import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
 import {BundlePipelinesManager} from "./bundle/BundlePipelinesManager";
 import {DocsViewTreeDataProvider} from "./ui/docs-view/DocsViewTreeDataProvider";
+import {
+    UnityCatalogTreeDataProvider,
+    UnityCatalogTreeNode,
+} from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
+import {registerDetailPanel} from "./ui/unity-catalog/registerDetailPanel";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -440,6 +447,127 @@ export async function activate(
             "databricks.wsfs.downloadFile",
             workspaceFsCommands.downloadFile,
             workspaceFsCommands
+        )
+    );
+
+    const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
+        connectionManager,
+        stateStorage,
+        context.extensionPath
+    );
+
+    const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
+        treeDataProvider: unityCatalogTreeDataProvider,
+    });
+    context.subscriptions.push(
+        unityCatalogTreeDataProvider,
+        unityCatalogTreeView,
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refresh",
+            unityCatalogTreeDataProvider.refresh,
+            unityCatalogTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refreshNode",
+            (node: UnityCatalogTreeNode) =>
+                unityCatalogTreeDataProvider.refreshNode(node)
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyStorageLocation",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    (node.kind === "table" || node.kind === "volume") &&
+                    node.storageLocation
+                ) {
+                    await env.clipboard.writeText(node.storageLocation);
+                    window.showInformationMessage("Copied to clipboard");
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyViewSql",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "table" && node.viewDefinition) {
+                    await env.clipboard.writeText(node.viewDefinition);
+                    window.showInformationMessage("Copied to clipboard");
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyName",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "error" ||
+                    node.kind === "empty" ||
+                    node.kind === "favorites" ||
+                    node.kind === "group"
+                ) {
+                    return;
+                }
+                const text = node.kind === "column" ? node.name : node.fullName;
+                await env.clipboard.writeText(text);
+                window.showInformationMessage("Copied to clipboard");
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.openExternal",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "error" || node.kind === "column") {
+                    return;
+                }
+                const url =
+                    unityCatalogTreeDataProvider.getNodeExploreUrl(node);
+                if (!url) {
+                    window.showErrorMessage(
+                        "Databricks: Can't open external link. No URL found."
+                    );
+                    return;
+                }
+                await UrlUtils.openExternal(url);
+            }
+        ),
+        commands.registerCommand("databricks.unityCatalog.filter", async () => {
+            await commands.executeCommand("unityCatalogView.focus");
+            await commands.executeCommand("list.find");
+        }),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.pin",
+            (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.pin(node);
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.unpin",
+            (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.unpin(node);
+                }
+            }
+        ),
+        ...registerDetailPanel(
+            context.extensionUri,
+            connectionManager,
+            unityCatalogTreeView,
+            unityCatalogTreeDataProvider,
+            telemetry
         )
     );
 
