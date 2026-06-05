@@ -40,9 +40,5 @@ export function getCollapsibleState(
         return TreeItemCollapsibleState.None;
     }
 
-    if (isRunning) {
-        return TreeItemCollapsibleState.Collapsed;
-    }
-
-    return TreeItemCollapsibleState.Expanded;
+    return TreeItemCollapsibleState.Collapsed;
 }
