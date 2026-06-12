@@ -1,5 +1,8 @@
 import * as assert from "assert";
-import {getRequiredPythonVersion} from "./computeTargetSpec";
+import {
+    getRequiredPythonVersion,
+    resolveComputeTargetSpec,
+} from "./computeTargetSpec";
 
 describe(__filename, () => {
     describe("serverless", () => {
@@ -78,6 +81,56 @@ describe(__filename, () => {
                 serverlessDbconnectVersion: "17.3",
             });
             assert.strictEqual(required, undefined);
+        });
+    });
+
+    describe("resolveComputeTargetSpec", () => {
+        it("should resolve the full spec for serverless", () => {
+            const spec = resolveComputeTargetSpec({
+                serverless: true,
+                serverlessDbconnectVersion: "17.3",
+            });
+            assert.strictEqual(spec?.computeType, "serverless");
+            assert.strictEqual(spec?.pythonVersion.display, "3.12");
+            assert.strictEqual(spec?.dbconnectVersion, "17.3.*");
+        });
+
+        it("should resolve the full spec for a cluster", () => {
+            const spec = resolveComputeTargetSpec({
+                serverless: false,
+                serverlessDbconnectVersion: "17.3",
+                dbrVersion: [15, 4],
+            });
+            assert.strictEqual(spec?.computeType, "cluster");
+            assert.strictEqual(spec?.pythonVersion.display, "3.11");
+            assert.strictEqual(spec?.dbconnectVersion, "15.4.*");
+        });
+
+        it("should use a wildcard for unknown DBR minor versions", () => {
+            const spec = resolveComputeTargetSpec({
+                serverless: false,
+                serverlessDbconnectVersion: "17.3",
+                dbrVersion: [15, "x"],
+            });
+            assert.strictEqual(spec?.dbconnectVersion, "15.*");
+        });
+
+        it("should return undefined for unsupported compute", () => {
+            assert.strictEqual(
+                resolveComputeTargetSpec({
+                    serverless: false,
+                    serverlessDbconnectVersion: "17.3",
+                    dbrVersion: ["x", "x"],
+                }),
+                undefined
+            );
+            assert.strictEqual(
+                resolveComputeTargetSpec({
+                    serverless: false,
+                    serverlessDbconnectVersion: "17.3",
+                }),
+                undefined
+            );
         });
     });
 });

@@ -51,6 +51,12 @@ export const workspaceConfigs = {
             .get<Array<string>>("experiments.optInto", []);
     },
 
+    get managedPythonEnvironmentEnabled() {
+        return this.experimetalFeatureOverides.includes(
+            "python.managedEnvironment"
+        );
+    },
+
     /**
      * set the python.envFile configuration in the ms-python extension
      */

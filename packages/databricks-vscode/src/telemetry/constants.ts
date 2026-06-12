@@ -23,6 +23,7 @@ export enum Events {
     COMPUTE_SELECTED = "computeSelected",
     WORKFLOW_RUN = "workflowRun",
     DBCONNECT_RUN = "dbconnectRun",
+    MANAGED_ENV_SETUP = "managedEnvironmentSetup",
     OPEN_RESOURCE_EXTERNALLY = "openResourceExternally",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -200,6 +201,34 @@ export class EventTypes {
         computeType: {
             comment: "The type of the compute",
         },
+    };
+    [Events.MANAGED_ENV_SETUP]: EventType<
+        {
+            step: string;
+            success: boolean;
+            computeType: ComputeType;
+            failureClass?: string;
+            venvDisposition?: string;
+        } & DurationMeasurement
+    > = {
+        comment: "A step of the managed python environment setup",
+        step: {
+            comment: "The setup funnel step",
+        },
+        success: {
+            comment: "true if the step succeeded, false otherwise",
+        },
+        computeType: {
+            comment: "The type of the compute",
+        },
+        failureClass: {
+            comment: "Classification of the failure",
+        },
+        venvDisposition: {
+            comment:
+                "What was done with the virtual environment (satisfied, repair, recreate, absent)",
+        },
+        ...getDurationProperty(),
     };
     [Events.OPEN_RESOURCE_EXTERNALLY]: EventType<{
         type: string;

@@ -75,6 +75,8 @@ import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariab
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
+import {EnvironmentProvisioner} from "./language/EnvironmentProvisioner";
+import {UvBinaryProvider} from "./language/UvBinaryProvider";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
@@ -601,12 +603,21 @@ export async function activate(
                 configureAutocomplete
             )
     );
+    const environmentProvisioner = new EnvironmentProvisioner(
+        connectionManager,
+        pythonExtensionWrapper,
+        workspaceFolderManager,
+        new UvBinaryProvider(context),
+        telemetry
+    );
     const environmentCommands = new EnvironmentCommands(
         featureManager,
         pythonExtensionWrapper,
-        environmentDependenciesInstaller
+        environmentDependenciesInstaller,
+        environmentProvisioner
     );
     context.subscriptions.push(
+        environmentProvisioner,
         telemetry.registerCommand(
             "databricks.environment.setup",
             environmentCommands.setup,
