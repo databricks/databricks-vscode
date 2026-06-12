@@ -24,9 +24,9 @@ export class EnvironmentCommands {
         private provisioner?: EnvironmentProvisioner
     ) {}
 
-    async setup(stepId?: string) {
+    async setup(stepId?: string): Promise<boolean> {
         commands.executeCommand("configurationView.focus");
-        await window.withProgress(
+        return await window.withProgress(
             {location: {viewId: "configurationView"}},
             () => this._setup(stepId)
         );
@@ -43,7 +43,7 @@ export class EnvironmentCommands {
         );
     }
 
-    private async _setup(stepId?: string) {
+    private async _setup(stepId?: string): Promise<boolean> {
         // Get the state from the cache, we will re-check the state after taking an action (e.g. asking a user to select a venv or install dbconnect).
         let state = await this.featureManager.isEnabled(
             "environment.dependencies"
@@ -56,7 +56,7 @@ export class EnvironmentCommands {
                     // On provisioning failures the provisioner already showed
                     // an actionable error with a retry option.
                     this.reportSetupOutcome(state, !result.success);
-                    return;
+                    return state.available;
                 }
             }
             // noOp (or an inconsistent result): fall through to the manual
@@ -76,6 +76,7 @@ export class EnvironmentCommands {
             }
         }
         this.reportSetupOutcome(state);
+        return state.available;
     }
 
     /**
@@ -123,10 +124,15 @@ export class EnvironmentCommands {
     async selectPythonInterpreter() {
         const environments =
             await this.pythonExtension.getAvailableEnvironments();
-        const state = await this.featureManager.isEnabled(
-            "environment.dependencies"
-        );
-        const pythonStep = state.steps.get("checkPythonEnvironment");
+        // The requirement hint is best effort: a fresh state check can block
+        // on the workspace connection, and the picker must always show up.
+        const state = await Promise.race([
+            this.featureManager.isEnabled("environment.dependencies"),
+            new Promise<undefined>((resolve) =>
+                setTimeout(() => resolve(undefined), 2000)
+            ),
+        ]);
+        const pythonStep = state?.steps.get("checkPythonEnvironment");
         const requirement = !pythonStep?.available ? pythonStep : undefined;
         if (environments.length > 0) {
             await this.showEnvironmentsQuickPick(environments, requirement);

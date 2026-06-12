@@ -116,6 +116,13 @@ describe(__filename, () => {
             );
             assert.ok(step.message?.includes("No active environments found"));
         });
+
+        it("should accept an environment with an unresolvable version", async () => {
+            setupEnvironment(fakeEnvironment(undefined));
+            const step = await verifier.checkPythonEnvironment();
+            assert.strictEqual(step.available, true);
+            assert.strictEqual(step.warning, undefined);
+        });
     });
 
     describe("clusters", () => {

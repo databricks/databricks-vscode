@@ -118,6 +118,9 @@ export class RunCommands {
         );
         if (
             featureState.available &&
+            // Re-checks block on an established connection, so don't force
+            // one while disconnected.
+            this.connection.state === "CONNECTED" &&
             (await this.isPythonEnvironmentStale(featureState))
         ) {
             // The Python extension doesn't always notify us about interpreter

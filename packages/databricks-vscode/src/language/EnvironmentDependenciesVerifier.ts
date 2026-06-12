@@ -188,7 +188,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 required?.display ?? "3.10 or greater";
             const currentVersionMessage =
                 this.getCurrentPythonVersionMessage(env);
-            if (!env?.environment || !env.version) {
+            if (!env?.environment) {
                 return this.rejectStep(
                     "checkPythonEnvironment",
                     `Activate an environment with Python ${expectedPythonVersion}`,
@@ -196,18 +196,22 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                     this.selectPythonInterpreter.bind(this)
                 );
             }
+            // Environments whose version the Python extension can't resolve
+            // are let through, matching the historic behavior.
             let rejectionMessage: string | undefined;
-            if (
-                required?.exact &&
-                !this.matchEnvironmentVersion(
-                    env,
-                    required.major,
-                    required.minor
-                )
-            ) {
-                rejectionMessage = `Databricks Connect requires Python ${required.display}: the local minor version must match the Python version of ${required.source}. ${currentVersionMessage}`;
-            } else if (env.version.major !== 3 || env.version.minor < 10) {
-                rejectionMessage = `Databricks Connect requires Python ${expectedPythonVersion}. ${currentVersionMessage}`;
+            if (env.version) {
+                if (
+                    required?.exact &&
+                    !this.matchEnvironmentVersion(
+                        env,
+                        required.major,
+                        required.minor
+                    )
+                ) {
+                    rejectionMessage = `Databricks Connect requires Python ${required.display}: the local minor version must match the Python version of ${required.source}. ${currentVersionMessage}`;
+                } else if (env.version.major !== 3 || env.version.minor < 10) {
+                    rejectionMessage = `Databricks Connect requires Python ${expectedPythonVersion}. ${currentVersionMessage}`;
+                }
             }
             if (rejectionMessage) {
                 return this.rejectStep(
@@ -228,6 +232,7 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             }
             const warning =
                 required &&
+                env.version &&
                 !this.matchEnvironmentVersion(
                     env,
                     required.major,

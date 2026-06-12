@@ -144,12 +144,13 @@ export class MsPythonExtensionWrapper implements Disposable {
         executable: string,
         baseArgs: string[],
         nativePipArgs: string[] = []
-    ): Promise<{command: string; args: string[]}> {
+    ): Promise<{command: string; args: string[]; usesNativePip: boolean}> {
         const isUv = await this.isUsingUv();
         if (isUv) {
             return {
                 command: "uv",
                 args: ["pip", ...baseArgs, "--python", executable],
+                usesNativePip: false,
             };
         }
         return {
@@ -162,6 +163,7 @@ export class MsPythonExtensionWrapper implements Disposable {
                 "--disable-pip-version-check",
                 "--no-python-version-warning",
             ],
+            usesNativePip: true,
         };
     }
 
@@ -198,11 +200,17 @@ export class MsPythonExtensionWrapper implements Disposable {
             outputChannel?.appendLine(
                 `pip is missing in the environment. Running: ${executable} -m ensurepip --upgrade`
             );
-            await this.runWithOutput(
-                executable,
-                ["-m", "ensurepip", "--upgrade"],
-                outputChannel
-            );
+            try {
+                await this.runWithOutput(
+                    executable,
+                    ["-m", "ensurepip", "--upgrade"],
+                    outputChannel
+                );
+            } catch {
+                // ensurepip can be unavailable too (e.g. Debian system
+                // pythons): the original error is more actionable.
+                throw e;
+            }
             return await fn();
         }
     }
@@ -213,15 +221,14 @@ export class MsPythonExtensionWrapper implements Disposable {
             return undefined;
         }
 
-        const {command, args} = await this.getPipCommandAndArgs(executable, [
-            "list",
-            "--format",
-            "json",
-        ]);
+        const {command, args, usesNativePip} = await this.getPipCommandAndArgs(
+            executable,
+            ["list", "--format", "json"]
+        );
 
         const {stdout} = await this.runSeedingPipIfMissing(
             executable,
-            command === executable,
+            usesNativePip,
             () => this.execCommand(command, args)
         );
         const data: Array<{name: string; version: string}> = JSON.parse(stdout);
@@ -244,15 +251,15 @@ export class MsPythonExtensionWrapper implements Disposable {
             throw Error("No python executable found");
         }
 
-        const {command, args} = await this.getPipCommandAndArgs(executable, [
-            "install",
-            `${name}${version ? `==${version}` : ""}`,
-        ]);
+        const {command, args, usesNativePip} = await this.getPipCommandAndArgs(
+            executable,
+            ["install", `${name}${version ? `==${version}` : ""}`]
+        );
 
         outputChannel?.appendLine(`Running: ${command} ${args.join(" ")}`);
         await this.runSeedingPipIfMissing(
             executable,
-            command === executable,
+            usesNativePip,
             () => this.runWithOutput(command, args, outputChannel),
             outputChannel
         );
@@ -268,7 +275,7 @@ export class MsPythonExtensionWrapper implements Disposable {
             return;
         }
 
-        const {command, args} = await this.getPipCommandAndArgs(
+        const {command, args, usesNativePip} = await this.getPipCommandAndArgs(
             executable,
             ["uninstall", name],
             ["-y"]
@@ -277,7 +284,7 @@ export class MsPythonExtensionWrapper implements Disposable {
         outputChannel?.appendLine(`Running: ${command} ${args.join(" ")}`);
         await this.runSeedingPipIfMissing(
             executable,
-            command === executable,
+            usesNativePip,
             () => this.runWithOutput(command, args, outputChannel),
             outputChannel
         );
