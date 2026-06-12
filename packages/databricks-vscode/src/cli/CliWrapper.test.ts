@@ -53,6 +53,33 @@ describe(__filename, function () {
         assert.ok(result.stdout.indexOf("databricks") > 0);
     });
 
+    it("should resolve the platform-specific CLI binary name", () => {
+        const cli = createCliWrapper();
+        const originalPlatform = process.platform;
+        const setPlatform = (platform: NodeJS.Platform) =>
+            Object.defineProperty(process, "platform", {value: platform});
+        try {
+            // On Windows the bundled binary is `databricks.exe`. The `.exe` is
+            // required because cliPath is forwarded to the SDK/Terraform via
+            // DATABRICKS_CLI_PATH, which does a literal (no auto-`.exe`) lookup.
+            setPlatform("win32");
+            assert.ok(
+                cli.cliPath.endsWith(path.join("bin", "databricks.exe")),
+                `expected win32 cliPath to end with bin/databricks.exe, got ${cli.cliPath}`
+            );
+
+            for (const platform of ["linux", "darwin"] as NodeJS.Platform[]) {
+                setPlatform(platform);
+                assert.ok(
+                    cli.cliPath.endsWith(path.join("bin", "databricks")),
+                    `expected ${platform} cliPath to end with bin/databricks, got ${cli.cliPath}`
+                );
+            }
+        } finally {
+            setPlatform(originalPlatform);
+        }
+    });
+
     let mocks: any[] = [];
     afterEach(() => {
         mocks.forEach((mock) => reset(mock));
