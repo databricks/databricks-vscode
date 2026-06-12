@@ -1,5 +1,8 @@
 import {window, commands, QuickPickItem, ProgressLocation} from "vscode";
-import {FeatureManager} from "../feature-manager/FeatureManager";
+import {
+    FeatureManager,
+    FeatureStepState,
+} from "../feature-manager/FeatureManager";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Cluster} from "../sdk-extensions";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
@@ -77,14 +80,31 @@ export class EnvironmentCommands {
     async selectPythonInterpreter() {
         const environments =
             await this.pythonExtension.getAvailableEnvironments();
+        const state = await this.featureManager.isEnabled(
+            "environment.dependencies"
+        );
+        const pythonStep = state.steps.get("checkPythonEnvironment");
+        const requirement = !pythonStep?.available ? pythonStep : undefined;
         if (environments.length > 0) {
-            await this.showEnvironmentsQuickPick(environments);
+            await this.showEnvironmentsQuickPick(environments, requirement);
         } else {
-            await this.pythonExtension.createPythonEnvironment();
+            await this.createPythonEnvironment(requirement);
         }
     }
 
-    async showEnvironmentsQuickPick(environments: Environment[]) {
+    private async createPythonEnvironment(requirement?: FeatureStepState) {
+        if (requirement?.message) {
+            // The environment creation flow of the MS Python extension knows
+            // nothing about our version requirements, so we surface them here.
+            window.showInformationMessage(requirement.message);
+        }
+        await this.pythonExtension.createPythonEnvironment();
+    }
+
+    async showEnvironmentsQuickPick(
+        environments: Environment[],
+        requirement?: FeatureStepState
+    ) {
         const envPicks: (QuickPickItem & {path?: string})[] = environments.map(
             (env) => ({
                 label: environmentName(env),
@@ -101,11 +121,14 @@ export class EnvironmentCommands {
         ];
         const selectedPick = await window.showQuickPick(
             envPicks.concat(staticPicks),
-            {title: "Select Python Environment"}
+            {
+                title: requirement?.title ?? "Select Python Environment",
+                placeHolder: requirement?.message,
+            }
         );
         if (selectedPick) {
             if (selectedPick.label === createNewLabel) {
-                await this.pythonExtension.createPythonEnvironment();
+                await this.createPythonEnvironment(requirement);
             } else if (selectedPick.label === usePythonExtensionLabel) {
                 await this.pythonExtension.selectPythonInterpreter();
             } else if (selectedPick.path) {
