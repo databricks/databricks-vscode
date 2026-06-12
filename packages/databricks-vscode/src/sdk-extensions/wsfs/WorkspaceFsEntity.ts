@@ -175,6 +175,14 @@ export abstract class WorkspaceFsEntity {
     get basename(): string {
         return posix.basename(this.path);
     }
+
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(recursive = false, @context ctx?: Context): Promise<void> {
+        await this._workspaceFsService.delete(
+            {path: this.path, recursive},
+            ctx
+        );
+    }
 }
 
 async function entityFromObjInfo(

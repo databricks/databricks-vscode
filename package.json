@@ -1,6 +1,6 @@
 {
     "name": "@databricks/databricks-vscode",
-    "version": "2.10.8",
+    "version": "2.11.0",
     "private": true,
     "workspaces": [
         "packages/*"

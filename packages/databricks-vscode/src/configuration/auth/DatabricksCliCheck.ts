@@ -85,6 +85,9 @@ export class DatabricksCliCheck implements Disposable {
                 authType: "databricks-cli",
                 databricksCliPath: this.authProvider.cliPath,
                 profile: this.authProvider.profile,
+                ...(this.authProvider.workspaceId
+                    ? {workspaceId: this.authProvider.workspaceId}
+                    : {}),
             },
             {
                 product: "databricks-vscode",

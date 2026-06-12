@@ -343,7 +343,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
-    "@databricks/sdk-experimental": ^0.17.0
+    "@databricks/sdk-experimental": ^0.18.0
     "@types/vscode": 1.86.0
     databricks: "workspace:^"
     eslint: ^8.55.0
@@ -368,15 +368,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@databricks/sdk-experimental@npm:^0.17.0":
-  version: 0.17.0
-  resolution: "@databricks/sdk-experimental@npm:0.17.0"
+"@databricks/sdk-experimental@npm:^0.18.0":
+  version: 0.18.0
+  resolution: "@databricks/sdk-experimental@npm:0.18.0"
   dependencies:
     google-auth-library: ^10.5.0
     ini: ^6.0.0
     reflect-metadata: ^0.2.2
     semver: ^7.7.3
-  checksum: 34de7d8708de12bf1fa44ae5ced7f8886a26d3ef9f072b47955c63dd7c3ae32db7c0b243074907b371026ee352d76c90d02faa9df0e95ad5d9e8aa22dc53d0b5
+  checksum: eefb552284eaa5577baaa173f1612611833bd805cbd822f11373223d74b2e2b37d2a6dbe7bdf522312339bcecf8384a2510c5a74b51612664ddca7a4b51fa503
   languageName: node
   linkType: hard
 
@@ -3745,7 +3745,7 @@ __metadata:
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
     "@databricks/databricks-vscode-types": "workspace:^"
-    "@databricks/sdk-experimental": ^0.17.0
+    "@databricks/sdk-experimental": ^0.18.0
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^11.2.2
     "@types/bcryptjs": ^2.4.6
@@ -3785,7 +3785,9 @@ __metadata:
     extract-zip: ^2.0.1
     fs-extra: ^11.2.0
     glob: ^10.3.10
+    highlight.js: ^11.10.0
     lodash: ^4.17.21
+    markdown-it: ^12.3.2
     minimatch: ^10.0.1
     mocha: ^10.2.0
     mock-require: ^3.0.3
@@ -6034,6 +6036,13 @@ __metadata:
   bin:
     he: bin/he
   checksum: 3d4d6babccccd79c5c5a3f929a68af33360d6445587d628087f39a965079d84f18ce9c3d3f917ee1e3978916fc833bb8b29377c3b403f919426f91bc6965e7a7
+  languageName: node
+  linkType: hard
+
+"highlight.js@npm:^11.10.0":
+  version: 11.11.1
+  resolution: "highlight.js@npm:11.11.1"
+  checksum: 841ddd329a92be123a61ef4051698f824c3575deef588fbb810bd638f1575ddc96b7bdd925b97c05a29276bb119dfcb8e5bcb0acb31c86249371bf046e131d72
   languageName: node
   linkType: hard
 

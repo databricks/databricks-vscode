@@ -97,6 +97,7 @@ export interface ConfigEntry {
     name: string;
     host?: URL;
     accountId?: string;
+    workspaceId?: string;
     cloud: Cloud;
     authType: string;
     valid: boolean;
@@ -414,6 +415,7 @@ export class CliWrapper {
                     name: profile.name,
                     host: UrlUtils.normalizeHost(profile.host),
                     accountId: profile.account_id,
+                    workspaceId: profile.workspace_id,
                     cloud: profile.cloud,
                     authType: profile.auth_type,
                     valid: profile.valid,
