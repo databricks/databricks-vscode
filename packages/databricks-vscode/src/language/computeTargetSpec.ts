@@ -76,3 +76,50 @@ export function getRequiredPythonVersion(input: {
         source,
     };
 }
+
+export interface ComputeTargetSpec {
+    computeType: "serverless" | "cluster";
+    pythonVersion: RequiredPythonVersion;
+    /** databricks-connect pip version specifier, e.g. "17.3.*" */
+    dbconnectVersion: string;
+}
+
+/**
+ * Resolves everything the extension needs to provision a working environment
+ * for the selected compute: the local Python version and the matching
+ * databricks-connect version. Returns undefined when the compute doesn't
+ * support Databricks Connect or its version can't be determined; callers
+ * should fall back to the manual setup flow in that case.
+ */
+export function resolveComputeTargetSpec(input: {
+    serverless: boolean;
+    serverlessDbconnectVersion: string;
+    dbrVersion?: (number | "x")[];
+}): ComputeTargetSpec | undefined {
+    const pythonVersion = getRequiredPythonVersion(input);
+    if (!pythonVersion) {
+        return undefined;
+    }
+    if (input.serverless) {
+        const parts = input.serverlessDbconnectVersion.split(".");
+        const major = parts[0];
+        const minor = parts[1] ?? "3";
+        return {
+            computeType: "serverless",
+            pythonVersion,
+            dbconnectVersion: `${major}.${minor}.*`,
+        };
+    }
+    const [major, minor] = input.dbrVersion ?? [];
+    if (major === undefined || major === "x") {
+        return undefined;
+    }
+    return {
+        computeType: "cluster",
+        pythonVersion,
+        dbconnectVersion:
+            minor === "x" || minor === undefined
+                ? `${major}.*`
+                : `${major}.${minor}.*`,
+    };
+}

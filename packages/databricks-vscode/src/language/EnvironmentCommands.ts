@@ -1,6 +1,7 @@
 import {window, commands, QuickPickItem, ProgressLocation} from "vscode";
 import {
     FeatureManager,
+    FeatureState,
     FeatureStepState,
 } from "../feature-manager/FeatureManager";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
@@ -8,12 +9,19 @@ import {Cluster} from "../sdk-extensions";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
 import {Environment} from "./MsPythonExtensionApi";
 import {environmentName} from "../utils/environmentUtils";
+import {EnvironmentProvisioner} from "./EnvironmentProvisioner";
+
+const provisionableSteps = [
+    "checkPythonEnvironment",
+    "checkEnvironmentDependencies",
+];
 
 export class EnvironmentCommands {
     constructor(
         private featureManager: FeatureManager,
         private pythonExtension: MsPythonExtensionWrapper,
-        private installer: EnvironmentDependenciesInstaller
+        private installer: EnvironmentDependenciesInstaller,
+        private provisioner?: EnvironmentProvisioner
     ) {}
 
     async setup(stepId?: string) {
@@ -40,6 +48,20 @@ export class EnvironmentCommands {
         let state = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
+        if (this.provisioner?.enabled && this.shouldProvision(state, stepId)) {
+            const result = await this.provisioner.ensureEnvironment();
+            if (!result.noOp) {
+                state = await this.checkEnvironmentDependencies();
+                if (state.available || !result.success) {
+                    // On provisioning failures the provisioner already showed
+                    // an actionable error with a retry option.
+                    this.reportSetupOutcome(state, !result.success);
+                    return;
+                }
+            }
+            // noOp (or an inconsistent result): fall through to the manual
+            // per-step setup flow.
+        }
         for (const [, s] of state.steps) {
             if (!s.available && (!stepId || s.id === stepId) && s.action) {
                 // Take an action of a failed step and re-check all steps state afterwards.
@@ -53,11 +75,32 @@ export class EnvironmentCommands {
                 break;
             }
         }
+        this.reportSetupOutcome(state);
+    }
+
+    /**
+     * The managed flow can only fix the python environment and its
+     * dependencies: cluster and workspace problems keep the manual flow.
+     */
+    shouldProvision(state: FeatureState, stepId?: string): boolean {
+        if (stepId && !provisionableSteps.includes(stepId)) {
+            return false;
+        }
+        const failingSteps = Array.from(state.steps.values()).filter(
+            (s) => !s.available && !s.optional
+        );
+        return (
+            failingSteps.length > 0 &&
+            failingSteps.every((s) => provisionableSteps.includes(s.id))
+        );
+    }
+
+    private reportSetupOutcome(state: FeatureState, quiet = false) {
         if (state.available) {
             window.showInformationMessage(
                 "Python environment and Databricks Connect are set up."
             );
-        } else {
+        } else if (!quiet) {
             const detail = Array.from(state.steps.values())
                 .filter(
                     (s) => !s.available && !s.optional && (s.message || s.title)

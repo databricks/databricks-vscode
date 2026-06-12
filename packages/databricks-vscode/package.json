@@ -1407,11 +1407,13 @@
                         "items": {
                             "enum": [
                                 "views.cluster",
-                                "views.workspace"
+                                "views.workspace",
+                                "python.managedEnvironment"
                             ],
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
-                                "Show workspace browser in the explorer."
+                                "Show workspace browser in the explorer.",
+                                "Let the extension automatically provision a Python environment matching the selected compute when setting up Databricks Connect."
                             ],
                             "type": "string"
                         },
