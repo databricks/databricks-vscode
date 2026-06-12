@@ -5,22 +5,27 @@
     // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
     "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
     "containerEnv": {
-        "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0"
+        "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+        "CLI_ARCH": "linux_amd64" // Set the default CLI_ARCH to linux_amd64, for cli download script
     },
     // Features to add to the dev container. More info: https://containers.dev/features.
     "features": {
         "ghcr.io/devcontainers/features/docker-in-docker:2": {},
         "ghcr.io/devcontainers/features/git:1": {},
         "ghcr.io/devcontainers/features/github-cli:1": {},
+        "ghcr.io/devcontainers/features/python:1": {
+            "version": "3.12"
+        },
+        "ghcr.io/devcontainers/features/azure-cli:1": {},
         "ghcr.io/devcontainers-extra/features/act:1": {},
         "ghcr.io/devcontainers-extra/features/actionlint:1": {}
     },
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": [],
     // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "sudo corepack enable yarn && sudo corepack install && yarn install",
+    "postCreateCommand": "sudo corepack enable yarn && sudo corepack install",
     // Use 'postStartCommand' to run commands after the container is started.
-    "postStartCommand": "yarn -v",
+    "postStartCommand": "yarn install && yarn run build && yarn workspace databricks run package:cli:fetch",
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
@@ -41,12 +46,17 @@
                 }
             },
             "extensions": [
+                "ms-python.python",
+                "ms-toolsai.jupyter",
                 "dbaeumer.vscode-eslint",
                 "connor4312.esbuild-problem-matchers",
                 "ms-vscode.extension-test-runner",
                 "amodio.tsl-problem-matcher",
                 "esbenp.prettier-vscode",
-                "Tobermory.es6-string-html"
+                "Tobermory.es6-string-html",
+                "github.vscode-github-actions",
+                "redhat.vscode-xml",
+                "redhat.vscode-yaml"
             ]
         }
     },

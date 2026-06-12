@@ -11,32 +11,28 @@ This repository contains the source code for Databricks extensions for VSCode.
 
 Currently, we have the following packages:
 
--   [databricks-vscode](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode)
-    The VSCode extension for Databricks published to the VSCode marketplace.
--   [databricks-vscode-types](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode-types)
-    Type definition of the public API of the VSCode extension.
+- [databricks-vscode](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode)
+  The VSCode extension for Databricks published to the VSCode marketplace.
+- [databricks-vscode-types](https://github.com/databricks/databricks-vscode/tree/main/packages/databricks-vscode-types)
+  Type definition of the public API of the VSCode extension.
 
 ### Getting Started
 
-Prepare yarn:
+Start the [devcontainer](.devcontainer/devcontainer.json) or use the system of your choice with Node.js 22+ installed and prepare yarn:
 
-```
+```sh
 npm install -g yarn@2
 yarn install
-```
-
-Prepare Databricks JavaScript SDK:
-
-```
-yarn run install:sdk
+yarn run build
 ```
 
 Prepare Databricks CLI:
 
-```
+```sh
 yarn workspace databricks run package:cli:fetch
 ```
 
+Then open the [code workspace](https://code.visualstudio.com/docs/editing/workspaces/workspaces).
 After that you are ready to build and test the `databricks-vscode` extension.
 
 ### Found an issue?
