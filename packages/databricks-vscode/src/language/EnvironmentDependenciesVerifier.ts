@@ -10,6 +10,7 @@ import {ResolvedEnvironment} from "./MsPythonExtensionApi";
 import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {ConfigureAutocomplete} from "./ConfigureAutocomplete";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {getRequiredPythonVersion} from "./computeTargetSpec";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     private readonly logger = NamedLogger.getOrCreate(Loggers.Extension);
@@ -174,74 +175,49 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             : "No active environments found.";
     }
 
-    private getExpectedPythonVersionMessage(dbrVersionParts: (number | "x")[]) {
-        if (dbrVersionParts[0] === 13 || dbrVersionParts[0] === 14) {
-            return "3.10";
-        }
-        if (dbrVersionParts[0] === 15) {
-            return "3.11";
-        }
-        if (dbrVersionParts[0] === 16) {
-            return "3.12";
-        }
-        if (dbrVersionParts[0] !== "x" && dbrVersionParts[0] > 16) {
-            return "3.12 or greater";
-        }
-        return "3.10 or greater";
-    }
-
-    private getVersionMismatchWarning(
-        dbrMajor: "x" | number,
-        env: ResolvedEnvironment,
-        currentPythonVersionMessage: string
-    ): string | undefined {
-        if (
-            (dbrMajor === 13 || dbrMajor === 14) &&
-            !this.matchEnvironmentVersion(env, 3, 10)
-        ) {
-            return `Use python 3.10 to match DBR ${dbrMajor} requirements. ${currentPythonVersionMessage}`;
-        }
-        if (dbrMajor === 15 && !this.matchEnvironmentVersion(env, 3, 11)) {
-            return `Use python 3.11 to match DBR ${dbrMajor} requirements. ${currentPythonVersionMessage}`;
-        }
-        if (dbrMajor === 16 && !this.matchEnvironmentVersion(env, 3, 12)) {
-            return `Use python 3.12 to match DBR ${dbrMajor} requirements. ${currentPythonVersionMessage}`;
-        }
-        return undefined;
-    }
-
     async checkPythonEnvironment(): Promise<FeatureStepState> {
         try {
             const env = await this.pythonExtension.pythonEnvironment;
-            let envVersionTooLow =
-                env?.version &&
-                (env.version.major !== 3 || env.version.minor < 10);
-            let dbrVersion = this.connectionManager.cluster?.dbrVersion || [];
-            if (this.connectionManager.serverless) {
-                const serverlessVersion =
-                    workspaceConfigs.serverlessDbconnectVersion;
-                const serverlessVersionParts = serverlessVersion.split(".");
-                const serverlessMajor = parseInt(serverlessVersionParts[0], 10);
-                const serverlessMinor = parseInt(
-                    serverlessVersionParts[1] ?? "0",
-                    10
-                );
-                dbrVersion = [serverlessMajor, serverlessMinor];
-                const minPythonMinor = serverlessMajor >= 16 ? 12 : 11;
-                envVersionTooLow =
-                    env?.version &&
-                    (env.version.major !== 3 ||
-                        env.version.minor < minPythonMinor);
-            }
+            const required = getRequiredPythonVersion({
+                serverless: this.connectionManager.serverless,
+                serverlessDbconnectVersion:
+                    workspaceConfigs.serverlessDbconnectVersion,
+                dbrVersion: this.connectionManager.cluster?.dbrVersion,
+            });
             const expectedPythonVersion =
-                this.getExpectedPythonVersionMessage(dbrVersion);
-            if (!env?.environment || envVersionTooLow) {
+                required?.display ?? "3.10 or greater";
+            const currentVersionMessage =
+                this.getCurrentPythonVersionMessage(env);
+            if (!env?.environment) {
                 return this.rejectStep(
                     "checkPythonEnvironment",
                     `Activate an environment with Python ${expectedPythonVersion}`,
-                    `Databricks Connect requires Python ${expectedPythonVersion}. ${this.getCurrentPythonVersionMessage(
-                        env
-                    )}`,
+                    `Databricks Connect requires Python ${expectedPythonVersion}. ${currentVersionMessage}`,
+                    this.selectPythonInterpreter.bind(this)
+                );
+            }
+            // Environments whose version the Python extension can't resolve
+            // are let through, matching the historic behavior.
+            let rejectionMessage: string | undefined;
+            if (env.version) {
+                if (
+                    required?.exact &&
+                    !this.matchEnvironmentVersion(
+                        env,
+                        required.major,
+                        required.minor
+                    )
+                ) {
+                    rejectionMessage = `Databricks Connect requires Python ${required.display}: the local minor version must match the Python version of ${required.source}. ${currentVersionMessage}`;
+                } else if (env.version.major !== 3 || env.version.minor < 10) {
+                    rejectionMessage = `Databricks Connect requires Python ${expectedPythonVersion}. ${currentVersionMessage}`;
+                }
+            }
+            if (rejectionMessage) {
+                return this.rejectStep(
+                    "checkPythonEnvironment",
+                    `Activate an environment with Python ${expectedPythonVersion}`,
+                    rejectionMessage,
                     this.selectPythonInterpreter.bind(this)
                 );
             }
@@ -254,11 +230,16 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                     this.selectPythonInterpreter.bind(this)
                 );
             }
-            const warning = this.getVersionMismatchWarning(
-                dbrVersion[0],
-                env,
-                this.getCurrentPythonVersionMessage(env)
-            );
+            const warning =
+                required &&
+                env.version &&
+                !this.matchEnvironmentVersion(
+                    env,
+                    required.major,
+                    required.minor
+                )
+                    ? `Use Python ${required.display} to match the Python version of ${required.source}: local and remote minor versions must match to run UDFs. ${currentVersionMessage}`
+                    : undefined;
             return this.acceptStep(
                 "checkPythonEnvironment",
                 `Active Environment: ${env.environment.name}`,

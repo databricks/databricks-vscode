@@ -1,5 +1,9 @@
 import {window, commands, QuickPickItem, ProgressLocation} from "vscode";
-import {FeatureManager} from "../feature-manager/FeatureManager";
+import {
+    FeatureManager,
+    FeatureState,
+    FeatureStepState,
+} from "../feature-manager/FeatureManager";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {Cluster} from "../sdk-extensions";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
@@ -13,9 +17,9 @@ export class EnvironmentCommands {
         private installer: EnvironmentDependenciesInstaller
     ) {}
 
-    async setup(stepId?: string) {
+    async setup(stepId?: string): Promise<boolean> {
         commands.executeCommand("configurationView.focus");
-        await window.withProgress(
+        return await window.withProgress(
             {location: {viewId: "configurationView"}},
             () => this._setup(stepId)
         );
@@ -32,7 +36,7 @@ export class EnvironmentCommands {
         );
     }
 
-    private async _setup(stepId?: string) {
+    private async _setup(stepId?: string): Promise<boolean> {
         // Get the state from the cache, we will re-check the state after taking an action (e.g. asking a user to select a venv or install dbconnect).
         let state = await this.featureManager.isEnabled(
             "environment.dependencies"
@@ -50,6 +54,11 @@ export class EnvironmentCommands {
                 break;
             }
         }
+        this.reportSetupOutcome(state);
+        return state.available;
+    }
+
+    private reportSetupOutcome(state: FeatureState) {
         if (state.available) {
             window.showInformationMessage(
                 "Python environment and Databricks Connect are set up."
@@ -77,14 +86,36 @@ export class EnvironmentCommands {
     async selectPythonInterpreter() {
         const environments =
             await this.pythonExtension.getAvailableEnvironments();
+        // The requirement hint is best effort: a fresh state check can block
+        // on the workspace connection, and the picker must always show up.
+        const state = await Promise.race([
+            this.featureManager.isEnabled("environment.dependencies"),
+            new Promise<undefined>((resolve) =>
+                setTimeout(() => resolve(undefined), 2000)
+            ),
+        ]);
+        const pythonStep = state?.steps.get("checkPythonEnvironment");
+        const requirement = !pythonStep?.available ? pythonStep : undefined;
         if (environments.length > 0) {
-            await this.showEnvironmentsQuickPick(environments);
+            await this.showEnvironmentsQuickPick(environments, requirement);
         } else {
-            await this.pythonExtension.createPythonEnvironment();
+            await this.createPythonEnvironment(requirement);
         }
     }
 
-    async showEnvironmentsQuickPick(environments: Environment[]) {
+    private async createPythonEnvironment(requirement?: FeatureStepState) {
+        if (requirement?.message) {
+            // The environment creation flow of the MS Python extension knows
+            // nothing about our version requirements, so we surface them here.
+            window.showInformationMessage(requirement.message);
+        }
+        await this.pythonExtension.createPythonEnvironment();
+    }
+
+    async showEnvironmentsQuickPick(
+        environments: Environment[],
+        requirement?: FeatureStepState
+    ) {
         const envPicks: (QuickPickItem & {path?: string})[] = environments.map(
             (env) => ({
                 label: environmentName(env),
@@ -101,11 +132,14 @@ export class EnvironmentCommands {
         ];
         const selectedPick = await window.showQuickPick(
             envPicks.concat(staticPicks),
-            {title: "Select Python Environment"}
+            {
+                title: requirement?.title ?? "Select Python Environment",
+                placeHolder: requirement?.message,
+            }
         );
         if (selectedPick) {
             if (selectedPick.label === createNewLabel) {
-                await this.pythonExtension.createPythonEnvironment();
+                await this.createPythonEnvironment(requirement);
             } else if (selectedPick.label === usePythonExtensionLabel) {
                 await this.pythonExtension.selectPythonInterpreter();
             } else if (selectedPick.path) {

@@ -106,14 +106,25 @@ export class MsPythonExtensionWrapper implements Disposable {
         outputChannel?: OutputChannel
     ) {
         const cp = childProcess.execFile(command, args);
+        let stderr = "";
         cp.stdout?.on("data", (data) => outputChannel?.append(data));
-        cp.stderr?.on("data", (data) => outputChannel?.append(data));
+        cp.stderr?.on("data", (data) => {
+            stderr += data;
+            outputChannel?.append(data);
+        });
         return new Promise<void>((resolve, reject) => {
             cp.on("exit", (code) => {
                 if (code === 0) {
                     resolve();
                 } else {
-                    reject(new Error(`Command exited with code ${code}`));
+                    const stderrTail = stderr.trim().slice(-2000);
+                    reject(
+                        new Error(
+                            `Command exited with code ${code}${
+                                stderrTail ? `: ${stderrTail}` : ""
+                            }`
+                        )
+                    );
                 }
             });
             cp.on("error", reject);
@@ -133,12 +144,13 @@ export class MsPythonExtensionWrapper implements Disposable {
         executable: string,
         baseArgs: string[],
         nativePipArgs: string[] = []
-    ): Promise<{command: string; args: string[]}> {
+    ): Promise<{command: string; args: string[]; usesNativePip: boolean}> {
         const isUv = await this.isUsingUv();
         if (isUv) {
             return {
                 command: "uv",
                 args: ["pip", ...baseArgs, "--python", executable],
+                usesNativePip: false,
             };
         }
         return {
@@ -151,7 +163,56 @@ export class MsPythonExtensionWrapper implements Disposable {
                 "--disable-pip-version-check",
                 "--no-python-version-warning",
             ],
+            usesNativePip: true,
         };
+    }
+
+    protected async execCommand(
+        command: string,
+        args: string[]
+    ): Promise<{stdout: string}> {
+        return await execFile(command, args, {
+            shell: false,
+        });
+    }
+
+    private isMissingPipError(e: unknown): boolean {
+        return e instanceof Error && e.message.includes("No module named pip");
+    }
+
+    /**
+     * Runs a pip-based command, seeding pip with ensurepip and retrying once
+     * if the environment has no pip (e.g. a venv created with `--without-pip`
+     * or by uv without `--seed`).
+     */
+    private async runSeedingPipIfMissing<T>(
+        executable: string,
+        usesNativePip: boolean,
+        fn: () => Promise<T>,
+        outputChannel?: OutputChannel
+    ): Promise<T> {
+        try {
+            return await fn();
+        } catch (e) {
+            if (!usesNativePip || !this.isMissingPipError(e)) {
+                throw e;
+            }
+            outputChannel?.appendLine(
+                `pip is missing in the environment. Running: ${executable} -m ensurepip --upgrade`
+            );
+            try {
+                await this.runWithOutput(
+                    executable,
+                    ["-m", "ensurepip", "--upgrade"],
+                    outputChannel
+                );
+            } catch {
+                // ensurepip can be unavailable too (e.g. Debian system
+                // pythons): the original error is more actionable.
+                throw e;
+            }
+            return await fn();
+        }
     }
 
     async getPackageDetailsFromEnvironment(name: string) {
@@ -160,15 +221,16 @@ export class MsPythonExtensionWrapper implements Disposable {
             return undefined;
         }
 
-        const {command, args} = await this.getPipCommandAndArgs(executable, [
-            "list",
-            "--format",
-            "json",
-        ]);
+        const {command, args, usesNativePip} = await this.getPipCommandAndArgs(
+            executable,
+            ["list", "--format", "json"]
+        );
 
-        const {stdout} = await execFile(command, args, {
-            shell: false,
-        });
+        const {stdout} = await this.runSeedingPipIfMissing(
+            executable,
+            usesNativePip,
+            () => this.execCommand(command, args)
+        );
         const data: Array<{name: string; version: string}> = JSON.parse(stdout);
         return data.find((item) => item.name === name);
     }
@@ -189,13 +251,18 @@ export class MsPythonExtensionWrapper implements Disposable {
             throw Error("No python executable found");
         }
 
-        const {command, args} = await this.getPipCommandAndArgs(executable, [
-            "install",
-            `${name}${version ? `==${version}` : ""}`,
-        ]);
+        const {command, args, usesNativePip} = await this.getPipCommandAndArgs(
+            executable,
+            ["install", `${name}${version ? `==${version}` : ""}`]
+        );
 
         outputChannel?.appendLine(`Running: ${command} ${args.join(" ")}`);
-        await this.runWithOutput(command, args, outputChannel);
+        await this.runSeedingPipIfMissing(
+            executable,
+            usesNativePip,
+            () => this.runWithOutput(command, args, outputChannel),
+            outputChannel
+        );
     }
 
     async uninstallPackageFromEnvironment(
@@ -208,14 +275,19 @@ export class MsPythonExtensionWrapper implements Disposable {
             return;
         }
 
-        const {command, args} = await this.getPipCommandAndArgs(
+        const {command, args, usesNativePip} = await this.getPipCommandAndArgs(
             executable,
             ["uninstall", name],
             ["-y"]
         );
 
         outputChannel?.appendLine(`Running: ${command} ${args.join(" ")}`);
-        await this.runWithOutput(command, args, outputChannel);
+        await this.runSeedingPipIfMissing(
+            executable,
+            usesNativePip,
+            () => this.runWithOutput(command, args, outputChannel),
+            outputChannel
+        );
     }
 
     async selectPythonInterpreter() {
