@@ -29,13 +29,16 @@ function featureState(available: boolean, executable?: string): FeatureState {
 describe(__filename, () => {
     let featureManagerMock: FeatureManager;
     let pythonExtensionMock: MsPythonExtensionWrapper;
+    let connectionManagerMock: ConnectionManager;
     let runCommands: RunCommands;
 
     beforeEach(() => {
         featureManagerMock = mock<FeatureManager>(FeatureManager);
         pythonExtensionMock = mock(MsPythonExtensionWrapper);
+        connectionManagerMock = mock(ConnectionManager);
+        when(connectionManagerMock.state).thenReturn("CONNECTED");
         runCommands = new RunCommands(
-            instance(mock(ConnectionManager)),
+            instance(connectionManagerMock),
             instance(mock(WorkspaceFolderManager)),
             instance(pythonExtensionMock),
             instance(featureManagerMock),
@@ -95,6 +98,23 @@ describe(__filename, () => {
             verify(
                 featureManagerMock.isEnabled("environment.dependencies", true)
             ).once();
+        });
+
+        it("should not re-verify while disconnected", async () => {
+            when(connectionManagerMock.state).thenReturn("DISCONNECTED");
+            when(
+                featureManagerMock.isEnabled("environment.dependencies")
+            ).thenResolve(featureState(true, "/old/python"));
+            when(pythonExtensionMock.getPythonExecutable()).thenResolve(
+                "/project/.venv/bin/python"
+            );
+
+            const result = await runCommands["checkDbconnectEnabled"]();
+
+            assert.strictEqual(result, true);
+            verify(
+                featureManagerMock.isEnabled("environment.dependencies", true)
+            ).never();
         });
 
         it("should not re-verify when the feature is unavailable", async () => {
