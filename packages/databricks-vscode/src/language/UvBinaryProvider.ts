@@ -148,26 +148,12 @@ export class UvBinaryProvider {
         targetDir: string,
         token?: CancellationToken
     ): Promise<void> {
-        if (archivePath.endsWith(".zip")) {
-            // Windows zips contain uv.exe at the archive root
-            await cancellableExecFile(
-                "powershell.exe",
-                [
-                    "-NoProfile",
-                    "-Command",
-                    `Expand-Archive -Path '${archivePath}' -DestinationPath '${targetDir}' -Force`,
-                ],
-                {shell: false},
-                token
-            );
-        } else {
-            // tarballs contain a uv-<triple>/ directory with the binary
-            await cancellableExecFile(
-                "tar",
-                ["-xzf", archivePath, "-C", targetDir, "--strip-components=1"],
-                {shell: false},
-                token
-            );
-        }
+        // bsdtar (shipped with macOS, most Linux distros and Windows 10+)
+        // extracts both formats. Windows zips contain uv.exe at the archive
+        // root, tarballs contain a uv-<triple>/ directory with the binary.
+        const args = archivePath.endsWith(".zip")
+            ? ["-xf", archivePath, "-C", targetDir]
+            : ["-xzf", archivePath, "-C", targetDir, "--strip-components=1"];
+        await cancellableExecFile("tar", args, {shell: false}, token);
     }
 }

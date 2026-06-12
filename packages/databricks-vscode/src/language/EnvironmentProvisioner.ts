@@ -164,7 +164,7 @@ export function classifyProvisionFailure(e: unknown): ProvisionFailureClass {
         return "pythonUnavailable";
     }
     if (
-        /error sending request|[Cc]onnection (refused|reset)|certificate|tls|timed out|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|proxy|403|407|503/.test(
+        /error sending request|[Cc]onnection (refused|reset)|certificate|\btls\b|timed out|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|\bproxy\b|\b(403|407|503)\b/.test(
             message
         )
     ) {
@@ -173,7 +173,11 @@ export function classifyProvisionFailure(e: unknown): ProvisionFailureClass {
     return "unknown";
 }
 
-const failureMessages: Record<ProvisionFailureClass, string> = {
+// "cancelled" never reaches the user: reportFailure returns early for it.
+const failureMessages: Record<
+    Exclude<ProvisionFailureClass, "cancelled">,
+    string
+> = {
     networkBlocked:
         "Your network seems to block the package index or interpreter downloads. " +
         "If you use a proxy or a package mirror, set HTTPS_PROXY, UV_INDEX_URL " +
@@ -186,13 +190,11 @@ const failureMessages: Record<ProvisionFailureClass, string> = {
         "A matching Python interpreter is not available and could not be downloaded. " +
         "Install the required Python version and retry.",
     disk: "Not enough disk space to set up the Python environment.",
-    cancelled: "",
     unknown: "Failed to set up the Python environment.",
 };
 
 interface VenvAssessment {
     disposition: VenvDisposition | "manual";
-    pythonMatches: boolean;
     /** Whether .venv was created by this extension (has our marker file) */
     managed: boolean;
 }
@@ -249,6 +251,11 @@ export class EnvironmentProvisioner implements Disposable {
         await this.mutex.wait();
         try {
             return await this.ensureEnvironmentImpl();
+        } catch (e) {
+            // Errors outside the provisioning steps (e.g. no active project
+            // folder) fall back to the manual setup flow.
+            this.logger.error("Failed to run managed environment setup", e);
+            return {success: false, noOp: true};
         } finally {
             this.mutex.signal();
         }
@@ -299,23 +306,20 @@ export class EnvironmentProvisioner implements Disposable {
     ): Promise<VenvAssessment> {
         const managed = fs.existsSync(this.markerPath);
         if (!fs.existsSync(this.venvDir)) {
-            return {disposition: "absent", pythonMatches: false, managed};
+            return {disposition: "absent", managed};
         }
         const pythonMatches = await this.venvPythonMatches(spec, venvPython);
-        const depsMatch =
-            pythonMatches && (await this.venvDepsMatch(spec, venvPython));
-        if (pythonMatches && depsMatch) {
-            return {disposition: "satisfied", pythonMatches, managed};
+        if (pythonMatches && (await this.venvDepsMatch(spec, venvPython))) {
+            return {disposition: "satisfied", managed};
         }
         if (managed) {
             return {
                 disposition: pythonMatches ? "repair" : "recreate",
-                pythonMatches,
                 managed,
             };
         }
         const disposition = await this.promptForeignVenv(spec, pythonMatches);
-        return {disposition, pythonMatches, managed};
+        return {disposition, managed};
     }
 
     private async venvPythonMatches(
@@ -402,11 +406,14 @@ export class EnvironmentProvisioner implements Disposable {
         token: CancellationToken
     ): Promise<ProvisionResult> {
         const disposition = assessment.disposition as VenvDisposition;
-        const childEnv = buildProvisionEnv(process.env, readPipIndexUrl());
         let createdVenv = false;
         const start = Date.now();
         try {
             if (disposition !== "satisfied") {
+                const childEnv = buildProvisionEnv(
+                    process.env,
+                    readPipIndexUrl()
+                );
                 const uv = await this.runStep(spec, "uvAcquire", async () => {
                     progress.report({message: "locating uv", increment: 5});
                     const uvPath = await this.uvProvider.getUvPath(token);
@@ -493,7 +500,12 @@ export class EnvironmentProvisioner implements Disposable {
                     // never get one.
                     this.writeMarker(spec);
                 }
-                await this.pythonExtension.api.environments.refreshEnvironments();
+                // forceRefresh: the default refresh is a no-op once the
+                // session's discovery already ran, leaving a freshly created
+                // .venv unknown to the Python extension.
+                await this.pythonExtension.api.environments.refreshEnvironments(
+                    {forceRefresh: true}
+                );
                 await this.pythonExtension.api.environments.updateActiveEnvironmentPath(
                     venvPython
                 );
@@ -609,7 +621,13 @@ export class EnvironmentProvisioner implements Disposable {
         const {stdout, stderr} = await this.execFn(
             uv,
             args,
-            {cwd: this.projectRoot, env: childEnv, shell: false},
+            {
+                cwd: this.projectRoot,
+                env: childEnv,
+                shell: false,
+                // Large installs exceed execFile's 1MiB default buffer.
+                maxBuffer: 128 * 1024 * 1024,
+            } as Parameters<typeof cancellableExecFile>[2],
             token
         );
         if (log) {

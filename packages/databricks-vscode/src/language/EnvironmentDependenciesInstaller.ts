@@ -5,6 +5,7 @@ import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {DATABRICKS_CONNECT_VERSION as DATABRICKS_CONNECT_MINIMAL_VERSION} from "../utils/constants";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {resolveComputeTargetSpec} from "./computeTargetSpec";
 
 export class EnvironmentDependenciesInstaller implements Disposable {
     private disposables: Disposable[] = [];
@@ -67,23 +68,13 @@ export class EnvironmentDependenciesInstaller implements Disposable {
     }
 
     async getSuggestedVersion() {
-        if (this.connectionManager.serverless) {
-            const serverlessVersion =
-                workspaceConfigs.serverlessDbconnectVersion;
-            const parts = serverlessVersion.split(".");
-            const major = parts[0];
-            const minor = parts[1] ?? "3";
-            return `${major}.${minor}.*`;
-        }
-        const dbrVersionParts =
-            this.connectionManager.cluster?.dbrVersion || [];
-        if (dbrVersionParts.length < 2 || dbrVersionParts[0] === "x") {
-            return DATABRICKS_CONNECT_MINIMAL_VERSION;
-        }
-        const major = dbrVersionParts[0];
-        const minor = dbrVersionParts[1] === "x" ? "*" : dbrVersionParts[1];
-        const rest = minor === "*" ? "" : ".*";
-        return `${major}.${minor + rest}`;
+        const spec = resolveComputeTargetSpec({
+            serverless: this.connectionManager.serverless,
+            serverlessDbconnectVersion:
+                workspaceConfigs.serverlessDbconnectVersion,
+            dbrVersion: this.connectionManager.cluster?.dbrVersion,
+        });
+        return spec?.dbconnectVersion ?? DATABRICKS_CONNECT_MINIMAL_VERSION;
     }
 
     async installWithVersionPrompt(suggestedVersion?: string) {
