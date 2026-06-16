@@ -163,7 +163,14 @@ export abstract class AuthProvider {
             case "databricks-cli":
                 return new DatabricksCliAuthProvider(
                     host,
-                    json.databricksPath ?? cli.cliPath,
+                    // Always use the freshly resolved bundled CLI path and
+                    // ignore any persisted `databricksPath`. That field is a
+                    // snapshot of a previous install's bundled binary: it is
+                    // version-pinned (e.g. .../databricks-2.11.0/bin/...) and,
+                    // on Windows, was stored without the `.exe` suffix, so a
+                    // persisted value is stale/wrong and must not win over the
+                    // path computed by the current extension.
+                    cli.cliPath,
                     cli,
                     json.profile,
                     json.workspaceId
@@ -355,6 +362,10 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         const env: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: "databricks-cli",
+            // Point the SDK/Terraform provider at the bundled CLI so they don't
+            // fall back to searching PATH (and fail with "databricks CLI not
+            // found") in subprocesses that don't inherit our resolved path.
+            DATABRICKS_CLI_PATH: this.cliPath,
         };
         if (this.profile) {
             env["DATABRICKS_CONFIG_PROFILE"] = this.profile;
