@@ -78,12 +78,17 @@ export class WorkspaceFsCommands implements Disposable {
         return root;
     }
 
+    private resolveTargetElement(
+        element?: WorkspaceFsEntity
+    ): WorkspaceFsEntity | undefined {
+        return element !== this.treeView.selection[0]
+            ? element
+            : this.selectedElement;
+    }
+
     @withLogContext(Loggers.Extension)
     async createFolder(element?: WorkspaceFsEntity, @context ctx?: Context) {
-        const activeElement =
-            element !== this.treeView.selection[0]
-                ? element
-                : this.selectedElement;
+        const activeElement = this.resolveTargetElement(element);
         const rootPath =
             activeElement?.path ??
             this.connectionManager.databricksWorkspace?.currentFsRoot.path;
@@ -191,10 +196,7 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
-        const activeElement =
-            element !== this.treeView.selection[0]
-                ? element
-                : this.selectedElement;
+        const activeElement = this.resolveTargetElement(element);
         const rootPath =
             (activeElement?.type === "DIRECTORY" ||
             activeElement?.type === "REPO"
