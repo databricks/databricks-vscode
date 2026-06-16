@@ -532,7 +532,7 @@
                 {
                     "id": "workspaceFsView",
                     "name": "Workspace file system",
-                    "when": "!databricks.context.remoteMode"
+                    "when": "databricks.context.activated && !databricks.context.remoteMode"
                 },
                 {
                     "id": "unityCatalogView",
@@ -542,7 +542,7 @@
                 {
                     "id": "databricksDocsView",
                     "name": "Documentation",
-                    "when": "!databricks.context.remoteMode"
+                    "when": "databricks.context.activated && !databricks.context.remoteMode"
                 }
             ]
         },
