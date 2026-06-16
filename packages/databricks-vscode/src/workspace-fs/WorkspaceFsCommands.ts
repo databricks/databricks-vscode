@@ -5,7 +5,7 @@ import {
     WorkspaceFsUtils,
 } from "../sdk-extensions";
 import {context, Context} from "@databricks/sdk-experimental/dist/context";
-import {Disposable, Uri, env, window, workspace} from "vscode";
+import {Disposable, TreeView, Uri, env, window, workspace} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";
 import {createDirWizard} from "./createDirectoryWizard";
@@ -18,13 +18,21 @@ const withLogContext = logging.withLogContext;
 
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
+    private selectedElement: WorkspaceFsEntity | undefined;
 
     constructor(
         private workspaceFolderManager: WorkspaceFolderManager,
         private connectionManager: ConnectionManager,
         private workspaceFsDataProvider: WorkspaceFsDataProvider,
-        private fsp: WorkspaceFsFileSystemProvider
-    ) {}
+        private fsp: WorkspaceFsFileSystemProvider,
+        private readonly treeView: TreeView<WorkspaceFsEntity>
+    ) {
+        this.disposables.push(
+            treeView.onDidChangeSelection((e) => {
+                this.selectedElement = e.selection[0];
+            })
+        );
+    }
 
     @withLogContext(Loggers.Extension)
     async getValidRoot(
@@ -72,8 +80,12 @@ export class WorkspaceFsCommands implements Disposable {
 
     @withLogContext(Loggers.Extension)
     async createFolder(element?: WorkspaceFsEntity, @context ctx?: Context) {
+        const activeElement =
+            element !== this.treeView.selection[0]
+                ? element
+                : this.selectedElement;
         const rootPath =
-            element?.path ??
+            activeElement?.path ??
             this.connectionManager.databricksWorkspace?.currentFsRoot.path;
 
         const root = await this.getValidRoot(rootPath, ctx);
@@ -179,9 +191,14 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
+        const activeElement =
+            element !== this.treeView.selection[0]
+                ? element
+                : this.selectedElement;
         const rootPath =
-            (element?.type === "DIRECTORY" || element?.type === "REPO"
-                ? element?.path
+            (activeElement?.type === "DIRECTORY" ||
+            activeElement?.type === "REPO"
+                ? activeElement?.path
                 : undefined) ??
             this.connectionManager.databricksWorkspace?.currentFsRoot.path;
 

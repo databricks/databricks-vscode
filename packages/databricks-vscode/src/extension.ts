@@ -393,11 +393,15 @@ export async function activate(
         connectionManager
     );
     const workspaceFsFsp = new WorkspaceFsFileSystemProvider(connectionManager);
+    const workspaceFsTreeView = window.createTreeView("workspaceFsView", {
+        treeDataProvider: workspaceFsDataProvider,
+    });
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspaceFolderManager,
         connectionManager,
         workspaceFsDataProvider,
-        workspaceFsFsp
+        workspaceFsFsp,
+        workspaceFsTreeView
     );
 
     context.subscriptions.push(
@@ -409,10 +413,7 @@ export async function activate(
             }
         ),
         workspaceFsFsp,
-        window.registerTreeDataProvider(
-            "workspaceFsView",
-            workspaceFsDataProvider
-        ),
+        workspaceFsTreeView,
         telemetry.registerCommand(
             "databricks.wsfs.refresh",
             workspaceFsCommands.refresh,
