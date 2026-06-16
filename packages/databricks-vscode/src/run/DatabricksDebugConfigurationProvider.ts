@@ -13,6 +13,8 @@ export interface DatabricksPythonDebugConfiguration extends DebugConfiguration {
     env?: Record<string, any>;
     isInternalDatabricksRun?: boolean;
     console?: "integratedTerminal" | "externalTerminal" | "internalConsole";
+    /** Path to the python interpreter debugpy should use */
+    python?: string;
 }
 
 function isTest(debugConfiguration: DebugConfiguration) {
