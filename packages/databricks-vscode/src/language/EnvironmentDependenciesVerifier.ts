@@ -185,9 +185,9 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             return "3.12";
         }
         if (dbrVersionParts[0] !== "x" && dbrVersionParts[0] > 16) {
-            return "3.12 or greater";
+            return "3.12";
         }
-        return "3.10 or greater";
+        return "3.10";
     }
 
     private getVersionMismatchWarning(
