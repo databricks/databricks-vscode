@@ -18,7 +18,6 @@ const withLogContext = logging.withLogContext;
 
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
-    private selectedElement: WorkspaceFsEntity | undefined;
 
     constructor(
         private workspaceFolderManager: WorkspaceFolderManager,
@@ -26,13 +25,7 @@ export class WorkspaceFsCommands implements Disposable {
         private workspaceFsDataProvider: WorkspaceFsDataProvider,
         private fsp: WorkspaceFsFileSystemProvider,
         private readonly treeView: TreeView<WorkspaceFsEntity>
-    ) {
-        this.disposables.push(
-            treeView.onDidChangeSelection((e) => {
-                this.selectedElement = e.selection[0];
-            })
-        );
-    }
+    ) {}
 
     @withLogContext(Loggers.Extension)
     async getValidRoot(
@@ -78,21 +71,40 @@ export class WorkspaceFsCommands implements Disposable {
         return root;
     }
 
-    private resolveTargetElement(
+    @withLogContext(Loggers.Extension)
+    async createFolder(element?: WorkspaceFsEntity, @context ctx?: Context) {
+        const rootPath =
+            element?.path ??
+            this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doCreateFolder(rootPath, ctx);
+    }
+
+    private resolveTargetElementForToolbar(
         element?: WorkspaceFsEntity
     ): WorkspaceFsEntity | undefined {
-        return element !== this.treeView.selection[0]
-            ? element
-            : this.selectedElement;
+        if (this.treeView.selection[0] === undefined) {
+            return undefined;
+        }
+        return element;
     }
 
     @withLogContext(Loggers.Extension)
-    async createFolder(element?: WorkspaceFsEntity, @context ctx?: Context) {
-        const activeElement = this.resolveTargetElement(element);
+    async createFolderFromToolbar(
+        element?: WorkspaceFsEntity,
+        @context ctx?: Context
+    ) {
+        const activeElement = this.resolveTargetElementForToolbar(element);
         const rootPath =
             activeElement?.path ??
             this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doCreateFolder(rootPath, ctx);
+    }
 
+    @withLogContext(Loggers.Extension)
+    private async doCreateFolder(
+        rootPath: string | undefined,
+        @context ctx?: Context
+    ) {
         const root = await this.getValidRoot(rootPath, ctx);
         if (!root) {
             return;
@@ -190,19 +202,31 @@ export class WorkspaceFsCommands implements Disposable {
     }
 
     async uploadFile(element?: WorkspaceFsEntity) {
-        const client = this.connectionManager.workspaceClient;
-        if (!client) {
-            window.showErrorMessage("Please login first to upload a file");
-            return;
-        }
+        const rootPath =
+            (element?.type === "DIRECTORY" || element?.type === "REPO"
+                ? element?.path
+                : undefined) ??
+            this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doUploadFile(rootPath);
+    }
 
-        const activeElement = this.resolveTargetElement(element);
+    async uploadFileFromToolbar(element?: WorkspaceFsEntity) {
+        const activeElement = this.resolveTargetElementForToolbar(element);
         const rootPath =
             (activeElement?.type === "DIRECTORY" ||
             activeElement?.type === "REPO"
                 ? activeElement?.path
                 : undefined) ??
             this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doUploadFile(rootPath);
+    }
+
+    private async doUploadFile(rootPath: string | undefined) {
+        const client = this.connectionManager.workspaceClient;
+        if (!client) {
+            window.showErrorMessage("Please login first to upload a file");
+            return;
+        }
 
         const root = await this.getValidRoot(rootPath);
         if (!root) {

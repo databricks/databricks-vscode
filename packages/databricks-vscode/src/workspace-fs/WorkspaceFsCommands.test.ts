@@ -38,6 +38,10 @@ describe("WorkspaceFsCommands – target folder resolution", () => {
 
     const entityA = makeEntity("/Users/me/A");
     const entityB = makeEntity("/Users/me/B");
+    const fileEntity = {
+        path: "/Users/me/A/note.py",
+        type: "FILE",
+    } as unknown as WorkspaceFsEntity;
 
     beforeEach(() => {
         fakeTreeView = new FakeTreeView();
@@ -71,95 +75,117 @@ describe("WorkspaceFsCommands – target folder resolution", () => {
         };
     });
 
-    describe("createFolder", () => {
-        it("title bar, nothing selected → targets root", async () => {
+    // Context-menu command: element is the right-clicked node; treeView
+    // selection is irrelevant.
+    describe("createFolder (context menu)", () => {
+        it("no element → targets root", async () => {
             await commands.createFolder(undefined);
             assert.strictEqual(capturedRootPath, ROOT_PATH);
         });
 
-        it("title bar, A selected → targets A", async () => {
-            fakeTreeView.simulateSelect(entityA);
+        it("element=A → targets A", async () => {
             await commands.createFolder(entityA);
             assert.strictEqual(capturedRootPath, entityA.path);
         });
 
-        it("title bar, A selected then deselected → targets root", async () => {
+        it("element=B while A is selected → targets B", async () => {
             fakeTreeView.simulateSelect(entityA);
-            fakeTreeView.simulateSelect(undefined);
-            await commands.createFolder(undefined);
-            assert.strictEqual(capturedRootPath, ROOT_PATH);
-        });
-
-        it("context menu on B while A is selected → targets B", async () => {
-            fakeTreeView.simulateSelect(entityA);
-            // Right-click on B does NOT update selection; selection[0] is still A
             await commands.createFolder(entityB);
             assert.strictEqual(capturedRootPath, entityB.path);
-        });
-
-        it("context menu on B with nothing selected → targets B", async () => {
-            await commands.createFolder(entityB);
-            assert.strictEqual(capturedRootPath, entityB.path);
-        });
-
-        it("context menu on A while A is selected → targets A", async () => {
-            fakeTreeView.simulateSelect(entityA);
-            // Right-click on the already-selected item: element === selection[0]
-            await commands.createFolder(entityA);
-            assert.strictEqual(capturedRootPath, entityA.path);
         });
     });
 
-    describe("uploadFile", () => {
-        // uploadFile bails early when workspaceClient is undefined, before
-        // reaching getValidRoot. Provide a non-null client so the activeElement
-        // logic is exercised.
+    // Toolbar command: VS Code passes the currently-selected node as element.
+    // resolveTargetElementForToolbar uses treeView.selection to detect whether
+    // something is truly selected; if not, it falls back to root.
+    describe("createFolderFromToolbar (toolbar)", () => {
+        it("nothing selected → targets root", async () => {
+            await commands.createFolderFromToolbar(undefined);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+
+        it("A selected, toolbar clicked → targets A", async () => {
+            fakeTreeView.simulateSelect(entityA);
+            // VS Code passes the selected node as element on toolbar click
+            await commands.createFolderFromToolbar(entityA);
+            assert.strictEqual(capturedRootPath, entityA.path);
+        });
+
+        it("selection cleared before toolbar click → targets root", async () => {
+            fakeTreeView.simulateSelect(entityA);
+            fakeTreeView.simulateSelect(undefined);
+            await commands.createFolderFromToolbar(undefined);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+
+        it("element passed but nothing selected (edge case) → targets root", async () => {
+            // treeView.selection is empty; resolveTargetElementForToolbar
+            // ignores the element and returns undefined → root
+            await commands.createFolderFromToolbar(entityA);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+    });
+
+    describe("uploadFile (context menu)", () => {
+        // doUploadFile checks workspaceClient before reaching getValidRoot;
+        // provide a non-null client so root-path resolution is exercised.
         beforeEach(() => {
             when(mockConnectionManager.workspaceClient).thenReturn({} as any);
         });
 
-        it("title bar, nothing selected → targets root", async () => {
+        it("no element → targets root", async () => {
             await commands.uploadFile(undefined);
             assert.strictEqual(capturedRootPath, ROOT_PATH);
         });
 
-        it("title bar, A selected → targets A", async () => {
-            fakeTreeView.simulateSelect(entityA);
+        it("element=A (directory) → targets A", async () => {
             await commands.uploadFile(entityA);
             assert.strictEqual(capturedRootPath, entityA.path);
         });
 
-        it("title bar, A selected then deselected → targets root", async () => {
+        it("element=B while A is selected → targets B", async () => {
+            fakeTreeView.simulateSelect(entityA);
+            await commands.uploadFile(entityB);
+            assert.strictEqual(capturedRootPath, entityB.path);
+        });
+
+        it("element=file (non-directory) → targets root", async () => {
+            await commands.uploadFile(fileEntity);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+    });
+
+    describe("uploadFileFromToolbar (toolbar)", () => {
+        beforeEach(() => {
+            when(mockConnectionManager.workspaceClient).thenReturn({} as any);
+        });
+
+        it("nothing selected → targets root", async () => {
+            await commands.uploadFileFromToolbar(undefined);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+
+        it("A selected, toolbar clicked → targets A", async () => {
+            fakeTreeView.simulateSelect(entityA);
+            await commands.uploadFileFromToolbar(entityA);
+            assert.strictEqual(capturedRootPath, entityA.path);
+        });
+
+        it("selection cleared before toolbar click → targets root", async () => {
             fakeTreeView.simulateSelect(entityA);
             fakeTreeView.simulateSelect(undefined);
-            await commands.uploadFile(undefined);
+            await commands.uploadFileFromToolbar(undefined);
             assert.strictEqual(capturedRootPath, ROOT_PATH);
         });
 
-        it("context menu on B while A is selected → targets B", async () => {
-            fakeTreeView.simulateSelect(entityA);
-            await commands.uploadFile(entityB);
-            assert.strictEqual(capturedRootPath, entityB.path);
+        it("element passed but nothing selected (edge case) → targets root", async () => {
+            await commands.uploadFileFromToolbar(entityA);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
         });
 
-        it("context menu on B with nothing selected → targets B", async () => {
-            await commands.uploadFile(entityB);
-            assert.strictEqual(capturedRootPath, entityB.path);
-        });
-
-        it("context menu on A while A is selected → targets A", async () => {
-            fakeTreeView.simulateSelect(entityA);
-            await commands.uploadFile(entityA);
-            assert.strictEqual(capturedRootPath, entityA.path);
-        });
-
-        it("title bar, file (non-directory) selected → targets root", async () => {
-            const fileEntity = {
-                path: "/Users/me/A/note.py",
-                type: "FILE",
-            } as unknown as WorkspaceFsEntity;
+        it("file selected, toolbar clicked → targets root", async () => {
             fakeTreeView.simulateSelect(fileEntity);
-            await commands.uploadFile(fileEntity);
+            await commands.uploadFileFromToolbar(fileEntity);
             assert.strictEqual(capturedRootPath, ROOT_PATH);
         });
     });

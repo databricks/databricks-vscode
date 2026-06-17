@@ -425,6 +425,11 @@ export async function activate(
             workspaceFsCommands
         ),
         telemetry.registerCommand(
+            "databricks.wsfs.createFolder.toolbar",
+            workspaceFsCommands.createFolderFromToolbar,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
             "databricks.wsfs.openInBrowser",
             workspaceFsCommands.openInBrowser,
             workspaceFsCommands
@@ -442,6 +447,11 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.wsfs.uploadFile",
             workspaceFsCommands.uploadFile,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.uploadFile.toolbar",
+            workspaceFsCommands.uploadFileFromToolbar,
             workspaceFsCommands
         ),
         telemetry.registerCommand(
