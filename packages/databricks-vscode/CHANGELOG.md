@@ -1,3 +1,14 @@
+# Release: v2.11.1
+
+## packages/databricks-vscode
+
+## (2026-06-18)
+
+-   fix: use correct target folder for createFolder/uploadFile in Workspace fs (#1913) ([be427e9](https://github.com/databricks/databricks-vscode/commit/be427e9)), closes [#1913](https://github.com/databricks/databricks-vscode/issues/1913)
+-   Drop the “or greater” addition on the line where extension suggests to activate a Python environment ([13452fb](https://github.com/databricks/databricks-vscode/commit/13452fb)), closes [#1915](https://github.com/databricks/databricks-vscode/issues/1915)
+-   Gate WSFS and docs panels on extension activation (#1909) ([308f687](https://github.com/databricks/databricks-vscode/commit/308f687)), closes [#1909](https://github.com/databricks/databricks-vscode/issues/1909)
+-   Pass DATABRICKS_CLI_PATH and resolve the platform-specific CLI binary (#1910) ([6fcb630](https://github.com/databricks/databricks-vscode/commit/6fcb630)), closes [#1910](https://github.com/databricks/databricks-vscode/issues/1910) [#1903](https://github.com/databricks/databricks-vscode/issues/1903)
+
 # Release: v2.11.0
 
 ## packages/databricks-vscode
