@@ -5,7 +5,7 @@ import {
     WorkspaceFsUtils,
 } from "../sdk-extensions";
 import {context, Context} from "@databricks/sdk-experimental/dist/context";
-import {Disposable, Uri, env, window, workspace} from "vscode";
+import {Disposable, TreeView, Uri, env, window, workspace} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {Loggers} from "../logger";
 import {createDirWizard} from "./createDirectoryWizard";
@@ -23,7 +23,8 @@ export class WorkspaceFsCommands implements Disposable {
         private workspaceFolderManager: WorkspaceFolderManager,
         private connectionManager: ConnectionManager,
         private workspaceFsDataProvider: WorkspaceFsDataProvider,
-        private fsp: WorkspaceFsFileSystemProvider
+        private fsp: WorkspaceFsFileSystemProvider,
+        private readonly treeView: TreeView<WorkspaceFsEntity>
     ) {}
 
     @withLogContext(Loggers.Extension)
@@ -75,7 +76,35 @@ export class WorkspaceFsCommands implements Disposable {
         const rootPath =
             element?.path ??
             this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doCreateFolder(rootPath, ctx);
+    }
 
+    private resolveTargetElementForToolbar(
+        element?: WorkspaceFsEntity
+    ): WorkspaceFsEntity | undefined {
+        if (this.treeView.selection[0] === undefined) {
+            return undefined;
+        }
+        return element;
+    }
+
+    @withLogContext(Loggers.Extension)
+    async createFolderFromToolbar(
+        element?: WorkspaceFsEntity,
+        @context ctx?: Context
+    ) {
+        const activeElement = this.resolveTargetElementForToolbar(element);
+        const rootPath =
+            activeElement?.path ??
+            this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doCreateFolder(rootPath, ctx);
+    }
+
+    @withLogContext(Loggers.Extension)
+    private async doCreateFolder(
+        rootPath: string | undefined,
+        @context ctx?: Context
+    ) {
         const root = await this.getValidRoot(rootPath, ctx);
         if (!root) {
             return;
@@ -173,17 +202,31 @@ export class WorkspaceFsCommands implements Disposable {
     }
 
     async uploadFile(element?: WorkspaceFsEntity) {
-        const client = this.connectionManager.workspaceClient;
-        if (!client) {
-            window.showErrorMessage("Please login first to upload a file");
-            return;
-        }
-
         const rootPath =
             (element?.type === "DIRECTORY" || element?.type === "REPO"
                 ? element?.path
                 : undefined) ??
             this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doUploadFile(rootPath);
+    }
+
+    async uploadFileFromToolbar(element?: WorkspaceFsEntity) {
+        const activeElement = this.resolveTargetElementForToolbar(element);
+        const rootPath =
+            (activeElement?.type === "DIRECTORY" ||
+            activeElement?.type === "REPO"
+                ? activeElement?.path
+                : undefined) ??
+            this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doUploadFile(rootPath);
+    }
+
+    private async doUploadFile(rootPath: string | undefined) {
+        const client = this.connectionManager.workspaceClient;
+        if (!client) {
+            window.showErrorMessage("Please login first to upload a file");
+            return;
+        }
 
         const root = await this.getValidRoot(rootPath);
         if (!root) {

@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.11.0",
+    "version": "2.11.1",
     "engines": {
         "vscode": "^1.86.0",
         "node": ">=22.0"
@@ -190,6 +190,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.wsfs.createFolder.toolbar",
+                "title": "Create Folder",
+                "icon": "$(new-folder)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.wsfs.openInBrowser",
                 "title": "Open in Browser",
                 "icon": "$(link-external)",
@@ -209,6 +216,12 @@
             },
             {
                 "command": "databricks.wsfs.uploadFile",
+                "title": "Upload File",
+                "icon": "$(cloud-upload)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.uploadFile.toolbar",
                 "title": "Upload File",
                 "icon": "$(cloud-upload)",
                 "category": "Databricks"
@@ -709,7 +722,7 @@
                     "group": "navigation@1"
                 },
                 {
-                    "command": "databricks.wsfs.createFolder",
+                    "command": "databricks.wsfs.createFolder.toolbar",
                     "when": "view == workspaceFsView",
                     "group": "navigation@1"
                 },
@@ -724,7 +737,7 @@
                     "group": "navigation@1"
                 },
                 {
-                    "command": "databricks.wsfs.uploadFile",
+                    "command": "databricks.wsfs.uploadFile.toolbar",
                     "when": "view == workspaceFsView",
                     "group": "navigation@1"
                 },
@@ -1114,6 +1127,10 @@
                     "when": "!databricks.context.remoteMode"
                 },
                 {
+                    "command": "databricks.wsfs.createFolder.toolbar",
+                    "when": "false"
+                },
+                {
                     "command": "databricks.wsfs.refresh",
                     "when": "!databricks.context.remoteMode"
                 },
@@ -1135,6 +1152,10 @@
                 },
                 {
                     "command": "databricks.wsfs.uploadFile",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.uploadFile.toolbar",
                     "when": "false"
                 },
                 {
