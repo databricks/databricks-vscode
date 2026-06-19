@@ -5,7 +5,7 @@ import {LocalUri} from "../sync/SyncDestination";
 import {DatabricksPythonDebugConfiguration} from "./DatabricksDebugConfigurationProvider";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
-import {FeatureManager} from "../feature-manager/FeatureManager";
+import {FeatureManager, FeatureState} from "../feature-manager/FeatureManager";
 import {
     escapeExecutableForTerminal,
     escapePathArgument,
@@ -113,13 +113,46 @@ export class RunCommands {
     }
 
     private async checkDbconnectEnabled() {
-        const featureState = await this.featureManager.isEnabled(
+        let featureState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
+        if (
+            featureState.available &&
+            // Re-checks block on an established connection, so don't force
+            // one while disconnected.
+            this.connection.state === "CONNECTED" &&
+            (await this.isPythonEnvironmentStale(featureState))
+        ) {
+            // The Python extension doesn't always notify us about interpreter
+            // changes, so the cached state can refer to a previously selected
+            // interpreter. Re-check before launching anything with it.
+            featureState = await this.featureManager.isEnabled(
+                "environment.dependencies",
+                true
+            );
+        }
         if (featureState.available) {
             return true;
         }
-        return await commands.executeCommand("databricks.environment.setup");
+        // Run the setup flow, then re-check: a successful setup should let the
+        // launch proceed instead of aborting and making the user re-trigger.
+        await commands.executeCommand("databricks.environment.setup");
+        return (await this.featureManager.isEnabled("environment.dependencies"))
+            .available;
+    }
+
+    private async isPythonEnvironmentStale(featureState: FeatureState) {
+        // For an accepted checkPythonEnvironment step the message holds
+        // the path of the verified python executable.
+        const verifiedExecutable = featureState.steps.get(
+            "checkPythonEnvironment"
+        )?.message;
+        const currentExecutable =
+            await this.pythonExtension.getPythonExecutable();
+        return (
+            verifiedExecutable !== undefined &&
+            verifiedExecutable !== currentExecutable
+        );
     }
 
     private getTargetResource(resource?: Uri): Uri | undefined {
@@ -129,17 +162,37 @@ export class RunCommands {
         return resource;
     }
 
-    async debugFileUsingDbconnect(resource?: Uri) {
+    /**
+     * Shared preflight for the run and debug Databricks Connect launchers:
+     * verifies the environment, resolves the target file, and resolves the
+     * python interpreter. Run and debug must use the *same* interpreter, so it
+     * is resolved here in one place. Returns undefined (after surfacing an
+     * error message) when any step fails.
+     */
+    private async resolveDbconnectLaunch(
+        resource?: Uri
+    ): Promise<{targetResource: Uri; executable: string} | undefined> {
         if (!(await this.checkDbconnectEnabled())) {
-            return;
+            return undefined;
         }
-
         const targetResource = this.getTargetResource(resource);
         if (!targetResource) {
-            window.showErrorMessage("Open a file to run");
-            return;
+            window.showErrorMessage("Open a file to run on Databricks");
+            return undefined;
         }
-        const config: DatabricksPythonDebugConfiguration = {
+        const executable = await this.pythonExtension.getPythonExecutable();
+        if (!executable) {
+            window.showErrorMessage("No python executable found");
+            return undefined;
+        }
+        return {targetResource, executable};
+    }
+
+    createDbconnectDebugConfig(
+        targetResource: Uri,
+        executable: string
+    ): DatabricksPythonDebugConfiguration {
+        return {
             program: targetResource.fsPath,
             type: "debugpy",
             name: "Databricks Connect",
@@ -147,9 +200,25 @@ export class RunCommands {
             databricks: true,
             console: "integratedTerminal",
             env: {...process.env},
+            // Pin debugpy to the interpreter we have verified. Without this
+            // debugpy falls back to the Python extension's selected
+            // interpreter for the workspace folder, which can differ from the
+            // environment used by "run" and by the verification checks.
+            python: executable,
         };
+    }
 
-        debug.startDebugging(
+    async debugFileUsingDbconnect(resource?: Uri) {
+        const launch = await this.resolveDbconnectLaunch(resource);
+        if (!launch) {
+            return;
+        }
+        const config = this.createDbconnectDebugConfig(
+            launch.targetResource,
+            launch.executable
+        );
+
+        await debug.startDebugging(
             this.workspaceFolderManager.activeWorkspaceFolder,
             config
         );
@@ -161,21 +230,11 @@ export class RunCommands {
     }
 
     async runFileUsingDbconnect(resource?: Uri) {
-        if (!(await this.checkDbconnectEnabled())) {
+        const launch = await this.resolveDbconnectLaunch(resource);
+        if (!launch) {
             return;
         }
-
-        const targetResource = this.getTargetResource(resource);
-        if (!targetResource) {
-            window.showErrorMessage("Open a file to run");
-            return;
-        }
-
-        const executable = await this.pythonExtension.getPythonExecutable();
-        if (!executable) {
-            window.showErrorMessage("No python executable found");
-            return;
-        }
+        const {targetResource, executable} = launch;
 
         const terminal = window.activeTerminal ?? window.createTerminal();
         const bootstrapPath = this.context.asAbsolutePath(
