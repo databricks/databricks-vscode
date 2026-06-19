@@ -1,0 +1,86 @@
+# Telemetry: Python package-manager detection
+
+Measurement-only instrumentation that records which Python package/environment
+manager(s) a project uses, so we can size the **real** distribution of
+pip / conda / uv / poetry usage across Databricks VS Code users and prioritize
+the VPEX setup-flow investment with first-party data instead of public-survey
+estimates.
+
+This event does **not** change any setup behaviour. It is detection only.
+
+## Event
+
+|                     |                                                                   |
+| ------------------- | ----------------------------------------------------------------- |
+| **Event name**      | `python_env.setup.detected`                                       |
+| **Defined in**      | `src/telemetry/constants.ts` (`Events.PYTHON_ENV_SETUP_DETECTED`) |
+| **Emitted from**    | `src/language/PackageManagerTelemetry.ts` (`emitDetection`)       |
+| **Detection logic** | `src/language/packageManagerDetection.ts` (pure, unit-tested)     |
+
+Telemetry is transported via the existing `Telemetry` client
+(`@vscode/extension-telemetry`). As with every event, properties are prefixed
+with `event.` and the user's `telemetry.telemetryLevel` opt-out is honoured by
+the client — nothing is emitted when telemetry is disabled. Standard context
+(extension/telemetry schema version, OS, hashed/anonymized user metadata) is
+attached automatically by the client and is **not** part of this event's own
+schema.
+
+## Schema (the `event.*` fields)
+
+| Field               | Type       | Notes                                                                                                                                  |
+| ------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `managersDetected`  | `string[]` | All managers with a firing signal, e.g. `["uv","pip"]`. Subset of `uv \| poetry \| pip \| conda`. JSON-stringified by the transport.   |
+| `primaryManager`    | enum       | `uv \| poetry \| pip \| conda \| unknown`. Priority when several apply: **uv > poetry > conda > pip**. `unknown` when no signal fires. |
+| `signals`           | `string[]` | Closed set of signal ids that fired (see below). JSON-stringified by the transport.                                                    |
+| `pythonVersion`     | `string?`  | Interpreter version, **major.minor only** (e.g. `"3.11"`). Omitted if unknown.                                                         |
+| `interpreterSource` | enum       | `uv \| conda \| system \| venv \| unknown`. How the active interpreter was provisioned.                                                |
+| `hasLockfile`       | `boolean`  | True if `uv.lock` or `poetry.lock` was found.                                                                                          |
+| `targetCompute`     | enum       | `cluster \| serverless \| none`. **No** cluster IDs/names.                                                                             |
+| `setupTrigger`      | enum       | `auto_open \| explicit_command \| run \| debug`. Which touchpoint fired it.                                                            |
+
+### `signals` value domain (closed set)
+
+`uv.lock`, `pyproject.tool.uv`, `uv.onPath`, `interpreter.uv`, `poetry.lock`,
+`pyproject.tool.poetry`, `poetry.onPath`, `requirements.txt`, `constraints.txt`,
+`pyproject.pipOnly`, `interpreter.venv`, `environment.yml`, `conda.prefix`,
+`interpreter.conda`.
+
+> `*.onPath` are **weak** signals: they record that a tool is installed, but do
+> not by themselves attribute the project to that manager. Attribution requires
+> a project-local marker (lockfile, `pyproject` section, or interpreter source).
+> They are part of the closed set the classifier accepts, but are **not emitted
+> in practice**: the collector does not probe PATH (running an external `uv`/
+> `poetry` binary purely for a non-attributing signal is not worth the cost), so
+> `uv.onPath` / `poetry.onPath` will not appear in real data unless a future
+> collector populates them.
+
+## Where it fires
+
+1. **`auto_open`** — first environment check on project open
+   (`EnvironmentDependenciesVerifier.check`).
+2. **`explicit_command`** — the "set up environment" command
+   (`databricks.environment.setup` → `EnvironmentCommands.setup`).
+3. **`run` / `debug`** — first Run/Debug with Databricks Connect
+   (`RunCommands.runFileUsingDbconnect` / `debugFileUsingDbconnect`).
+
+Emissions are **deduplicated per session** on `(setupTrigger, projectRoot)`, so
+a single project open does not inflate counts. The same project can still emit
+once per distinct trigger (e.g. one `auto_open` and one `run`).
+
+## Privacy
+
+Only categorical/enum data and the closed-set signal ids are emitted. No file
+paths, package names, project names, cluster names, or usernames. Detection is
+best-effort and non-blocking: any failure degrades to `unknown` and is
+swallowed, never thrown into the setup/run flow.
+
+## Suggested analysis
+
+-   Share of projects by `primaryManager`.
+-   Co-occurrence from `managersDetected` (e.g. uv+pip, conda+pip, poetry+uv).
+-   `hasLockfile` and `pythonVersion` distributions to inform per-manager flow
+    depth.
+
+Dedupe at analysis time on the anonymized session id + `projectRoot` is not
+possible (no path is sent); rely on the in-session dedupe above and treat each
+event as one `(session, trigger)` observation.

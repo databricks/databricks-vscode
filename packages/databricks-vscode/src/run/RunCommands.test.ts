@@ -8,6 +8,7 @@ import {FeatureManager, FeatureState} from "../feature-manager/FeatureManager";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {Telemetry} from "../telemetry";
+import {PackageManagerTelemetry} from "../language/PackageManagerTelemetry";
 
 function featureState(available: boolean, executable?: string): FeatureState {
     return {
@@ -44,7 +45,8 @@ describe(__filename, () => {
             instance(featureManagerMock),
             {subscriptions: []} as unknown as ExtensionContext,
             instance(mock(CustomWhenContext)),
-            instance(mock(Telemetry))
+            instance(mock(Telemetry)),
+            instance(mock(PackageManagerTelemetry))
         );
     });
 

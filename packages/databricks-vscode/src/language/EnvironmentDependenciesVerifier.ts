@@ -10,6 +10,7 @@ import {ResolvedEnvironment} from "./MsPythonExtensionApi";
 import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {ConfigureAutocomplete} from "./ConfigureAutocomplete";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {PackageManagerTelemetry} from "./PackageManagerTelemetry";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     private readonly logger = NamedLogger.getOrCreate(Loggers.Extension);
@@ -18,7 +19,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly installer: EnvironmentDependenciesInstaller,
-        private readonly configureAutocomplete: ConfigureAutocomplete
+        private readonly configureAutocomplete: ConfigureAutocomplete,
+        private readonly packageManagerTelemetry: PackageManagerTelemetry
     ) {
         super([
             "checkCluster",
@@ -403,6 +405,9 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     }
 
     override async check() {
+        // First environment check on project open: emit package-manager
+        // detection telemetry (deduplicated per session, never throws).
+        void this.packageManagerTelemetry.emitDetection("auto_open");
         await this.connectionManager.waitForConnect();
         await Promise.all([
             this.checkCluster(this.connectionManager.cluster),

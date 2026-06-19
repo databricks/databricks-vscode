@@ -13,6 +13,7 @@ import {
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {Events, Telemetry} from "../telemetry";
+import {PackageManagerTelemetry} from "../language/PackageManagerTelemetry";
 
 /**
  * Run related commands
@@ -25,7 +26,8 @@ export class RunCommands {
         private readonly featureManager: FeatureManager,
         private readonly context: ExtensionContext,
         private readonly customWhenContext: CustomWhenContext,
-        private readonly telemetry: Telemetry
+        private readonly telemetry: Telemetry,
+        private readonly packageManagerTelemetry: PackageManagerTelemetry
     ) {
         this.context.subscriptions.push(
             window.onDidChangeActiveTextEditor(async () =>
@@ -227,6 +229,7 @@ export class RunCommands {
             launchType: "debug",
             computeType: this.connection.serverless ? "serverless" : "cluster",
         });
+        void this.packageManagerTelemetry.emitDetection("debug");
     }
 
     async runFileUsingDbconnect(resource?: Uri) {
@@ -251,5 +254,6 @@ export class RunCommands {
             launchType: "run",
             computeType: this.connection.serverless ? "serverless" : "cluster",
         });
+        void this.packageManagerTelemetry.emitDetection("run");
     }
 }

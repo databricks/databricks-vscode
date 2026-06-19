@@ -75,6 +75,7 @@ import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariab
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
+import {PackageManagerTelemetry} from "./language/PackageManagerTelemetry";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
@@ -334,6 +335,23 @@ export async function activate(
         workspaceFolderManager,
         customWhenContext,
         telemetry
+    );
+    const packageManagerTelemetry = new PackageManagerTelemetry(
+        telemetry,
+        pythonExtensionWrapper,
+        () => {
+            try {
+                return workspaceFolderManager.activeProjectUri.fsPath;
+            } catch (e) {
+                return undefined;
+            }
+        },
+        () => {
+            if (connectionManager.serverless) {
+                return "serverless";
+            }
+            return connectionManager.cluster ? "cluster" : "none";
+        }
     );
     context.subscriptions.push(
         bundleFileWatcher,
@@ -609,13 +627,15 @@ export async function activate(
                 connectionManager,
                 pythonExtensionWrapper,
                 environmentDependenciesInstaller,
-                configureAutocomplete
+                configureAutocomplete,
+                packageManagerTelemetry
             )
     );
     const environmentCommands = new EnvironmentCommands(
         featureManager,
         pythonExtensionWrapper,
-        environmentDependenciesInstaller
+        environmentDependenciesInstaller,
+        packageManagerTelemetry
     );
     context.subscriptions.push(
         telemetry.registerCommand(
@@ -993,7 +1013,8 @@ export async function activate(
         featureManager,
         context,
         customWhenContext,
-        telemetry
+        telemetry,
+        packageManagerTelemetry
     );
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,
