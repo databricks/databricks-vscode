@@ -141,6 +141,91 @@ export class WorkspaceFsCommands implements Disposable {
         return created;
     }
 
+    @withLogContext(Loggers.Extension)
+    async createFile(element?: WorkspaceFsEntity, @context ctx?: Context) {
+        const rootPath =
+            element?.path ??
+            this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doCreateFile(rootPath, ctx);
+    }
+
+    @withLogContext(Loggers.Extension)
+    async createFileFromToolbar(
+        element?: WorkspaceFsEntity,
+        @context ctx?: Context
+    ) {
+        const activeElement = this.resolveTargetElementForToolbar(element);
+        const rootPath =
+            activeElement?.path ??
+            this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doCreateFile(rootPath, ctx);
+    }
+
+    @withLogContext(Loggers.Extension)
+    private async doCreateFile(
+        rootPath: string | undefined,
+        @context ctx?: Context
+    ) {
+        const client = this.connectionManager.workspaceClient;
+        if (!client) {
+            window.showErrorMessage("Please login first to create a file");
+            return;
+        }
+
+        const root = await this.getValidRoot(rootPath, ctx);
+        if (!root) {
+            return;
+        }
+
+        const inputName = await createDirWizard(
+            this.workspaceFolderManager.activeProjectUri,
+            "File Name",
+            root
+        );
+
+        if (inputName === undefined) {
+            return;
+        }
+
+        const existing = await WorkspaceFsEntity.fromPath(
+            client,
+            `${root.path}/${inputName}`
+        );
+        if (existing) {
+            const answer = await window.showWarningMessage(
+                `"${inputName}" already exists in the workspace. Overwrite it?`,
+                {modal: true},
+                "Overwrite"
+            );
+            if (answer !== "Overwrite") {
+                return;
+            }
+        }
+
+        try {
+            await root.createFile(inputName, "", true);
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            window.showErrorMessage(`Failed to create "${inputName}": ${msg}`);
+            return;
+        }
+
+        this.workspaceFsDataProvider.refresh();
+        const uri = Uri.from({
+            scheme: WorkspaceFsFileSystemProvider.scheme,
+            path: `${root.path}/${inputName}`,
+        });
+        this.fsp.notifyCreated(uri);
+
+        try {
+            await window.showTextDocument(
+                await workspace.openTextDocument(uri)
+            );
+        } catch (e: unknown) {
+            ctx?.logger?.error(`Can't open ${inputName} after creation`, e);
+        }
+    }
+
     private async createRepo(repoPath: string) {
         const wsClient = this.connectionManager.workspaceClient;
         if (!wsClient) {

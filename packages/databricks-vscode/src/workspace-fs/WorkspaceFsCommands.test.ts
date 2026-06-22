@@ -126,6 +126,59 @@ describe("WorkspaceFsCommands – target folder resolution", () => {
         });
     });
 
+    // createFile mirrors createFolder's target resolution but, like upload,
+    // checks workspaceClient before reaching getValidRoot.
+    describe("createFile (context menu)", () => {
+        beforeEach(() => {
+            when(mockConnectionManager.workspaceClient).thenReturn({} as any);
+        });
+
+        it("no element → targets root", async () => {
+            await commands.createFile(undefined);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+
+        it("element=A → targets A", async () => {
+            await commands.createFile(entityA);
+            assert.strictEqual(capturedRootPath, entityA.path);
+        });
+
+        it("element=B while A is selected → targets B", async () => {
+            fakeTreeView.simulateSelect(entityA);
+            await commands.createFile(entityB);
+            assert.strictEqual(capturedRootPath, entityB.path);
+        });
+    });
+
+    describe("createFileFromToolbar (toolbar)", () => {
+        beforeEach(() => {
+            when(mockConnectionManager.workspaceClient).thenReturn({} as any);
+        });
+
+        it("nothing selected → targets root", async () => {
+            await commands.createFileFromToolbar(undefined);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+
+        it("A selected, toolbar clicked → targets A", async () => {
+            fakeTreeView.simulateSelect(entityA);
+            await commands.createFileFromToolbar(entityA);
+            assert.strictEqual(capturedRootPath, entityA.path);
+        });
+
+        it("selection cleared before toolbar click → targets root", async () => {
+            fakeTreeView.simulateSelect(entityA);
+            fakeTreeView.simulateSelect(undefined);
+            await commands.createFileFromToolbar(undefined);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+
+        it("element passed but nothing selected (edge case) → targets root", async () => {
+            await commands.createFileFromToolbar(entityA);
+            assert.strictEqual(capturedRootPath, ROOT_PATH);
+        });
+    });
+
     describe("uploadFile (context menu)", () => {
         // doUploadFile checks workspaceClient before reaching getValidRoot;
         // provide a non-null client so root-path resolution is exercised.
