@@ -12,10 +12,11 @@ import {
 const ViewSectionTypes = [
     "CLUSTERS",
     "CONFIGURATION",
-    "WORKSPACE EXPLORER",
+    "WORKSPACE FILE SYSTEM",
     "BUNDLE RESOURCE EXPLORER",
     "BUNDLE VARIABLES",
     "DOCUMENTATION",
+    "UNITY CATALOG",
 ] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
 
@@ -42,9 +43,14 @@ export async function findViewSection(name: ViewSectionType) {
     const views =
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
     for (const v of views) {
-        const title = await v.getTitle();
-        console.log("View title:", title);
+        let title = await v.getTitle();
         if (title === null) {
+            // VSCode 1.120+ no longer sets the 'title' HTML attribute on .title elements;
+            // fall back to reading the element's text content.
+            title = await (v as any).title$.getText();
+        }
+        console.log("View title:", title);
+        if (!title) {
             continue;
         }
         if (title.toUpperCase().includes(name)) {

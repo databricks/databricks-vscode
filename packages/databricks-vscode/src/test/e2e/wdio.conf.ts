@@ -11,7 +11,7 @@ import fs from "fs/promises";
 import {Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile as execFileCb} from "node:child_process";
-import {cpSync, mkdirSync, rmSync} from "node:fs";
+import {cpSync, mkdirSync, readdirSync, readFileSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
@@ -23,15 +23,16 @@ const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const {version, name, engines} = packageJson;
+const {engines} = packageJson;
 
 const EXTENSIONS_DIR = path.resolve(tmpdir(), "extension test", "extension");
+const PACKAGE_ROOT = path.resolve(__dirname, "..", "..", "..");
 const VSIX_PATH = path.resolve(
-    __dirname,
-    "..",
-    "..",
-    "..",
-    `${name}-${version}.vsix`
+    PACKAGE_ROOT,
+    readFileSync(
+        path.resolve(PACKAGE_ROOT, ".build", "test-vsix-path"),
+        "utf-8"
+    ).trim()
 );
 const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
 
@@ -412,9 +413,42 @@ export const config: Options.Testrunner = {
                 );
                 break;
         }
-        const extensionDependencies = packageJson.extensionDependencies.flatMap(
-            (item) => ["--install-extension", item]
-        );
+        // When EXTENSION_VSIX_DIR is set (CI with vendored VSIX files),
+        // resolve extensions from that directory instead of the marketplace.
+        const vsixDir = process.env.EXTENSION_VSIX_DIR;
+        const extensionDependencies: string[] = [];
+        for (const extId of packageJson.extensionDependencies) {
+            if (vsixDir) {
+                const targetPlatform = `${process.platform}-${process.arch}`;
+                const files = readdirSync(vsixDir);
+                const prefix = `${extId}-`;
+                const vsix =
+                    files.find(
+                        (f) =>
+                            f.startsWith(prefix) &&
+                            f.endsWith(`-${targetPlatform}.vsix`)
+                    ) ??
+                    files.find(
+                        (f) =>
+                            f.startsWith(prefix) &&
+                            f.endsWith("-universal.vsix")
+                    );
+                if (vsix) {
+                    console.log(`Using vendored VSIX for ${extId}: ${vsix}`);
+                    extensionDependencies.push(
+                        "--install-extension",
+                        path.resolve(vsixDir, vsix)
+                    );
+                } else {
+                    console.log(
+                        `WARNING: no vendored VSIX for ${extId}, falling back to marketplace`
+                    );
+                    extensionDependencies.push("--install-extension", extId);
+                }
+            } else {
+                extensionDependencies.push("--install-extension", extId);
+            }
+        }
 
         console.log("running vscode cli");
         const res = await execFile(cli, [

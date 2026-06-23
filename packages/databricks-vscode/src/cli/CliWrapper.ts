@@ -97,6 +97,7 @@ export interface ConfigEntry {
     name: string;
     host?: URL;
     accountId?: string;
+    workspaceId?: string;
     cloud: Cloud;
     authType: string;
     valid: boolean;
@@ -297,7 +298,15 @@ export class CliWrapper {
     }
 
     get cliPath(): string {
-        return this.extensionContext.asAbsolutePath("./bin/databricks");
+        // The bundled binary is named `databricks.exe` on Windows. We must
+        // include the extension here: while spawning the CLI ourselves works
+        // without it (Windows' CreateProcess auto-appends `.exe`), this path is
+        // also forwarded to the Databricks Go SDK / Terraform provider via the
+        // DATABRICKS_CLI_PATH env var, and they do a literal file lookup that
+        // fails on an extensionless path with "databricks CLI not found".
+        const binName =
+            process.platform === "win32" ? "databricks.exe" : "databricks";
+        return this.extensionContext.asAbsolutePath(`./bin/${binName}`);
     }
 
     getLoggingArguments(): string[] {
@@ -404,10 +413,7 @@ export class CliWrapper {
             return [];
         }
 
-        let profiles = JSON.parse(res.stdout).profiles || [];
-
-        // filter out account profiles
-        profiles = profiles.filter((p: any) => !p.account_id);
+        const profiles = JSON.parse(res.stdout).profiles || [];
 
         const result = [];
         let hasError = false;
@@ -417,6 +423,7 @@ export class CliWrapper {
                     name: profile.name,
                     host: UrlUtils.normalizeHost(profile.host),
                     accountId: profile.account_id,
+                    workspaceId: profile.workspace_id,
                     cloud: profile.cloud,
                     authType: profile.auth_type,
                     valid: profile.valid,

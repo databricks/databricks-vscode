@@ -21,3 +21,10 @@ tsconfig.tsbuildinfo
 
 # Local docs (not for version control)
 docs/
+
+# IntelliJ IDEA / JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
