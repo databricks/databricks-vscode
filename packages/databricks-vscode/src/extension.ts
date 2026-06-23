@@ -49,6 +49,8 @@ import {Events, Metadata} from "./telemetry/constants";
 import {EnvironmentDependenciesInstaller} from "./language/EnvironmentDependenciesInstaller";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
+import {VpexEnvironmentSetup} from "./language/VpexEnvironmentSetup";
+import {VpexStatusBarButton} from "./language/VpexStatusBarButton";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 import {
@@ -646,6 +648,31 @@ export async function activate(
         featureManager
     );
 
+    // VPEX demo flow: a parallel environment-setup command that runs
+    // `databricks dbconnect init/sync`, narrates phases, and auto-adopts the
+    // resulting .venv.
+    const vpexEnvironmentSetup = new VpexEnvironmentSetup(
+        context,
+        pythonExtensionWrapper
+    );
+    const vpexStatusBarButton = new VpexStatusBarButton(vpexEnvironmentSetup);
+    context.subscriptions.push(
+        vpexEnvironmentSetup,
+        vpexStatusBarButton,
+        telemetry.registerCommand(
+            "databricks.environment.setupVpex",
+            async () => {
+                await vpexEnvironmentSetup.setup();
+                vpexStatusBarButton.update();
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.environment.showVpexVersions",
+            vpexEnvironmentSetup.showVersions,
+            vpexEnvironmentSetup
+        )
+    );
+
     const databricksEnvFileManager = new DatabricksEnvFileManager(
         workspaceFolderManager,
         featureManager,
@@ -728,7 +755,8 @@ export async function activate(
         configModel,
         cli,
         featureManager,
-        workspaceFolderManager
+        workspaceFolderManager,
+        vpexEnvironmentSetup
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,

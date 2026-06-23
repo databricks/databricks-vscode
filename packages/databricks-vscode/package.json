@@ -441,6 +441,17 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.environment.setupVpex",
+                "title": "Set up Python Environment (VPEX)",
+                "icon": "$(rocket)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.showVpexVersions",
+                "title": "Show Matched Versions (VPEX)",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.environment.selectPythonInterpreter",
                 "title": "Change Python environment",
                 "icon": "$(gear)",

@@ -4,6 +4,7 @@ import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
+import {VpexEnvironmentSetup} from "../../language/VpexEnvironmentSetup";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
 const getItemContext = (key: string, available: boolean) =>
@@ -13,10 +14,14 @@ export class EnvironmentComponent extends BaseComponent {
     constructor(
         private readonly featureManager: FeatureManager,
         private readonly connectionManager: ConnectionManager,
-        private readonly configModel: ConfigModel
+        private readonly configModel: ConfigModel,
+        private readonly vpexEnvironmentSetup: VpexEnvironmentSetup
     ) {
         super();
         this.featureManager.onDidChangeState("environment.dependencies", () =>
+            this.onDidChangeEmitter.fire()
+        );
+        this.vpexEnvironmentSetup.onDidChangeState(() =>
             this.onDidChangeEmitter.fire()
         );
     }
@@ -106,6 +111,27 @@ export class EnvironmentComponent extends BaseComponent {
                 }
             }
         }
+
+        // VPEX one-click setup entry: runs `databricks dbconnect init/sync`
+        // and auto-adopts the resulting .venv.
+        const vpexReady = this.vpexEnvironmentSetup.ready;
+        children.push({
+            contextValue: getItemContext("vpex", vpexReady),
+            label: vpexReady
+                ? "Databricks Connect (VPEX): serverless-v4 · py3.12"
+                : "Set up Databricks Connect (VPEX)",
+            tooltip: vpexReady
+                ? "Environment ready: serverless-v4 (Python 3.12, databricks-connect 17.3). Click to re-run setup."
+                : "One-click setup of the Databricks Connect Python environment.",
+            iconPath: vpexReady
+                ? new ThemeIcon("check")
+                : new ThemeIcon("rocket"),
+            command: {
+                title: "Set up Python Environment (VPEX)",
+                command: "databricks.environment.setupVpex",
+            },
+        });
+
         return children;
     }
 }
