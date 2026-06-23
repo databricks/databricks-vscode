@@ -1,5 +1,5 @@
 import assert from "assert";
-import {EventEmitter, TreeView} from "vscode";
+import {EventEmitter, TreeView, Uri, window, workspace} from "vscode";
 import {mock, instance, when} from "ts-mockito";
 import {WorkspaceFsCommands} from "./WorkspaceFsCommands";
 import {WorkspaceFsEntity} from "../sdk-extensions";
@@ -134,7 +134,7 @@ describe("WorkspaceFsCommands – target folder resolution", () => {
         });
 
         it("no element → targets root", async () => {
-            await commands.createFile(undefined);
+            await commands.createFile(makeEntity(ROOT_PATH));
             assert.strictEqual(capturedRootPath, ROOT_PATH);
         });
 
@@ -241,5 +241,109 @@ describe("WorkspaceFsCommands – target folder resolution", () => {
             await commands.uploadFileFromToolbar(fileEntity);
             assert.strictEqual(capturedRootPath, ROOT_PATH);
         });
+    });
+});
+
+describe("WorkspaceFsCommands – createFile content", () => {
+    const ROOT_PATH = "/Users/me";
+
+    let commands: WorkspaceFsCommands;
+    let capturedCreate: {path: string; content: string} | undefined;
+
+    // Stubbed globals are restored after each test.
+    let originalShowInputBox: typeof window.showInputBox;
+    let originalShowTextDocument: typeof window.showTextDocument;
+    let originalOpenTextDocument: typeof workspace.openTextDocument;
+    let originalFromPath: typeof WorkspaceFsEntity.fromPath;
+
+    let inputName: string;
+
+    beforeEach(() => {
+        const mockConnectionManager = mock<ConnectionManager>();
+        when(mockConnectionManager.workspaceClient).thenReturn({} as any);
+
+        // createDirWizard reads activeProjectUri to seed the input box.
+        const mockWorkspaceFolderManager = mock<WorkspaceFolderManager>();
+        when(mockWorkspaceFolderManager.activeProjectUri).thenReturn(
+            Uri.file("/tmp/project")
+        );
+
+        commands = new WorkspaceFsCommands(
+            instance(mockWorkspaceFolderManager),
+            instance(mockConnectionManager),
+            instance(mock<WorkspaceFsDataProvider>()),
+            instance(mock<WorkspaceFsFileSystemProvider>()),
+            new FakeTreeView() as unknown as TreeView<WorkspaceFsEntity>
+        );
+
+        // Fake root that captures what doCreateFile writes.
+        capturedCreate = undefined;
+        const fakeRoot = {
+            path: ROOT_PATH,
+            createFile: async (path: string, content: string) => {
+                capturedCreate = {path, content};
+            },
+        };
+        (commands as any).getValidRoot = async () => fakeRoot;
+
+        // createDirWizard reads the filename from showInputBox.
+        originalShowInputBox = window.showInputBox;
+        (window as any).showInputBox = async () => inputName;
+
+        // No pre-existing file → skip the overwrite prompt.
+        originalFromPath = WorkspaceFsEntity.fromPath;
+        (WorkspaceFsEntity as any).fromPath = async () => undefined;
+
+        // Avoid actually opening an editor after creation.
+        originalShowTextDocument = window.showTextDocument;
+        (window as any).showTextDocument = async () => undefined;
+        originalOpenTextDocument = workspace.openTextDocument;
+        (workspace as any).openTextDocument = async (uri: Uri) => uri;
+    });
+
+    afterEach(() => {
+        (window as any).showInputBox = originalShowInputBox;
+        (window as any).showTextDocument = originalShowTextDocument;
+        (workspace as any).openTextDocument = originalOpenTextDocument;
+        (WorkspaceFsEntity as any).fromPath = originalFromPath;
+    });
+
+    it(".ipynb file is created with valid empty notebook JSON", async () => {
+        inputName = "notebook.ipynb";
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        assert.ok(capturedCreate, "createFile should have been called");
+        assert.strictEqual(capturedCreate!.path, "notebook.ipynb");
+
+        const parsed = JSON.parse(capturedCreate!.content);
+        assert.deepStrictEqual(parsed.cells, []);
+        assert.strictEqual(parsed.nbformat, 4);
+        assert.strictEqual(parsed.nbformat_minor, 5);
+        assert.strictEqual(parsed.metadata.language_info.name, "python");
+    });
+
+    it(".IPYNB extension is matched case-insensitively", async () => {
+        inputName = "NoteBook.IPYNB";
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        assert.ok(capturedCreate);
+        const parsed = JSON.parse(capturedCreate!.content);
+        assert.strictEqual(parsed.nbformat, 4);
+    });
+
+    it(".py file is created with empty content", async () => {
+        inputName = "script.py";
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        assert.ok(capturedCreate);
+        assert.strictEqual(capturedCreate!.content, "");
+    });
+
+    it("plain file is created with empty content", async () => {
+        inputName = "notes.txt";
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        assert.ok(capturedCreate);
+        assert.strictEqual(capturedCreate!.content, "");
     });
 });

@@ -16,6 +16,29 @@ import {WorkspaceFsFile} from "../sdk-extensions/wsfs/WorkspaceFsFile";
 
 const withLogContext = logging.withLogContext;
 
+/**
+ * Minimal valid empty Python notebook (nbformat 4.5) used as the initial
+ * content when creating a `.ipynb` file, so it can be opened as a notebook
+ * right away instead of as an invalid/empty document.
+ */
+const EMPTY_IPYNB_CONTENT = JSON.stringify(
+    {
+        cells: [],
+        metadata: {
+            kernelspec: {
+                display_name: "Python 3",
+                language: "python",
+                name: "python3",
+            },
+            language_info: {name: "python"},
+        },
+        nbformat: 4,
+        nbformat_minor: 5,
+    },
+    null,
+    1
+);
+
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
@@ -202,8 +225,12 @@ export class WorkspaceFsCommands implements Disposable {
             }
         }
 
+        const content = inputName.toLowerCase().endsWith(".ipynb")
+            ? EMPTY_IPYNB_CONTENT
+            : "";
+
         try {
-            await root.createFile(inputName, "", true);
+            await root.createFile(inputName, content, true);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             window.showErrorMessage(`Failed to create "${inputName}": ${msg}`);
