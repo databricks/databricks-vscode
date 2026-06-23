@@ -26,13 +26,16 @@ const EMPTY_IPYNB_CONTENT = JSON.stringify(
         cells: [],
         metadata: {
             kernelspec: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 display_name: "Python 3",
                 language: "python",
                 name: "python3",
             },
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             language_info: {name: "python"},
         },
         nbformat: 4,
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         nbformat_minor: 5,
     },
     null,
