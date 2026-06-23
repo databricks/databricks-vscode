@@ -352,6 +352,36 @@ describe(__filename, () => {
         assert.strictEqual(item.copyText, "cat");
     });
 
+    it("getTreeItem sets volume url with volumes path segment", async () => {
+        const stubManager = {
+            onDidChangeState: () => ({dispose() {}}),
+            databricksWorkspace: {
+                host: new URL("https://adb-123.azuredatabricks.net/"),
+            },
+        } as unknown as ConnectionManager;
+
+        const provider = new UnityCatalogTreeDataProvider(
+            stubManager,
+            stubStateStorage
+        );
+        disposables.push(provider);
+
+        const volume: UnityCatalogTreeNode = {
+            kind: "volume",
+            catalogName: "cat",
+            schemaName: "sch",
+            name: "ev",
+            fullName: "cat.sch.ev",
+        };
+        const item = provider.getTreeItem(volume) as UnityCatalogTreeItem;
+
+        assert(item.url, "url should be set");
+        assert(
+            item.url!.includes("explore/data/volumes/cat/sch/ev"),
+            `url should contain explore/data/volumes/cat/sch/ev, got: ${item.url}`
+        );
+    });
+
     it("getTreeItem omits url when no host", async () => {
         const provider = new UnityCatalogTreeDataProvider(
             instance(mockConnectionManager),
