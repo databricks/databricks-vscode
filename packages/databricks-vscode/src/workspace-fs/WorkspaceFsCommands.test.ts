@@ -249,16 +249,32 @@ describe("WorkspaceFsCommands – createFile content", () => {
 
     let commands: WorkspaceFsCommands;
     let capturedCreate: {path: string; content: string} | undefined;
+    let lookedUpPaths: string[];
+    let warningMessages: string[];
+    let openedUri: Uri | undefined;
+    let browserOpenedPath: string | undefined;
 
     // Stubbed globals are restored after each test.
     let originalShowInputBox: typeof window.showInputBox;
+    let originalShowWarningMessage: typeof window.showWarningMessage;
     let originalShowTextDocument: typeof window.showTextDocument;
     let originalOpenTextDocument: typeof workspace.openTextDocument;
     let originalFromPath: typeof WorkspaceFsEntity.fromPath;
 
     let inputName: string;
+    // Path (relative to root) at which fromPath should report an existing
+    // entity, or undefined for "nothing exists".
+    let existingAt: string | undefined;
+    // Whether the user clicks "Overwrite" on the prompt.
+    let overwriteAnswer: string | undefined;
 
     beforeEach(() => {
+        existingAt = undefined;
+        overwriteAnswer = "Overwrite";
+        lookedUpPaths = [];
+        warningMessages = [];
+        openedUri = undefined;
+        browserOpenedPath = undefined;
         const mockConnectionManager = mock<ConnectionManager>();
         when(mockConnectionManager.workspaceClient).thenReturn({} as any);
 
@@ -276,33 +292,65 @@ describe("WorkspaceFsCommands – createFile content", () => {
             new FakeTreeView() as unknown as TreeView<WorkspaceFsEntity>
         );
 
-        // Fake root that captures what doCreateFile writes.
+        // Fake root that captures what doCreateFile writes. createFile mimics
+        // the SDK: a `.ipynb` is stored as a notebook at the stripped path.
         capturedCreate = undefined;
         const fakeRoot = {
             path: ROOT_PATH,
             createFile: async (path: string, content: string) => {
                 capturedCreate = {path, content};
+                const storedName = path.replace(/\.ipynb$/i, "");
+                return {
+                    path: `${ROOT_PATH}/${storedName}`,
+                } as unknown as WorkspaceFsEntity;
             },
         };
         (commands as any).getValidRoot = async () => fakeRoot;
+
+        // Capture browser opens (used for notebooks) instead of launching one.
+        (commands as any).openInBrowser = async (
+            element: WorkspaceFsEntity
+        ) => {
+            browserOpenedPath = element.path;
+        };
 
         // createDirWizard reads the filename from showInputBox.
         originalShowInputBox = window.showInputBox;
         (window as any).showInputBox = async () => inputName;
 
-        // No pre-existing file → skip the overwrite prompt.
+        // fromPath reports an existing entity only at `existingAt`.
         originalFromPath = WorkspaceFsEntity.fromPath;
-        (WorkspaceFsEntity as any).fromPath = async () => undefined;
+        (WorkspaceFsEntity as any).fromPath = async (
+            _client: unknown,
+            path: string
+        ) => {
+            lookedUpPaths.push(path);
+            return existingAt !== undefined &&
+                path === `${ROOT_PATH}/${existingAt}`
+                ? ({path} as unknown as WorkspaceFsEntity)
+                : undefined;
+        };
+
+        // Capture the overwrite prompt and return the canned answer.
+        originalShowWarningMessage = window.showWarningMessage;
+        (window as any).showWarningMessage = async (message: string) => {
+            warningMessages.push(message);
+            return overwriteAnswer;
+        };
 
         // Avoid actually opening an editor after creation.
         originalShowTextDocument = window.showTextDocument;
         (window as any).showTextDocument = async () => undefined;
         originalOpenTextDocument = workspace.openTextDocument;
-        (workspace as any).openTextDocument = async (uri: Uri) => uri;
+        (workspace as any).openTextDocument = async (uri: Uri) => {
+            openedUri = uri;
+            return uri;
+        };
     });
 
     afterEach(() => {
         (window as any).showInputBox = originalShowInputBox;
+        (window as any).showWarningMessage = originalShowWarningMessage;
         (window as any).showTextDocument = originalShowTextDocument;
         (workspace as any).openTextDocument = originalOpenTextDocument;
         (WorkspaceFsEntity as any).fromPath = originalFromPath;
@@ -345,5 +393,64 @@ describe("WorkspaceFsCommands – createFile content", () => {
 
         assert.ok(capturedCreate);
         assert.strictEqual(capturedCreate!.content, "");
+    });
+
+    it(".ipynb existence check uses the extension-stripped path", async () => {
+        inputName = "notebook.ipynb";
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        // The notebook clash is detected at the path without `.ipynb`.
+        assert.ok(
+            lookedUpPaths.includes(`${ROOT_PATH}/notebook`),
+            `expected lookup at stripped path, got ${JSON.stringify(
+                lookedUpPaths
+            )}`
+        );
+        assert.ok(!lookedUpPaths.includes(`${ROOT_PATH}/notebook.ipynb`));
+    });
+
+    it("prompts to overwrite an existing notebook with the same name", async () => {
+        inputName = "notebook.ipynb";
+        existingAt = "notebook"; // notebook stored without extension
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        assert.strictEqual(warningMessages.length, 1);
+        assert.ok(warningMessages[0].includes('"notebook"'));
+        // User clicked Overwrite → file is still created.
+        assert.ok(capturedCreate);
+    });
+
+    it("aborts creation when overwrite is declined", async () => {
+        inputName = "notebook.ipynb";
+        existingAt = "notebook";
+        overwriteAnswer = undefined; // dismissed / not "Overwrite"
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        assert.strictEqual(warningMessages.length, 1);
+        assert.strictEqual(
+            capturedCreate,
+            undefined,
+            "createFile must not run when overwrite is declined"
+        );
+    });
+
+    it("opens the created notebook in the browser at its stripped path", async () => {
+        inputName = "notebook.ipynb";
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        assert.strictEqual(browserOpenedPath, `${ROOT_PATH}/notebook`);
+        // It must NOT also open in the text editor.
+        assert.strictEqual(openedUri, undefined);
+    });
+
+    it("non-notebook files are looked up and opened in the editor by exact name", async () => {
+        inputName = "script.py";
+        await commands.createFile(makeEntity(ROOT_PATH));
+
+        assert.ok(lookedUpPaths.includes(`${ROOT_PATH}/script.py`));
+        assert.ok(openedUri);
+        assert.strictEqual(openedUri!.path, `${ROOT_PATH}/script.py`);
+        // Non-notebooks must NOT open in the browser.
+        assert.strictEqual(browserOpenedPath, undefined);
     });
 });

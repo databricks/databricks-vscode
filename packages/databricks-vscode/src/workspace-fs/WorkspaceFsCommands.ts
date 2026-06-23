@@ -210,13 +210,18 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
+        const isIpynb = inputName.toLowerCase().endsWith(".ipynb");
+        const existingName = isIpynb
+            ? inputName.replace(/\.ipynb$/i, "")
+            : inputName;
+
         const existing = await WorkspaceFsEntity.fromPath(
             client,
-            `${root.path}/${inputName}`
+            `${root.path}/${existingName}`
         );
         if (existing) {
             const answer = await window.showWarningMessage(
-                `"${inputName}" already exists in the workspace. Overwrite it?`,
+                `"${existingName}" already exists in the workspace. Overwrite it?`,
                 {modal: true},
                 "Overwrite"
             );
@@ -225,12 +230,11 @@ export class WorkspaceFsCommands implements Disposable {
             }
         }
 
-        const content = inputName.toLowerCase().endsWith(".ipynb")
-            ? EMPTY_IPYNB_CONTENT
-            : "";
+        const content = isIpynb ? EMPTY_IPYNB_CONTENT : "";
 
+        let created: WorkspaceFsEntity | undefined;
         try {
-            await root.createFile(inputName, content, true);
+            created = await root.createFile(inputName, content, true);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             window.showErrorMessage(`Failed to create "${inputName}": ${msg}`);
@@ -240,9 +244,21 @@ export class WorkspaceFsCommands implements Disposable {
         this.workspaceFsDataProvider.refresh();
         const uri = Uri.from({
             scheme: WorkspaceFsFileSystemProvider.scheme,
-            path: `${root.path}/${inputName}`,
+            path: created?.path ?? `${root.path}/${inputName}`,
         });
         this.fsp.notifyCreated(uri);
+
+        if (isIpynb && created) {
+            try {
+                await this.openInBrowser(created);
+            } catch (e: unknown) {
+                ctx?.logger?.error(
+                    `Can't open ${inputName} in browser after creation`,
+                    e
+                );
+            }
+            return;
+        }
 
         try {
             await window.showTextDocument(
