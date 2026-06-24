@@ -251,7 +251,7 @@ export class WorkspaceFsCommands implements Disposable {
         });
         this.fsp.notifyCreated(uri);
 
-        if (isIpynb && created) {
+        if (created && WorkspaceFsUtils.isNotebook(created)) {
             try {
                 await this.openInBrowser(created);
             } catch (e: unknown) {
