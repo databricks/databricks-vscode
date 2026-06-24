@@ -299,9 +299,11 @@ describe("WorkspaceFsCommands – createFile content", () => {
             path: ROOT_PATH,
             createFile: async (path: string, content: string) => {
                 capturedCreate = {path, content};
+                const isIpynb = /\.ipynb$/i.test(path);
                 const storedName = path.replace(/\.ipynb$/i, "");
                 return {
                     path: `${ROOT_PATH}/${storedName}`,
+                    type: isIpynb ? "NOTEBOOK" : "FILE",
                 } as unknown as WorkspaceFsEntity;
             },
         };
