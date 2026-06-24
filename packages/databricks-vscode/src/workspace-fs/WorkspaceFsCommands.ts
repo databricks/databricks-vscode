@@ -56,20 +56,21 @@ export class WorkspaceFsCommands implements Disposable {
     @withLogContext(Loggers.Extension)
     async getValidRoot(
         rootPath?: string,
+        itemType: "file" | "directory" = "directory",
         @context ctx?: Context
     ): Promise<WorkspaceFsDir | undefined> {
         if (!this.connectionManager.workspaceClient) {
             window.showErrorMessage(
-                `Please login first to create a new directory`
+                `Please login first to create a new ${itemType}`
             );
             return;
         }
 
         if (!rootPath) {
             ctx?.logger?.error(
-                "No root path when trying to create a directory"
+                `No root path when trying to create a ${itemType}`
             );
-            window.showErrorMessage("Error when creating a new directory");
+            window.showErrorMessage(`Error when creating a new ${itemType}`);
             return;
         }
 
@@ -86,10 +87,10 @@ export class WorkspaceFsCommands implements Disposable {
 
         if (!WorkspaceFsUtils.isDirectory(root)) {
             ctx?.logger?.error(
-                `Cannot create a directory as a child of a ${root?.type}`
+                `Cannot create a ${itemType} as a child of a ${root?.type}`
             );
             window.showErrorMessage(
-                `Cannot create a directory as a child of a ${root?.type}`
+                `Cannot create a ${itemType} as a child of a ${root?.type}`
             );
             return;
         }
@@ -131,7 +132,7 @@ export class WorkspaceFsCommands implements Disposable {
         rootPath: string | undefined,
         @context ctx?: Context
     ) {
-        const root = await this.getValidRoot(rootPath, ctx);
+        const root = await this.getValidRoot(rootPath, "directory", ctx);
         if (!root) {
             return;
         }
@@ -198,7 +199,7 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
-        const root = await this.getValidRoot(rootPath, ctx);
+        const root = await this.getValidRoot(rootPath, "file", ctx);
         if (!root) {
             return;
         }
@@ -359,7 +360,7 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
-        const root = await this.getValidRoot(rootPath);
+        const root = await this.getValidRoot(rootPath, "file");
         if (!root) {
             return;
         }
