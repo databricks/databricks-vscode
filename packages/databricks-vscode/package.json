@@ -197,6 +197,20 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.wsfs.createNewFile",
+                "title": "Create File",
+                "icon": "$(new-file)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.createNewFile.toolbar",
+                "title": "Create File",
+                "icon": "$(new-file)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.wsfs.openInBrowser",
                 "title": "Open in Browser",
                 "icon": "$(link-external)",
@@ -727,6 +741,11 @@
                     "group": "navigation@1"
                 },
                 {
+                    "command": "databricks.wsfs.createNewFile.toolbar",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "databricks.unityCatalog.filter",
                     "when": "view == unityCatalogView",
                     "group": "navigation@2"
@@ -803,9 +822,14 @@
                     "group": "wsfs_mut@0"
                 },
                 {
-                    "command": "databricks.wsfs.uploadFile",
+                    "command": "databricks.wsfs.createNewFile",
                     "when": "view == workspaceFsView && (viewItem == wsfs.directory || viewItem == wsfs.repo)",
                     "group": "wsfs_mut@1"
+                },
+                {
+                    "command": "databricks.wsfs.uploadFile",
+                    "when": "view == workspaceFsView && (viewItem == wsfs.directory || viewItem == wsfs.repo)",
+                    "group": "wsfs_mut@2"
                 },
                 {
                     "command": "databricks.wsfs.downloadFile",
