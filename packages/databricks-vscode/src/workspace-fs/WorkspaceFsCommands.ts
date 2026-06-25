@@ -16,6 +16,32 @@ import {WorkspaceFsFile} from "../sdk-extensions/wsfs/WorkspaceFsFile";
 
 const withLogContext = logging.withLogContext;
 
+/**
+ * Minimal valid empty Python notebook (nbformat 4.5) used as the initial
+ * content when creating a `.ipynb` file, so it can be opened as a notebook
+ * right away instead of as an invalid/empty document.
+ */
+const EMPTY_IPYNB_CONTENT = JSON.stringify(
+    {
+        cells: [],
+        metadata: {
+            kernelspec: {
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                display_name: "Python 3",
+                language: "python",
+                name: "python3",
+            },
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            language_info: {name: "python"},
+        },
+        nbformat: 4,
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        nbformat_minor: 5,
+    },
+    null,
+    1
+);
+
 export class WorkspaceFsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
@@ -30,20 +56,21 @@ export class WorkspaceFsCommands implements Disposable {
     @withLogContext(Loggers.Extension)
     async getValidRoot(
         rootPath?: string,
+        itemType: "file" | "directory" = "directory",
         @context ctx?: Context
     ): Promise<WorkspaceFsDir | undefined> {
         if (!this.connectionManager.workspaceClient) {
             window.showErrorMessage(
-                `Please login first to create a new directory`
+                `Please login first to create a new ${itemType}`
             );
             return;
         }
 
         if (!rootPath) {
             ctx?.logger?.error(
-                "No root path when trying to create a directory"
+                `No root path when trying to create a ${itemType}`
             );
-            window.showErrorMessage("Error when creating a new directory");
+            window.showErrorMessage(`Error when creating a new ${itemType}`);
             return;
         }
 
@@ -60,10 +87,10 @@ export class WorkspaceFsCommands implements Disposable {
 
         if (!WorkspaceFsUtils.isDirectory(root)) {
             ctx?.logger?.error(
-                `Cannot create a directory as a child of a ${root?.type}`
+                `Cannot create a ${itemType} as a child of a ${root?.type}`
             );
             window.showErrorMessage(
-                `Cannot create a directory as a child of a ${root?.type}`
+                `Cannot create a ${itemType} as a child of a ${root?.type}`
             );
             return;
         }
@@ -105,7 +132,7 @@ export class WorkspaceFsCommands implements Disposable {
         rootPath: string | undefined,
         @context ctx?: Context
     ) {
-        const root = await this.getValidRoot(rootPath, ctx);
+        const root = await this.getValidRoot(rootPath, "directory", ctx);
         if (!root) {
             return;
         }
@@ -139,6 +166,111 @@ export class WorkspaceFsCommands implements Disposable {
 
         this.workspaceFsDataProvider.refresh();
         return created;
+    }
+
+    @withLogContext(Loggers.Extension)
+    async createFile(element?: WorkspaceFsEntity, @context ctx?: Context) {
+        const rootPath =
+            element?.path ??
+            this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doCreateFile(rootPath, ctx);
+    }
+
+    @withLogContext(Loggers.Extension)
+    async createFileFromToolbar(
+        element?: WorkspaceFsEntity,
+        @context ctx?: Context
+    ) {
+        const activeElement = this.resolveTargetElementForToolbar(element);
+        const rootPath =
+            activeElement?.path ??
+            this.connectionManager.databricksWorkspace?.currentFsRoot.path;
+        return this.doCreateFile(rootPath, ctx);
+    }
+
+    @withLogContext(Loggers.Extension)
+    private async doCreateFile(
+        rootPath: string | undefined,
+        @context ctx?: Context
+    ) {
+        const client = this.connectionManager.workspaceClient;
+        if (!client) {
+            window.showErrorMessage("Please login first to create a file");
+            return;
+        }
+
+        const root = await this.getValidRoot(rootPath, "file", ctx);
+        if (!root) {
+            return;
+        }
+
+        const inputName = await createDirWizard(
+            this.workspaceFolderManager.activeProjectUri,
+            "File Name",
+            root
+        );
+
+        if (inputName === undefined) {
+            return;
+        }
+
+        const isIpynb = inputName.toLowerCase().endsWith(".ipynb");
+        const existingName = isIpynb
+            ? inputName.replace(/\.ipynb$/i, "")
+            : inputName;
+
+        const existing = await WorkspaceFsEntity.fromPath(
+            client,
+            `${root.path}/${existingName}`
+        );
+        if (existing) {
+            const answer = await window.showWarningMessage(
+                `"${existingName}" already exists in the workspace. Overwrite it?`,
+                {modal: true},
+                "Overwrite"
+            );
+            if (answer !== "Overwrite") {
+                return;
+            }
+        }
+
+        const content = isIpynb ? EMPTY_IPYNB_CONTENT : "";
+
+        let created: WorkspaceFsEntity | undefined;
+        try {
+            created = await root.createFile(inputName, content, true);
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            window.showErrorMessage(`Failed to create "${inputName}": ${msg}`);
+            return;
+        }
+
+        this.workspaceFsDataProvider.refresh();
+        const uri = Uri.from({
+            scheme: WorkspaceFsFileSystemProvider.scheme,
+            path: created?.path ?? `${root.path}/${inputName}`,
+        });
+        this.fsp.notifyCreated(uri);
+
+        if (created && WorkspaceFsUtils.isNotebook(created)) {
+            try {
+                await this.openInBrowser(created);
+            } catch (e: unknown) {
+                ctx?.logger?.error(
+                    `Can't open ${inputName} in browser after creation`,
+                    e
+                );
+            }
+            return;
+        }
+
+        try {
+            await window.showTextDocument(
+                await workspace.openTextDocument(uri)
+            );
+        } catch (e: unknown) {
+            ctx?.logger?.error(`Can't open ${inputName} after creation`, e);
+        }
     }
 
     private async createRepo(repoPath: string) {
@@ -228,7 +360,7 @@ export class WorkspaceFsCommands implements Disposable {
             return;
         }
 
-        const root = await this.getValidRoot(rootPath);
+        const root = await this.getValidRoot(rootPath, "file");
         if (!root) {
             return;
         }

@@ -449,6 +449,16 @@ export async function activate(
             workspaceFsCommands
         ),
         telemetry.registerCommand(
+            "databricks.wsfs.createNewFile",
+            workspaceFsCommands.createFile,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.createNewFile.toolbar",
+            workspaceFsCommands.createFileFromToolbar,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
             "databricks.wsfs.openInBrowser",
             workspaceFsCommands.openInBrowser,
             workspaceFsCommands
