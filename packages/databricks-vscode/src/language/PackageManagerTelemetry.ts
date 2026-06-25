@@ -41,18 +41,27 @@ export class PackageManagerTelemetry {
         private readonly telemetry: Telemetry,
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly getProjectRoot: () => string | undefined,
-        private readonly getComputeType: () => ComputeType | "none"
+        private readonly getComputeType: () => ComputeType | "none",
+        private readonly isConnected: () => boolean
     ) {}
 
     /**
      * Detect the package manager(s) for the active project and emit telemetry.
-     * Deduplicated per `(project root, trigger)` within the session. Never
+     * Deduplicated per `(project root, trigger)` within the session. Only emits
+     * while connected to a Databricks workspace, so the data describes active
+     * users' projects (not extension installs that never authenticate). Never
      * throws.
      */
     async emitDetection(trigger: SetupTrigger): Promise<void> {
         try {
             const projectRoot = this.getProjectRoot();
             if (projectRoot === undefined) {
+                return;
+            }
+            // Only report for authenticated sessions. Checked before the dedupe
+            // bookkeeping so a pre-connect call doesn't consume the dedupe slot
+            // and suppress the real emit once connected.
+            if (!this.isConnected()) {
                 return;
             }
             const dedupeKey = `${trigger}:${projectRoot}`;

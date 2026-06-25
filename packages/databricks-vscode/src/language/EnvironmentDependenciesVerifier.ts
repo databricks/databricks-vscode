@@ -405,10 +405,11 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     }
 
     override async check() {
-        // First environment check on project open: emit package-manager
-        // detection telemetry (deduplicated per session, never throws).
-        void this.packageManagerTelemetry.emitDetection("auto_open");
         await this.connectionManager.waitForConnect();
+        // Emit package-manager detection only once connected (waitForConnect
+        // resolves on CONNECTED), so unauthenticated sessions are not reported.
+        // Deduplicated per session; never throws.
+        void this.packageManagerTelemetry.emitDetection("auto_open");
         await Promise.all([
             this.checkCluster(this.connectionManager.cluster),
             this.checkWorkspaceHasUc(),

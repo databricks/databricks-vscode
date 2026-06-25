@@ -351,7 +351,8 @@ export async function activate(
                 return "serverless";
             }
             return connectionManager.cluster ? "cluster" : "none";
-        }
+        },
+        () => connectionManager.state === "CONNECTED"
     );
     context.subscriptions.push(
         bundleFileWatcher,

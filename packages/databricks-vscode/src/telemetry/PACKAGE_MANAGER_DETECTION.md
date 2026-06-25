@@ -56,12 +56,20 @@ schema.
 
 ## Where it fires
 
-1. **`auto_open`** — first environment check on project open
-   (`EnvironmentDependenciesVerifier.check`).
+1. **`auto_open`** — first environment check, emitted once the workspace
+   connects (`EnvironmentDependenciesVerifier.check`, after `waitForConnect`).
 2. **`explicit_command`** — the "set up environment" command
    (`databricks.environment.setup` → `EnvironmentCommands.setup`).
 3. **`run` / `debug`** — first Run/Debug with Databricks Connect
    (`RunCommands.runFileUsingDbconnect` / `debugFileUsingDbconnect`).
+
+**Connected only.** Detection is emitted exclusively while the extension is
+connected to a Databricks workspace (`ConnectionManager.state === "CONNECTED"`);
+nothing is reported for unauthenticated sessions, so the data describes active
+users' projects rather than installs that never authenticate. As a result every
+event carries user/workspace metadata (host, workspace id, auth type), and
+`target_compute` reflects the connected compute (it may still be `none` when a
+workspace is connected but no cluster/serverless compute is attached yet).
 
 Emissions are **deduplicated per session** on `(setupTrigger, projectRoot)`, so
 a single project open does not inflate counts. The same project can still emit
