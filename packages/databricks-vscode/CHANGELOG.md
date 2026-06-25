@@ -1,3 +1,14 @@
+# Release: v2.12.0
+
+## packages/databricks-vscode
+
+## (2026-06-24)
+
+-   Add create file support to WSFS explorer (#1922) ([430a4d8](https://github.com/databricks/databricks-vscode/commit/430a4d8)), closes [#1922](https://github.com/databricks/databricks-vscode/issues/1922)
+-   Bound databricks-cli login timeout to fix indefinite WSL hang (#1921) ([a56cb82](https://github.com/databricks/databricks-vscode/commit/a56cb82)), closes [#1921](https://github.com/databricks/databricks-vscode/issues/1921) [#1917](https://github.com/databricks/databricks-vscode/issues/1917)
+-   Fix Databricks Connect run/debug interpreter split-brain (#1912) ([2bebf16](https://github.com/databricks/databricks-vscode/commit/2bebf16)), closes [#1912](https://github.com/databricks/databricks-vscode/issues/1912) [#1905](https://github.com/databricks/databricks-vscode/issues/1905)
+-   Fix Volume "Open in Databricks" routing to volume URL (#1925) ([630e267](https://github.com/databricks/databricks-vscode/commit/630e267)), closes [#1925](https://github.com/databricks/databricks-vscode/issues/1925)
+
 # Release: v2.11.1
 
 ## packages/databricks-vscode
