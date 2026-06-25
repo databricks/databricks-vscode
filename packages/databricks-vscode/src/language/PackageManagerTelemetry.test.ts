@@ -169,4 +169,41 @@ describe(__filename, () => {
         expect(events[0].props["event.managersDetected"]).to.equal('["pip"]');
         expect(events[0].props["event.primaryManager"]).to.equal("pip");
     });
+
+    it("does not attribute pip for a tool-only pyproject", async () => {
+        const {telemetry, events} = makeTelemetry("all");
+        // Only linter config, no [project]/[build-system] -- not a pip signal.
+        const projectRoot = makeProject([
+            ["pyproject.toml", "[tool.ruff]\nline-length = 88\n"],
+        ]);
+        const pmt = makePmt(telemetry, {projectRoot});
+
+        await emit(pmt, "auto_open");
+
+        expect(events[0].props["event.managersDetected"]).to.equal("[]");
+        expect(events[0].props["event.primaryManager"]).to.equal("unknown");
+    });
+
+    it("attributes pip for a pyproject with [project] and no uv/poetry", async () => {
+        const {telemetry, events} = makeTelemetry("all");
+        const projectRoot = makeProject([
+            ["pyproject.toml", '[project]\nname = "x"\n'],
+        ]);
+        const pmt = makePmt(telemetry, {projectRoot});
+
+        await emit(pmt, "auto_open");
+
+        expect(events[0].props["event.managersDetected"]).to.equal('["pip"]');
+    });
+
+    it("omits pythonVersion from the event when the interpreter is unknown", async () => {
+        const {telemetry, events} = makeTelemetry("all");
+        const projectRoot = makeProject([["uv.lock", "version = 1\n"]]);
+        const pmt = makePmt(telemetry, {projectRoot});
+
+        await emit(pmt, "auto_open");
+
+        // The key must be absent, not the string "undefined".
+        expect(events[0].props).to.not.have.property("event.pythonVersion");
+    });
 });

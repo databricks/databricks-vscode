@@ -37,10 +37,15 @@ Telemetry.prototype.recordPackageManagerDetection = function (
         managersDetected: detection.managers,
         primaryManager: detection.primary,
         signals: detection.signals,
-        pythonVersion: context.pythonVersion,
         interpreterSource: detection.interpreterSource,
         hasLockfile: detection.hasLockfile,
         targetCompute: context.targetCompute,
         setupTrigger: context.trigger,
+        // Omit pythonVersion entirely when unknown -- recordEvent serializes an
+        // explicit `undefined` to the string "undefined", which would pollute
+        // the schema for users without a resolved interpreter.
+        ...(context.pythonVersion !== undefined
+            ? {pythonVersion: context.pythonVersion}
+            : {}),
     });
 };

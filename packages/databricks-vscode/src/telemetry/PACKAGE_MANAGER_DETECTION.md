@@ -33,7 +33,7 @@ schema.
 | `primaryManager`    | enum       | `uv \| poetry \| pip \| conda \| unknown`. Priority when several apply: **uv > poetry > conda > pip**. `unknown` when no signal fires. |
 | `signals`           | `string[]` | Closed set of signal ids that fired (see below). JSON-stringified by the transport.                                                    |
 | `pythonVersion`     | `string?`  | Interpreter version, **major.minor only** (e.g. `"3.11"`). Omitted if unknown.                                                         |
-| `interpreterSource` | enum       | `uv \| conda \| system \| venv \| unknown`. How the active interpreter was provisioned.                                                |
+| `interpreterSource` | enum       | `uv \| poetry \| conda \| system \| venv \| unknown`. How the active interpreter was provisioned (`poetry` kept distinct from `venv`). |
 | `hasLockfile`       | `boolean`  | True if `uv.lock` or `poetry.lock` was found.                                                                                          |
 | `targetCompute`     | enum       | `cluster \| serverless \| none`. **No** cluster IDs/names.                                                                             |
 | `setupTrigger`      | enum       | `auto_open \| explicit_command \| run \| debug`. Which touchpoint fired it.                                                            |
@@ -41,9 +41,9 @@ schema.
 ### `signals` value domain (closed set)
 
 `uv.lock`, `pyproject.tool.uv`, `uv.onPath`, `interpreter.uv`, `poetry.lock`,
-`pyproject.tool.poetry`, `poetry.onPath`, `requirements.txt`, `constraints.txt`,
-`pyproject.pipOnly`, `interpreter.venv`, `environment.yml`, `conda.prefix`,
-`interpreter.conda`.
+`pyproject.tool.poetry`, `poetry.onPath`, `interpreter.poetry`,
+`requirements.txt`, `constraints.txt`, `pyproject.pipOnly`, `interpreter.venv`,
+`environment.yml`, `conda.prefix`, `interpreter.conda`.
 
 > `*.onPath` are **weak** signals: they record that a tool is installed, but do
 > not by themselves attribute the project to that manager. Attribution requires

@@ -3,6 +3,7 @@ import {
     detectPackageManagers,
     interpreterUnderCondaPrefix,
     PackageManagerSignals,
+    pyprojectHasPackagingTable,
     pyprojectHasToolSection,
     pyvenvCfgMarksUv,
 } from "./packageManagerDetection";
@@ -85,6 +86,14 @@ describe("detectPackageManagers", () => {
             expect(result.primary).to.equal("conda");
             expect(result.signals).to.deep.equal(["interpreter.conda"]);
             expect(result.interpreterSource).to.equal("conda");
+        });
+
+        it("attributes poetry (not pip) from a poetry interpreter", () => {
+            const result = detectPackageManagers({interpreterSource: "poetry"});
+            expect(result.managers).to.deep.equal(["poetry"]);
+            expect(result.primary).to.equal("poetry");
+            expect(result.signals).to.deep.equal(["interpreter.poetry"]);
+            expect(result.interpreterSource).to.equal("poetry");
         });
 
         it("attributes pip from a plain venv interpreter", () => {
@@ -421,6 +430,44 @@ describe("interpreterUnderCondaPrefix", () => {
                 "/opt/conda/envs/ml",
                 false
             )
+        ).to.equal(false);
+    });
+});
+
+describe("pyprojectHasPackagingTable", () => {
+    it("returns false for undefined contents", () => {
+        expect(pyprojectHasPackagingTable(undefined)).to.equal(false);
+    });
+
+    it("matches a [project] table", () => {
+        expect(pyprojectHasPackagingTable('[project]\nname = "x"\n')).to.equal(
+            true
+        );
+    });
+
+    it("matches a [build-system] table", () => {
+        const toml = '[build-system]\nrequires = ["setuptools"]\n';
+        expect(pyprojectHasPackagingTable(toml)).to.equal(true);
+    });
+
+    it("matches a [project.<subtable>] header", () => {
+        expect(
+            pyprojectHasPackagingTable("[project.optional-dependencies]\n")
+        ).to.equal(true);
+    });
+
+    it("does not match a tool-only pyproject", () => {
+        // A pyproject carrying only linter/formatter config is not packaging.
+        expect(
+            pyprojectHasPackagingTable("[tool.ruff]\nline-length = 88\n")
+        ).to.equal(false);
+        expect(pyprojectHasPackagingTable("[tool.black]\n")).to.equal(false);
+    });
+
+    it("ignores commented and in-value mentions", () => {
+        expect(pyprojectHasPackagingTable("# [project]\n")).to.equal(false);
+        expect(
+            pyprojectHasPackagingTable('desc = "see [build-system]"\n')
         ).to.equal(false);
     });
 });

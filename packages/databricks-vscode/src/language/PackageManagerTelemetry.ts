@@ -12,6 +12,7 @@ import {
     interpreterUnderCondaPrefix,
     InterpreterSource,
     PackageManagerSignals,
+    pyprojectHasPackagingTable,
     pyprojectHasToolSection,
     pyvenvCfgMarksUv,
 } from "./packageManagerDetection";
@@ -133,10 +134,14 @@ export class PackageManagerTelemetry {
         if (env.environment.type === "Conda" || tools.includes("Conda")) {
             return "conda";
         }
+        // Poetry envs are venvs, but must be attributed to poetry rather than
+        // collapsed into the generic venv (which the detector reads as pip).
+        if (tools.includes("Poetry")) {
+            return "poetry";
+        }
         if (
             tools.includes("Venv") ||
             tools.includes("VirtualEnv") ||
-            tools.includes("Poetry") ||
             tools.includes("Pipenv") ||
             env.environment.type === "VirtualEnvironment"
         ) {
@@ -187,8 +192,11 @@ export class PackageManagerTelemetry {
             pyproject,
             "poetry"
         );
+        // Only attribute pip when the pyproject actually declares packaging
+        // (`[project]`/`[build-system]`); a file with only tool config such as
+        // `[tool.ruff]` is not a pip signal.
         const hasPyprojectPipOnly =
-            pyproject !== undefined &&
+            pyprojectHasPackagingTable(pyproject) &&
             !hasPyprojectToolUv &&
             !hasPyprojectToolPoetry;
 

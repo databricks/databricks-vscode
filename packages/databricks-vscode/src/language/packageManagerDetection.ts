@@ -21,9 +21,17 @@ export type PrimaryManager = PackageManager | "unknown";
 
 /**
  * How the active interpreter was provisioned, independent of which managers the
- * project declares on disk.
+ * project declares on disk. `poetry` is distinct from `venv`: although poetry
+ * uses virtual environments, conflating it with a plain venv would attribute
+ * the interpreter to pip and undercount poetry.
  */
-export type InterpreterSource = "uv" | "conda" | "system" | "venv" | "unknown";
+export type InterpreterSource =
+    | "uv"
+    | "poetry"
+    | "conda"
+    | "system"
+    | "venv"
+    | "unknown";
 
 /**
  * Individual signals that fired during detection. These are the only free-form
@@ -38,6 +46,7 @@ export type DetectionSignal =
     | "poetry.lock"
     | "pyproject.tool.poetry"
     | "poetry.onPath"
+    | "interpreter.poetry"
     | "requirements.txt"
     | "constraints.txt"
     | "pyproject.pipOnly"
@@ -72,8 +81,10 @@ export interface PackageManagerSignals {
     /** A `constraints.txt` file exists. */
     hasConstraintsTxt?: boolean;
     /**
-     * A `pyproject.toml` exists but declares neither `[tool.uv]` nor
-     * `[tool.poetry]` (i.e. a plain PEP 621 / pip-installable project).
+     * A `pyproject.toml` declares a packaging table (`[project]` /
+     * `[build-system]`) but neither `[tool.uv]` nor `[tool.poetry]` -- i.e. a
+     * plain PEP 621 / pip-installable project. A `pyproject.toml` that only
+     * carries tool config (e.g. just `[tool.ruff]`) is NOT counted here.
      *
      * Caveat: uv works fine with a bare `[project]` and no `[tool.uv]`, so a uv
      * project without a committed `uv.lock` is counted here as pip. When
@@ -151,6 +162,7 @@ export function detectPackageManagers(
     fire(signals.hasPoetryLock, "poetry.lock");
     fire(signals.hasPyprojectToolPoetry, "pyproject.tool.poetry");
     fire(signals.poetryOnPath, "poetry.onPath");
+    fire(interpreterSource === "poetry", "interpreter.poetry");
 
     fire(signals.hasRequirementsTxt, "requirements.txt");
     fire(signals.hasConstraintsTxt, "constraints.txt");
@@ -171,7 +183,8 @@ export function detectPackageManagers(
         interpreterSource === "uv";
     const usesPoetry =
         Boolean(signals.hasPoetryLock) ||
-        Boolean(signals.hasPyprojectToolPoetry);
+        Boolean(signals.hasPyprojectToolPoetry) ||
+        interpreterSource === "poetry";
     const usesConda =
         Boolean(signals.hasCondaEnvFile) ||
         Boolean(signals.hasCondaPrefix) ||
@@ -241,6 +254,32 @@ export function pyprojectHasToolSection(
     // after `#` on the line is a comment and never reaches here because we
     // strip it first.
     const header = new RegExp(`^\\[\\[?\\s*tool\\.${name}\\s*(\\.|\\])`);
+    for (const rawLine of contents.split(/\r?\n/)) {
+        const line = rawLine.split("#", 1)[0].trim();
+        if (header.test(line)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Whether a `pyproject.toml` declares an actual packaging table -- `[project]`
+ * (PEP 621) or `[build-system]`. Used to distinguish a pip-installable project
+ * from a `pyproject.toml` that merely carries tool config (e.g. only
+ * `[tool.ruff]` / `[tool.black]`), which must NOT be attributed to pip.
+ *
+ * Same bounded, comment-aware line scan as {@link pyprojectHasToolSection}.
+ * Pure over the file contents; returns false for undefined input.
+ */
+export function pyprojectHasPackagingTable(
+    contents: string | undefined
+): boolean {
+    if (contents === undefined) {
+        return false;
+    }
+    // `[project]`, `[project.<subtable>]`, or `[build-system]` at line start.
+    const header = /^\[\s*(project|build-system)\s*(\.|\])/;
     for (const rawLine of contents.split(/\r?\n/)) {
         const line = rawLine.split("#", 1)[0].trim();
         if (header.test(line)) {
