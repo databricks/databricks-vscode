@@ -118,6 +118,9 @@ export class UnityCatalogTreeDataProvider
             case "function":
                 path = `functions/${fullNamePath}`;
                 break;
+            case "volume":
+                path = `volumes/${fullNamePath}`;
+                break;
         }
         return this.getExploreUrl(path);
     }
