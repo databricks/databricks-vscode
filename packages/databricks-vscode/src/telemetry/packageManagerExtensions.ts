@@ -1,10 +1,5 @@
 import {Events, Telemetry} from ".";
-import {
-    PackageManagerName,
-    InterpreterSource,
-    TargetCompute,
-    SetupTrigger,
-} from "./constants";
+import {TargetCompute, SetupTrigger} from "./constants";
 import {PackageManagerDetection} from "../language/packageManagerDetection";
 
 /**
@@ -39,11 +34,11 @@ Telemetry.prototype.recordPackageManagerDetection = function (
     context: PackageManagerDetectionContext
 ) {
     this.recordEvent(Events.PYTHON_ENV_SETUP_DETECTED, {
-        managersDetected: detection.managers as PackageManagerName[],
+        managersDetected: detection.managers,
         primaryManager: detection.primary,
         signals: detection.signals,
         pythonVersion: context.pythonVersion,
-        interpreterSource: detection.interpreterSource as InterpreterSource,
+        interpreterSource: detection.interpreterSource,
         hasLockfile: detection.hasLockfile,
         targetCompute: context.targetCompute,
         setupTrigger: context.trigger,

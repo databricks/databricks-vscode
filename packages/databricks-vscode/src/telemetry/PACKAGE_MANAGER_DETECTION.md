@@ -80,7 +80,25 @@ once per distinct trigger (e.g. one `auto_open` and one `run`).
 Only categorical/enum data and the closed-set signal ids are emitted. No file
 paths, package names, project names, cluster names, or usernames. Detection is
 best-effort and non-blocking: any failure degrades to `unknown` and is
-swallowed, never thrown into the setup/run flow.
+swallowed, never thrown into the setup/run flow. Nothing is collected (not even
+disk reads) when the user's telemetry level is below `all`.
+
+Note that, like every event from this extension, each detection inherits the
+ambient user/workspace envelope attached by the telemetry client —
+`user.hashedUserName` (bcrypt hash), `user.host`, `workspaceId`, `authType`. So
+while the detection payload itself carries no identifiers, an emitted event does
+link the detected toolchain to a stable (hashed) user/workspace identity.
+
+## Known measurement caveats
+
+-   **`pyproject.pipOnly` slightly over-counts pip / under-counts uv.** uv works
+    with a bare `[project]` table and no `[tool.uv]` section, so a uv project
+    without a committed `uv.lock` is classified as pip. With `uv.lock` present
+    uv still fires and wins primary, so the skew is limited to lockfile-less uv
+    projects.
+-   `interpreterSource` reflects the active interpreter only; a project that
+    declares uv/poetry but runs a system/conda interpreter reports that real
+    source (this is intentional — it surfaces the setup-flow gap).
 
 ## Suggested analysis
 

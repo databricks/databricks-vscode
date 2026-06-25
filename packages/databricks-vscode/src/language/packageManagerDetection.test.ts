@@ -395,4 +395,32 @@ describe("interpreterUnderCondaPrefix", () => {
             interpreterUnderCondaPrefix("C:\\conda\\envs\\ml\\x", "C:\\conda")
         ).to.equal(true);
     });
+
+    it("compares case-insensitively when requested (Windows filesystems)", () => {
+        // Differing case denotes the same folder on a case-insensitive FS.
+        expect(
+            interpreterUnderCondaPrefix(
+                "C:\\Conda\\envs\\ML",
+                "c:\\conda\\envs\\ml",
+                true
+            )
+        ).to.equal(true);
+        expect(
+            interpreterUnderCondaPrefix(
+                "C:\\Conda\\envs\\ML\\x",
+                "c:\\conda",
+                true
+            )
+        ).to.equal(true);
+    });
+
+    it("is case-sensitive when not requested (POSIX filesystems)", () => {
+        expect(
+            interpreterUnderCondaPrefix(
+                "/opt/Conda/envs/ml",
+                "/opt/conda/envs/ml",
+                false
+            )
+        ).to.equal(false);
+    });
 });

@@ -44,12 +44,17 @@ export type WorkflowTaskType = "python" | "notebook" | "unknown";
 export type LaunchType = "run" | "debug";
 export type ComputeType = "cluster" | "serverless";
 
-/** A Python package/environment manager detected for a project. */
-export type PackageManagerName = "uv" | "poetry" | "pip" | "conda";
-/** Best-guess primary manager, or "unknown" when no signal fires. */
-export type PrimaryManagerName = PackageManagerName | "unknown";
-/** How the active interpreter was provisioned. */
-export type InterpreterSource = "uv" | "conda" | "system" | "venv" | "unknown";
+// Package-manager / interpreter unions are owned by the pure detection module
+// (the single source of truth) and re-exported here so the event schema and the
+// classifier can never drift apart. The detection module has no runtime imports,
+// so this is a type-only dependency with no cycle.
+import type {
+    PackageManager,
+    PrimaryManager,
+    InterpreterSource,
+} from "../language/packageManagerDetection";
+export type {PackageManager, PrimaryManager, InterpreterSource};
+
 /** The compute targeted at the time of detection. */
 export type TargetCompute = ComputeType | "none";
 /** What triggered a package-manager detection emission. */
@@ -222,8 +227,8 @@ export class EventTypes {
         },
     };
     [Events.PYTHON_ENV_SETUP_DETECTED]: EventType<{
-        managersDetected: PackageManagerName[];
-        primaryManager: PrimaryManagerName;
+        managersDetected: PackageManager[];
+        primaryManager: PrimaryManager;
         signals: string[];
         pythonVersion?: string;
         interpreterSource: InterpreterSource;

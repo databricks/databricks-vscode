@@ -74,6 +74,12 @@ export interface PackageManagerSignals {
     /**
      * A `pyproject.toml` exists but declares neither `[tool.uv]` nor
      * `[tool.poetry]` (i.e. a plain PEP 621 / pip-installable project).
+     *
+     * Caveat: uv works fine with a bare `[project]` and no `[tool.uv]`, so a uv
+     * project without a committed `uv.lock` is counted here as pip. When
+     * `uv.lock` is present uv still fires and wins primary, so the skew is
+     * limited to lockfile-less uv projects -- but this slightly over-counts pip
+     * / under-counts uv (noted for the analytics owner in the handoff doc).
      */
     hasPyprojectPipOnly?: boolean;
 
@@ -263,22 +269,30 @@ export function pyvenvCfgMarksUv(contents: string | undefined): boolean {
  * Whether an interpreter's `sysPrefix` lies inside a conda prefix -- i.e. the
  * active interpreter is that conda environment, not merely a shell that has
  * `CONDA_PREFIX` exported globally. Both inputs are expected to be absolute
- * paths; comparison is done with a trailing-separator boundary so that
- * `/x/envs/ab` is not treated as inside `/x/envs/a`.
+ * paths; comparison uses a trailing-separator boundary so that `/x/envs/ab` is
+ * not treated as inside `/x/envs/a`, and accepts both `/` and `\\` separators.
  *
- * Pure over its inputs; returns false if either is missing. Accepts both `/`
- * and `\\` separators so it is platform-agnostic and deterministic in tests.
+ * `caseInsensitive` controls case folding for the comparison; it defaults to
+ * Windows, whose filesystem is case-insensitive (so `C:\Conda` and `c:\conda`
+ * denote the same folder). Exposed as a parameter so the behaviour is
+ * deterministic in tests regardless of the host platform.
+ *
+ * Pure over its inputs; returns false if either is missing.
  */
 export function interpreterUnderCondaPrefix(
     sysPrefix: string | undefined,
-    condaPrefix: string | undefined
+    condaPrefix: string | undefined,
+    caseInsensitive: boolean = process.platform === "win32"
 ): boolean {
     if (!sysPrefix || !condaPrefix) {
         return false;
     }
-    const stripTrailingSep = (p: string) => p.replace(/[\\/]+$/, "");
-    const prefix = stripTrailingSep(sysPrefix);
-    const base = stripTrailingSep(condaPrefix);
+    const normalize = (p: string) => {
+        const stripped = p.replace(/[\\/]+$/, "");
+        return caseInsensitive ? stripped.toLowerCase() : stripped;
+    };
+    const prefix = normalize(sysPrefix);
+    const base = normalize(condaPrefix);
     return (
         prefix === base ||
         prefix.startsWith(base + "/") ||

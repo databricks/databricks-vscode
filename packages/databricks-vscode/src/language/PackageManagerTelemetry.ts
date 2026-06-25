@@ -54,6 +54,12 @@ export class PackageManagerTelemetry {
      */
     async emitDetection(trigger: SetupTrigger): Promise<void> {
         try {
+            // Bail before any disk access when telemetry is disabled, so an
+            // opted-out user gets zero telemetry-driven file reads (not just a
+            // dropped send).
+            if (!this.telemetry.isTelemetryEnabled) {
+                return;
+            }
             const projectRoot = this.getProjectRoot();
             if (projectRoot === undefined) {
                 return;
@@ -233,12 +239,18 @@ export class PackageManagerTelemetry {
         }
     }
 
-    /** True if any `requirements*.txt` file exists in the project root. */
+    /**
+     * True if any pip-style requirements file exists in the project root:
+     * `requirements.txt` or a separator-suffixed variant such as
+     * `requirements-dev.txt` / `requirements_test.txt` / `requirements.ci.txt`.
+     * Deliberately does not match `requirementsfoo.txt` (no separator), which
+     * isn't a conventional requirements file.
+     */
     private hasRequirementsTxt(projectRoot: string): boolean {
         try {
             return fs
                 .readdirSync(projectRoot)
-                .some((name) => /^requirements.*\.txt$/.test(name));
+                .some((name) => /^requirements([-_.].+)?\.txt$/.test(name));
         } catch (e) {
             this.logger.debug("Failed to list project root", e);
             return false;
