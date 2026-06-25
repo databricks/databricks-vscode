@@ -134,8 +134,8 @@ export class VpexEnvironmentSetup implements Disposable {
         }
 
         // --- Run the CLI with a phase-aware progress notification ----------
-        // init: create pyproject.toml + provision .venv.
-        // sync: merge managed dependencies + re-provision.
+        // init: no pyproject.toml exists — create fresh + provision .venv.
+        // sync: pyproject.toml already exists — merge managed deps + re-provision.
         const profile = target.authProfile;
         const commonArgs = [
             "--serverless",
@@ -143,9 +143,15 @@ export class VpexEnvironmentSetup implements Disposable {
             "--profile",
             profile,
         ];
+        const hasPyproject = fs.existsSync(
+            path.join(projectDir, "pyproject.toml")
+        );
+        const subcommand = hasPyproject ? "sync" : "init";
         const steps: {label: string; args: string[]}[] = [
-            {label: "init", args: ["dbconnect", "init", ...commonArgs]},
-            {label: "sync", args: ["dbconnect", "sync", ...commonArgs]},
+            {
+                label: subcommand,
+                args: ["dbconnect", subcommand, ...commonArgs],
+            },
         ];
 
         this.outputChannel.clear();
