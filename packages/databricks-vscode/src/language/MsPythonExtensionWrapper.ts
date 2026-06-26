@@ -15,6 +15,7 @@ import * as childProcess from "node:child_process";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {execFile} from "../cli/CliWrapper";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 export class MsPythonExtensionWrapper implements Disposable {
@@ -120,13 +121,49 @@ export class MsPythonExtensionWrapper implements Disposable {
         });
     }
 
+    // Cached resolved path to the uv executable ("uv" if it's on PATH).
+    private _uvCommand?: string;
+
+    /**
+     * Resolve the uv executable. The extension host often inherits a minimal
+     * PATH that does NOT include the locations the official uv installer uses
+     * (~/.local/bin, ~/.cargo/bin). When that happens `execFile("uv", ...)`
+     * throws ENOENT, which previously made isUsingUv() return false and sent
+     * package operations down the native-pip path — fatal for uv venvs, which
+     * have no pip ("No module named pip").
+     *
+     * So: try "uv" on PATH first, then fall back to the known install dirs.
+     */
+    private async uvCommand(): Promise<string | undefined> {
+        if (this._uvCommand) {
+            return this._uvCommand;
+        }
+        const candidates = [
+            "uv", // on PATH (covers Homebrew, system installs)
+            path.join(os.homedir(), ".local", "bin", "uv"), // official installer
+            path.join(os.homedir(), ".cargo", "bin", "uv"), // cargo install
+        ];
+        if (process.env.XDG_BIN_HOME) {
+            candidates.splice(1, 0, path.join(process.env.XDG_BIN_HOME, "uv"));
+        }
+        for (const candidate of candidates) {
+            try {
+                await execFile(candidate, ["--version"]);
+                this._uvCommand = candidate;
+                return candidate;
+            } catch (error) {
+                // try the next candidate
+            }
+        }
+        return undefined;
+    }
+
     async isUsingUv() {
-        try {
-            await execFile("uv", ["--version"]);
-            return fs.existsSync(path.join(this.projectRoot, "uv.lock"));
-        } catch (error) {
+        const uv = await this.uvCommand();
+        if (!uv) {
             return false;
         }
+        return fs.existsSync(path.join(this.projectRoot, "uv.lock"));
     }
 
     private async getPipCommandAndArgs(
@@ -136,8 +173,11 @@ export class MsPythonExtensionWrapper implements Disposable {
     ): Promise<{command: string; args: string[]}> {
         const isUv = await this.isUsingUv();
         if (isUv) {
+            // isUsingUv() only returns true when uvCommand() resolved, so this
+            // is guaranteed to be defined here.
+            const uv = (await this.uvCommand())!;
             return {
-                command: "uv",
+                command: uv,
                 args: ["pip", ...baseArgs, "--python", executable],
             };
         }

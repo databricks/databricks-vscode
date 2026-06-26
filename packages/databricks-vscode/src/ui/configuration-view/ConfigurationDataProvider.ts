@@ -20,6 +20,7 @@ import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {EnvironmentComponent} from "./EnvironmentComponent";
+import {VpexEnvironmentSetup} from "../../language/VpexEnvironmentSetup";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {CodeSynchronizer} from "../../sync";
@@ -50,7 +51,8 @@ export class ConfigurationDataProvider
         private readonly configModel: ConfigModel,
         private readonly cli: CliWrapper,
         private readonly featureManager: FeatureManager,
-        private readonly workspaceFolderManager: WorkspaceFolderManager
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        private readonly vpexEnvironmentSetup: VpexEnvironmentSetup
     ) {
         this.components = [
             new WorkspaceFolderComponent(this.workspaceFolderManager),
@@ -69,7 +71,8 @@ export class ConfigurationDataProvider
             new EnvironmentComponent(
                 this.featureManager,
                 this.connectionManager,
-                this.configModel
+                this.configModel,
+                this.vpexEnvironmentSetup
             ),
         ];
         this.disposables.push(
