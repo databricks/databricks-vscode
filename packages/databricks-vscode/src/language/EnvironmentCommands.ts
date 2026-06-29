@@ -5,16 +5,19 @@ import {Cluster} from "../sdk-extensions";
 import {EnvironmentDependenciesInstaller} from "./EnvironmentDependenciesInstaller";
 import {Environment} from "./MsPythonExtensionApi";
 import {environmentName} from "../utils/environmentUtils";
+import {PackageManagerTelemetry} from "./PackageManagerTelemetry";
 
 export class EnvironmentCommands {
     constructor(
         private featureManager: FeatureManager,
         private pythonExtension: MsPythonExtensionWrapper,
-        private installer: EnvironmentDependenciesInstaller
+        private installer: EnvironmentDependenciesInstaller,
+        private packageManagerTelemetry: PackageManagerTelemetry
     ) {}
 
     async setup(stepId?: string) {
         commands.executeCommand("configurationView.focus");
+        void this.packageManagerTelemetry.emitDetection("explicit_command");
         await window.withProgress(
             {location: {viewId: "configurationView"}},
             () => this._setup(stepId)
