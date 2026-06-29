@@ -139,6 +139,43 @@ describe(__filename, async function () {
                 )
             ).to.be.false;
         });
+
+        it("getExternalIncludeWatchTargets should only return bases outside the project root", async () => {
+            const sharedDir = path.join(tmpdir.path, "shared");
+            const projectDir = path.join(tmpdir.path, "project", "sub");
+            await fs.mkdir(sharedDir, {recursive: true});
+            await fs.mkdir(projectDir, {recursive: true});
+
+            const rootBundleData: BundleSchema = {
+                include: [
+                    "../../shared/config.yml",
+                    "../../shared/*.yml",
+                    "local.yml",
+                    "includes/**/*.yml",
+                ],
+            };
+            await fs.writeFile(
+                path.join(projectDir, "databricks.yml"),
+                yaml.stringify(rootBundleData)
+            );
+
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock(projectDir)
+            );
+
+            const targets =
+                await bundleFileSet.getExternalIncludeWatchTargets();
+
+            // Only the two ../../shared patterns escape the project root; the
+            // in-tree patterns (local.yml, includes/**) are covered by the
+            // default recursive watcher and must be excluded.
+            const summary = targets
+                .map((t) => `${t.baseUri.fsPath}|${t.pattern}`)
+                .sort();
+            expect(summary).to.deep.equal(
+                [`${sharedDir}|config.yml`, `${sharedDir}|*.yml`].sort()
+            );
+        });
     });
 
     describe("file listing", async () => {
