@@ -104,7 +104,10 @@ describe(__filename, async function () {
             const files = await bundleFileSet.getIncludedFiles();
             expect(files).to.not.be.undefined;
             expect(files!.map((f) => f.fsPath).sort()).to.deep.equal(
-                [sharedFile, sharedFile2].sort()
+                [
+                    Uri.file(sharedFile).fsPath,
+                    Uri.file(sharedFile2).fsPath,
+                ].sort()
             );
         });
 
@@ -172,8 +175,9 @@ describe(__filename, async function () {
             const summary = targets
                 .map((t) => `${t.baseUri.fsPath}|${t.pattern}`)
                 .sort();
+            const sharedBase = Uri.file(sharedDir).fsPath;
             expect(summary).to.deep.equal(
-                [`${sharedDir}|config.yml`, `${sharedDir}|*.yml`].sort()
+                [`${sharedBase}|config.yml`, `${sharedBase}|*.yml`].sort()
             );
         });
     });
