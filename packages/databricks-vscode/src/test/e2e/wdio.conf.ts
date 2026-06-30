@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-console */
-import type {Options} from "@wdio/types";
-
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import video from "wdio-video-reporter";
 import path from "node:path";
@@ -92,7 +90,7 @@ const execFile = async (
     return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
 };
 
-export const config: Options.Testrunner = {
+export const config: WebdriverIO.Config = {
     //
     // ====================
     // Runner Configuration
@@ -100,26 +98,14 @@ export const config: Options.Testrunner = {
     //
     //
     // =====================
-    // ts-node Configurations
+    // TypeScript Configuration
     // =====================
     //
-    // You can write tests using TypeScript to get autocompletion and type safety.
-    // You will need typescript and ts-node installed as devDependencies.
-    // WebdriverIO will automatically detect if these dependencies are installed
-    // and will compile your config and tests for you.
-    // If you need to configure how ts-node runs please use the
-    // environment variables for ts-node or use wdio config's autoCompileOpts section.
+    // WebdriverIO v9 transpiles TypeScript config and spec files via `tsx`
+    // (bundled with @wdio/cli). The tsconfig to use is passed on the CLI with
+    // `--tsConfigPath src/test/e2e/tsconfig.json` (see the `test:integ:extension`
+    // npm script), which replaces the v8 `autoCompileOpts`/ts-node mechanism.
     //
-
-    autoCompileOpts: {
-        autoCompile: true,
-        // see https://github.com/TypeStrong/ts-node#cli-and-programmatic-options
-        // for all available options
-        tsNodeOpts: {
-            transpileOnly: true,
-            project: path.join(__dirname, "tsconfig.json"),
-        },
-    },
 
     //
     // ==================

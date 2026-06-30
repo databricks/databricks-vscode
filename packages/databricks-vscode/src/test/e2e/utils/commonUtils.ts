@@ -256,7 +256,7 @@ export async function waitForWorkflowWebview(
 
     const startTime = await browser.getTextByLabel("run-start-time");
     console.log("Run start time:", startTime);
-    expect(startTime).not.toHaveText("-");
+    expect(startTime).not.toBe("-");
 
     await browser.waitUntil(
         async () => {
