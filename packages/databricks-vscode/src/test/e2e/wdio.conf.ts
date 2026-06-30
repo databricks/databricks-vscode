@@ -17,6 +17,27 @@ import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
 
+// WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
+// NODE_OPTIONS for every worker process. wdio-vscode-service installs the
+// Databricks extension by spawning the VS Code (Electron) `code` CLI, which
+// inherits that NODE_OPTIONS — and Electron hard-rejects `--import` in
+// NODE_OPTIONS ("Code.exe: --import is not allowed in NODE_OPTIONS"). The
+// extension install then fails and every spec dies with `Can't find view
+// control "CONFIGURATION"`. By the time this config module loads, tsx has
+// already registered its loader in-process, so we can strip `--import` from
+// the environment that child processes inherit without breaking transpilation.
+// Only do this in workers (WDIO_WORKER_ID is set): the launcher must keep
+// `--import` in NODE_OPTIONS so the workers it spawns still get tsx.
+if (
+    process.env.WDIO_WORKER_ID &&
+    process.env.NODE_OPTIONS?.includes("--import")
+) {
+    process.env.NODE_OPTIONS = process.env.NODE_OPTIONS.replace(
+        /\s*--import(?:=|\s+)\S+/g,
+        ""
+    ).trim();
+}
+
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
 const __filename = fileURLToPath(import.meta.url);
