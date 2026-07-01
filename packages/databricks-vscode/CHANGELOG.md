@@ -1,3 +1,11 @@
+# Release: v2.12.1
+
+## packages/databricks-vscode
+
+## (2026-07-01)
+
+-   [telemetry] Detect Python package manager(s) at project setup (#1918) ([133c453](https://github.com/databricks/databricks-vscode/commit/133c453)), closes [#1918](https://github.com/databricks/databricks-vscode/issues/1918)
+
 # Release: v2.12.0
 
 ## packages/databricks-vscode
