@@ -5,7 +5,7 @@ import os from "node:os";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {BundleFileSet, getSubProjects} from "./BundleFileSet";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
 import {CachedValue} from "../locking/CachedValue";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
@@ -205,7 +205,7 @@ export class BundleProjectManager {
             recordEvent({success: false});
             this.setPendingManualMigration();
             const message =
-                "Failed to perform automatic migration to Databricks Asset Bundles.";
+                "Failed to perform automatic migration to Declarative Automation Bundles.";
             this.logger.error(message, error);
             const errorMessage = (error as Error)?.message ?? "Unknown Error";
             window.showErrorMessage(`${message} ${errorMessage}`);
@@ -262,7 +262,7 @@ export class BundleProjectManager {
 
     @onError({
         popup: {
-            prefix: "Failed to migrate the project to Databricks Asset Bundles",
+            prefix: "Failed to migrate the project to Declarative Automation Bundles",
         },
     })
     public async startManualMigration() {

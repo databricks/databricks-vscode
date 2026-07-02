@@ -2,7 +2,7 @@
     "extends": "../../tsconfig_base.json",
     "compilerOptions": {
         "outDir": "out",
-        "lib": ["ES2020", "ES2021.String", "DOM"],
+        "lib": ["ES2022", "DOM"],
         "rootDir": "src"
     },
     "references": [{"path": "../databricks-vscode-types"}],

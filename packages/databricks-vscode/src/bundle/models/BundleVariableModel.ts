@@ -4,7 +4,7 @@ import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {Mutex} from "../../locking";
 import {BundleSchema} from "../types";
 import {readFile} from "fs/promises";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {Loggers} from "../../logger";
 import {onError} from "../../utils/onErrorDecorator";
 import {BundleValidateModel} from "./BundleValidateModel";

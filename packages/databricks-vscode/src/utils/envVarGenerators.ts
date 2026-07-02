@@ -1,7 +1,7 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
 import {ExtensionContext, Uri} from "vscode";
-import {logging, Headers} from "@databricks/databricks-sdk";
+import {logging, Headers} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {TerraformMetadata} from "./terraformUtils";
 
@@ -59,11 +59,16 @@ export function getAuthEnvVars(connectionManager: ConnectionManager) {
         return;
     }
 
+    // For SPOG (unified host) connections the Go CLI SDK must know the
+    // workspace_id so it can add the X-Databricks-Org-Id routing header.
+    const workspaceId = connectionManager.apiClient?.config?.workspaceId;
+
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         DATABRICKS_HOST: host,
         DATABRICKS_AUTH_TYPE: "metadata-service",
         DATABRICKS_METADATA_SERVICE_URL: connectionManager.metadataServiceUrl,
+        ...(workspaceId ? {DATABRICKS_WORKSPACE_ID: workspaceId} : {}),
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }

@@ -21,7 +21,7 @@ import {
     ProfileAuthProvider,
 } from "./auth/AuthProvider";
 import {FileUtils, UrlUtils} from "../utils";
-import {AuthType as SdkAuthType} from "@databricks/databricks-sdk";
+import {AuthType as SdkAuthType} from "@databricks/sdk-experimental";
 import {randomUUID} from "crypto";
 import ini from "ini";
 import {appendFile, copyFile} from "fs/promises";
@@ -311,7 +311,8 @@ export class LoginWizard {
                 authProvider = new DatabricksCliAuthProvider(
                     this.state.host!,
                     this.cliWrapper.cliPath,
-                    this.cliWrapper
+                    this.cliWrapper,
+                    profileName
                 );
                 break;
 
@@ -480,7 +481,8 @@ async function validateDatabricksHost(
         if (
             !url.hostname.match(
                 /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com|\.dev\.databricks\.com)$/
-            )
+            ) &&
+            !UrlUtils.isSpogHost(url)
         ) {
             return {
                 message:
@@ -502,7 +504,7 @@ function authMethodsForHostname(host: URL): Array<AuthType> {
         return ["databricks-cli", "google-id", "pat"];
     }
 
-    if (UrlUtils.isAwsHost(host)) {
+    if (UrlUtils.isAwsHost(host) || UrlUtils.isSpogHost(host)) {
         return ["databricks-cli", "pat"];
     }
 

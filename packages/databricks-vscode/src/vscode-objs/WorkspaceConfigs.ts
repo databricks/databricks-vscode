@@ -1,5 +1,5 @@
 import {ConfigurationTarget, workspace} from "vscode";
-import {Time, TimeUnits} from "@databricks/databricks-sdk";
+import {Time, TimeUnits} from "@databricks/sdk-experimental";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -121,6 +121,14 @@ export const workspaceConfigs = {
             return undefined;
         }
         return dir;
+    },
+
+    get serverlessDbconnectVersion(): string {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<string>("connect.serverlessDbconnectVersion") ?? "17.3"
+        );
     },
 
     get bundleRemoteStateRefreshInterval(): number {

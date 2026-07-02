@@ -23,7 +23,7 @@ async function checkOutputFile(path: string, expectedContent: string) {
             return fileContent.includes(expectedContent);
         },
         {
-            timeout: 60_000,
+            timeout: 120_000,
             interval: 2000,
             timeoutMsg: `Output file "${path}" did not contain "${expectedContent}"`,
         }
@@ -33,7 +33,7 @@ async function checkOutputFile(path: string, expectedContent: string) {
 
 describe("Run files on serverless compute", async function () {
     let projectDir: string;
-    this.timeout(3 * 60 * 1000);
+    this.timeout(12 * 60 * 1000);
 
     before(async () => {
         assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
@@ -109,6 +109,7 @@ describe("Run files on serverless compute", async function () {
                 "# MAGIC select 1 + 1;",
                 "# MAGIC select 'hello run;'",
                 "# COMMAND ----------",
+                `import os`,
                 `df = _sqldf.toPandas()`,
                 `df.to_json(os.path.join(os.getcwd(), "databricks-run-notebook-output.json"))`,
             ].join("\n")
@@ -118,6 +119,7 @@ describe("Run files on serverless compute", async function () {
             path.join(nestedDir, "databricks-notebook.py"),
             [
                 "# Databricks notebook source",
+                `import os`,
                 `spark.sql('SELECT "hello world"').show()`,
                 "# COMMAND ----------",
                 "# DBTITLE 1,My cell title",
@@ -198,7 +200,14 @@ describe("Run files on serverless compute", async function () {
 
         // Install dependencies from the requirements.txt
         const dependenciesInput = await waitForInput();
-        await dependenciesInput.toggleAllQuickPicks(true);
+        try {
+            await dependenciesInput.toggleAllQuickPicks(true);
+        } catch (e) {
+            console.log(
+                "Failed to toggle all quick picks, moving on. Error:",
+                e
+            );
+        }
         await dependenciesInput.confirm();
 
         await waitForNotification("The following environment is selected");

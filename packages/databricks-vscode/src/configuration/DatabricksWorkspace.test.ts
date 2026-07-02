@@ -3,7 +3,7 @@ import assert from "assert";
 import {Uri} from "vscode";
 import {ProfileAuthProvider} from "./auth/AuthProvider";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
-import {iam} from "@databricks/databricks-sdk";
+import {iam} from "@databricks/sdk-experimental";
 import {instance, mock} from "ts-mockito";
 import {CliWrapper} from "../cli/CliWrapper";
 

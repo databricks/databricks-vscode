@@ -2,18 +2,19 @@ import {describe} from "mocha";
 import {ClusterManager} from "./ClusterManager";
 import {
     ApiClient,
+    Config,
     compute,
     Time,
     TimeUnits,
     retries,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {Cluster} from "../sdk-extensions";
 import {ClusterFixtures} from "../sdk-extensions/test";
 import {
     anything,
-    deepEqual,
     instance,
     mock,
+    objectContaining,
     resetCalls,
     verify,
     when,
@@ -28,13 +29,14 @@ describe(__filename, async () => {
     beforeEach(async () => {
         ({testClusterDetails} = await ClusterFixtures.getMockTestCluster());
         mockedClient = mock(ApiClient);
+        const mockedConfig = mock(Config);
+        when(mockedConfig.ensureResolved()).thenResolve();
+        when(mockedClient.config).thenReturn(instance(mockedConfig));
         when(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                "GET",
-                deepEqual({
-                    // eslint-disable-next-line
-                    cluster_id: testClusterDetails.cluster_id,
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
                 }),
                 anything()
             )
@@ -57,11 +59,9 @@ describe(__filename, async () => {
     it("should start a cluster with progress", async () => {
         when(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                "GET",
-                deepEqual({
-                    // eslint-disable-next-line
-                    cluster_id: testClusterDetails.cluster_id,
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
                 }),
                 anything()
             )

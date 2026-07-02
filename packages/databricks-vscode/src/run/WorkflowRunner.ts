@@ -1,4 +1,4 @@
-import {jobs, ApiError} from "@databricks/databricks-sdk";
+import {jobs, ApiError} from "@databricks/sdk-experimental";
 import {Cluster, WorkflowRun} from "../sdk-extensions";
 import {basename} from "node:path";
 import {
@@ -19,7 +19,7 @@ import {WorkspaceFsWorkflowWrapper} from "../workspace-fs/WorkspaceFsWorkflowWra
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
 import {Events, Telemetry} from "../telemetry";
 import {ComputeType, WorkflowTaskType} from "../telemetry/constants";
-import {NamedLogger} from "@databricks/databricks-sdk/dist/logging";
+import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {Loggers} from "../logger";
 
 export class WorkflowRunner implements Disposable {
@@ -221,14 +221,18 @@ export class WorkflowRunner implements Disposable {
         try {
             if (e instanceof ApiError) {
                 logger.error("API error while running workflow:", e.message);
+                const response =
+                    typeof e.response === "string"
+                        ? JSON.parse(e.response)
+                        : e.response;
                 panel.showError({
                     message: e.message,
                     stack:
-                        "error_trace" in e.response
-                            ? new Convert().toHtml(e.response.error_trace)
+                        "error_trace" in response
+                            ? new Convert().toHtml(response.error_trace)
                             : undefined,
                 });
-                panel.showStdoutResult(e.response.logs || "");
+                panel.showStdoutResult(response.logs || "");
             } else {
                 logger.error("Unexpected error while running workflow:", e);
                 panel.showError({

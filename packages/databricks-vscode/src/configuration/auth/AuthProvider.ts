@@ -4,7 +4,7 @@ import {
     ProductVersion,
     WorkspaceClient,
     logging,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {CancellationToken, ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
@@ -134,7 +134,6 @@ export abstract class AuthProvider {
         if (config.databricksCliPath === undefined) {
             config.databricksCliPath = this._cli.cliPath;
         }
-
         return config;
     }
 
@@ -164,8 +163,17 @@ export abstract class AuthProvider {
             case "databricks-cli":
                 return new DatabricksCliAuthProvider(
                     host,
-                    json.databricksPath ?? cli.cliPath,
-                    cli
+                    // Always use the freshly resolved bundled CLI path and
+                    // ignore any persisted `databricksPath`. That field is a
+                    // snapshot of a previous install's bundled binary: it is
+                    // version-pinned (e.g. .../databricks-2.11.0/bin/...) and,
+                    // on Windows, was stored without the `.exe` suffix, so a
+                    // persisted value is stale/wrong and must not win over the
+                    // path computed by the current extension.
+                    cli.cliPath,
+                    cli,
+                    json.profile,
+                    json.workspaceId
                 );
 
             case "profile":
@@ -198,7 +206,9 @@ export abstract class AuthProvider {
                 return new DatabricksCliAuthProvider(
                     host,
                     config.databricksCliPath ?? cli.cliPath,
-                    cli
+                    cli,
+                    config.profile,
+                    config.workspaceId
                 );
 
             default:
@@ -211,6 +221,8 @@ export abstract class AuthProvider {
 }
 
 export class ProfileAuthProvider extends AuthProvider {
+    private _workspaceId?: string;
+
     static async from(profile: string, cli: CliWrapper, checked = false) {
         const host = await ProfileAuthProvider.getSdkConfig(profile).getHost();
         return new ProfileAuthProvider(host, profile, cli, checked);
@@ -238,10 +250,14 @@ export class ProfileAuthProvider extends AuthProvider {
     }
 
     toEnv(): Record<string, string> {
-        return {
+        const env: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_CONFIG_PROFILE: this.profile,
         };
+        if (this._workspaceId) {
+            env["DATABRICKS_WORKSPACE_ID"] = this._workspaceId;
+        }
+        return env;
     }
 
     toIni() {
@@ -264,6 +280,9 @@ export class ProfileAuthProvider extends AuthProvider {
         while (cancellationToken?.isCancellationRequested !== true) {
             try {
                 const sdkConfig = await this.getSdkConfig();
+                // Cache workspace_id so toEnv() can include SPOG routing vars
+                // for bundle commands that use the Go CLI directly.
+                this._workspaceId = sdkConfig.workspaceId;
                 const authProvider = AuthProvider.fromSdkConfig(
                     sdkConfig,
                     this.cli
@@ -308,7 +327,9 @@ export class DatabricksCliAuthProvider extends AuthProvider {
     constructor(
         host: URL,
         readonly cliPath: string,
-        cli: CliWrapper
+        cli: CliWrapper,
+        readonly profile?: string,
+        readonly workspaceId?: string
     ) {
         super(host, "databricks-cli", cli);
     }
@@ -322,6 +343,8 @@ export class DatabricksCliAuthProvider extends AuthProvider {
             host: this.host.toString(),
             authType: this.authType,
             databricksPath: this.cliPath,
+            ...(this.profile ? {profile: this.profile} : {}),
+            ...(this.workspaceId ? {workspaceId: this.workspaceId} : {}),
         };
     }
 
@@ -330,14 +353,27 @@ export class DatabricksCliAuthProvider extends AuthProvider {
             host: this.host.toString(),
             authType: "databricks-cli",
             databricksCliPath: this.cliPath,
+            ...(this.profile ? {profile: this.profile} : {}),
+            ...(this.workspaceId ? {workspaceId: this.workspaceId} : {}),
         });
     }
 
     toEnv(): Record<string, string> {
-        return {
+        const env: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: "databricks-cli",
+            // Point the SDK/Terraform provider at the bundled CLI so they don't
+            // fall back to searching PATH (and fail with "databricks CLI not
+            // found") in subprocesses that don't inherit our resolved path.
+            DATABRICKS_CLI_PATH: this.cliPath,
         };
+        if (this.profile) {
+            env["DATABRICKS_CONFIG_PROFILE"] = this.profile;
+        }
+        if (this.workspaceId) {
+            env["DATABRICKS_WORKSPACE_ID"] = this.workspaceId;
+        }
+        return env;
     }
 
     toIni() {

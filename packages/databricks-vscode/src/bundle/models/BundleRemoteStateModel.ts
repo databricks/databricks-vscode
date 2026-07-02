@@ -6,7 +6,7 @@ import {BundleTarget, Resource, ResourceKey, Resources} from "../types";
 import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {CancellationToken} from "vscode";

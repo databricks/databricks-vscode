@@ -118,6 +118,17 @@ export class Telemetry {
     }
 
     /**
+     * Whether non-error events will actually be sent. The underlying reporter
+     * only emits regular events when the user's telemetry level is "all", so
+     * callers that do expensive work purely to build an event (e.g. reading
+     * project files for package-manager detection) should short-circuit on this
+     * to avoid wasted work and any disk access for opted-out users.
+     */
+    get isTelemetryEnabled(): boolean {
+        return this.reporter?.telemetryLevel === "all";
+    }
+
+    /**
      * Add additional metadata as defined in MetadataTypes to all events tracked via this Telemetry instance.
      * @param prefix The type of metadata. The string value of this is prefixed to all property keys when logged.
      * @param properties The properties to log for this metadata.

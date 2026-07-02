@@ -9,11 +9,11 @@ import {
     Time,
     TimeUnits,
     WorkspaceClient,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {
     LinearRetryPolicy,
     RetriableError,
-} from "@databricks/databricks-sdk/dist/retries/retries";
+} from "@databricks/sdk-experimental/dist/retries/retries";
 import {Loggers} from "../../logger";
 
 function isRunning(status?: pipelines.UpdateInfoState) {
@@ -25,7 +25,7 @@ function isRunning(status?: pipelines.UpdateInfoState) {
 
 export class PipelineRunStatus extends BundleRunStatus {
     public readonly type = "pipelines";
-    public data: pipelines.UpdateInfo | undefined;
+    public declare data: pipelines.UpdateInfo | undefined;
     public events: pipelines.PipelineEvent[] | undefined;
 
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);

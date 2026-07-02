@@ -5,7 +5,7 @@ import {
 import {TreeItemCollapsibleState} from "vscode";
 import {ContextUtils, RunStateUtils} from "./utils";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
-import {jobs} from "@databricks/databricks-sdk";
+import {jobs} from "@databricks/sdk-experimental";
 import {TreeItemTreeNode} from "../TreeItemTreeNode";
 import {TaskTreeNode} from "./TaskTreeNode";
 

@@ -1,4 +1,4 @@
-import {WorkspaceClient, logging} from "@databricks/databricks-sdk";
+import {WorkspaceClient, logging} from "@databricks/sdk-experimental";
 import {WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import path = require("path");
 import {Uri} from "vscode";

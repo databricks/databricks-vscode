@@ -11,7 +11,7 @@ import {
     ServerResponse,
     logging,
     Headers,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 
 export class MetadataService implements Disposable {
     private server:

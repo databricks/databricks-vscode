@@ -18,14 +18,19 @@ on:
 jobs:
   release-pr:
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
 
     strategy:
       matrix:
-        node-version: [18.x]
+        node-version: [22.x]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
 
@@ -39,10 +44,16 @@ jobs:
           git config --global user.email "noreply@github.com"
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: "yarn"
+
+      - name: Obtain JFrog OIDC token
+        run: bash .github/scripts/jfrog-oidc-token.sh
+
+      - name: Configure JFrog npm registry
+        run: bash .github/scripts/configure-npm.sh
 
       - run: yarn install --immutable
 

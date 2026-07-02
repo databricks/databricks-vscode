@@ -7,7 +7,7 @@ import {
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {Workbench} from "wdio-vscode-service";
-import {WorkspaceClient} from "@databricks/databricks-sdk";
+import {WorkspaceClient} from "@databricks/sdk-experimental";
 import {createProjectWithJob} from "./utils/dabsFixtures.ts";
 
 describe("Deploy and destroy", async function () {

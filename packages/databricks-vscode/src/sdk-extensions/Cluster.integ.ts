@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {CancellationToken} from "@databricks/databricks-sdk";
+import {CancellationToken} from "@databricks/sdk-experimental";
 import {Cluster} from "../sdk-extensions";
 import assert from "node:assert";
 import {IntegrationTestSetup} from "./test/IntegrationTestSetup";
