@@ -77,12 +77,46 @@ yarn workspace databricks run test:python
 # Unit tests with coverage
 yarn workspace databricks run test:cov
 
-# End-to-end / integration tests
+# End-to-end / integration tests (see "Integration test environment" below —
+# these require a live Databricks workspace and extra environment variables)
 yarn workspace databricks run test:integ
 ```
 
 Please add tests for any new behavior, and make sure the full suite passes
 before opening a pull request.
+
+### Integration test environment
+
+Unlike the lint and unit suites, `test:integ` runs against a **live Databricks
+workspace**, so it needs credentials and a cluster before it will start. The
+e2e runner resolves authentication through the standard Databricks SDK unified
+auth (environment variables or a `.databrickscfg` profile), and it asserts that
+a default cluster is configured.
+
+Set the following before running `yarn workspace databricks run test:integ`:
+
+| Variable                                            | Required             | Description                                                                         |
+| --------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------- |
+| `DATABRICKS_HOST`                                   | Yes                  | Workspace URL, e.g. `https://my-workspace.cloud.databricks.com`.                    |
+| `TEST_DEFAULT_CLUSTER_ID`                           | Yes                  | ID of an existing cluster in that workspace; the runner starts it before the tests. |
+| `DATABRICKS_TOKEN`                                  | For PAT auth         | Personal access token. Provide this **or** the OAuth pair below.                    |
+| `DATABRICKS_CLIENT_ID` / `DATABRICKS_CLIENT_SECRET` | For OAuth (M2M) auth | Service principal credentials, used when no token is set.                           |
+
+For example, using a personal access token:
+
+```sh
+export DATABRICKS_HOST="https://my-workspace.cloud.databricks.com"
+export DATABRICKS_TOKEN="dapi..."
+export TEST_DEFAULT_CLUSTER_ID="0101-234567-abcdefgh"
+
+yarn workspace databricks run test:integ
+```
+
+Instead of exporting `DATABRICKS_HOST`/`DATABRICKS_TOKEN` you may point the SDK
+at an existing profile (for example `export DATABRICKS_CONFIG_PROFILE=DEFAULT`);
+`TEST_DEFAULT_CLUSTER_ID` is still required in that case. The extension e2e tests
+also build a `.vsix` package as part of `test:integ:prepare`, so make sure you
+have run `yarn build` first.
 
 ## Code style
 
