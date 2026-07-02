@@ -254,9 +254,23 @@ export async function waitForWorkflowWebview(
         }
     );
 
-    const startTime = await browser.getTextByLabel("run-start-time");
-    console.log("Run start time:", startTime);
-    expect(startTime).not.toHaveText("-");
+    // The run start time renders as a "-" placeholder until the run details
+    // arrive, so poll until it is populated rather than asserting once.
+    // (The previous `expect(startTime).not.toHaveText("-")` was a no-op:
+    // toHaveText is an element matcher and startTime is a plain string, so it
+    // never actually asserted, which is why "-" slipped through on slower runs.)
+    await browser.waitUntil(
+        async () => {
+            const startTime = await browser.getTextByLabel("run-start-time");
+            console.log("Run start time:", startTime);
+            return startTime !== "-" && startTime.trim().length > 0;
+        },
+        {
+            timeout: 60_000,
+            interval: 1_000,
+            timeoutMsg: "Run start time did not populate (still '-')",
+        }
+    );
 
     await browser.waitUntil(
         async () => {

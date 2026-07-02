@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-console */
-import type {Options} from "@wdio/types";
-
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import video from "wdio-video-reporter";
 import path from "node:path";
@@ -18,6 +16,27 @@ import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
+
+// WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
+// NODE_OPTIONS for every worker process. wdio-vscode-service installs the
+// Databricks extension by spawning the VS Code (Electron) `code` CLI, which
+// inherits that NODE_OPTIONS — and Electron hard-rejects `--import` in
+// NODE_OPTIONS ("Code.exe: --import is not allowed in NODE_OPTIONS"). The
+// extension install then fails and every spec dies with `Can't find view
+// control "CONFIGURATION"`. By the time this config module loads, tsx has
+// already registered its loader in-process, so we can strip `--import` from
+// the environment that child processes inherit without breaking transpilation.
+// Only do this in workers (WDIO_WORKER_ID is set): the launcher must keep
+// `--import` in NODE_OPTIONS so the workers it spawns still get tsx.
+if (
+    process.env.WDIO_WORKER_ID &&
+    process.env.NODE_OPTIONS?.includes("--import")
+) {
+    process.env.NODE_OPTIONS = process.env.NODE_OPTIONS.replace(
+        /\s*--import(?:=|\s+)\S+/g,
+        ""
+    ).trim();
+}
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
@@ -92,7 +111,7 @@ const execFile = async (
     return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
 };
 
-export const config: Options.Testrunner = {
+export const config: WebdriverIO.Config = {
     //
     // ====================
     // Runner Configuration
@@ -100,26 +119,14 @@ export const config: Options.Testrunner = {
     //
     //
     // =====================
-    // ts-node Configurations
+    // TypeScript Configuration
     // =====================
     //
-    // You can write tests using TypeScript to get autocompletion and type safety.
-    // You will need typescript and ts-node installed as devDependencies.
-    // WebdriverIO will automatically detect if these dependencies are installed
-    // and will compile your config and tests for you.
-    // If you need to configure how ts-node runs please use the
-    // environment variables for ts-node or use wdio config's autoCompileOpts section.
+    // WebdriverIO v9 transpiles TypeScript config and spec files via `tsx`
+    // (bundled with @wdio/cli). The tsconfig to use is passed on the CLI with
+    // `--tsConfigPath src/test/e2e/tsconfig.json` (see the `test:integ:extension`
+    // npm script), which replaces the v8 `autoCompileOpts`/ts-node mechanism.
     //
-
-    autoCompileOpts: {
-        autoCompile: true,
-        // see https://github.com/TypeStrong/ts-node#cli-and-programmatic-options
-        // for all available options
-        tsNodeOpts: {
-            transpileOnly: true,
-            project: path.join(__dirname, "tsconfig.json"),
-        },
-    },
 
     //
     // ==================
