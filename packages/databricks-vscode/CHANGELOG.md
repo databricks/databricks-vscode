@@ -1,3 +1,13 @@
+# Release: v2.12.1
+
+## packages/databricks-vscode
+
+## (2026-07-02)
+
+-   [telemetry] Detect Python package manager(s) at project setup (#1918) ([133c453](https://github.com/databricks/databricks-vscode/commit/133c453)), closes [#1918](https://github.com/databricks/databricks-vscode/issues/1918)
+-   Correctly resolve relative includes in `databricks.yml` from parent folders (#1870) ([06a3abc](https://github.com/databricks/databricks-vscode/commit/06a3abc)), closes [#1870](https://github.com/databricks/databricks-vscode/issues/1870) [#1818](https://github.com/databricks/databricks-vscode/issues/1818) [#1731](https://github.com/databricks/databricks-vscode/issues/1731)
+-   Rename schema name, databricks-asset-bundles.json to declarative-automatation-bundles.json (#1885) ([a91942c](https://github.com/databricks/databricks-vscode/commit/a91942c)), closes [#1885](https://github.com/databricks/databricks-vscode/issues/1885)
+
 # Release: v2.12.0
 
 ## packages/databricks-vscode
