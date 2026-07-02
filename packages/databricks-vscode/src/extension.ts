@@ -4,6 +4,7 @@ import {
     env,
     ExtensionContext,
     extensions,
+    Uri,
     window,
     workspace,
 } from "vscode";
@@ -49,6 +50,8 @@ import {Events, Metadata} from "./telemetry/constants";
 import {EnvironmentDependenciesInstaller} from "./language/EnvironmentDependenciesInstaller";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
+import {SshTunnelStatusBarButton} from "./language/SshTunnelStatusBarButton";
+import {SshCommands} from "./ssh/SshCommands";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 import {
@@ -265,6 +268,23 @@ export async function activate(
                 "Failed to update active python environment",
                 e
             );
+        }
+
+        // Auto-open the file the user was editing locally when the tunnel was
+        // started, if it resolves in the remote workspace. Forwarded out of
+        // band via env var since the CLI has no file flag; best-effort only.
+        const remoteOpenFile = process.env["DATABRICKS_REMOTE_OPEN_FILE"];
+        if (remoteOpenFile) {
+            try {
+                const uri = Uri.file(remoteOpenFile);
+                await workspace.fs.stat(uri);
+                await window.showTextDocument(uri);
+            } catch (e) {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                    "Skipping remote auto-open of file (not found remotely)",
+                    {remoteOpenFile}
+                );
+            }
         }
 
         customWhenContext.setActivated(true);
@@ -822,6 +842,21 @@ export async function activate(
             "databricks.connection.saveNewProfile",
             connectionCommands.saveNewProfileCommand,
             connectionCommands
+        )
+    );
+
+    // SSH tunnel (remote development) group
+    const sshCommands = new SshCommands(connectionManager, clusterModel, cli);
+    const sshTunnelStatusBarButton = new SshTunnelStatusBarButton(
+        connectionManager
+    );
+    context.subscriptions.push(
+        sshCommands,
+        sshTunnelStatusBarButton,
+        telemetry.registerCommand(
+            "databricks.ssh.startTunnel",
+            sshCommands.startTunnelCommand,
+            sshCommands
         )
     );
 

@@ -53,6 +53,13 @@
     "contributes": {
         "commands": [
             {
+                "command": "databricks.ssh.startTunnel",
+                "title": "Start SSH Tunnel",
+                "category": "Databricks",
+                "icon": "$(remote)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
+            },
+            {
                 "command": "databricks.connection.logout",
                 "title": "Logout",
                 "category": "Databricks",

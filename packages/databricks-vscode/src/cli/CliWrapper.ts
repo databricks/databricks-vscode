@@ -574,6 +574,43 @@ export class CliWrapper {
         });
     }
 
+    /**
+     * Env vars for interactive CLI commands run in a terminal (e.g. `ssh
+     * connect`). Auth is forwarded via env vars, matching the bundle init flow.
+     */
+    getSshConnectEnvVars(authProvider: AuthProvider) {
+        return removeUndefinedKeys({
+            ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
+                workspaceConfigs.databrickscfgLocation
+            ),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...this.getLogginEnvVars(),
+            ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_OUTPUT_FORMAT: "text",
+        });
+    }
+
+    /**
+     * Constructs the `databricks ssh connect` command args for opening a remote
+     * VS Code window. Serverless is the default when no cluster is given.
+     */
+    getSshConnectCommand(opts: {
+        compute: {type: "serverless"} | {type: "cluster"; clusterId: string};
+    }): {args: string[]} {
+        const args = ["ssh", "connect", "--ide=vscode"];
+        if (opts.compute.type === "cluster") {
+            args.push(`--cluster=${opts.compute.clusterId}`);
+            // Start a stopped single-user cluster when connecting. Host-key
+            // trust and extension-install prompts stay interactive (we do not
+            // pass --auto-approve).
+            args.push("--auto-start-cluster");
+        }
+        args.push(...this.getLoggingArguments());
+        return {args};
+    }
+
     async bundleInit(
         templateDirPath: string,
         outputDirPath: string,

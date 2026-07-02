@@ -128,6 +128,48 @@ describe(__filename, function () {
         assert.equal([command, ...args].join(" "), syncCommand);
     });
 
+    it("should create ssh connect commands", () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+        const loggingArgs = [
+            "--log-level",
+            "debug",
+            "--log-file",
+            logFilePath,
+            "--log-format",
+            "json",
+        ];
+
+        // Serverless: no --cluster / --auto-start-cluster.
+        let {args} = cli.getSshConnectCommand({compute: {type: "serverless"}});
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            ...loggingArgs,
+        ]);
+
+        // Dedicated cluster: --cluster and --auto-start-cluster.
+        ({args} = cli.getSshConnectCommand({
+            compute: {type: "cluster", clusterId: "1234-clusterid"},
+        }));
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--cluster=1234-clusterid",
+            "--auto-start-cluster",
+            ...loggingArgs,
+        ]);
+
+        // No logging args when logging is disabled.
+        const configsSpy = spy(workspaceConfigs);
+        mocks.push(configsSpy);
+        when(configsSpy.loggingEnabled).thenReturn(false);
+        ({args} = cli.getSshConnectCommand({compute: {type: "serverless"}}));
+        assert.deepStrictEqual(args, ["ssh", "connect", "--ide=vscode"]);
+    });
+
     it("should list profiles when no config file exists", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
