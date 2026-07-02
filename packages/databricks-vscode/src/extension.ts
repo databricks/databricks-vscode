@@ -1,6 +1,7 @@
 import {
     commands,
     debug,
+    env,
     ExtensionContext,
     extensions,
     window,
@@ -26,10 +27,15 @@ import {
     FileUtils,
     PackageJsonUtils,
     TerraformUtils,
+    UrlUtils,
     UtilsCommands,
 } from "./utils";
 import {ConfigureAutocomplete} from "./language/ConfigureAutocomplete";
-import {WorkspaceFsCommands, WorkspaceFsDataProvider} from "./workspace-fs";
+import {
+    WorkspaceFsCommands,
+    WorkspaceFsDataProvider,
+    WorkspaceFsFileSystemProvider,
+} from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
@@ -69,11 +75,17 @@ import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariab
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
+import {PackageManagerTelemetry} from "./language/PackageManagerTelemetry";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
 import {SyncCommands} from "./sync/SyncCommands";
 import {CodeSynchronizer} from "./sync";
 import {BundlePipelinesManager} from "./bundle/BundlePipelinesManager";
 import {DocsViewTreeDataProvider} from "./ui/docs-view/DocsViewTreeDataProvider";
+import {
+    UnityCatalogTreeDataProvider,
+    UnityCatalogTreeNode,
+} from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
+import {registerDetailPanel} from "./ui/unity-catalog/registerDetailPanel";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require("../package.json");
@@ -265,7 +277,6 @@ export async function activate(
     // manage contexts for experimental features
     function updateFeatureContexts() {
         customWhenContext.updateShowClusterView();
-        customWhenContext.updateShowWorkspaceView();
     }
 
     function updateStrictSSLEnv() {
@@ -325,6 +336,24 @@ export async function activate(
         customWhenContext,
         telemetry
     );
+    const packageManagerTelemetry = new PackageManagerTelemetry(
+        telemetry,
+        pythonExtensionWrapper,
+        () => {
+            try {
+                return workspaceFolderManager.activeProjectUri.fsPath;
+            } catch (e) {
+                return undefined;
+            }
+        },
+        () => {
+            if (connectionManager.serverless) {
+                return "serverless";
+            }
+            return connectionManager.cluster ? "cluster" : "none";
+        },
+        () => connectionManager.state === "CONNECTED"
+    );
     context.subscriptions.push(
         bundleFileWatcher,
         bundleValidateModel,
@@ -382,17 +411,28 @@ export async function activate(
     const workspaceFsDataProvider = new WorkspaceFsDataProvider(
         connectionManager
     );
+    const workspaceFsFsp = new WorkspaceFsFileSystemProvider(connectionManager);
+    const workspaceFsTreeView = window.createTreeView("workspaceFsView", {
+        treeDataProvider: workspaceFsDataProvider,
+    });
     const workspaceFsCommands = new WorkspaceFsCommands(
         workspaceFolderManager,
         connectionManager,
-        workspaceFsDataProvider
+        workspaceFsDataProvider,
+        workspaceFsFsp,
+        workspaceFsTreeView
     );
 
     context.subscriptions.push(
-        window.registerTreeDataProvider(
-            "workspaceFsView",
-            workspaceFsDataProvider
+        workspace.registerFileSystemProvider(
+            WorkspaceFsFileSystemProvider.scheme,
+            workspaceFsFsp,
+            {
+                isCaseSensitive: true,
+            }
         ),
+        workspaceFsFsp,
+        workspaceFsTreeView,
         telemetry.registerCommand(
             "databricks.wsfs.refresh",
             workspaceFsCommands.refresh,
@@ -402,6 +442,172 @@ export async function activate(
             "databricks.wsfs.createFolder",
             workspaceFsCommands.createFolder,
             workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.createFolder.toolbar",
+            workspaceFsCommands.createFolderFromToolbar,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.createNewFile",
+            workspaceFsCommands.createFile,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.createNewFile.toolbar",
+            workspaceFsCommands.createFileFromToolbar,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.openInBrowser",
+            workspaceFsCommands.openInBrowser,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.copyPath",
+            workspaceFsCommands.copyPath,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.delete",
+            workspaceFsCommands.deleteItem,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.uploadFile",
+            workspaceFsCommands.uploadFile,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.uploadFile.toolbar",
+            workspaceFsCommands.uploadFileFromToolbar,
+            workspaceFsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.wsfs.downloadFile",
+            workspaceFsCommands.downloadFile,
+            workspaceFsCommands
+        )
+    );
+
+    const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
+        connectionManager,
+        stateStorage,
+        context.extensionPath
+    );
+
+    const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
+        treeDataProvider: unityCatalogTreeDataProvider,
+    });
+    context.subscriptions.push(
+        unityCatalogTreeDataProvider,
+        unityCatalogTreeView,
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refresh",
+            unityCatalogTreeDataProvider.refresh,
+            unityCatalogTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refreshNode",
+            (node: UnityCatalogTreeNode) =>
+                unityCatalogTreeDataProvider.refreshNode(node)
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyStorageLocation",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    (node.kind === "table" || node.kind === "volume") &&
+                    node.storageLocation
+                ) {
+                    await env.clipboard.writeText(node.storageLocation);
+                    window.showInformationMessage("Copied to clipboard");
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyViewSql",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "table" && node.viewDefinition) {
+                    await env.clipboard.writeText(node.viewDefinition);
+                    window.showInformationMessage("Copied to clipboard");
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyName",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "error" ||
+                    node.kind === "empty" ||
+                    node.kind === "favorites" ||
+                    node.kind === "group"
+                ) {
+                    return;
+                }
+                const text = node.kind === "column" ? node.name : node.fullName;
+                await env.clipboard.writeText(text);
+                window.showInformationMessage("Copied to clipboard");
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.openExternal",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "error" || node.kind === "column") {
+                    return;
+                }
+                const url =
+                    unityCatalogTreeDataProvider.getNodeExploreUrl(node);
+                if (!url) {
+                    window.showErrorMessage(
+                        "Databricks: Can't open external link. No URL found."
+                    );
+                    return;
+                }
+                await UrlUtils.openExternal(url);
+            }
+        ),
+        commands.registerCommand("databricks.unityCatalog.filter", async () => {
+            await commands.executeCommand("unityCatalogView.focus");
+            await commands.executeCommand("list.find");
+        }),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.pin",
+            (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.pin(node);
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.unpin",
+            (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.unpin(node);
+                }
+            }
+        ),
+        ...registerDetailPanel(
+            context.extensionUri,
+            connectionManager,
+            unityCatalogTreeView,
+            unityCatalogTreeDataProvider,
+            telemetry
         )
     );
 
@@ -432,13 +638,15 @@ export async function activate(
                 connectionManager,
                 pythonExtensionWrapper,
                 environmentDependenciesInstaller,
-                configureAutocomplete
+                configureAutocomplete,
+                packageManagerTelemetry
             )
     );
     const environmentCommands = new EnvironmentCommands(
         featureManager,
         pythonExtensionWrapper,
-        environmentDependenciesInstaller
+        environmentDependenciesInstaller,
+        packageManagerTelemetry
     );
     context.subscriptions.push(
         telemetry.registerCommand(
@@ -816,7 +1024,8 @@ export async function activate(
         featureManager,
         context,
         customWhenContext,
-        telemetry
+        telemetry,
+        packageManagerTelemetry
     );
     const debugFactory = new DatabricksDebugAdapterFactory(
         connectionManager,

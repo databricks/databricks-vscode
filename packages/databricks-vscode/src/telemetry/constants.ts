@@ -24,6 +24,7 @@ export enum Events {
     WORKFLOW_RUN = "workflowRun",
     DBCONNECT_RUN = "dbconnectRun",
     OPEN_RESOURCE_EXTERNALLY = "openResourceExternally",
+    PYTHON_ENV_SETUP_DETECTED = "python_env.setup.detected",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -42,6 +43,22 @@ export type BundleRunType =
 export type WorkflowTaskType = "python" | "notebook" | "unknown";
 export type LaunchType = "run" | "debug";
 export type ComputeType = "cluster" | "serverless";
+
+// Package-manager / interpreter unions are owned by the pure detection module
+// (the single source of truth) and re-exported here so the event schema and the
+// classifier can never drift apart. The detection module has no runtime imports,
+// so this is a type-only dependency with no cycle.
+import type {
+    PackageManager,
+    PrimaryManager,
+    InterpreterSource,
+} from "../language/packageManagerDetection";
+export type {PackageManager, PrimaryManager, InterpreterSource};
+
+/** The compute targeted at the time of detection. */
+export type TargetCompute = ComputeType | "none";
+/** What triggered a package-manager detection emission. */
+export type SetupTrigger = "auto_open" | "explicit_command" | "run" | "debug";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -207,6 +224,50 @@ export class EventTypes {
         comment: "An external resource URL was opened",
         type: {
             comment: "The resource type",
+        },
+    };
+    [Events.PYTHON_ENV_SETUP_DETECTED]: EventType<{
+        managersDetected: PackageManager[];
+        primaryManager: PrimaryManager;
+        signals: string[];
+        pythonVersion?: string;
+        interpreterSource: InterpreterSource;
+        hasLockfile: boolean;
+        targetCompute: TargetCompute;
+        setupTrigger: SetupTrigger;
+    }> = {
+        comment:
+            "The Python package/environment manager(s) detected for a project at setup time. " +
+            "Measurement only: emits categorical data to size the real distribution of " +
+            "pip/conda/uv/poetry usage across users. Contains no paths, package names, or other PII.",
+        managersDetected: {
+            comment:
+                'All package managers with at least one firing signal, e.g. ["uv","pip"]',
+        },
+        primaryManager: {
+            comment:
+                "Best-guess primary manager (uv > poetry > conda > pip), or unknown",
+        },
+        signals: {
+            comment:
+                'The closed-set signal identifiers that fired, e.g. ["uv.lock","pyproject.tool.uv"]',
+        },
+        pythonVersion: {
+            comment:
+                'Detected interpreter version, major.minor only (e.g. "3.11"), if available',
+        },
+        interpreterSource: {
+            comment: "How the active interpreter was provisioned",
+        },
+        hasLockfile: {
+            comment: "Whether a uv.lock or poetry.lock was found",
+        },
+        targetCompute: {
+            comment:
+                "The compute targeted at detection time (no cluster IDs/names)",
+        },
+        setupTrigger: {
+            comment: "Which setup touchpoint triggered detection",
         },
     };
 }

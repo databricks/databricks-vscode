@@ -3,6 +3,7 @@ import {EventEmitter, ExtensionContext, Event} from "vscode";
 import {OverrideableConfigState} from "../configuration/models/OverrideableConfigModel";
 import {Mutex} from "../locking";
 import lodash from "lodash";
+import {StoredFavoriteRef} from "../ui/unity-catalog/types";
 
 /* eslint-disable @typescript-eslint/naming-convention */
 type KeyInfo<V> = {
@@ -64,6 +65,11 @@ const StorageConfigurations = {
 
     "databricks.activeProjectPath": withType<string>()({
         location: "workspace",
+    }),
+
+    "databricks.unityCatalog.favorites": withType<StoredFavoriteRef[]>()({
+        location: "workspace",
+        defaultValue: [],
     }),
 
     "databricks.lastInstalledExtensionVersion": withType<string>()({
