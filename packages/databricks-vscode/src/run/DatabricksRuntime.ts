@@ -217,7 +217,7 @@ export class DatabricksRuntime implements Disposable {
                                 localFile
                             );
                         }
-                    } catch (e) {}
+                    } catch {}
 
                     this._onDidSendOutputEmitter.fire({
                         type: "out",

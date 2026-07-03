@@ -27,7 +27,7 @@ export class LoggerManager {
         try {
             await access(logFile);
             await unlink(logFile);
-        } catch (e) {}
+        } catch {}
 
         return logFile;
     }

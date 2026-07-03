@@ -98,7 +98,7 @@ function getTelemetryReporter(): TelemetryReporter | undefined {
     // If we cannot initialize the telemetry reporter, don't break the entire extension.
     try {
         return new TelemetryReporter(getTelemetryKey());
-    } catch (e) {
+    } catch {
         return undefined;
     }
 }

@@ -106,7 +106,7 @@ describe("Deploy and destroy", async function () {
                         logs.includes("Bundle deployed successfully") &&
                         logs.includes("Bundle configuration refreshed")
                     );
-                } catch (e) {
+                } catch {
                     return false;
                 }
             },
@@ -164,7 +164,7 @@ describe("Deploy and destroy", async function () {
                         logs.includes("Bundle destroyed successfully") &&
                         logs.includes("Bundle configuration refreshed")
                     );
-                } catch (e) {
+                } catch {
                     return false;
                 }
             },

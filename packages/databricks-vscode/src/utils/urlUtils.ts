@@ -22,7 +22,7 @@ export function normalizeHost(host: string): URL {
     }
     try {
         url = new URL(host);
-    } catch (e) {
+    } catch {
         throw new UrlError("Invalid host name");
     }
     if (url.protocol !== "https:") {

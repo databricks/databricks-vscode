@@ -386,7 +386,7 @@ export async function saveNewProfile(
     let shouldBackup = true;
     try {
         await stat(configFilePath);
-    } catch (e) {
+    } catch {
         shouldBackup = false;
         await createFile(configFilePath);
         window.showInformationMessage(
@@ -450,7 +450,7 @@ export async function listProfiles(cliWrapper: CliWrapper) {
             const cfgPath = FileUtils.getDatabricksConfigFilePath().fsPath;
             try {
                 await stat(cfgPath);
-            } catch (e) {
+            } catch {
                 return [];
             }
             const allProfiles = await cliWrapper.listProfiles(cfgPath);
@@ -458,7 +458,7 @@ export async function listProfiles(cliWrapper: CliWrapper) {
                 try {
                     UrlUtils.normalizeHost(profile.host!.toString());
                     return true;
-                } catch (e) {
+                } catch {
                     return false;
                 }
             });

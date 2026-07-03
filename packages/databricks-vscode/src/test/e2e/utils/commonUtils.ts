@@ -231,7 +231,7 @@ export async function waitForWorkflowWebview(
             try {
                 const webView = await workbench.getWebviewByTitle(title);
                 return webView !== undefined;
-            } catch (e) {
+            } catch {
                 return false;
             }
         },
@@ -385,7 +385,7 @@ export async function waitForDeployment() {
                     logs.includes("Bundle deployed successfully") &&
                     logs.includes("Bundle configuration refreshed")
                 );
-            } catch (e) {
+            } catch {
                 return false;
             }
         },

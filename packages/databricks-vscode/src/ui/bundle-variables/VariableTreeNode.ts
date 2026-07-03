@@ -32,7 +32,7 @@ export class VariableTreeNode implements BundleVariableTreeNode {
     complexValueToString(value: any) {
         try {
             return JSON.stringify(value);
-        } catch (error) {
+        } catch {
             return "complex vairable";
         }
     }

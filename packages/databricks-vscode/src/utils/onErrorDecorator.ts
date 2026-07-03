@@ -58,7 +58,7 @@ export function onError(props: OnErrorProps) {
                         },
                     };
                 }
-            } catch (e) {}
+            } catch {}
         }
         const originalMethod = descriptor.value;
 
