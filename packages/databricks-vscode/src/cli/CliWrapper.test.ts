@@ -28,7 +28,7 @@ const cliPath = path.join(
         (process.platform === "win32" ? "databricks.exe" : "databricks")
 );
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const extensionVersion = require("../../package.json").version;
 
 function getTempLogFilePath() {

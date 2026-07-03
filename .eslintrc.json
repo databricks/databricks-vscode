@@ -26,9 +26,10 @@
     },
     "overrides": [
         {
-            "files": ["**/*.test.ts", "**/test/**"],
+            "files": ["**/*.test.ts", "**/test/**", "**/*.integ.ts"],
             "rules": {
-                "no-console": "off"
+                "no-console": "off",
+                "@typescript-eslint/no-unused-expressions": "off"
             }
         },
         {

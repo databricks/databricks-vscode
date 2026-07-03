@@ -9,7 +9,7 @@ import {CancellationToken, ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
