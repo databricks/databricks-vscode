@@ -21,15 +21,11 @@ Currently, we have the following packages:
 Prepare yarn:
 
 ```
-npm install -g yarn@2
+npm install -g yarn@3
 yarn install
 ```
 
-Prepare Databricks JavaScript SDK:
-
-```
-yarn run install:sdk
-```
+The Databricks JavaScript SDK (`@databricks/sdk-experimental`) is a regular npm dependency and is installed automatically by `yarn install` — no separate step is required.
 
 Prepare Databricks CLI:
 

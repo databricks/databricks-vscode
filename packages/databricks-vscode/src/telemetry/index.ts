@@ -98,7 +98,7 @@ function getTelemetryReporter(): TelemetryReporter | undefined {
     // If we cannot initialize the telemetry reporter, don't break the entire extension.
     try {
         return new TelemetryReporter(getTelemetryKey());
-    } catch (e) {
+    } catch {
         return undefined;
     }
 }
@@ -115,6 +115,17 @@ export class Telemetry {
     static createDefault(): Telemetry {
         const reporter = getTelemetryReporter();
         return new Telemetry(reporter);
+    }
+
+    /**
+     * Whether non-error events will actually be sent. The underlying reporter
+     * only emits regular events when the user's telemetry level is "all", so
+     * callers that do expensive work purely to build an event (e.g. reading
+     * project files for package-manager detection) should short-circuit on this
+     * to avoid wasted work and any disk access for opted-out users.
+     */
+    get isTelemetryEnabled(): boolean {
+        return this.reporter?.telemetryLevel === "all";
     }
 
     /**

@@ -10,6 +10,7 @@ import {ResolvedEnvironment} from "./MsPythonExtensionApi";
 import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {ConfigureAutocomplete} from "./ConfigureAutocomplete";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {PackageManagerTelemetry} from "./PackageManagerTelemetry";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     private readonly logger = NamedLogger.getOrCreate(Loggers.Extension);
@@ -18,7 +19,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly installer: EnvironmentDependenciesInstaller,
-        private readonly configureAutocomplete: ConfigureAutocomplete
+        private readonly configureAutocomplete: ConfigureAutocomplete,
+        private readonly packageManagerTelemetry: PackageManagerTelemetry
     ) {
         super([
             "checkCluster",
@@ -185,9 +187,9 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             return "3.12";
         }
         if (dbrVersionParts[0] !== "x" && dbrVersionParts[0] > 16) {
-            return "3.12 or greater";
+            return "3.12";
         }
-        return "3.10 or greater";
+        return "3.10";
     }
 
     private getVersionMismatchWarning(
@@ -404,6 +406,10 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
 
     override async check() {
         await this.connectionManager.waitForConnect();
+        // Emit package-manager detection only once connected (waitForConnect
+        // resolves on CONNECTED), so unauthenticated sessions are not reported.
+        // Deduplicated per session; never throws.
+        void this.packageManagerTelemetry.emitDetection("auto_open");
         await Promise.all([
             this.checkCluster(this.connectionManager.cluster),
             this.checkWorkspaceHasUc(),
