@@ -7,7 +7,7 @@ export type BundleResourceExplorerResource<
     K extends BundleResourceExplorerResourceKey,
 > = Resource<BundleRemoteState, K>;
 
-export interface BundleResourceExplorerTreeItem extends TreeItem {}
+export type BundleResourceExplorerTreeItem = TreeItem;
 
 export interface BundleResourceExplorerTreeNode {
     type:

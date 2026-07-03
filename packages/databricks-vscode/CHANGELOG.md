@@ -1,3 +1,68 @@
+# Release: v2.12.1
+
+## packages/databricks-vscode
+
+## (2026-07-02)
+
+-   [telemetry] Detect Python package manager(s) at project setup (#1918) ([133c453](https://github.com/databricks/databricks-vscode/commit/133c453)), closes [#1918](https://github.com/databricks/databricks-vscode/issues/1918)
+-   Correctly resolve relative includes in `databricks.yml` from parent folders (#1870) ([06a3abc](https://github.com/databricks/databricks-vscode/commit/06a3abc)), closes [#1870](https://github.com/databricks/databricks-vscode/issues/1870) [#1818](https://github.com/databricks/databricks-vscode/issues/1818) [#1731](https://github.com/databricks/databricks-vscode/issues/1731)
+-   Rename schema name, databricks-asset-bundles.json to declarative-automatation-bundles.json (#1885) ([a91942c](https://github.com/databricks/databricks-vscode/commit/a91942c)), closes [#1885](https://github.com/databricks/databricks-vscode/issues/1885)
+
+# Release: v2.12.0
+
+## packages/databricks-vscode
+
+## (2026-06-24)
+
+-   Add create file support to WSFS explorer (#1922) ([430a4d8](https://github.com/databricks/databricks-vscode/commit/430a4d8)), closes [#1922](https://github.com/databricks/databricks-vscode/issues/1922)
+-   Bound databricks-cli login timeout to fix indefinite WSL hang (#1921) ([a56cb82](https://github.com/databricks/databricks-vscode/commit/a56cb82)), closes [#1921](https://github.com/databricks/databricks-vscode/issues/1921) [#1917](https://github.com/databricks/databricks-vscode/issues/1917)
+-   Fix Databricks Connect run/debug interpreter split-brain (#1912) ([2bebf16](https://github.com/databricks/databricks-vscode/commit/2bebf16)), closes [#1912](https://github.com/databricks/databricks-vscode/issues/1912) [#1905](https://github.com/databricks/databricks-vscode/issues/1905)
+-   Fix Volume "Open in Databricks" routing to volume URL (#1925) ([630e267](https://github.com/databricks/databricks-vscode/commit/630e267)), closes [#1925](https://github.com/databricks/databricks-vscode/issues/1925)
+
+# Release: v2.11.1
+
+## packages/databricks-vscode
+
+## (2026-06-18)
+
+-   fix: use correct target folder for createFolder/uploadFile in Workspace fs (#1913) ([be427e9](https://github.com/databricks/databricks-vscode/commit/be427e9)), closes [#1913](https://github.com/databricks/databricks-vscode/issues/1913)
+-   Drop the “or greater” addition on the line where extension suggests to activate a Python environment ([13452fb](https://github.com/databricks/databricks-vscode/commit/13452fb)), closes [#1915](https://github.com/databricks/databricks-vscode/issues/1915)
+-   Gate WSFS and docs panels on extension activation (#1909) ([308f687](https://github.com/databricks/databricks-vscode/commit/308f687)), closes [#1909](https://github.com/databricks/databricks-vscode/issues/1909)
+-   Pass DATABRICKS_CLI_PATH and resolve the platform-specific CLI binary (#1910) ([6fcb630](https://github.com/databricks/databricks-vscode/commit/6fcb630)), closes [#1910](https://github.com/databricks/databricks-vscode/issues/1910) [#1903](https://github.com/databricks/databricks-vscode/issues/1903)
+
+# Release: v2.11.0
+
+## packages/databricks-vscode
+
+## (2026-06-04)
+
+-   New feature: Unity catalog explorer
+-   New feature: Workspace filesystem explorer
+-   Add support for SPOG host URLs
+-   Bump Databricks CLI version to 1.2.0
+
+# Release: v2.10.8
+
+## packages/databricks-vscode
+
+## (2026-05-20)
+
+-   Bump Databricks JS SDK to 0.17.0
+
+# Release: v2.10.7
+
+## packages/databricks-vscode
+
+## (2026-05-07)
+
+-   Add remote mode for initial Remote Development compatibility (#1861) ([9e768db](https://github.com/databricks/databricks-vscode/commit/9e768db))
+-   Rename "Databricks Asset Bundles" → "Declarative Automation Bundles" (#1864) ([62a94e1](https://github.com/databricks/databricks-vscode/commit/62a94e1))
+-   Preserve profile name in Databricks CLI auth provider (#1877) ([3f54441](https://github.com/databricks/databricks-vscode/commit/3f54441))
+-   Fix new profile sign in using already existing host under different profile (#1893) ([c4c25fb](https://github.com/databricks/databricks-vscode/commit/c4c25fb))
+-   Include profiles with `account_id` in `listProfiles` results (#1894) ([d6e2e5d](https://github.com/databricks/databricks-vscode/commit/d6e2e5d))
+-   Update minimal python and dbconnect versions for serverless (#1884) ([5a1a1d5](https://github.com/databricks/databricks-vscode/commit/5a1a1d5))
+-   Update Databricks CLI to v0.297.2 (#1882) ([ea77424](https://github.com/databricks/databricks-vscode/commit/ea77424)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes since v0.286.0
+
 # Release: v2.10.6
 
 ## packages/databricks-vscode

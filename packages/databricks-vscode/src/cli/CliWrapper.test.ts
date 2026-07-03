@@ -21,9 +21,14 @@ import {ChildProcess, ChildProcessWithoutNullStreams} from "child_process";
 import {Readable} from "stream";
 
 const execFile = promisify(execFileCb);
-const cliPath = path.join(__dirname, "../../bin/databricks");
+// Mirror CliWrapper.cliPath: the bundled binary is `databricks.exe` on Windows.
+const cliPath = path.join(
+    __dirname,
+    "../../bin/" +
+        (process.platform === "win32" ? "databricks.exe" : "databricks")
+);
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const extensionVersion = require("../../package.json").version;
 
 function getTempLogFilePath() {
@@ -51,6 +56,33 @@ describe(__filename, function () {
     it("should embed a working databricks CLI", async () => {
         const result = await execFile(cliPath, ["--help"]);
         assert.ok(result.stdout.indexOf("databricks") > 0);
+    });
+
+    it("should resolve the platform-specific CLI binary name", () => {
+        const cli = createCliWrapper();
+        const originalPlatform = process.platform;
+        const setPlatform = (platform: NodeJS.Platform) =>
+            Object.defineProperty(process, "platform", {value: platform});
+        try {
+            // On Windows the bundled binary is `databricks.exe`. The `.exe` is
+            // required because cliPath is forwarded to the SDK/Terraform via
+            // DATABRICKS_CLI_PATH, which does a literal (no auto-`.exe`) lookup.
+            setPlatform("win32");
+            assert.ok(
+                cli.cliPath.endsWith(path.join("bin", "databricks.exe")),
+                `expected win32 cliPath to end with bin/databricks.exe, got ${cli.cliPath}`
+            );
+
+            for (const platform of ["linux", "darwin"] as NodeJS.Platform[]) {
+                setPlatform(platform);
+                assert.ok(
+                    cli.cliPath.endsWith(path.join("bin", "databricks")),
+                    `expected ${platform} cliPath to end with bin/databricks, got ${cli.cliPath}`
+                );
+            }
+        } finally {
+            setPlatform(originalPlatform);
+        }
     });
 
     let mocks: any[] = [];
@@ -166,6 +198,34 @@ nothing = true
 
             assert.equal(profiles[1].name, "no-token");
             assert.equal(profiles[1].host, "https://cloud.databricks.com/");
+        });
+    });
+
+    it("should include profiles with account id", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+
+        await withFile(async ({path}) => {
+            writeFileSync(
+                path,
+                `[regular-profile]
+host = https://cloud.databricks.com/
+token = dapitest1234
+
+[profile-with-account-id]
+host = https://accounts.cloud.databricks.com/
+account_id = 1234567890
+token = dapitest5678
+`,
+                "utf-8"
+            );
+
+            const profiles = await cli.listProfiles(path);
+
+            assert.equal(profiles.length, 2);
+            assert.equal(profiles[0].name, "regular-profile");
+            assert.equal(profiles[1].name, "profile-with-account-id");
+            assert.equal(profiles[1].accountId, "1234567890");
         });
     });
 

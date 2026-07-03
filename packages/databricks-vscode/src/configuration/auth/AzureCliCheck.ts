@@ -18,7 +18,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
@@ -280,7 +280,7 @@ export class AzureCliCheck implements Disposable {
             if (stdout.indexOf("azure-cli") !== -1) {
                 return true;
             }
-        } catch (e) {
+        } catch {
             return false;
         }
         return false;
@@ -331,7 +331,7 @@ export class AzureCliCheck implements Disposable {
             if (stderr.indexOf("az login") !== -1) {
                 return false;
             }
-        } catch (e) {
+        } catch {
             return false;
         }
         return true;
