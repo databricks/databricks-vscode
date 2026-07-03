@@ -1550,7 +1550,7 @@
         "@vscode/webview-ui-toolkit": "^1.4.0",
         "add": "^2.0.6",
         "ansi-to-html": "^0.7.2",
-        "bcryptjs": "^2.4.3",
+        "bcryptjs": "^3.0.3",
         "highlight.js": "^11.10.0",
         "lodash": "^4.17.21",
         "markdown-it": "^14.2.0",
