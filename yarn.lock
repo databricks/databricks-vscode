@@ -1871,13 +1871,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/bcryptjs@npm:^2.4.6":
-  version: 2.4.6
-  resolution: "@types/bcryptjs@npm:2.4.6"
-  checksum: 25ae1fd1e8a9bd688e22a8de905581d6d7bf26e823b797f895d2c488100b1f15d3c12a7d1a94f553087b010d316bf3978106df860e8e58fd13f52b4c708df5fd
-  languageName: node
-  linkType: hard
-
 "@types/chai@npm:^4.3.11":
   version: 4.3.11
   resolution: "@types/chai@npm:4.3.11"
@@ -3339,10 +3332,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bcryptjs@npm:^2.4.3":
-  version: 2.4.3
-  resolution: "bcryptjs@npm:2.4.3"
-  checksum: 0e80ed852a41f5dfb1853f53ee14a7390b0ef263ce05dba6e2ef3cd919dfad025a7c21ebcfe5bc7fa04b100990edf90c7a877ff7fe623d3e479753253131b629
+"bcryptjs@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "bcryptjs@npm:3.0.3"
+  bin:
+    bcrypt: bin/bcrypt
+  checksum: 326dfbd0e2e397cf2f85abcf8b523f098a804a76303c983e86a4554462b8a5db930c06fd71148e060160bcfc1165676f917dc78c15bd68af8dcd0ef4a208ba20
   languageName: node
   linkType: hard
 
@@ -4336,7 +4331,6 @@ __metadata:
     "@databricks/sdk-experimental": ^0.18.0
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^11.2.2
-    "@types/bcryptjs": ^2.4.6
     "@types/chai": ^4.3.11
     "@types/eslint": ^8.44.9
     "@types/fs-extra": ^11.0.4
@@ -4366,7 +4360,7 @@ __metadata:
     "@wdio/types": ^9.29.0
     add: ^2.0.6
     ansi-to-html: ^0.7.2
-    bcryptjs: ^2.4.3
+    bcryptjs: ^3.0.3
     chai: ^4.3.10
     esbuild: ^0.25.0
     eslint: ^8.57.0
