@@ -4364,7 +4364,7 @@ __metadata:
     chai: ^4.3.10
     esbuild: ^0.25.0
     eslint: ^8.57.0
-    eslint-plugin-local-rules: ^2.0.1
+    eslint-plugin-local-rules: ^3.0.2
     extract-zip: ^2.0.1
     fs-extra: ^11.2.0
     glob: ^10.5.0
@@ -5133,10 +5133,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-local-rules@npm:^2.0.1":
-  version: 2.0.1
-  resolution: "eslint-plugin-local-rules@npm:2.0.1"
-  checksum: c0a60313a32b92465a60f0d224ab13b61ad315e206194f31d367d0ba11a821b4aaff80330f55630e701021cf4e85a16c5cb80d0835afa9c8600a9414658aecbe
+"eslint-plugin-local-rules@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "eslint-plugin-local-rules@npm:3.0.2"
+  checksum: ad883be0739f022bcd0f49de45354c792bc2ef23ea0030789c3f90b10288b4346ab509fbfd451e87282c0f92393251e51a5a69a2f3ba3865a1a1f780cebef7cb
   languageName: node
   linkType: hard
 
