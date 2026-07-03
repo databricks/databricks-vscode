@@ -1606,7 +1606,7 @@
         "vsce": "^2.15.0",
         "wdio-video-reporter": "^6.2.0",
         "wdio-vscode-service": "^8.0.0",
-        "yargs": "^17.7.2"
+        "yargs": "^18.0.0"
     },
     "nyc": {
         "extends": "@istanbuljs/nyc-config-typescript",
