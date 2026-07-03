@@ -18,7 +18,40 @@ import {onError} from "../utils/onErrorDecorator";
 
 const SERVERLESS_LABEL = "$(cloud) Serverless";
 
-type Compute = {type: "serverless"} | {type: "cluster"; clusterId: string};
+type Compute =
+    | {type: "serverless"; accelerator?: string}
+    | {type: "cluster"; clusterId: string};
+
+/**
+ * A serverless QuickPick item, optionally carrying a GPU accelerator type
+ * forwarded to `databricks ssh connect --accelerator`. Plain serverless has no
+ * accelerator.
+ */
+interface ServerlessItem extends QuickPickItem {
+    accelerator?: string;
+}
+
+// Serverless compute options shown at the top of the picker: plain serverless
+// plus the serverless GPU accelerator types supported by the CLI.
+const SERVERLESS_ITEMS: ServerlessItem[] = [
+    {
+        label: SERVERLESS_LABEL,
+        detail: "Connect to serverless compute (no dedicated cluster)",
+        alwaysShow: true,
+    },
+    {
+        label: "$(cloud) Serverless GPU 1xA10",
+        detail: "Connect to serverless GPU compute (GPU_1xA10)",
+        alwaysShow: true,
+        accelerator: "GPU_1xA10",
+    },
+    {
+        label: "$(cloud) Serverless GPU 8xH100",
+        detail: "Connect to serverless GPU compute (GPU_8xH100)",
+        alwaysShow: true,
+        accelerator: "GPU_8xH100",
+    },
+];
 
 export class SshCommands implements Disposable {
     private disposables: Disposable[] = [];
@@ -45,29 +78,25 @@ export class SshCommands implements Disposable {
             return;
         }
 
-        const compute = await this.pickCompute();
+        const compute = await this.pickCompute(me);
         if (compute === undefined) {
             return;
         }
         await this.launchSshTunnel(compute);
     }
 
-    private pickCompute(): Promise<Compute | undefined> {
+    private pickCompute(me: string): Promise<Compute | undefined> {
         return new Promise((resolve) => {
             const quickPick = window.createQuickPick<
-                ClusterItem | QuickPickItem
+                ClusterItem | ServerlessItem
             >();
             quickPick.title = "Select compute for SSH tunnel";
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
             quickPick.canSelectMany = false;
 
-            const staticItems: QuickPickItem[] = [
-                {
-                    label: SERVERLESS_LABEL,
-                    detail: "Connect to serverless compute (no dedicated cluster)",
-                    alwaysShow: true,
-                },
+            const staticItems: ServerlessItem[] = [
+                ...SERVERLESS_ITEMS,
                 {
                     label: "",
                     kind: QuickPickItemKind.Separator,
@@ -75,12 +104,11 @@ export class SshCommands implements Disposable {
             ];
             quickPick.items = staticItems;
 
-            this.clusterModel.refresh();
             const refreshItems = () => {
-                // Only dedicated single-user access-mode clusters can be used
-                // for an SSH tunnel.
+                // Only dedicated single-user clusters owned by the current user
+                // can be used for an SSH tunnel.
                 const clusters = (this.clusterModel.roots ?? []).filter((c) =>
-                    c.isSingleUser()
+                    c.isValidSingleUser(me)
                 );
                 quickPick.items = staticItems.concat(
                     clusters.map((c) => {
@@ -95,16 +123,33 @@ export class SshCommands implements Disposable {
                         };
                     })
                 );
+                // Clear the spinner only once clusters have actually loaded.
+                // On a cold first open the loader is still fetching, so we keep
+                // spinning and let onDidChange repaint when clusters arrive.
+                if (clusters.length > 0) {
+                    quickPick.busy = false;
+                }
                 this.preselect(quickPick);
             };
 
-            const disposables = [
+            // Fallback so the spinner can't hang forever for a user with no
+            // eligible clusters (onDidChange may never add any).
+            const spinnerTimeout = setTimeout(() => {
+                quickPick.busy = false;
+            }, 10_000);
+
+            // Register the change listener before triggering refresh() so no
+            // onDidChange fired by the (re)started loader can be missed.
+            const disposables: Disposable[] = [
                 this.clusterModel.onDidChange(refreshItems),
                 quickPick,
+                {dispose: () => clearTimeout(spinnerTimeout)},
             ];
 
+            // Paint whatever is already cached first (fast path on reopen), then
+            // trigger a reload; fresh results stream in via onDidChange.
             refreshItems();
-            quickPick.busy = false;
+            this.clusterModel.refresh();
             quickPick.show();
 
             quickPick.onDidAccept(() => {
@@ -118,7 +163,10 @@ export class SshCommands implements Disposable {
                         clusterId: selectedItem.cluster.id,
                     });
                 } else {
-                    resolve({type: "serverless"});
+                    resolve({
+                        type: "serverless",
+                        accelerator: selectedItem.accelerator,
+                    });
                 }
             });
 
@@ -133,7 +181,7 @@ export class SshCommands implements Disposable {
      * Pre-selects the compute the user already has configured locally: the
      * attached single-user cluster if any, otherwise serverless.
      */
-    private preselect(quickPick: QuickPick<ClusterItem | QuickPickItem>) {
+    private preselect(quickPick: QuickPick<ClusterItem | ServerlessItem>) {
         const currentCluster = this.connectionManager.cluster;
         if (currentCluster?.isSingleUser()) {
             const match = quickPick.items.find(

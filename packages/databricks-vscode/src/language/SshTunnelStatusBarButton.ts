@@ -11,11 +11,12 @@ export class SshTunnelStatusBarButton implements Disposable {
     statusBarButton: StatusBarItem;
 
     constructor(private readonly connectionManager: ConnectionManager) {
-        // Priority 999 places this just to the right of the "Databricks
-        // Connect" button (priority 1000) in the left status bar group.
+        // Priority 1001 places this just to the left of the "Databricks
+        // Connect" button (priority 1000) in the left status bar group
+        // (higher priority sits further left).
         this.statusBarButton = window.createStatusBarItem(
             StatusBarAlignment.Left,
-            999
+            1001
         );
         this.statusBarButton.name = "Start SSH Tunnel";
         this.statusBarButton.text = "$(remote) Start SSH Tunnel";

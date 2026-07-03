@@ -10,6 +10,7 @@ import {
     Uri,
     commands,
     CancellationToken,
+    env,
 } from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -594,20 +595,30 @@ export class CliWrapper {
 
     /**
      * Constructs the `databricks ssh connect` command args for opening a remote
-     * VS Code window. Serverless is the default when no cluster is given.
+     * IDE window. Serverless is the default when no cluster is given.
+     *
+     * The --ide flag matches the host editor so the CLI opens the right remote
+     * window: Cursor identifies itself via env.uriScheme === "cursor",
+     * everything else (VS Code, Insiders) uses vscode.
+     *
+     * Logging is configured out of band via the DATABRICKS_LOG_* env vars (see
+     * getSshConnectEnvVars), so we do not pass --log-* flags here.
      */
     getSshConnectCommand(opts: {
-        compute: {type: "serverless"} | {type: "cluster"; clusterId: string};
+        compute:
+            | {type: "serverless"; accelerator?: string}
+            | {type: "cluster"; clusterId: string};
     }): {args: string[]} {
-        const args = ["ssh", "connect", "--ide=vscode"];
+        const ide = env.uriScheme === "cursor" ? "cursor" : "vscode";
+        const args = ["ssh", "connect", `--ide=${ide}`, "--auto-approve"];
         if (opts.compute.type === "cluster") {
+            // Start a stopped single-user cluster when connecting.
             args.push(`--cluster=${opts.compute.clusterId}`);
-            // Start a stopped single-user cluster when connecting. Host-key
-            // trust and extension-install prompts stay interactive (we do not
-            // pass --auto-approve).
             args.push("--auto-start-cluster");
+        } else if (opts.compute.accelerator) {
+            // Serverless GPU: request a specific accelerator type.
+            args.push(`--accelerator=${opts.compute.accelerator}`);
         }
-        args.push(...this.getLoggingArguments());
         return {args};
     }
 

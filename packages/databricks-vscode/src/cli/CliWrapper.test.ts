@@ -131,14 +131,9 @@ describe(__filename, function () {
     it("should create ssh connect commands", () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);
-        const loggingArgs = [
-            "--log-level",
-            "debug",
-            "--log-file",
-            logFilePath,
-            "--log-format",
-            "json",
-        ];
+
+        // Logging is configured via env vars, not CLI flags, so no --log-*
+        // args appear on the ssh connect command line.
 
         // Serverless: no --cluster / --auto-start-cluster.
         let {args} = cli.getSshConnectCommand({compute: {type: "serverless"}});
@@ -146,7 +141,19 @@ describe(__filename, function () {
             "ssh",
             "connect",
             "--ide=vscode",
-            ...loggingArgs,
+            "--auto-approve",
+        ]);
+
+        // Serverless GPU: --accelerator, no --cluster / --auto-start-cluster.
+        ({args} = cli.getSshConnectCommand({
+            compute: {type: "serverless", accelerator: "GPU_1xA10"},
+        }));
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+            "--accelerator=GPU_1xA10",
         ]);
 
         // Dedicated cluster: --cluster and --auto-start-cluster.
@@ -157,17 +164,10 @@ describe(__filename, function () {
             "ssh",
             "connect",
             "--ide=vscode",
+            "--auto-approve",
             "--cluster=1234-clusterid",
             "--auto-start-cluster",
-            ...loggingArgs,
         ]);
-
-        // No logging args when logging is disabled.
-        const configsSpy = spy(workspaceConfigs);
-        mocks.push(configsSpy);
-        when(configsSpy.loggingEnabled).thenReturn(false);
-        ({args} = cli.getSshConnectCommand({compute: {type: "serverless"}}));
-        assert.deepStrictEqual(args, ["ssh", "connect", "--ide=vscode"]);
     });
 
     it("should list profiles when no config file exists", async () => {
