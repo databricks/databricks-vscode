@@ -16,6 +16,7 @@ export async function registerBundleAutocompleteProvider(
     const dabsUriScheme = "dabs";
 
     // URI for bundle root config json schema
+    // The triple slash is on purpose (empty authority in Uri)
     const rootConfigSchemaUri = `${dabsUriScheme}:///declarative-automation-bundles.json`;
 
     const extensionYaml = extensions.getExtension("redhat.vscode-yaml");
