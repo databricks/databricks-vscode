@@ -14,6 +14,7 @@ out/
 **/coverage/
 **/.nyc_output/
 .databricks/**
+/databricks.yml
 packages/databricks-sdk-js/src/config/testdata/azure/Library
 *.d.ts.map
 *.js.map
