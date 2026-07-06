@@ -1546,7 +1546,7 @@
         "@types/lodash": "^4.14.202",
         "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",
-        "@vscode/extension-telemetry": "^0.9.1",
+        "@vscode/extension-telemetry": "^1.5.2",
         "@vscode/webview-ui-toolkit": "^1.4.0",
         "add": "^2.0.6",
         "ansi-to-html": "^0.7.2",
