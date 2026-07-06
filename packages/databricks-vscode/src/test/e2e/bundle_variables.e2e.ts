@@ -12,7 +12,6 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 import {BundleSchema} from "../../bundle/types.ts";
-import fs from "fs/promises";
 
 describe("Bundle Variables", async function () {
     let workbench: Workbench;
@@ -137,24 +136,35 @@ describe("Bundle Variables", async function () {
             .openEditor("vscode.bundlevars.json")) as TextEditor;
         assert(editor);
 
-        // Write the override file on disk directly rather than through the
-        // editor. `TextEditor.setText()` round-trips the value through the
-        // system clipboard, which fails intermittently under the headless
-        // Xvfb display used in CI ("An error occurred while copying"). The
-        // extension watches this file and refreshes the tree on change, so a
-        // direct write exercises the same code path. See the same rationale
-        // in wsfs_explorer.e2e.ts.
-        const overrideFilePath = await browser.executeWorkbench(
-            (vscode) => vscode.window.activeTextEditor?.document.uri.fsPath
+        // Write the override file through the VS Code filesystem API rather
+        // than the editor. `TextEditor.setText()` round-trips the value
+        // through the system clipboard, which fails intermittently under the
+        // headless Xvfb display used in CI ("An error occurred while
+        // copying"). Writing via `vscode.workspace.fs` avoids the clipboard
+        // and — unlike a raw Node `fs.writeFile` — is observed by the
+        // extension's FileSystemWatcher on this file, so the Bundle Variables
+        // tree refreshes just as it does on a manual editor save. See the same
+        // rationale in wsfs_explorer.e2e.ts.
+        const overrideContent = JSON.stringify(
+            {varWithDefault: "new value"},
+            null,
+            4
         );
-        assert(
-            overrideFilePath,
-            "Could not resolve the vscode.bundlevars.json file path"
+        const wrote = await browser.executeWorkbench(
+            async (vscode, content) => {
+                const uri = vscode.window.activeTextEditor?.document.uri;
+                if (!uri) {
+                    return false;
+                }
+                await vscode.workspace.fs.writeFile(
+                    uri,
+                    Buffer.from(content, "utf8")
+                );
+                return true;
+            },
+            overrideContent
         );
-        await fs.writeFile(
-            overrideFilePath,
-            JSON.stringify({varWithDefault: "new value"}, null, 4)
-        );
+        assert(wrote, "Could not resolve the vscode.bundlevars.json editor");
 
         const section = (await getViewSection("BUNDLE VARIABLES")) as
             | CustomTreeSection
