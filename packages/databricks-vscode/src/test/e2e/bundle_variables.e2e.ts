@@ -12,6 +12,7 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 import {BundleSchema} from "../../bundle/types.ts";
+import fs from "fs/promises";
 
 describe("Bundle Variables", async function () {
     let workbench: Workbench;
@@ -136,11 +137,24 @@ describe("Bundle Variables", async function () {
             .openEditor("vscode.bundlevars.json")) as TextEditor;
         assert(editor);
 
-        await editor.clearText();
-        await editor.setText(
+        // Write the override file on disk directly rather than through the
+        // editor. `TextEditor.setText()` round-trips the value through the
+        // system clipboard, which fails intermittently under the headless
+        // Xvfb display used in CI ("An error occurred while copying"). The
+        // extension watches this file and refreshes the tree on change, so a
+        // direct write exercises the same code path. See the same rationale
+        // in wsfs_explorer.e2e.ts.
+        const overrideFilePath = await browser.executeWorkbench(
+            (vscode) => vscode.window.activeTextEditor?.document.uri.fsPath
+        );
+        assert(
+            overrideFilePath,
+            "Could not resolve the vscode.bundlevars.json file path"
+        );
+        await fs.writeFile(
+            overrideFilePath,
             JSON.stringify({varWithDefault: "new value"}, null, 4)
         );
-        await editor.save();
 
         const section = (await getViewSection("BUNDLE VARIABLES")) as
             | CustomTreeSection
