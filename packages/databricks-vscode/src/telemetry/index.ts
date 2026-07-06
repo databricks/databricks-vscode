@@ -1,4 +1,4 @@
-import TelemetryReporter from "@vscode/extension-telemetry";
+import {TelemetryReporter} from "@vscode/extension-telemetry";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {isDevExtension, isIntegrationTest} from "../utils/developmentUtils";
 import {
