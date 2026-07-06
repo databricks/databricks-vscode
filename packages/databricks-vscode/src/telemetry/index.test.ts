@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import TelemetryReporter from "@vscode/extension-telemetry";
+import {TelemetryReporter} from "@vscode/extension-telemetry";
 import assert from "assert";
 import {mock, instance, capture, when} from "ts-mockito";
 import {Telemetry, getContextMetadata, toUserMetadata} from ".";
