@@ -1568,7 +1568,7 @@
         "@types/fs-extra": "^11.0.4",
         "@types/ini": "^4.1.1",
         "@types/mocha": "^10.0.6",
-        "@types/mock-require": "^2.0.3",
+        "@types/mock-require": "^3.0.0",
         "@types/node": "^22.0.0",
         "@types/semver": "^7.5.0",
         "@types/sinonjs__fake-timers": "^8.1.5",

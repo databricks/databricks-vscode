@@ -1965,12 +1965,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/mock-require@npm:^2.0.3":
-  version: 2.0.3
-  resolution: "@types/mock-require@npm:2.0.3"
-  dependencies:
-    "@types/node": "*"
-  checksum: beb9fc940c9f52b489d5d7d033ee789f9fdbddc595dae68df0c12c38ddc1bcde31ddeeacf6e35b9c2ca1439b2ad4f4959145b18276c69e877d931cf9c67c92e2
+"@types/mock-require@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@types/mock-require@npm:3.0.0"
+  checksum: 81d24326f760c5e560f49c96b7ac3e6c91fd8f3d4bfa4303f83c326022758ab7accded8ab83542bea5402cd997c1114fd24e80a17e598a6c8f36e48055e8aae8
   languageName: node
   linkType: hard
 
@@ -4304,7 +4302,7 @@ __metadata:
     "@types/ini": ^4.1.1
     "@types/lodash": ^4.14.202
     "@types/mocha": ^10.0.6
-    "@types/mock-require": ^2.0.3
+    "@types/mock-require": ^3.0.0
     "@types/node": ^22.0.0
     "@types/semver": ^7.5.0
     "@types/shell-quote": ^1.7.5
