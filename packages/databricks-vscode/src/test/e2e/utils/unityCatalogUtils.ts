@@ -113,6 +113,72 @@ export async function getUCActionButton(
 }
 
 /**
+ * Expands an already-located tree item and returns its children once the list
+ * has fully loaded and stabilised.
+ *
+ * UC nodes lazy-load their children over the network and stream them into the
+ * tree incrementally.  A naive `waitUntil(() => getChildren().length > 0)`
+ * returns on the *first* child that arrives, which is why the "system" catalog
+ * intermittently reported only `__internal_data_quality_monitoring` (it sorts
+ * before `access`, so it streams in first) and the `access` assertion flaked.
+ *
+ * To avoid that race we require the child count to be non-zero AND unchanged for
+ * several consecutive polls before accepting the result, so the whole batch has
+ * landed.  The parent is re-scrolled to the top of the viewport on every poll:
+ * VS Code virtual lists only render the ~25 rows inside the scroll window, so
+ * keeping the parent pinned to the top keeps its immediate children rendered.
+ */
+async function getStableChildren(
+    current: TreeItem,
+    pathLabel: string
+): Promise<TreeItem[]> {
+    // Bring item into view before interacting with it
+    await current.elem.scrollIntoView({block: "start"});
+    await browser.pause(200);
+
+    // Trigger expansion once before the retry loop.  If aria-expanded
+    // lags behind the click during lazy loading, the expand() call
+    // inside getChildren() would otherwise toggle the item closed on
+    // every retry.
+    await (current as any).expand();
+    await browser.pause(500);
+
+    // Number of consecutive polls the child count must stay unchanged before we
+    // treat the lazy-loaded list as fully settled.
+    const requiredStableReads = 3;
+    let children: TreeItem[] = [];
+    let lastCount = -1;
+    let stableReads = 0;
+
+    await browser.waitUntil(
+        async () => {
+            // Re-scroll the item to the top of the viewport on every retry so
+            // its immediate children stay within the rendered scroll window.
+            await current.elem.scrollIntoView({block: "start"});
+            await browser.pause(100);
+            // getChildren() calls expand() internally then queries DOM rows
+            children = await (current as any).getChildren();
+
+            if (children.length > 0 && children.length === lastCount) {
+                stableReads += 1;
+            } else {
+                stableReads = 0;
+            }
+            lastCount = children.length;
+
+            return stableReads >= requiredStableReads;
+        },
+        {
+            timeout: 30_000,
+            interval: 1000,
+            timeoutMsg: `Children of "${pathLabel}" did not load and stabilise`,
+        }
+    );
+
+    return children;
+}
+
+/**
  * Expands items along `path` one level at a time and returns the children of
  * the final item.  This replaces `section.openItem(...)` which internally calls
  * `findItem()` — a method that always resets scroll to Home and only inspects
@@ -128,41 +194,8 @@ export async function openUCPath(
     let current: TreeItem = await findUCItem(section, path[0]);
 
     for (let i = 0; i < path.length; i++) {
-        // Bring item into view before interacting with it
-        await current.elem.scrollIntoView({block: "start"});
-        await browser.pause(200);
-
-        // Trigger expansion once before the retry loop.  If aria-expanded
-        // lags behind the click during lazy loading, the expand() call
-        // inside getChildren() would otherwise toggle the item closed on
-        // every retry.
-        await (current as any).expand();
-        await browser.pause(500);
-
-        let children: TreeItem[] = [];
-        await browser.waitUntil(
-            async () => {
-                // Re-scroll the item to the top of the viewport on every
-                // retry.  VS Code virtual lists only render rows that are
-                // inside the current scroll window; after expansion the list
-                // may have scrolled so that the item's children are below the
-                // rendered region and therefore absent from the DOM.  Keeping
-                // the parent item at the top ensures its immediate children
-                // are rendered.
-                await current.elem.scrollIntoView({block: "start"});
-                await browser.pause(100);
-                // getChildren() calls expand() internally then queries DOM rows
-                children = await (current as any).getChildren();
-                return children.length > 0;
-            },
-            {
-                timeout: 30_000,
-                interval: 1000,
-                timeoutMsg: `No children found under "${path
-                    .slice(0, i + 1)
-                    .join(".")}"`,
-            }
-        );
+        const pathLabel = path.slice(0, i + 1).join(".");
+        const children = await getStableChildren(current, pathLabel);
 
         if (i === path.length - 1) {
             return children;
