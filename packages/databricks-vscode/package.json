@@ -1593,7 +1593,7 @@
         "glob": "^10.5.0",
         "mocha": "^11.7.6",
         "mock-require": "^3.0.3",
-        "nyc": "^15.1.0",
+        "nyc": "^18.0.0",
         "prettier": "^3.1.1",
         "quicktype-core": "^23.0.0",
         "tmp-promise": "^3.0.3",
