@@ -1654,21 +1654,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sinonjs/commons@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@sinonjs/commons@npm:3.0.0"
+"@sinonjs/commons@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "@sinonjs/commons@npm:3.0.1"
   dependencies:
     type-detect: 4.0.8
-  checksum: b4b5b73d4df4560fb8c0c7b38c7ad4aeabedd362f3373859d804c988c725889cde33550e4bcc7cd316a30f5152a2d1d43db71b6d0c38f5feef71fd8d016763f8
+  checksum: a7c3e7cc612352f4004873747d9d8b2d4d90b13a6d483f685598c945a70e734e255f1ca5dc49702515533c403b32725defff148177453b3f3915bcb60e9d4601
   languageName: node
   linkType: hard
 
-"@sinonjs/fake-timers@npm:^11.2.2":
-  version: 11.2.2
-  resolution: "@sinonjs/fake-timers@npm:11.2.2"
+"@sinonjs/fake-timers@npm:^15.4.0":
+  version: 15.4.0
+  resolution: "@sinonjs/fake-timers@npm:15.4.0"
   dependencies:
-    "@sinonjs/commons": ^3.0.0
-  checksum: 68c29b0e1856fdc280df03ddbf57c726420b78e9f943a241b471edc018fb14ff36fdc1daafd6026cba08c3c7f50c976fb7ae11b88ff44cd7f609692ca7d25158
+    "@sinonjs/commons": ^3.0.1
+  checksum: 89714334b84c0dd5ef84cc01ec99d7d16529297fc32a68c28e4793b89bac0de7b373310b736ed4a57697de92eca4e7cc62c2ec4fae1e651787345e2564b707f4
   languageName: node
   linkType: hard
 
@@ -4200,7 +4200,7 @@ __metadata:
     "@databricks/databricks-vscode-types": "workspace:^"
     "@databricks/sdk-experimental": ^0.18.0
     "@istanbuljs/nyc-config-typescript": ^1.0.2
-    "@sinonjs/fake-timers": ^11.2.2
+    "@sinonjs/fake-timers": ^15.4.0
     "@types/chai": ^4.3.11
     "@types/eslint": ^8.44.9
     "@types/fs-extra": ^11.0.4
@@ -4211,7 +4211,6 @@ __metadata:
     "@types/node": ^22.0.0
     "@types/semver": ^7.5.0
     "@types/shell-quote": ^1.7.5
-    "@types/sinonjs__fake-timers": ^8.1.5
     "@types/tmp": ^0.2.6
     "@types/triple-beam": ^1.3.5
     "@types/vscode": 1.86.0
