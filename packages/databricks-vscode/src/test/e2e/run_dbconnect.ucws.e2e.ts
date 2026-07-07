@@ -240,7 +240,11 @@ describe("Run files on serverless compute", async function () {
                 );
             },
             {
-                timeout: 60_000,
+                // Creating a fresh venv and installing databricks-connect from
+                // the requirements set is measurably slower on the Windows
+                // shard than on Linux — 60s is not always enough. 180s covers
+                // observed Windows install times comfortably.
+                timeout: 180_000,
                 interval: 2000,
                 timeoutMsg:
                     "Installation output did not contain 'Successfully installed'",
