@@ -1699,13 +1699,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tootallnate/once@npm:1":
-  version: 1.1.2
-  resolution: "@tootallnate/once@npm:1.1.2"
-  checksum: e1fb1bbbc12089a0cb9433dc290f97bddd062deadb6178ce9bcb93bb7c1aecde5e60184bc7065aec42fe1663622a213493c48bbd4972d931aae48315f18e1be9
-  languageName: node
-  linkType: hard
-
 "@tootallnate/once@npm:2":
   version: 2.0.0
   resolution: "@tootallnate/once@npm:2.0.0"
@@ -2253,18 +2246,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vscode/test-electron@npm:^2.3.8":
-  version: 2.3.8
-  resolution: "@vscode/test-electron@npm:2.3.8"
-  dependencies:
-    http-proxy-agent: ^4.0.1
-    https-proxy-agent: ^5.0.0
-    jszip: ^3.10.1
-    semver: ^7.5.2
-  checksum: cee9e9e9396949a1cdd1ba60b91eb8f9c6a04808a4ba18a19ba4b55a13eea08f6aff28ffe856e526224e5b97b3cbe1fe175e498f5619b81bd029889c998a2191
-  languageName: node
-  linkType: hard
-
 "@vscode/test-electron@npm:^2.4.1":
   version: 2.5.2
   resolution: "@vscode/test-electron@npm:2.5.2"
@@ -2275,6 +2256,19 @@ __metadata:
     ora: ^8.1.0
     semver: ^7.6.2
   checksum: 439d8a1c89008f1df67a7b1f30899e0033ebeab15d440493dc31aa4b7b8b37a7da3c154b1ab71fe7a7feddcc76e2ede847cead51ff4608988fcccab339729b87
+  languageName: node
+  linkType: hard
+
+"@vscode/test-electron@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@vscode/test-electron@npm:3.0.0"
+  dependencies:
+    http-proxy-agent: ^7.0.2
+    https-proxy-agent: ^7.0.5
+    jszip: ^3.10.1
+    ora: ^8.1.0
+    semver: ^7.6.2
+  checksum: 644182d4cb5f69afd03c68d9e61c8e654c6de39acb1822ada18e89fd717e000756b03ff036e892b15ce9de845103c063478903904791ad13273ad67701c5e612
   languageName: node
   linkType: hard
 
@@ -4220,7 +4214,7 @@ __metadata:
     "@typescript-eslint/utils": ^8.62.0
     "@vscode/debugadapter": ^1.64.0
     "@vscode/extension-telemetry": ^1.5.2
-    "@vscode/test-electron": ^2.3.8
+    "@vscode/test-electron": ^3.0.0
     "@vscode/webview-ui-toolkit": ^1.4.0
     "@wdio/cli": ^9.29.0
     "@wdio/local-runner": ^9.29.0
@@ -4252,7 +4246,7 @@ __metadata:
     ts-mocha: ^11.1.0
     ts-mockito: ^2.6.1
     ts-node: ^10.9.2
-    typescript: ^5.3.3
+    typescript: ^5.9.3
     vsce: ^2.15.0
     wdio-video-reporter: ^6.2.0
     wdio-vscode-service: ^8.0.0
@@ -6465,17 +6459,6 @@ __metadata:
     statuses: 2.0.1
     toidentifier: 1.0.1
   checksum: 9b0a3782665c52ce9dc658a0d1560bcb0214ba5699e4ea15aefb2a496e2ca83db03ebc42e1cce4ac1f413e4e0d2d736a3fd755772c556a9a06853ba2a0b7d920
-  languageName: node
-  linkType: hard
-
-"http-proxy-agent@npm:^4.0.1":
-  version: 4.0.1
-  resolution: "http-proxy-agent@npm:4.0.1"
-  dependencies:
-    "@tootallnate/once": 1
-    agent-base: 6
-    debug: 4
-  checksum: c6a5da5a1929416b6bbdf77b1aca13888013fe7eb9d59fc292e25d18e041bb154a8dfada58e223fc7b76b9b2d155a87e92e608235201f77d34aa258707963a82
   languageName: node
   linkType: hard
 
@@ -10648,7 +10631,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.5.0":
+"typescript@npm:^5.5.0, typescript@npm:^5.9.3":
   version: 5.9.3
   resolution: "typescript@npm:5.9.3"
   bin:
@@ -10668,7 +10651,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@^5.5.0#~builtin<compat/typescript>":
+"typescript@patch:typescript@^5.5.0#~builtin<compat/typescript>, typescript@patch:typescript@^5.9.3#~builtin<compat/typescript>":
   version: 5.9.3
   resolution: "typescript@patch:typescript@npm%3A5.9.3#~builtin<compat/typescript>::version=5.9.3&hash=7ad353"
   bin:
