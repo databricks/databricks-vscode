@@ -1,3 +1,12 @@
+# Release: v2.12.2
+
+## packages/databricks-vscode-types
+
+## (2026-07-08)
+
+-   Upgrade @typescript-eslint to v8 (from v6) (#1956) ([2b6da70](https://github.com/databricks/databricks-vscode/commit/2b6da70)), closes [#1956](https://github.com/databricks/databricks-vscode/issues/1956) [#1955](https://github.com/databricks/databricks-vscode/issues/1955) [#1955](https://github.com/databricks/databricks-vscode/issues/1955)
+-   Upgrade TypeScript 5.9.3 → 6.0.3 (all packages) (#1981) ([8bd5d94](https://github.com/databricks/databricks-vscode/commit/8bd5d94)), closes [#1981](https://github.com/databricks/databricks-vscode/issues/1981) [#1975](https://github.com/databricks/databricks-vscode/issues/1975) [#1931](https://github.com/databricks/databricks-vscode/issues/1931) [#1975](https://github.com/databricks/databricks-vscode/issues/1975) [#1931](https://github.com/databricks/databricks-vscode/issues/1931)
+
 # Release: v2.12.1
 
 ## packages/databricks-vscode-types
