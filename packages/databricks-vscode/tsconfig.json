@@ -3,7 +3,8 @@
     "compilerOptions": {
         "outDir": "out",
         "lib": ["ES2022", "DOM"],
-        "rootDir": "src"
+        "rootDir": "src",
+        "types": ["node"]
     },
     "references": [{"path": "../databricks-vscode-types"}],
     "include": ["src"],

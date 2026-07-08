@@ -1600,7 +1600,7 @@
         "ts-mocha": "^11.1.0",
         "ts-mockito": "^2.6.1",
         "ts-node": "^10.9.2",
-        "typescript": "^5.9.3",
+        "typescript": "^6.0.3",
         "vsce": "^2.15.0",
         "wdio-video-reporter": "^6.2.0",
         "wdio-vscode-service": "^8.0.0",
