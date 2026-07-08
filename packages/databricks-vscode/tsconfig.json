@@ -4,7 +4,7 @@
         "outDir": "out",
         "lib": ["ES2022", "DOM"],
         "rootDir": "src",
-        "types": ["node"]
+        "types": ["node", "mocha"]
     },
     "references": [{"path": "../databricks-vscode-types"}],
     "include": ["src"],
