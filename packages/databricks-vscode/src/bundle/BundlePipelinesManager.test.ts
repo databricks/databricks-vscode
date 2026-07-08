@@ -4,7 +4,7 @@ import {ConfigModel} from "../configuration/models/ConfigModel";
 import {mock, instance, when} from "ts-mockito";
 import assert from "assert";
 import {EventEmitter, Uri} from "vscode";
-import {install, InstalledClock} from "@sinonjs/fake-timers";
+import {install, Clock} from "@sinonjs/fake-timers";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {locationToRange} from "./BundlePipelinesManager";
 import path from "node:path";
@@ -17,7 +17,7 @@ describe("BundlePipelinesManager", () => {
     let configModel: ConfigModel;
     let manager: BundlePipelinesManager;
     let eventEmitter: EventEmitter<void>;
-    let clock: InstalledClock;
+    let clock: Clock;
 
     beforeEach(() => {
         clock = install();

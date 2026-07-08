@@ -1,4 +1,4 @@
-import TelemetryReporter from "@vscode/extension-telemetry";
+import {TelemetryReporter} from "@vscode/extension-telemetry";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {isDevExtension, isIntegrationTest} from "../utils/developmentUtils";
 import {
@@ -98,7 +98,7 @@ function getTelemetryReporter(): TelemetryReporter | undefined {
     // If we cannot initialize the telemetry reporter, don't break the entire extension.
     try {
         return new TelemetryReporter(getTelemetryKey());
-    } catch (e) {
+    } catch {
         return undefined;
     }
 }

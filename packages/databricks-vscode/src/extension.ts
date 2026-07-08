@@ -90,7 +90,7 @@ import {
 } from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
 import {registerDetailPanel} from "./ui/unity-catalog/registerDetailPanel";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require("../package.json");
 
 const customWhenContext = new CustomWhenContext();
@@ -362,7 +362,7 @@ export async function activate(
         () => {
             try {
                 return workspaceFolderManager.activeProjectUri.fsPath;
-            } catch (e) {
+            } catch {
                 return undefined;
             }
         },

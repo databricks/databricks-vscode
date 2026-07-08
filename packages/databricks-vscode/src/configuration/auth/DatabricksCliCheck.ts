@@ -15,7 +15,7 @@ import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {Loggers} from "../../logger";
 import {execFile} from "../../cli/CliWrapper";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
@@ -131,7 +131,7 @@ export class DatabricksCliCheck implements Disposable {
             await workspaceClient.currentUser.me(
                 new Context({cancellationToken})
             );
-        } catch (e: any) {
+        } catch {
             return false;
         }
 
