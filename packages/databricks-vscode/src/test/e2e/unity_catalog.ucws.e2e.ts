@@ -121,7 +121,16 @@ describe("Unity Catalog tree view", async function () {
         assert(tableChildren.length > 0, `${groupLabel} has no table items`);
     });
 
-    it("should expand a table in 'system.access' to show columns with type descriptions", async () => {
+    // TODO(DECO-27579): Skipped — fails consistently in CI (every run on both
+    // shards, not intermittent). The extension loads the columns correctly
+    // (TablesService.get returns them and the detail-panel test reads them
+    // fine), but the shared test workspace has ~800 sibling catalogs that push
+    // `system` to the bottom of the tree, so a table's column rows land one row
+    // past VS Code's ~25-row virtualised window and never render in the DOM —
+    // getChildren() then returns []. Re-enable once the test workspace is
+    // isolated/cleaned or the helper can reliably drive Monaco's virtual list
+    // to a deep node without disturbing sibling tests.
+    it.skip("should expand a table in 'system.access' to show columns with type descriptions", async () => {
         const section = await getUCSection();
 
         let accessChildren: Awaited<ReturnType<typeof openUCPath>> = [];
