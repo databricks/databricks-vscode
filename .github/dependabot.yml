@@ -12,9 +12,39 @@ updates:
       interval: "daily"
     ignore:
       - dependency-name: "@databricks/*"
+      # ESM-only majors — blocked until the build/test tooling is migrated off
+      # ts-node (CommonJS) to an ESM runner (tsx). See PRs #1934, #1932.
+      - dependency-name: "yargs"
+        versions: [">=18"]
+      - dependency-name: "chai"
+        versions: [">=5"]
+      - dependency-name: "@types/chai"
+        versions: [">=5"]
+      # @types/vscode must track engines.vscode (^1.86.0); bump both together
+      # only when the minimum supported VS Code version is deliberately raised.
+      # See PR #1933.
+      - dependency-name: "@types/vscode"
+        versions: [">=1.87"]
+      # @types/node must track the runtime we ship on (engines.node ">=22"; the
+      # VS Code extension host runs Node 18), not the latest release. Newer types
+      # would type-check against APIs absent at runtime. Bump only when the Node
+      # floor is deliberately raised. See PR #1988.
+      - dependency-name: "@types/node"
+        versions: [">=23"]
   - package-ecosystem: "npm"
     directory: "/packages/databricks-vscode-types"
     ignore:
       - dependency-name: "@databricks/*"
+      # @types/vscode must track engines.vscode (^1.86.0); bump both together
+      # only when the minimum supported VS Code version is deliberately raised.
+      # See PR #1933.
+      - dependency-name: "@types/vscode"
+        versions: [">=1.87"]
     schedule:
       interval: "daily"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7

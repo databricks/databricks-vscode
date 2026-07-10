@@ -1,3 +1,14 @@
+# Release: v2.12.2
+
+## packages/databricks-vscode
+
+## (2026-07-08)
+
+-   Bump bcryptjs from 2.4.3 to 3.0.3 (#1960) ([e585b10](https://github.com/databricks/databricks-vscode/commit/e585b10))
+-   Bump markdown-it from 12.3.2 to 14.2.0 (#1951) ([1622807](https://github.com/databricks/databricks-vscode/commit/1622807))
+-   Bump shell-quote from 1.8.1 to 1.8.4 (#1952) ([4467305](https://github.com/databricks/databricks-vscode/commit/4467305))
+-   Upgrade @vscode/extension-telemetry 0.9.9 → 1.5.2 (#1967) ([1fc0f75](https://github.com/databricks/databricks-vscode/commit/1fc0f75))
+
 # Release: v2.12.1
 
 ## packages/databricks-vscode

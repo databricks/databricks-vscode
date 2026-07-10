@@ -14,7 +14,7 @@ import type {
 } from "../src/utils/terraformUtils";
 
 async function main() {
-    const argv = await yargs
+    const argv = await yargs(process.argv.slice(2))
         .option("cli", {
             description: "Path to the Databricks CLI",
             type: "string",
