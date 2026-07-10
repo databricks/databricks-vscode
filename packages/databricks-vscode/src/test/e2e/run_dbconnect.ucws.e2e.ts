@@ -214,78 +214,6 @@ async function checkOutputFile(
     await fs.rm(filePath);
 }
 
-// Runs all cells of the currently open notebook and waits for its first output
-// file, retrying a failed kernel start. On the Windows shard the Jupyter
-// extension intermittently fails to start the freshly-created `.venv` kernel
-// even though ipykernel is installed ("Failed to start the Kernel … requires
-// the ipykernel package"), and in test mode the auto-install prompt is
-// suppressed, so the cell never runs. A restart of the kernel usually recovers.
-//
-// The first attempt polls with a generous budget (`perAttemptTimeout`) that
-// comfortably covers a genuine serverless cold start, so we only restart the
-// kernel when it has actually failed to start — not merely because it is slow.
-// The final attempt gets the full budget and asserts (dumping diagnostics +
-// throwing on failure). The per-test mocha timeout (12 min) covers the sum.
-async function runNotebookAllWithKernelRetry(
-    runCommand: string,
-    firstOutputFile: string,
-    expectedContent: string,
-    {
-        attempts = 2,
-        perAttemptTimeout = 120_000,
-        selectKernel,
-    }: {
-        attempts?: number;
-        perAttemptTimeout?: number;
-        selectKernel?: () => Promise<void>;
-    } = {}
-) {
-    for (let attempt = 1; attempt <= attempts; attempt++) {
-        console.log(`Notebook run attempt ${attempt}/${attempts}`);
-        if (attempt === 1) {
-            await executeCommandWhenAvailable(runCommand);
-            if (selectKernel) {
-                await selectKernel();
-            }
-        } else {
-            // Recover a failed kernel start, then re-run all cells. Restart via
-            // the command id (there is no reliable palette title across VS Code
-            // versions — "Notebook: Restart Kernel" is not found on the CI
-            // build), and ignore failures since the re-run is what matters.
-            try {
-                await browser.executeWorkbench((vscode) =>
-                    vscode.commands.executeCommand("jupyter.restartkernel")
-                );
-            } catch (e) {
-                console.log("Could not restart kernel before retry:", e);
-            }
-            await executeCommandWhenAvailable(runCommand);
-        }
-
-        const isLastAttempt = attempt === attempts;
-        // Give the final attempt the full budget and let it assert/throw.
-        if (isLastAttempt) {
-            await checkOutputFile(firstOutputFile, expectedContent, 180_000);
-            return;
-        }
-        if (
-            await pollForOutput(
-                firstOutputFile,
-                expectedContent,
-                perAttemptTimeout
-            )
-        ) {
-            await fs.rm(firstOutputFile);
-            return;
-        }
-        console.log(
-            `Notebook output "${firstOutputFile}" not produced within ` +
-                `${perAttemptTimeout}ms on attempt ${attempt}; ` +
-                `restarting kernel and retrying.`
-        );
-    }
-}
-
 describe("Run files on serverless compute", async function () {
     let projectDir: string;
     this.timeout(12 * 60 * 1000);
@@ -556,59 +484,49 @@ describe("Run files on serverless compute", async function () {
 
     it("should run a notebook with dbconnect", async () => {
         await openFile("notebook.ipynb");
+        await executeCommandWhenAvailable("Notebook: Run All");
+
+        // The two-step kernel quick-pick ("Python Environments..." -> ".venv")
+        // is a known-flaky UI interaction: the picker occasionally isn't ready
+        // when we act on it, or the first selection doesn't register. Retry the
+        // chain before giving up.
+        await browser.waitUntil(
+            async () => {
+                try {
+                    const kernelInput = await waitForInput();
+                    await kernelInput.selectQuickPick("Python Environments...");
+                    console.log("Selected 'Python Environments...' option");
+
+                    const envInput = await waitForInput();
+                    await envInput.selectQuickPick(".venv");
+                    console.log("Selected .venv environment");
+                    return true;
+                } catch (e) {
+                    console.log(
+                        "Kernel selection attempt failed, retrying:",
+                        e
+                    );
+                    return false;
+                }
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg:
+                    "Failed to select the .venv kernel for the notebook",
+            }
+        );
 
         const firstCellOutput = path.join(
             projectDir,
             "nested",
             "notebook-output.json"
         );
-        // Run all cells, selecting the .venv kernel on the first run, and retry
-        // (with a kernel restart) if the first cell's output never lands — the
-        // Windows Jupyter kernel intermittently fails to start on the first try.
-        await runNotebookAllWithKernelRetry(
-            "Notebook: Run All",
-            firstCellOutput,
-            "hello world",
-            {
-                selectKernel: async () => {
-                    // The two-step kernel quick-pick ("Python Environments..."
-                    // -> ".venv") is a known-flaky UI interaction: the picker
-                    // occasionally isn't ready when we act on it, or the first
-                    // selection doesn't register. Retry the chain before giving
-                    // up.
-                    await browser.waitUntil(
-                        async () => {
-                            try {
-                                const kernelInput = await waitForInput();
-                                await kernelInput.selectQuickPick(
-                                    "Python Environments..."
-                                );
-                                console.log(
-                                    "Selected 'Python Environments...' option"
-                                );
-
-                                const envInput = await waitForInput();
-                                await envInput.selectQuickPick(".venv");
-                                console.log("Selected .venv environment");
-                                return true;
-                            } catch (e) {
-                                console.log(
-                                    "Kernel selection attempt failed, retrying:",
-                                    e
-                                );
-                                return false;
-                            }
-                        },
-                        {
-                            timeout: 60_000,
-                            interval: 2000,
-                            timeoutMsg:
-                                "Failed to select the .venv kernel for the notebook",
-                        }
-                    );
-                },
-            }
-        );
+        // The first cell triggers a cold serverless DBConnect session plus a
+        // kernel bind, which is measurably slower on the Windows shard — give
+        // it a larger budget. Once the session is warm the second cell uses the
+        // default timeout.
+        await checkOutputFile(firstCellOutput, "hello world", 180_000);
 
         const secondCellOutput = path.join(
             projectDir,
@@ -620,19 +538,16 @@ describe("Run files on serverless compute", async function () {
 
     it("should run a databricks notebook with dbconnect and handle magic comments", async () => {
         await openFile("databricks-notebook.py");
+        await executeCommandWhenAvailable("Jupyter: Run All Cells");
 
         const sqlOutputFile = path.join(
             projectDir,
             "nested",
             "databricks-notebook-output.json"
         );
-        // Same Windows kernel-start flakiness as the notebook test above — run
-        // with a kernel-restart retry rather than a single attempt.
-        await runNotebookAllWithKernelRetry(
-            "Jupyter: Run All Cells",
-            sqlOutputFile,
-            "hello; world"
-        );
+        // First cell of this notebook — same cold-start cost as above, so give
+        // it the larger budget too.
+        await checkOutputFile(sqlOutputFile, "hello; world", 180_000);
 
         const runOutputFile = path.join(
             projectDir,
