@@ -133,7 +133,7 @@ export class ConnectionCommands implements Disposable {
                 ClusterItem | QuickPickItem
             >();
             quickPick.title =
-                typeof title === "string" ? title : "Select Cluster";
+                typeof title === "string" ? title : "Select Compute";
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
             quickPick.canSelectMany = false;

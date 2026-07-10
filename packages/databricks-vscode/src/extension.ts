@@ -50,7 +50,6 @@ import {Events, Metadata} from "./telemetry/constants";
 import {EnvironmentDependenciesInstaller} from "./language/EnvironmentDependenciesInstaller";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
-import {SshTunnelStatusBarButton} from "./language/SshTunnelStatusBarButton";
 import {SshCommands} from "./ssh/SshCommands";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
@@ -847,12 +846,8 @@ export async function activate(
 
     // SSH tunnel (remote development) group
     const sshCommands = new SshCommands(connectionManager, clusterModel, cli);
-    const sshTunnelStatusBarButton = new SshTunnelStatusBarButton(
-        connectionManager
-    );
     context.subscriptions.push(
         sshCommands,
-        sshTunnelStatusBarButton,
         telemetry.registerCommand(
             "databricks.ssh.startTunnel",
             sshCommands.startTunnelCommand,

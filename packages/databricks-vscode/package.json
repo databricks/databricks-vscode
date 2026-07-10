@@ -80,20 +80,20 @@
             },
             {
                 "command": "databricks.connection.attachCluster",
-                "title": "Attach cluster",
+                "title": "Attach compute",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(plug)"
             },
             {
                 "command": "databricks.connection.attachClusterQuickPick",
-                "title": "Configure cluster",
+                "title": "Configure compute",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachCluster",
-                "title": "Detach cluster",
+                "title": "Detach compute",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(debug-disconnect)"
@@ -158,14 +158,14 @@
             },
             {
                 "command": "databricks.cluster.start",
-                "title": "Start Cluster",
+                "title": "Start Compute",
                 "icon": "$(debug-start)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.cluster.stop",
-                "title": "Stop Cluster",
+                "title": "Stop Compute",
                 "icon": "$(stop-circle)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
@@ -549,7 +549,7 @@
                 {
                     "id": "clusterView",
                     "when": "databricks.feature.views.cluster && !databricks.context.remoteMode",
-                    "name": "Clusters"
+                    "name": "Computes"
                 },
                 {
                     "id": "dabsResourceExplorerView",
@@ -1108,6 +1108,16 @@
                     "command": "databricks.sync.stop",
                     "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-running.*$/ && databricks.context.bundle.isDevTarget",
                     "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.ssh.startTunnel",
+                    "when": "view == configurationView && viewItem == databricks.configuration.sshTunnel",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.ssh.startTunnel",
+                    "when": "view == configurationView && viewItem == databricks.configuration.sshTunnel",
+                    "group": "navigation@0"
                 }
             ],
             "editor/title": [
@@ -1240,7 +1250,7 @@
         "submenus": [
             {
                 "id": "databricks.cluster.filter",
-                "label": "Filter clusters ...",
+                "label": "Filter compute ...",
                 "icon": "$(filter)"
             },
             {
@@ -1446,7 +1456,7 @@
                     "databricks.clusters.onlyShowAccessibleClusters": {
                         "type": "boolean",
                         "default": false,
-                        "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
+                        "description": "Enable/disable filtering for only accessible computes (computes on which the current user can run code)"
                     },
                     "databricks.overrideDatabricksConfigFile": {
                         "type": "string",
@@ -1462,7 +1472,7 @@
                                 "views.workspace"
                             ],
                             "enumDescriptions": [
-                                "Show cluster view in the explorer.",
+                                "Show compute view in the explorer.",
                                 "Show workspace browser in the explorer."
                             ],
                             "type": "string"

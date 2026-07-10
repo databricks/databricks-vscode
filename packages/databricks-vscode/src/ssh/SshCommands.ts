@@ -62,11 +62,6 @@ export class SshCommands implements Disposable {
         private readonly cli: CliWrapper
     ) {}
 
-    /**
-     * Shows a compute picker (single-user clusters + serverless), then launches
-     * `databricks ssh connect --ide=vscode` in a terminal to open a remote
-     * VS Code window.
-     */
     @onError({popup: {prefix: "Error starting SSH tunnel."}})
     async startTunnelCommand() {
         const workspaceClient = this.connectionManager.workspaceClient;
@@ -172,7 +167,7 @@ export class SshCommands implements Disposable {
 
             quickPick.onDidHide(() => {
                 disposables.forEach((d) => d.dispose());
-               // resolve(undefined);
+                // resolve(undefined);
             });
         });
     }
