@@ -13,15 +13,16 @@ on:
 
 jobs:
   publish-to-vscode:
+    if: false # Temporarily disabled — pending secure release repo migration
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
 
     environment: Production
 
     steps:
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.x
 
@@ -46,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install vcse
-        run: npm install -g @vscode/vsce
+        run: npm install -g @vscode/vsce@3.7.1
 
       - name: Publish to VS Code Marketplace
         run: |

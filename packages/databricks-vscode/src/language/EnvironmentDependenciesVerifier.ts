@@ -9,6 +9,8 @@ import {FeatureStepState} from "../feature-manager/FeatureManager";
 import {ResolvedEnvironment} from "./MsPythonExtensionApi";
 import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {ConfigureAutocomplete} from "./ConfigureAutocomplete";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {PackageManagerTelemetry} from "./PackageManagerTelemetry";
 
 export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
     private readonly logger = NamedLogger.getOrCreate(Loggers.Extension);
@@ -17,7 +19,8 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         private readonly connectionManager: ConnectionManager,
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly installer: EnvironmentDependenciesInstaller,
-        private readonly configureAutocomplete: ConfigureAutocomplete
+        private readonly configureAutocomplete: ConfigureAutocomplete,
+        private readonly packageManagerTelemetry: PackageManagerTelemetry
     ) {
         super([
             "checkCluster",
@@ -184,9 +187,9 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
             return "3.12";
         }
         if (dbrVersionParts[0] !== "x" && dbrVersionParts[0] > 16) {
-            return "3.12 or greater";
+            return "3.12";
         }
-        return "3.10 or greater";
+        return "3.10";
     }
 
     private getVersionMismatchWarning(
@@ -217,10 +220,20 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 (env.version.major !== 3 || env.version.minor < 10);
             let dbrVersion = this.connectionManager.cluster?.dbrVersion || [];
             if (this.connectionManager.serverless) {
-                dbrVersion = [15, 1];
+                const serverlessVersion =
+                    workspaceConfigs.serverlessDbconnectVersion;
+                const serverlessVersionParts = serverlessVersion.split(".");
+                const serverlessMajor = parseInt(serverlessVersionParts[0], 10);
+                const serverlessMinor = parseInt(
+                    serverlessVersionParts[1] ?? "0",
+                    10
+                );
+                dbrVersion = [serverlessMajor, serverlessMinor];
+                const minPythonMinor = serverlessMajor >= 16 ? 12 : 11;
                 envVersionTooLow =
                     env?.version &&
-                    (env.version.major !== 3 || env.version.minor < 11);
+                    (env.version.major !== 3 ||
+                        env.version.minor < minPythonMinor);
             }
             const expectedPythonVersion =
                 this.getExpectedPythonVersionMessage(dbrVersion);
@@ -275,12 +288,12 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         if (
             this.connectionManager.serverless &&
             (dbconnectMajor < 15 ||
-                (dbconnectMajor === 15 && dbconnectMinor < 1))
+                (dbconnectMajor === 15 && dbconnectMinor < 4))
         ) {
             return this.rejectStep(
                 "checkEnvironmentDependencies",
                 "Update databricks-connect",
-                `Databricks Connect ${version} doesn't support serverless, please update to 15.1.0 or higher.`,
+                `Databricks Connect ${version} doesn't support serverless, please update to 15.4.0 or higher.`,
                 this.reinstallDbConnect.bind(this)
             );
         }
@@ -393,6 +406,10 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
 
     override async check() {
         await this.connectionManager.waitForConnect();
+        // Emit package-manager detection only once connected (waitForConnect
+        // resolves on CONNECTED), so unauthenticated sessions are not reported.
+        // Deduplicated per session; never throws.
+        void this.packageManagerTelemetry.emitDetection("auto_open");
         await Promise.all([
             this.checkCluster(this.connectionManager.cluster),
             this.checkWorkspaceHasUc(),

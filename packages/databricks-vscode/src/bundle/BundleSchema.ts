@@ -41,7 +41,7 @@ export interface BundleSchema {
      */
     resources?: ResourcesClass | string;
     /**
-     * The identity to use when running Databricks Asset Bundles workflows.
+     * The identity to use when running Declarative Automation Bundles workflows.
      */
     run_as?: BundleSchem6 | string;
     /**

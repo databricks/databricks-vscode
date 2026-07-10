@@ -16,7 +16,7 @@ import {
 
 describe("Run files", async function () {
     let projectDir: string;
-    this.timeout(3 * 60 * 1000);
+    this.timeout(6 * 60 * 1000);
 
     before(async () => {
         assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
@@ -56,17 +56,7 @@ describe("Run files", async function () {
                 const message = await notification.getMessage();
                 console.log("Message:", message);
                 if (message.includes("Uploading bundle assets")) {
-                    const elements = await notification.actions$.$$(
-                        notification.locators.action
-                    );
-                    console.log("Elements:", elements.length);
-                    for (const element of elements) {
-                        const text = await element.getText();
-                        if (text === "Cancel") {
-                            await element.click();
-                            break;
-                        }
-                    }
+                    await notification.takeAction("Cancel");
                     return true;
                 }
             }

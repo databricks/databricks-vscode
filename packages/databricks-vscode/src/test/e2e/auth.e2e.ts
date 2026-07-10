@@ -1,7 +1,6 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
-    getActionButton,
     waitForInput,
     getViewSection,
     waitForLogin,
@@ -71,12 +70,8 @@ describe("Configure Databricks Extension", async function () {
                 const items = await section.getVisibleItems();
                 for (const item of items) {
                     const label = await item.getLabel();
-                    console.log(
-                        "Looking for signin button, got item:",
-                        await (await item.elem).getHTML()
-                    );
                     if (label.toLowerCase().includes("auth type")) {
-                        return getActionButton(item, "Sign in");
+                        return item.getActionButton("Sign in");
                     }
                 }
             },

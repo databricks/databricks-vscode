@@ -1,3 +1,49 @@
+# Release: v2.12.2
+
+## packages/databricks-vscode-types
+
+## (2026-07-08)
+
+# Release: v2.12.1
+
+## packages/databricks-vscode-types
+
+## (2026-07-02)
+
+# Release: v2.12.0
+
+## packages/databricks-vscode-types
+
+## (2026-06-24)
+
+# Release: v2.11.1
+
+## packages/databricks-vscode-types
+
+## (2026-06-18)
+
+# Release: v2.11.0
+
+## packages/databricks-vscode-types
+
+## (2026-06-04)
+
+-   Add support for SPOG host URLs (#1897) ([4094143](https://github.com/databricks/databricks-vscode/commit/4094143)), closes [#1897](https://github.com/databricks/databricks-vscode/issues/1897)
+
+# Release: v2.10.8
+
+## packages/databricks-vscode-types
+
+## (2026-05-20)
+
+-   Bump Databricks JS SDK to 0.17.0
+
+# Release: v2.10.7
+
+## packages/databricks-vscode-types
+
+## (2026-05-07)
+
 # Release: v2.10.6
 
 ## packages/databricks-vscode-types

@@ -6,31 +6,19 @@ import {
     ViewControl,
     ViewSection,
     InputBox,
-    OutputView,
-    TreeItem,
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const ViewSectionTypes = [
     "CLUSTERS",
     "CONFIGURATION",
-    "WORKSPACE EXPLORER",
+    "WORKSPACE FILE SYSTEM",
     "BUNDLE RESOURCE EXPLORER",
     "BUNDLE VARIABLES",
     "DOCUMENTATION",
+    "UNITY CATALOG",
 ] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
-
-export async function selectOutputChannel(
-    outputView: OutputView,
-    channelName: string
-) {
-    if ((await outputView.getCurrentChannel()) === channelName) {
-        return;
-    }
-    outputView.locatorMap.BottomBarViews.outputChannels = `ul[aria-label="Output actions"] select`;
-    await outputView.selectChannel(channelName);
-}
 
 export async function findViewSection(name: ViewSectionType) {
     const workbench = await browser.getWorkbench();
@@ -54,11 +42,15 @@ export async function findViewSection(name: ViewSectionType) {
     );
     const views =
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
-    console.log("Views:", views.length);
     for (const v of views) {
-        const title = await v.elem.getText();
-        console.log("View title:", title);
+        let title = await v.getTitle();
         if (title === null) {
+            // VSCode 1.120+ no longer sets the 'title' HTML attribute on .title elements;
+            // fall back to reading the element's text content.
+            title = await (v as any).title$.getText();
+        }
+        console.log("View title:", title);
+        if (!title) {
             continue;
         }
         if (title.toUpperCase().includes(name)) {
@@ -118,15 +110,74 @@ export async function waitForTreeItems(
     }
 }
 
-export async function dismissNotifications() {
+/**
+ * Drains all VS Code notifications and closes the "What's New" CHANGELOG
+ * preview tab if the extension opened one on activation.
+ *
+ * A single dismissal pass is not sufficient in CI: notifications arrive
+ * asynchronously during extension activation, and on the Windows shard we
+ * observed late-arriving toasts intercepting clicks (e.g. quick-input widget
+ * not displayed, .monaco-select-box not clickable because the notification
+ * list covers it). We poll and dismiss until the notification list stays
+ * empty across two consecutive checks, or the overall timeout expires.
+ *
+ * We also close the CHANGELOG preview: `showWhatsNewPopup` in the extension
+ * fires `markdown.showPreview` on every activation with a fresh globalState
+ * (i.e. every CI run) and races test setup. On Windows it sometimes wins the
+ * race and steals the active-editor slot ("No editor with title
+ * 'vscode.bundlevars.json' found, available editor were: Preview CHANGELOG.md").
+ */
+export async function dismissNotifications({
+    timeoutMs = 8000,
+    quietMs = 500,
+}: {timeoutMs?: number; quietMs?: number} = {}) {
     const workbench = await browser.getWorkbench();
-    await sleep(1000);
-    const notifs = await workbench.getNotifications();
-    try {
-        for (const n of notifs) {
-            await n.dismiss();
+    const deadline = Date.now() + timeoutMs;
+    let consecutiveEmpty = 0;
+    while (Date.now() < deadline) {
+        let notifs;
+        try {
+            notifs = await workbench.getNotifications();
+        } catch {
+            notifs = [];
         }
-    } catch {}
+        if (notifs.length === 0) {
+            consecutiveEmpty += 1;
+            if (consecutiveEmpty >= 2) {
+                break;
+            }
+            await sleep(quietMs);
+            continue;
+        }
+        consecutiveEmpty = 0;
+        for (const n of notifs) {
+            try {
+                await n.dismiss();
+            } catch {
+                // Notification vanished between listing and dismiss — ignore.
+            }
+        }
+        await sleep(quietMs);
+    }
+
+    // Close the "What's New" CHANGELOG preview tab if the extension opened it.
+    try {
+        const editorView = workbench.getEditorView();
+        const tabs = await editorView.getOpenTabs();
+        for (const tab of tabs) {
+            const title = (await tab.getTitle()) ?? "";
+            if (/CHANGELOG\.md/i.test(title)) {
+                try {
+                    await editorView.closeEditor(title);
+                } catch {
+                    // Best-effort: a later test that opens its own editor will
+                    // still succeed because it targets a specific title.
+                }
+            }
+        }
+    } catch {
+        // Ignore: workbench editor view might not be ready yet.
+    }
 }
 
 export async function waitForSyncComplete() {
@@ -239,7 +290,7 @@ export async function waitForWorkflowWebview(
             try {
                 const webView = await workbench.getWebviewByTitle(title);
                 return webView !== undefined;
-            } catch (e) {
+            } catch {
                 return false;
             }
         },
@@ -262,9 +313,23 @@ export async function waitForWorkflowWebview(
         }
     );
 
-    const startTime = await browser.getTextByLabel("run-start-time");
-    console.log("Run start time:", startTime);
-    expect(startTime).not.toHaveText("-");
+    // The run start time renders as a "-" placeholder until the run details
+    // arrive, so poll until it is populated rather than asserting once.
+    // (The previous `expect(startTime).not.toHaveText("-")` was a no-op:
+    // toHaveText is an element matcher and startTime is a plain string, so it
+    // never actually asserted, which is why "-" slipped through on slower runs.)
+    await browser.waitUntil(
+        async () => {
+            const startTime = await browser.getTextByLabel("run-start-time");
+            console.log("Run start time:", startTime);
+            return startTime !== "-" && startTime.trim().length > 0;
+        },
+        {
+            timeout: 60_000,
+            interval: 1_000,
+            timeoutMsg: "Run start time did not populate (still '-')",
+        }
+    );
 
     await browser.waitUntil(
         async () => {
@@ -350,15 +415,28 @@ export async function waitForNotification(message: string, action?: string) {
     );
 }
 
-export async function waitForDeployment(outputView: OutputView) {
+export async function waitForDeployment() {
     console.log("Waiting for deployment to finish");
-    await browser.executeWorkbench(async (vscode) => {
-        await vscode.commands.executeCommand("workbench.panel.output.focus");
-    });
-    await selectOutputChannel(outputView, "Databricks Bundle Logs");
+    const workbench = await driver.getWorkbench();
     await browser.waitUntil(
         async () => {
             try {
+                await browser.executeWorkbench(async (vscode) => {
+                    await vscode.commands.executeCommand(
+                        "workbench.panel.output.focus"
+                    );
+                });
+                const outputView = await workbench
+                    .getBottomBar()
+                    .openOutputView();
+
+                if (
+                    (await outputView.getCurrentChannel()) !==
+                    "Databricks Bundle Logs"
+                ) {
+                    await outputView.selectChannel("Databricks Bundle Logs");
+                }
+
                 const logs = (await outputView.getText()).join("");
                 console.log("------------ Bundle Output ------------");
                 console.log(logs);
@@ -366,7 +444,7 @@ export async function waitForDeployment(outputView: OutputView) {
                     logs.includes("Bundle deployed successfully") &&
                     logs.includes("Bundle configuration refreshed")
                 );
-            } catch (e) {
+            } catch {
                 return false;
             }
         },
@@ -377,23 +455,4 @@ export async function waitForDeployment(outputView: OutputView) {
                 "Can't find 'Bundle deployed successfully' message in output channel",
         }
     );
-}
-
-export async function getActionButton(item: TreeItem, label: string) {
-    const actions = await item.getActionButtons();
-    if (actions.length > 0) {
-        for (const item of actions) {
-            console.log("Checking action button:", item.getLabel());
-            console.log(
-                "Action button element:",
-                await (await item.elem).getHTML()
-            );
-            const itemLabel =
-                item.getLabel() ?? (await item.elem.getAttribute("aria-label"));
-            if (itemLabel.indexOf(label) > -1) {
-                return item;
-            }
-        }
-    }
-    return undefined;
 }

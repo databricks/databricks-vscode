@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import yargs from "yargs";
 
 async function main() {
-    const argv = await yargs
+    const argv = await yargs(process.argv.slice(2))
         .option("cliArch", {
             description: "Architecture of databricks cli.",
             type: "string",
