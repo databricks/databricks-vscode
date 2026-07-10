@@ -15,20 +15,87 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 
-async function checkOutputFile(path: string, expectedContent: string) {
-    await browser.waitUntil(
-        async () => {
-            const fileContent = await fs.readFile(path, "utf-8");
-            console.log(`"${path}" contents: `, fileContent);
-            return fileContent.includes(expectedContent);
-        },
-        {
-            timeout: 120_000,
-            interval: 2000,
-            timeoutMsg: `Output file "${path}" did not contain "${expectedContent}"`,
-        }
+// Dumps whatever we can observe about the notebook run when an output file
+// never shows up (or never gets the expected content). Runs only on failure,
+// so the extra work never slows down the happy path. The VS Code Output panel
+// is where kernel binding, DBConnect session, and cell-execution errors
+// surface, so it is usually the deciding evidence.
+async function dumpNotebookDiagnostics(
+    filePath: string,
+    expectedContent: string,
+    lastContent: string | undefined
+) {
+    console.log(
+        `=== checkOutputFile diagnostics for "${filePath}" ` +
+            `(expected to contain "${expectedContent}") ===`
     );
-    await fs.rm(path);
+    console.log(
+        "last file content observed:",
+        lastContent ?? "<file never appeared>"
+    );
+
+    try {
+        const dir = path.dirname(filePath);
+        const entries = await fs.readdir(dir);
+        console.log(`contents of "${dir}":`, entries);
+    } catch (e) {
+        console.log("could not read output directory:", e);
+    }
+
+    try {
+        const workbench = await browser.getWorkbench();
+        const view = await workbench.getBottomBar().openOutputView();
+        const outputText = (await view.getText()).join("\n");
+        console.log("=== VS Code Output panel ===\n" + outputText);
+    } catch (e) {
+        console.log("could not read the Output panel:", e);
+    }
+}
+
+// Polls until `filePath` exists and contains `expectedContent`. A missing file
+// is a normal "not ready yet" (the notebook writes it asynchronously), so we
+// keep polling instead of letting the ENOENT abort the wait — that way a
+// genuine timeout surfaces the readable `timeoutMsg` rather than a raw ENOENT
+// stack, and any other IO error still propagates. On failure we dump
+// diagnostics before rethrowing so CI logs show why the output never landed.
+async function checkOutputFile(
+    filePath: string,
+    expectedContent: string,
+    timeout = 120_000
+) {
+    let lastContent: string | undefined;
+    try {
+        await browser.waitUntil(
+            async () => {
+                try {
+                    lastContent = await fs.readFile(filePath, "utf-8");
+                } catch (e) {
+                    if (
+                        e &&
+                        typeof e === "object" &&
+                        (e as {code?: string}).code === "ENOENT"
+                    ) {
+                        // Not written yet — keep polling.
+                        return false;
+                    }
+                    throw e;
+                }
+                console.log(`"${filePath}" contents: `, lastContent);
+                return lastContent.includes(expectedContent);
+            },
+            {
+                timeout,
+                interval: 2000,
+                timeoutMsg:
+                    `Output file "${filePath}" did not contain ` +
+                    `"${expectedContent}" within ${timeout}ms`,
+            }
+        );
+    } catch (e) {
+        await dumpNotebookDiagnostics(filePath, expectedContent, lastContent);
+        throw e;
+    }
+    await fs.rm(filePath);
 }
 
 describe("Run files on serverless compute", async function () {
@@ -293,20 +360,47 @@ describe("Run files on serverless compute", async function () {
         await openFile("notebook.ipynb");
         await executeCommandWhenAvailable("Notebook: Run All");
 
-        const kernelInput = await waitForInput();
-        await kernelInput.selectQuickPick("Python Environments...");
-        console.log("Selected 'Python Environments...' option");
+        // The two-step kernel quick-pick ("Python Environments..." -> ".venv")
+        // is a known-flaky UI interaction: the picker occasionally isn't ready
+        // when we act on it, or the first selection doesn't register. Retry the
+        // whole chain a couple of times before giving up.
+        await browser.waitUntil(
+            async () => {
+                try {
+                    const kernelInput = await waitForInput();
+                    await kernelInput.selectQuickPick("Python Environments...");
+                    console.log("Selected 'Python Environments...' option");
 
-        const envInput = await waitForInput();
-        await envInput.selectQuickPick(".venv");
-        console.log("Selected .venv environment");
+                    const envInput = await waitForInput();
+                    await envInput.selectQuickPick(".venv");
+                    console.log("Selected .venv environment");
+                    return true;
+                } catch (e) {
+                    console.log(
+                        "Kernel selection attempt failed, retrying:",
+                        e
+                    );
+                    return false;
+                }
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg:
+                    "Failed to select the .venv kernel for the notebook",
+            }
+        );
 
         const firstCellOutput = path.join(
             projectDir,
             "nested",
             "notebook-output.json"
         );
-        await checkOutputFile(firstCellOutput, "hello world");
+        // The first cell triggers a cold serverless DBConnect session plus a
+        // kernel bind, which is measurably slower on the Windows shard — give
+        // it a larger budget. Once the session is warm the second cell uses the
+        // default timeout.
+        await checkOutputFile(firstCellOutput, "hello world", 180_000);
 
         const secondCellOutput = path.join(
             projectDir,
@@ -325,7 +419,9 @@ describe("Run files on serverless compute", async function () {
             "nested",
             "databricks-notebook-output.json"
         );
-        await checkOutputFile(sqlOutputFile, "hello; world");
+        // First cell of this notebook — same cold-start cost as above, so give
+        // it the larger budget too.
+        await checkOutputFile(sqlOutputFile, "hello; world", 180_000);
 
         const runOutputFile = path.join(
             projectDir,
