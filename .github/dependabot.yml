@@ -42,3 +42,9 @@ updates:
         versions: [">=1.87"]
     schedule:
       interval: "daily"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
