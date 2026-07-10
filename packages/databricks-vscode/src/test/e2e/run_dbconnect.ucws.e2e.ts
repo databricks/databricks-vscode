@@ -69,16 +69,15 @@ async function checkOutputFile(
             async () => {
                 try {
                     lastContent = await fs.readFile(filePath, "utf-8");
-                } catch (e) {
-                    if (
-                        e &&
-                        typeof e === "object" &&
-                        (e as {code?: string}).code === "ENOENT"
-                    ) {
-                        // Not written yet — keep polling.
-                        return false;
-                    }
-                    throw e;
+                } catch {
+                    // Any read error is treated as a transient poll-miss: the
+                    // file may not exist yet (ENOENT), or on the Windows shard a
+                    // concurrent writer / antivirus scan can briefly share-lock
+                    // it (EPERM/EBUSY/EACCES) right after creation. A file that
+                    // stays unreadable still fails with the readable
+                    // `timeoutMsg`, and `dumpNotebookDiagnostics` runs on that
+                    // timeout — so we never abort with a raw errno stack.
+                    return false;
                 }
                 console.log(`"${filePath}" contents: `, lastContent);
                 return lastContent.includes(expectedContent);
@@ -353,7 +352,11 @@ describe("Run files on serverless compute", async function () {
             "Databricks: Run current file with Databricks Connect"
         );
         const output = path.join(projectDir, "file-output.json");
-        await checkOutputFile(output, "hello world");
+        // This is the first execution against serverless DBConnect (mocha runs
+        // the `it` blocks in source order), so it pays the cold session/compute
+        // spin-up cost — give it the same larger budget as the notebook first
+        // cells below.
+        await checkOutputFile(output, "hello world", 180_000);
     });
 
     it("should run a notebook with dbconnect", async () => {
