@@ -26,24 +26,32 @@ function venvPython(projectDir: string): string {
         : path.join(projectDir, ".venv", "bin", "python");
 }
 
-// Guarantees the project's `.venv` has `ipykernel`, which the notebook kernel
-// needs in order to start. The "Setup python environment" flow is supposed to
-// install it from requirements.txt, but on the Windows shard the Python
-// extension's "select dependencies" quick-pick does not reliably register, so
-// `.venv` ends up without ipykernel. When that happens the kernel fails to
-// start ("Running cells with '.venv' requires the ipykernel package") and — in
-// test mode — the extension's auto-install prompt is suppressed
-// ("DialogService: refused to show dialog in tests"), so the notebook cell
-// never runs and no output file is written. We install ipykernel directly to
-// remove that dependency on the flaky UI step; the pip call is idempotent, so
-// on shards where the environment already has ipykernel this is a fast no-op.
-async function ensureVenvHasIpykernel(projectDir: string) {
+// Packages the Jupyter extension needs in the selected environment before it
+// will start a kernel. When starting a kernel it probes the interpreter with
+// `python -c "import jupyter"` / `import notebook`, and if either import fails
+// it refuses to start with "requires the jupyter and notebook package"
+// (`ipykernel` is needed by the kernel itself). Confirmed on a real Windows VM:
+// installing all three lets the kernel start.
+const KERNEL_DEPS = ["ipykernel", "jupyter", "notebook"];
+
+// Guarantees the project's `.venv` has the packages the notebook kernel needs
+// to start. The "Setup python environment" flow is supposed to install them
+// from requirements.txt, but on the Windows shard the Python extension's
+// "select dependencies" quick-pick does not reliably register, so `.venv` ends
+// up without them. When that happens the kernel fails to start ("requires the
+// jupyter and notebook package") and — in test mode — the extension's
+// auto-install prompt is suppressed ("DialogService: refused to show dialog in
+// tests"), so the notebook cell never runs and no output file is written. We
+// install the deps directly to remove that dependency on the flaky UI step; the
+// pip call is idempotent, so on shards that already have them it is a fast
+// no-op.
+async function ensureVenvHasKernelDeps(projectDir: string) {
     const python = venvPython(projectDir);
     try {
         await fs.access(python);
     } catch {
         console.log(
-            `venv python not found at "${python}"; skipping ipykernel check`
+            `venv python not found at "${python}"; skipping kernel-deps check`
         );
         return;
     }
@@ -52,15 +60,15 @@ async function ensureVenvHasIpykernel(projectDir: string) {
             "-m",
             "pip",
             "install",
-            "ipykernel",
+            ...KERNEL_DEPS,
             "--disable-pip-version-check",
         ]);
-        console.log("ensureVenvHasIpykernel stdout:", stdout);
+        console.log("ensureVenvHasKernelDeps stdout:", stdout);
         if (stderr) {
-            console.log("ensureVenvHasIpykernel stderr:", stderr);
+            console.log("ensureVenvHasKernelDeps stderr:", stderr);
         }
     } catch (e) {
-        console.log("Failed to install ipykernel into .venv:", e);
+        console.log("Failed to install kernel deps into .venv:", e);
     }
 }
 
@@ -240,8 +248,17 @@ async function runNotebookAllWithKernelRetry(
                 await selectKernel();
             }
         } else {
-            // Recover a failed kernel start, then re-run all cells.
-            await executeCommandWhenAvailable("Notebook: Restart Kernel");
+            // Recover a failed kernel start, then re-run all cells. Restart via
+            // the command id (there is no reliable palette title across VS Code
+            // versions — "Notebook: Restart Kernel" is not found on the CI
+            // build), and ignore failures since the re-run is what matters.
+            try {
+                await browser.executeWorkbench((vscode) =>
+                    vscode.commands.executeCommand("jupyter.restartkernel")
+                );
+            } catch (e) {
+                console.log("Could not restart kernel before retry:", e);
+            }
             await executeCommandWhenAvailable(runCommand);
         }
 
@@ -518,9 +535,10 @@ describe("Run files on serverless compute", async function () {
         );
 
         // The notebook tests below need a startable Jupyter kernel in .venv.
-        // Guarantee ipykernel is present rather than trusting the dependency
-        // quick-pick, which is unreliable on the Windows shard.
-        await ensureVenvHasIpykernel(projectDir);
+        // Guarantee the kernel deps (ipykernel + jupyter + notebook) are present
+        // rather than trusting the dependency quick-pick, which is unreliable on
+        // the Windows shard.
+        await ensureVenvHasKernelDeps(projectDir);
     });
 
     it("should run a python file with dbconnect", async () => {
