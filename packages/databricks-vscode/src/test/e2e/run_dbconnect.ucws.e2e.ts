@@ -15,11 +15,41 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 
+// Recursively lists every file under `dir` (relative paths), so we can see
+// where an output file actually landed vs. where the test looked for it.
+async function listFilesRecursive(dir: string, base = dir): Promise<string[]> {
+    const out: string[] = [];
+    let entries;
+    try {
+        entries = await fs.readdir(dir, {withFileTypes: true});
+    } catch {
+        return out;
+    }
+    for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            // Skip the venv — it holds thousands of files and none are outputs.
+            if (entry.name === ".venv" || entry.name === ".databricks") {
+                continue;
+            }
+            out.push(...(await listFilesRecursive(full, base)));
+        } else {
+            out.push(path.relative(base, full));
+        }
+    }
+    return out;
+}
+
 // Dumps whatever we can observe about the notebook run when an output file
 // never shows up (or never gets the expected content). Runs only on failure,
-// so the extra work never slows down the happy path. The VS Code Output panel
-// is where kernel binding, DBConnect session, and cell-execution errors
-// surface, so it is usually the deciding evidence.
+// so the extra work never slows down the happy path.
+//
+// It answers the two questions a missing output file raises: (1) did the cell
+// write the file somewhere else? — we list the whole workspace tree, since a
+// cwd mismatch would drop it in the project root rather than `nested/`; and
+// (2) did the cell error out? — the notebook kernel logs to its own VS Code
+// Output channel (not the default one), so we enumerate every channel and dump
+// each, which surfaces a NameError/kernel failure wherever it landed.
 async function dumpNotebookDiagnostics(
     filePath: string,
     expectedContent: string,
@@ -34,19 +64,43 @@ async function dumpNotebookDiagnostics(
         lastContent ?? "<file never appeared>"
     );
 
-    try {
-        const dir = path.dirname(filePath);
-        const entries = await fs.readdir(dir);
-        console.log(`contents of "${dir}":`, entries);
-    } catch (e) {
-        console.log("could not read output directory:", e);
+    // Full workspace tree (relative to WORKSPACE_PATH). If the cell ran but
+    // wrote to the wrong cwd, the *-output.json shows up here under a different
+    // directory than the one the test polled.
+    if (process.env.WORKSPACE_PATH) {
+        try {
+            const files = await listFilesRecursive(process.env.WORKSPACE_PATH);
+            console.log(
+                `workspace tree under "${process.env.WORKSPACE_PATH}":`,
+                files
+            );
+        } catch (e) {
+            console.log("could not walk the workspace tree:", e);
+        }
     }
 
+    // Every Output channel, so the notebook kernel's cell error (which does not
+    // go to the default channel) is captured rather than whatever channel
+    // happens to be selected.
     try {
         const workbench = await browser.getWorkbench();
         const view = await workbench.getBottomBar().openOutputView();
-        const outputText = (await view.getText()).join("\n");
-        console.log("=== VS Code Output panel ===\n" + outputText);
+        let channels: string[] = [];
+        try {
+            channels = await view.getChannelNames();
+        } catch (e) {
+            console.log("could not list Output channels:", e);
+        }
+        console.log("=== Output channels available ===", channels);
+        for (const channel of channels) {
+            try {
+                await view.selectChannel(channel);
+                const text = (await view.getText()).join("\n");
+                console.log(`=== Output channel "${channel}" ===\n${text}`);
+            } catch (e) {
+                console.log(`could not read Output channel "${channel}":`, e);
+            }
+        }
     } catch (e) {
         console.log("could not read the Output panel:", e);
     }
