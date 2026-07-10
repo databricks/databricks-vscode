@@ -1,6 +1,8 @@
 import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
+import {execFile as execFileCb} from "node:child_process";
+import {promisify} from "node:util";
 import {
     dismissNotifications,
     executeCommandWhenAvailable,
@@ -14,6 +16,53 @@ import {
     getBasicBundleConfig,
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
+
+const execFile = promisify(execFileCb);
+
+// Absolute path to the Python interpreter inside the project's `.venv`.
+function venvPython(projectDir: string): string {
+    return process.platform === "win32"
+        ? path.join(projectDir, ".venv", "Scripts", "python.exe")
+        : path.join(projectDir, ".venv", "bin", "python");
+}
+
+// Guarantees the project's `.venv` has `ipykernel`, which the notebook kernel
+// needs in order to start. The "Setup python environment" flow is supposed to
+// install it from requirements.txt, but on the Windows shard the Python
+// extension's "select dependencies" quick-pick does not reliably register, so
+// `.venv` ends up without ipykernel. When that happens the kernel fails to
+// start ("Running cells with '.venv' requires the ipykernel package") and — in
+// test mode — the extension's auto-install prompt is suppressed
+// ("DialogService: refused to show dialog in tests"), so the notebook cell
+// never runs and no output file is written. We install ipykernel directly to
+// remove that dependency on the flaky UI step; the pip call is idempotent, so
+// on shards where the environment already has ipykernel this is a fast no-op.
+async function ensureVenvHasIpykernel(projectDir: string) {
+    const python = venvPython(projectDir);
+    try {
+        await fs.access(python);
+    } catch {
+        console.log(
+            `venv python not found at "${python}"; skipping ipykernel check`
+        );
+        return;
+    }
+    try {
+        const {stdout, stderr} = await execFile(python, [
+            "-m",
+            "pip",
+            "install",
+            "ipykernel",
+            "--disable-pip-version-check",
+        ]);
+        console.log("ensureVenvHasIpykernel stdout:", stdout);
+        if (stderr) {
+            console.log("ensureVenvHasIpykernel stderr:", stderr);
+        }
+    } catch (e) {
+        console.log("Failed to install ipykernel into .venv:", e);
+    }
+}
 
 // Recursively lists every file under `dir` (relative paths), so we can see
 // where an output file actually landed vs. where the test looked for it.
@@ -398,6 +447,11 @@ describe("Run files on serverless compute", async function () {
                 timeoutMsg: "Setup confirmation failed",
             }
         );
+
+        // The notebook tests below need a startable Jupyter kernel in .venv.
+        // Guarantee ipykernel is present rather than trusting the dependency
+        // quick-pick, which is unreliable on the Windows shard.
+        await ensureVenvHasIpykernel(projectDir);
     });
 
     it("should run a python file with dbconnect", async () => {
