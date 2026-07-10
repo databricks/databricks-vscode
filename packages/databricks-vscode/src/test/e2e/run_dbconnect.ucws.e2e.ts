@@ -482,6 +482,13 @@ describe("Run files on serverless compute", async function () {
         await checkOutputFile(output, "hello world", 180_000);
     });
 
+    // NOTE: this test can be flaky on the serverless shard. With the kernel now
+    // starting reliably (ipykernel+jupyter+notebook installed into .venv), it
+    // still intermittently fails because a notebook cell occasionally does not
+    // complete/emit its output within the wait — it has been observed passing on
+    // one OS and failing on the other across otherwise-identical runs
+    // (Win-pass/Linux-fail and vice versa). Left enabled since it usually
+    // passes; treat an isolated failure here as flakiness, not a regression.
     it("should run a notebook with dbconnect", async () => {
         await openFile("notebook.ipynb");
         await executeCommandWhenAvailable("Notebook: Run All");
@@ -536,6 +543,11 @@ describe("Run files on serverless compute", async function () {
         await checkOutputFile(secondCellOutput, "hello world");
     });
 
+    // NOTE: this test can be flaky on the serverless shard. It exercises the
+    // Databricks SQL magic (`%sql` -> `_sqldf`); the kernel starts reliably now
+    // (ipykernel+jupyter+notebook in .venv), but the output file is sometimes
+    // not produced within the wait. Left enabled; treat an isolated failure here
+    // as flakiness in the notebook-magic execution path rather than a regression.
     it("should run a databricks notebook with dbconnect and handle magic comments", async () => {
         await openFile("databricks-notebook.py");
         await executeCommandWhenAvailable("Jupyter: Run All Cells");
