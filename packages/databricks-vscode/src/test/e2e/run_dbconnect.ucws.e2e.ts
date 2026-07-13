@@ -1,6 +1,8 @@
 import path from "node:path";
 import * as fs from "fs/promises";
 import assert from "node:assert";
+import {execFile as execFileCb} from "node:child_process";
+import {promisify} from "node:util";
 import {
     dismissNotifications,
     executeCommandWhenAvailable,
@@ -15,20 +17,201 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 
-async function checkOutputFile(path: string, expectedContent: string) {
-    await browser.waitUntil(
-        async () => {
-            const fileContent = await fs.readFile(path, "utf-8");
-            console.log(`"${path}" contents: `, fileContent);
-            return fileContent.includes(expectedContent);
-        },
-        {
-            timeout: 120_000,
-            interval: 2000,
-            timeoutMsg: `Output file "${path}" did not contain "${expectedContent}"`,
+const execFile = promisify(execFileCb);
+
+// Absolute path to the Python interpreter inside the project's `.venv`.
+function venvPython(projectDir: string): string {
+    return process.platform === "win32"
+        ? path.join(projectDir, ".venv", "Scripts", "python.exe")
+        : path.join(projectDir, ".venv", "bin", "python");
+}
+
+// Packages the Jupyter extension needs in the selected environment before it
+// will start a kernel. When starting a kernel it probes the interpreter with
+// `python -c "import jupyter"` / `import notebook`, and if either import fails
+// it refuses to start with "requires the jupyter and notebook package"
+// (`ipykernel` is needed by the kernel itself). Confirmed on a real Windows VM:
+// installing all three lets the kernel start.
+const KERNEL_DEPS = ["ipykernel", "jupyter", "notebook"];
+
+// Guarantees the project's `.venv` has the packages the notebook kernel needs
+// to start. The "Setup python environment" flow is supposed to install them
+// from requirements.txt, but on the Windows shard the Python extension's
+// "select dependencies" quick-pick does not reliably register, so `.venv` ends
+// up without them. When that happens the kernel fails to start ("requires the
+// jupyter and notebook package") and — in test mode — the extension's
+// auto-install prompt is suppressed ("DialogService: refused to show dialog in
+// tests"), so the notebook cell never runs and no output file is written. We
+// install the deps directly to remove that dependency on the flaky UI step; the
+// pip call is idempotent, so on shards that already have them it is a fast
+// no-op.
+async function ensureVenvHasKernelDeps(projectDir: string) {
+    const python = venvPython(projectDir);
+    try {
+        await fs.access(python);
+    } catch {
+        console.log(
+            `venv python not found at "${python}"; skipping kernel-deps check`
+        );
+        return;
+    }
+    try {
+        const {stdout, stderr} = await execFile(python, [
+            "-m",
+            "pip",
+            "install",
+            ...KERNEL_DEPS,
+            "--disable-pip-version-check",
+        ]);
+        console.log("ensureVenvHasKernelDeps stdout:", stdout);
+        if (stderr) {
+            console.log("ensureVenvHasKernelDeps stderr:", stderr);
         }
+    } catch (e) {
+        console.log("Failed to install kernel deps into .venv:", e);
+    }
+}
+
+// Recursively lists every file under `dir` (relative paths), so we can see
+// where an output file actually landed vs. where the test looked for it.
+async function listFilesRecursive(dir: string, base = dir): Promise<string[]> {
+    const out: string[] = [];
+    let entries;
+    try {
+        entries = await fs.readdir(dir, {withFileTypes: true});
+    } catch {
+        return out;
+    }
+    for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            // Skip the venv — it holds thousands of files and none are outputs.
+            if (entry.name === ".venv" || entry.name === ".databricks") {
+                continue;
+            }
+            out.push(...(await listFilesRecursive(full, base)));
+        } else {
+            out.push(path.relative(base, full));
+        }
+    }
+    return out;
+}
+
+// Dumps whatever we can observe about the notebook run when an output file
+// never shows up (or never gets the expected content). Runs only on failure,
+// so the extra work never slows down the happy path.
+//
+// It answers the two questions a missing output file raises: (1) did the cell
+// write the file somewhere else? — we list the whole workspace tree, since a
+// cwd mismatch would drop it in the project root rather than `nested/`; and
+// (2) did the cell error out? — the notebook kernel logs to its own VS Code
+// Output channel (not the default one), so we enumerate every channel and dump
+// each, which surfaces a NameError/kernel failure wherever it landed.
+async function dumpNotebookDiagnostics(
+    filePath: string,
+    expectedContent: string,
+    lastContent: string | undefined
+) {
+    console.log(
+        `=== checkOutputFile diagnostics for "${filePath}" ` +
+            `(expected to contain "${expectedContent}") ===`
     );
-    await fs.rm(path);
+    console.log(
+        "last file content observed:",
+        lastContent ?? "<file never appeared>"
+    );
+
+    // Full workspace tree (relative to WORKSPACE_PATH). If the cell ran but
+    // wrote to the wrong cwd, the *-output.json shows up here under a different
+    // directory than the one the test polled.
+    if (process.env.WORKSPACE_PATH) {
+        try {
+            const files = await listFilesRecursive(process.env.WORKSPACE_PATH);
+            console.log(
+                `workspace tree under "${process.env.WORKSPACE_PATH}":`,
+                files
+            );
+        } catch (e) {
+            console.log("could not walk the workspace tree:", e);
+        }
+    }
+
+    // Every Output channel, so the notebook kernel's cell error (which does not
+    // go to the default channel) is captured rather than whatever channel
+    // happens to be selected.
+    try {
+        const workbench = await browser.getWorkbench();
+        const view = await workbench.getBottomBar().openOutputView();
+        let channels: string[] = [];
+        try {
+            channels = await view.getChannelNames();
+        } catch (e) {
+            console.log("could not list Output channels:", e);
+        }
+        console.log("=== Output channels available ===", channels);
+        for (const channel of channels) {
+            try {
+                await view.selectChannel(channel);
+                const text = (await view.getText()).join("\n");
+                console.log(`=== Output channel "${channel}" ===\n${text}`);
+            } catch (e) {
+                console.log(`could not read Output channel "${channel}":`, e);
+            }
+        }
+    } catch (e) {
+        console.log("could not read the Output panel:", e);
+    }
+}
+
+// Polls up to `timeout` for `filePath` to exist and contain `expectedContent`,
+// returning true on success and false on timeout — it never throws for a
+// missing file. A missing file is a normal "not ready yet" (the notebook writes
+// it asynchronously); on the Windows shard a concurrent writer / antivirus scan
+// can also briefly share-lock it (EPERM/EBUSY/EACCES) right after creation. Both
+// are treated as poll-misses so the caller decides what a timeout means.
+async function pollForOutput(
+    filePath: string,
+    expectedContent: string,
+    timeout: number
+): Promise<boolean> {
+    try {
+        await browser.waitUntil(
+            async () => {
+                let fileContent: string;
+                try {
+                    fileContent = await fs.readFile(filePath, "utf-8");
+                } catch {
+                    return false;
+                }
+                console.log(`"${filePath}" contents: `, fileContent);
+                return fileContent.includes(expectedContent);
+            },
+            {timeout, interval: 2000}
+        );
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Asserts `filePath` exists and contains `expectedContent` within `timeout`. On
+// timeout it dumps diagnostics and throws with a readable message (never a raw
+// ENOENT stack), then removes the file so a later assertion on the same path
+// starts clean.
+async function checkOutputFile(
+    filePath: string,
+    expectedContent: string,
+    timeout = 120_000
+) {
+    const found = await pollForOutput(filePath, expectedContent, timeout);
+    if (!found) {
+        await dumpNotebookDiagnostics(filePath, expectedContent, undefined);
+        throw new Error(
+            `Output file "${filePath}" did not contain ` +
+                `"${expectedContent}" within ${timeout}ms`
+        );
+    }
+    await fs.rm(filePath);
 }
 
 describe("Run files on serverless compute", async function () {
@@ -278,6 +461,12 @@ describe("Run files on serverless compute", async function () {
                 timeoutMsg: "Setup confirmation failed",
             }
         );
+
+        // The notebook tests below need a startable Jupyter kernel in .venv.
+        // Guarantee the kernel deps (ipykernel + jupyter + notebook) are present
+        // rather than trusting the dependency quick-pick, which is unreliable on
+        // the Windows shard.
+        await ensureVenvHasKernelDeps(projectDir);
     });
 
     it("should run a python file with dbconnect", async () => {
@@ -286,27 +475,65 @@ describe("Run files on serverless compute", async function () {
             "Databricks: Run current file with Databricks Connect"
         );
         const output = path.join(projectDir, "file-output.json");
-        await checkOutputFile(output, "hello world");
+        // This is the first execution against serverless DBConnect (mocha runs
+        // the `it` blocks in source order), so it pays the cold session/compute
+        // spin-up cost — give it the same larger budget as the notebook first
+        // cells below.
+        await checkOutputFile(output, "hello world", 180_000);
     });
 
+    // NOTE: this test can be flaky on the serverless shard. With the kernel now
+    // starting reliably (ipykernel+jupyter+notebook installed into .venv), it
+    // still intermittently fails because a notebook cell occasionally does not
+    // complete/emit its output within the wait — it has been observed passing on
+    // one OS and failing on the other across otherwise-identical runs
+    // (Win-pass/Linux-fail and vice versa). Left enabled since it usually
+    // passes; treat an isolated failure here as flakiness, not a regression.
     it("should run a notebook with dbconnect", async () => {
         await openFile("notebook.ipynb");
         await executeCommandWhenAvailable("Notebook: Run All");
 
-        const kernelInput = await waitForInput();
-        await kernelInput.selectQuickPick("Python Environments...");
-        console.log("Selected 'Python Environments...' option");
+        // The two-step kernel quick-pick ("Python Environments..." -> ".venv")
+        // is a known-flaky UI interaction: the picker occasionally isn't ready
+        // when we act on it, or the first selection doesn't register. Retry the
+        // chain before giving up.
+        await browser.waitUntil(
+            async () => {
+                try {
+                    const kernelInput = await waitForInput();
+                    await kernelInput.selectQuickPick("Python Environments...");
+                    console.log("Selected 'Python Environments...' option");
 
-        const envInput = await waitForInput();
-        await envInput.selectQuickPick(".venv");
-        console.log("Selected .venv environment");
+                    const envInput = await waitForInput();
+                    await envInput.selectQuickPick(".venv");
+                    console.log("Selected .venv environment");
+                    return true;
+                } catch (e) {
+                    console.log(
+                        "Kernel selection attempt failed, retrying:",
+                        e
+                    );
+                    return false;
+                }
+            },
+            {
+                timeout: 60_000,
+                interval: 2000,
+                timeoutMsg:
+                    "Failed to select the .venv kernel for the notebook",
+            }
+        );
 
         const firstCellOutput = path.join(
             projectDir,
             "nested",
             "notebook-output.json"
         );
-        await checkOutputFile(firstCellOutput, "hello world");
+        // The first cell triggers a cold serverless DBConnect session plus a
+        // kernel bind, which is measurably slower on the Windows shard — give
+        // it a larger budget. Once the session is warm the second cell uses the
+        // default timeout.
+        await checkOutputFile(firstCellOutput, "hello world", 180_000);
 
         const secondCellOutput = path.join(
             projectDir,
@@ -316,6 +543,11 @@ describe("Run files on serverless compute", async function () {
         await checkOutputFile(secondCellOutput, "hello world");
     });
 
+    // NOTE: this test can be flaky on the serverless shard. It exercises the
+    // Databricks SQL magic (`%sql` -> `_sqldf`); the kernel starts reliably now
+    // (ipykernel+jupyter+notebook in .venv), but the output file is sometimes
+    // not produced within the wait. Left enabled; treat an isolated failure here
+    // as flakiness in the notebook-magic execution path rather than a regression.
     it("should run a databricks notebook with dbconnect and handle magic comments", async () => {
         await openFile("databricks-notebook.py");
         await executeCommandWhenAvailable("Jupyter: Run All Cells");
@@ -325,7 +557,9 @@ describe("Run files on serverless compute", async function () {
             "nested",
             "databricks-notebook-output.json"
         );
-        await checkOutputFile(sqlOutputFile, "hello; world");
+        // First cell of this notebook — same cold-start cost as above, so give
+        // it the larger budget too.
+        await checkOutputFile(sqlOutputFile, "hello; world", 180_000);
 
         const runOutputFile = path.join(
             projectDir,
