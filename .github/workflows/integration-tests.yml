@@ -51,11 +51,11 @@ jobs:
       check_run_id: ${{ steps.create-check.outputs.check_run_id }}
 
     steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
     - name: Generate GitHub App Token for Check Updates
       id: generate-check-token
-      uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
       with:
         app-id: ${{ secrets.DECO_TEST_APPROVAL_APP_ID }}
         private-key: ${{ secrets.DECO_TEST_APPROVAL_PRIVATE_KEY }}
@@ -97,7 +97,7 @@ jobs:
 
     - name: Generate GitHub App Token for Workflow Trigger
       id: generate-token
-      uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
       with:
         app-id: ${{ secrets.DECO_WORKFLOW_TRIGGER_APP_ID }}
         private-key: ${{ secrets.DECO_WORKFLOW_TRIGGER_PRIVATE_KEY }}
@@ -130,7 +130,7 @@ jobs:
 
     steps:
       - name: Auto-approve Check for Merge Queue
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             await github.rest.checks.create({
