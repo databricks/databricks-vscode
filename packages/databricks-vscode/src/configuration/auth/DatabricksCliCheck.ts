@@ -174,9 +174,13 @@ export class DatabricksCliCheck implements Disposable {
             // WSL). Point the user at running the same command themselves in a
             // terminal, where the browser flow can be completed (or copied to
             // the host browser), instead of surfacing only the raw CLI error.
+            // Single-quote the host: with a SPOG workspace id it contains a
+            // "?w=..." query string, and an unquoted "?" is a glob in
+            // zsh/bash, so a copy-pasted command would fail with
+            // "no matches found" before the CLI runs.
             const manualCommand = profile
-                ? `databricks auth login --host ${host} --profile ${profile}`
-                : `databricks auth login --host ${host}`;
+                ? `databricks auth login --host '${host}' --profile ${profile}`
+                : `databricks auth login --host '${host}'`;
             throw new Error(
                 `Login failed with Databricks CLI: ${e.stderr || e.message}. ` +
                     `Try running \`${manualCommand}\` in a terminal to complete the login, then reload.`

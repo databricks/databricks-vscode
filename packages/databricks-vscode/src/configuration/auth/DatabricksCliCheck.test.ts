@@ -110,10 +110,36 @@ describe(__filename, () => {
                 assert.match(e.message, /context deadline exceeded/);
                 // Tells the user how to recover instead of leaving them stuck.
                 // The suggested command must include --host so it works even
-                // when the profile does not exist yet.
+                // when the profile does not exist yet, and the host must be
+                // single-quoted so it is copy-paste safe.
                 assert.match(
                     e.message,
-                    /databricks auth login --host \S+ --profile dev/
+                    /databricks auth login --host '\S+' --profile dev/
+                );
+                return true;
+            });
+        });
+
+        it("single-quotes the host in the recovery message so a SPOG '?w=' host is copy-paste safe in zsh/bash", async () => {
+            const check = new DatabricksCliCheck(
+                createProvider(
+                    "dev",
+                    "https://test.cloud.databricks.com",
+                    "1234567890"
+                ),
+                async () => {
+                    throw {stderr: "context deadline exceeded"};
+                }
+            );
+
+            await assert.rejects((check as any).login(), (e: Error) => {
+                // The unquoted "?" would be a glob in zsh/bash; the quoted
+                // form runs verbatim.
+                assert.ok(
+                    e.message.includes(
+                        "databricks auth login --host 'https://test.cloud.databricks.com?w=1234567890' --profile dev"
+                    ),
+                    `recovery command not shell-safe: ${e.message}`
                 );
                 return true;
             });
