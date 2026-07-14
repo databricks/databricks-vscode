@@ -4,8 +4,6 @@
 
 ## (2026-07-14)
 
--   Upgrade ESLint 8.57 → 10.6 and migrate to flat config (#2000) ([1d2cbad](https://github.com/databricks/databricks-vscode/commit/1d2cbad)), closes [#2000](https://github.com/databricks/databricks-vscode/issues/2000) [#1985](https://github.com/databricks/databricks-vscode/issues/1985) [#1935](https://github.com/databricks/databricks-vscode/issues/1935) [#1985](https://github.com/databricks/databricks-vscode/issues/1985) [#1935](https://github.com/databricks/databricks-vscode/issues/1935)
-
 # Release: v2.12.2
 
 ## packages/databricks-vscode-types
