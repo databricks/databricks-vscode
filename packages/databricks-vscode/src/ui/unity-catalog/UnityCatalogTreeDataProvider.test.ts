@@ -175,7 +175,43 @@ describe(__filename, () => {
         disposables.forEach((d) => d.dispose());
     });
 
-    it("returns undefined when not connected", async () => {
+    it("shows a status node at the root when not connected", async () => {
+        when(mockConnectionManager.workspaceClient).thenReturn(undefined);
+        when(mockConnectionManager.state).thenReturn("DISCONNECTED");
+        when(mockConnectionManager.connectionError).thenReturn(undefined);
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+
+        const children = (await resolveProviderResult(
+            provider.getChildren()
+        )) as UnityCatalogTreeNode[];
+        assert.strictEqual(children.length, 1);
+        assert.strictEqual(children[0].kind, "empty");
+    });
+
+    it("shows the connection error at the root when not connected", async () => {
+        when(mockConnectionManager.workspaceClient).thenReturn(undefined);
+        when(mockConnectionManager.state).thenReturn("DISCONNECTED");
+        when(mockConnectionManager.connectionError).thenReturn(
+            "No Databricks host found in the environment"
+        );
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+
+        const children = (await resolveProviderResult(
+            provider.getChildren()
+        )) as UnityCatalogTreeNode[];
+        assert.strictEqual(children.length, 1);
+        assert.strictEqual(children[0].kind, "error");
+    });
+
+    it("returns undefined for child nodes when not connected", async () => {
         when(mockConnectionManager.workspaceClient).thenReturn(undefined);
         const provider = new UnityCatalogTreeDataProvider(
             instance(mockConnectionManager),
@@ -183,7 +219,9 @@ describe(__filename, () => {
         );
         disposables.push(provider);
 
-        const children = await resolveProviderResult(provider.getChildren());
+        const children = await resolveProviderResult(
+            provider.getChildren({kind: "favorites"})
+        );
         assert.strictEqual(children, undefined);
     });
 

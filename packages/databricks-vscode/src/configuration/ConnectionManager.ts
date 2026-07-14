@@ -1,4 +1,5 @@
 import {
+    Config,
     WorkspaceClient,
     ApiClient,
     logging,
@@ -18,7 +19,12 @@ import {DatabricksWorkspace} from "./DatabricksWorkspace";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {ConfigModel} from "./models/ConfigModel";
 import {onError, withOnErrorHandler} from "../utils/onErrorDecorator";
-import {AuthProvider, ProfileAuthProvider} from "./auth/AuthProvider";
+import {
+    AuthProvider,
+    EnvironmentAuthProvider,
+    ProfileAuthProvider,
+} from "./auth/AuthProvider";
+import {normalizeHost} from "../utils/urlUtils";
 import {Mutex} from "../locking";
 import {MetadataService} from "./auth/MetadataService";
 import {Events, Telemetry} from "../telemetry";
@@ -40,6 +46,7 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
 export class ConnectionManager implements Disposable {
     private disposables: Disposable[] = [];
     private _state: ConnectionState = "DISCONNECTED";
+    private _connectionError?: string;
     private loginLogoutMutex: Mutex = new Mutex();
     private savedAuthMutex: Mutex = new Mutex();
     private configureLoginMutex: Mutex = new Mutex();
@@ -220,6 +227,16 @@ export class ConnectionManager implements Disposable {
         return this._state;
     }
 
+    /**
+     * The error message from the most recent failed connection attempt, if any.
+     * Cleared on a successful connection. Used to surface why an
+     * environment-based connection (remote mode) failed instead of showing an
+     * empty view.
+     */
+    get connectionError(): string | undefined {
+        return this._connectionError;
+    }
+
     get cluster(): Cluster | undefined {
         return this._clusterManager?.cluster;
     }
@@ -259,6 +276,53 @@ export class ConnectionManager implements Disposable {
         if (this.state !== "CONNECTED" || force) {
             await this.configureLogin("api");
         }
+    }
+
+    /**
+     * Connect using the ambient environment credentials resolved by the SDK's
+     * default credential chain (environment variables, metadata service, etc.).
+     *
+     * Unlike the normal login flow this does not depend on a bundle/config
+     * project (host + target) and skips all sync/cluster/config machinery. It's
+     * used in Databricks Remote SSH sessions where only Unity Catalog is
+     * surfaced and credentials come from the environment.
+     */
+    async connectFromEnvironment(authProvider?: AuthProvider): Promise<void> {
+        await this.loginLogoutMutex.synchronise(async () => {
+            this._connectionError = undefined;
+            this.updateState("CONNECTING");
+            try {
+                // The authProvider is only injected by tests; in production it
+                // is resolved from the SDK's default credential chain.
+                if (authProvider === undefined) {
+                    const config = new Config({});
+                    await config.ensureResolved();
+                    if (config.host === undefined) {
+                        throw new Error(
+                            "No Databricks host found in the environment"
+                        );
+                    }
+                    authProvider = new EnvironmentAuthProvider(
+                        normalizeHost(config.host),
+                        config,
+                        this.cli
+                    );
+                }
+                this._workspaceClient = await authProvider.getWorkspaceClient();
+                this._databricksWorkspace = await DatabricksWorkspace.load(
+                    this._workspaceClient,
+                    authProvider
+                );
+                this.updateState("CONNECTED");
+            } catch (e) {
+                this._workspaceClient = undefined;
+                this._databricksWorkspace = undefined;
+                this._connectionError =
+                    e instanceof Error ? e.message : String(e);
+                this.updateState("DISCONNECTED");
+                throw e;
+            }
+        });
     }
 
     private async loginWithSavedAuth(source: AutoLoginSource) {

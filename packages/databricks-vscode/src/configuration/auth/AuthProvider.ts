@@ -24,7 +24,8 @@ export type AuthType =
     | "databricks-cli"
     | "google-id"
     | "profile"
-    | "pat";
+    | "pat"
+    | "env";
 
 export abstract class AuthProvider {
     constructor(
@@ -530,5 +531,61 @@ export class PersonalAccessTokenAuthProvider extends AuthProvider {
             authType: "pat",
             token: this.token,
         });
+    }
+}
+
+/**
+ * Auth provider backed by an already-resolved SDK Config, produced by the SDK's
+ * default credential chain (environment variables, metadata service, etc.).
+ *
+ * Used in Databricks Remote SSH sessions where the ambient environment supplies
+ * credentials and there is no bundle/config project or profile to resolve.
+ */
+export class EnvironmentAuthProvider extends AuthProvider {
+    constructor(
+        host: URL,
+        private readonly config: Config,
+        cli: CliWrapper
+    ) {
+        super(host, "env", cli, true);
+    }
+
+    describe(): string {
+        return "Environment";
+    }
+
+    toJSON(): Record<string, string | undefined> {
+        return {
+            host: this.host.toString(),
+            authType: this.authType,
+        };
+    }
+
+    toEnv(): Record<string, string> {
+        return {
+            DATABRICKS_HOST: this.host.toString(),
+        };
+    }
+
+    toIni(): Record<string, string | undefined> | undefined {
+        return undefined;
+    }
+
+    protected async _check(): Promise<boolean> {
+        try {
+            const workspaceClient = await this.getWorkspaceClient();
+            await workspaceClient.currentUser.me();
+            return true;
+        } catch (e) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Can't login using the ambient environment credentials",
+                e
+            );
+            return false;
+        }
+    }
+
+    protected _getSdkConfig(): Config {
+        return this.config;
     }
 }
