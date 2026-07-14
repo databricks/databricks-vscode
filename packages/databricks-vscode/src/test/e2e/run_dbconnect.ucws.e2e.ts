@@ -97,52 +97,64 @@ async function listFilesRecursive(dir: string, base = dir): Promise<string[]> {
     return out;
 }
 
-// Dumps the active notebook's cell outputs straight from the VS Code API. This
-// is the ground truth for "did the cell error out?": a cell that raised shows
-// up here as an `error` output item with the name/message/stack, and a cell
-// that never ran has an empty `executionOrder`. We read it via
+// Dumps every open notebook document's cell outputs straight from the VS Code
+// API. This is the ground truth for "did the cell error out?": a cell that
+// raised shows up here as an `error` output item with the name/message/stack,
+// and a cell that never ran has an empty `executionOrder`. We read it via
 // `executeWorkbench` (runs inside the extension host with the full `vscode`
 // API) so it does not depend on any DOM selector — unlike the Output-channel
 // scrape below, whose `select[title="Tasks"]` locator is stale on current
 // VS Code and silently returns nothing.
-async function dumpActiveNotebookCells() {
+//
+// We iterate `workspace.notebookDocuments` rather than just
+// `window.activeNotebookEditor` because the Databricks `.py` "notebook"
+// (`# Databricks notebook source` + `# MAGIC %sql`) runs in an Interactive
+// Window whose document is NOT the active notebook editor — the focused editor
+// is the plain `.py` text editor, so the active-editor-only view reports "no
+// notebook" and misses exactly the failing cell we need to see.
+async function dumpOpenNotebookCells() {
     try {
         const cells = await browser.executeWorkbench((vscode) => {
-            const editor = (vscode.window as any).activeNotebookEditor;
-            const doc = editor?.notebook;
-            if (!doc) {
-                return "<no active notebook editor>";
+            const formatCell = (cell: any) => {
+                const outputs = (cell.outputs ?? []).flatMap((o: any) =>
+                    (o.items ?? []).map((item: any) => {
+                        const text = Buffer.from(item.data).toString("utf8");
+                        return `    [${item.mime}] ${text}`;
+                    })
+                );
+                return [
+                    `  cell #${cell.index} (${
+                        cell.kind === 2 ? "code" : "markup"
+                    }), ` +
+                        `executionOrder=${
+                            cell.executionSummary?.executionOrder ?? "<not run>"
+                        }, ` +
+                        `success=${cell.executionSummary?.success ?? "<n/a>"}`,
+                    ...outputs,
+                ].join("\n");
+            };
+
+            const docs = vscode.workspace.notebookDocuments ?? [];
+            if (docs.length === 0) {
+                return "<no open notebook documents>";
             }
-            return doc
-                .getCells()
-                .map((cell: any) => {
-                    const outputs = (cell.outputs ?? []).flatMap((o: any) =>
-                        (o.items ?? []).map((item: any) => {
-                            const text = Buffer.from(item.data).toString(
-                                "utf8"
-                            );
-                            return `    [${item.mime}] ${text}`;
-                        })
+            return docs
+                .map((doc: any) => {
+                    const header = `notebook "${doc.uri?.toString()}" (${
+                        doc.notebookType
+                    }), ${doc.cellCount} cell(s)`;
+                    return [header, ...doc.getCells().map(formatCell)].join(
+                        "\n"
                     );
-                    return [
-                        `cell #${cell.index} (${
-                            cell.kind === 2 ? "code" : "markup"
-                        }), ` +
-                            `executionOrder=${
-                                cell.executionSummary?.executionOrder ??
-                                "<not run>"
-                            }, ` +
-                            `success=${
-                                cell.executionSummary?.success ?? "<n/a>"
-                            }`,
-                        ...outputs,
-                    ].join("\n");
                 })
-                .join("\n");
+                .join("\n\n");
         });
-        console.log("=== active notebook cells (via VS Code API) ===\n", cells);
+        console.log(
+            "=== open notebook documents (via VS Code API) ===\n",
+            cells
+        );
     } catch (e) {
-        console.log("could not read active notebook cells:", e);
+        console.log("could not read open notebook documents:", e);
     }
 }
 
@@ -226,9 +238,11 @@ async function dumpNotebookDiagnostics(
         }
     }
 
-    // Cell outputs + execution summaries via the VS Code API (the reliable
-    // source for a cell error/traceback or a never-run cell).
-    await dumpActiveNotebookCells();
+    // Cell outputs + execution summaries for every open notebook document via
+    // the VS Code API (the reliable source for a cell error/traceback or a
+    // never-run cell, including the Interactive Window used by the `.py`
+    // Databricks notebook).
+    await dumpOpenNotebookCells();
 
     // On-disk VS Code logs (extension host + Output-channel logs), which
     // capture the kernel/DBConnect error even when the panel can't be scraped.
