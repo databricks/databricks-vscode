@@ -114,26 +114,11 @@ async function listFilesRecursive(dir: string, base = dir): Promise<string[]> {
 // notebook" and misses exactly the failing cell we need to see.
 async function dumpOpenNotebookCells() {
     try {
+        // NB: everything here must stay inline arrow functions. This callback is
+        // serialized and run in the extension host, so a named nested function
+        // (e.g. `const formatCell = () => …`) gets an esbuild `__name(...)`
+        // wrapper that is undefined there and throws "__name is not defined".
         const cells = await browser.executeWorkbench((vscode) => {
-            const formatCell = (cell: any) => {
-                const outputs = (cell.outputs ?? []).flatMap((o: any) =>
-                    (o.items ?? []).map((item: any) => {
-                        const text = Buffer.from(item.data).toString("utf8");
-                        return `    [${item.mime}] ${text}`;
-                    })
-                );
-                return [
-                    `  cell #${cell.index} (${
-                        cell.kind === 2 ? "code" : "markup"
-                    }), ` +
-                        `executionOrder=${
-                            cell.executionSummary?.executionOrder ?? "<not run>"
-                        }, ` +
-                        `success=${cell.executionSummary?.success ?? "<n/a>"}`,
-                    ...outputs,
-                ].join("\n");
-            };
-
             const docs = vscode.workspace.notebookDocuments ?? [];
             if (docs.length === 0) {
                 return "<no open notebook documents>";
@@ -143,9 +128,30 @@ async function dumpOpenNotebookCells() {
                     const header = `notebook "${doc.uri?.toString()}" (${
                         doc.notebookType
                     }), ${doc.cellCount} cell(s)`;
-                    return [header, ...doc.getCells().map(formatCell)].join(
-                        "\n"
-                    );
+                    const cellLines = doc.getCells().map((cell: any) => {
+                        const outputs = (cell.outputs ?? []).flatMap((o: any) =>
+                            (o.items ?? []).map(
+                                (item: any) =>
+                                    `    [${item.mime}] ${Buffer.from(
+                                        item.data
+                                    ).toString("utf8")}`
+                            )
+                        );
+                        return [
+                            `  cell #${cell.index} (${
+                                cell.kind === 2 ? "code" : "markup"
+                            }), ` +
+                                `executionOrder=${
+                                    cell.executionSummary?.executionOrder ??
+                                    "<not run>"
+                                }, ` +
+                                `success=${
+                                    cell.executionSummary?.success ?? "<n/a>"
+                                }`,
+                            ...outputs,
+                        ].join("\n");
+                    });
+                    return [header, ...cellLines].join("\n");
                 })
                 .join("\n\n");
         });
