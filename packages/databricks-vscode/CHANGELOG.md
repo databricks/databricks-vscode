@@ -1,3 +1,18 @@
+# Release: v2.12.3
+
+## packages/databricks-vscode
+
+## (2026-07-14)
+
+-   fix: always pass --host on databricks-cli login so custom hosts are not redirected to the public log ([d2f0518](https://github.com/databricks/databricks-vscode/commit/d2f0518)), closes [#2009](https://github.com/databricks/databricks-vscode/issues/2009) [#1877](https://github.com/databricks/databricks-vscode/issues/1877) [#1877](https://github.com/databricks/databricks-vscode/issues/1877) [#2011](https://github.com/databricks/databricks-vscode/issues/2011)
+-   [DECO-27543] Harden e2e Windows shard: notification+CHANGELOG suppression, venv-notification toleran ([fa1d097](https://github.com/databricks/databricks-vscode/commit/fa1d097)), closes [#1980](https://github.com/databricks/databricks-vscode/issues/1980)
+-   Bump esbuild ^0.25.0 → ^0.28.1 (security fix) (#1986) ([4edf578](https://github.com/databricks/databricks-vscode/commit/4edf578)), closes [#1986](https://github.com/databricks/databricks-vscode/issues/1986) [#1982](https://github.com/databricks/databricks-vscode/issues/1982)
+-   Bump glob ^10.5.0 → ^13.0.6 (#1987) ([76a8ef3](https://github.com/databricks/databricks-vscode/commit/76a8ef3)), closes [#1987](https://github.com/databricks/databricks-vscode/issues/1987) [#1983](https://github.com/databricks/databricks-vscode/issues/1983)
+-   Harden run_dbconnect e2e test against Windows notebook flakiness (#2006) ([351d86e](https://github.com/databricks/databricks-vscode/commit/351d86e)), closes [#2006](https://github.com/databricks/databricks-vscode/issues/2006)
+-   Remove unused @types/eslint and mock-require dependencies (#1998) ([a4c2741](https://github.com/databricks/databricks-vscode/commit/a4c2741)), closes [#1998](https://github.com/databricks/databricks-vscode/issues/1998) [#1994](https://github.com/databricks/databricks-vscode/issues/1994) [#1994](https://github.com/databricks/databricks-vscode/issues/1994)
+-   Update Databricks CLI to v1.7.0 (#1999) ([f2e56f2](https://github.com/databricks/databricks-vscode/commit/f2e56f2)), closes [#1999](https://github.com/databricks/databricks-vscode/issues/1999)
+-   Upgrade ESLint 8.57 → 10.6 and migrate to flat config (#2000) ([1d2cbad](https://github.com/databricks/databricks-vscode/commit/1d2cbad)), closes [#2000](https://github.com/databricks/databricks-vscode/issues/2000) [#1985](https://github.com/databricks/databricks-vscode/issues/1985) [#1935](https://github.com/databricks/databricks-vscode/issues/1935) [#1985](https://github.com/databricks/databricks-vscode/issues/1985) [#1935](https://github.com/databricks/databricks-vscode/issues/1935)
+
 # Release: v2.12.2
 
 ## packages/databricks-vscode
