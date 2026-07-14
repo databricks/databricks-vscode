@@ -139,13 +139,24 @@ export class DatabricksCliCheck implements Disposable {
     }
 
     private async login(cancellationToken?: CancellationToken): Promise<void> {
-        const host = this.authProvider.host.toString().replace(/\/+$/, "");
+        // Always pass --host. Passing only --profile is not enough when the
+        // profile does not exist yet (the common case: creating a new OAuth
+        // profile). With no host to resolve, the CLI falls back to the public
+        // login.databricks.com page instead of the workspace the user typed.
+        // We still pass --profile when we have one so re-login targets the
+        // right profile when several profiles share a host (see #1877); the
+        // CLI accepts --host and --profile together.
+        let host = this.authProvider.host.toString().replace(/\/+$/, "");
+        // Preserve SPOG workspace routing so re-login does not drop the
+        // workspace id from an existing profile. execFile passes args verbatim
+        // (no shell), so the "?" needs no quoting here.
+        if (this.authProvider.workspaceId) {
+            host += `?w=${this.authProvider.workspaceId}`;
+        }
         const profile = this.authProvider.profile;
-        const args = ["auth", "login"];
+        const args = ["auth", "login", "--host", host];
         if (profile) {
             args.push("--profile", profile);
-        } else {
-            args.push("--host", host);
         }
         // Bound the browser challenge so a non-completing OAuth flow (e.g. WSL)
         // fails fast instead of stalling on the CLI's 1-hour default.
@@ -164,7 +175,7 @@ export class DatabricksCliCheck implements Disposable {
             // terminal, where the browser flow can be completed (or copied to
             // the host browser), instead of surfacing only the raw CLI error.
             const manualCommand = profile
-                ? `databricks auth login --profile ${profile}`
+                ? `databricks auth login --host ${host} --profile ${profile}`
                 : `databricks auth login --host ${host}`;
             throw new Error(
                 `Login failed with Databricks CLI: ${e.stderr || e.message}. ` +

@@ -6,21 +6,27 @@ import {DatabricksCliAuthProvider} from "./AuthProvider";
 describe(__filename, () => {
     const cliPath = "/path/to/bin/databricks";
 
-    function createProvider(profile?: string) {
+    function createProvider(
+        profile?: string,
+        host = "https://test.cloud.databricks.com",
+        workspaceId?: string
+    ) {
         const provider = mock(DatabricksCliAuthProvider);
-        when(provider.host).thenReturn(
-            new URL("https://test.cloud.databricks.com")
-        );
+        when(provider.host).thenReturn(new URL(host));
         when(provider.cliPath).thenReturn(cliPath);
         when(provider.profile).thenReturn(profile);
+        when(provider.workspaceId).thenReturn(workspaceId);
         return instance(provider);
     }
 
     describe("login", () => {
-        it("passes a bounded --timeout to auth login so it cannot hang indefinitely", async () => {
+        it("always passes --host so a new/unresolved profile does not fall back to the public login page", async () => {
+            // Regression test for the custom-host OAuth sign-in bug: creating a
+            // new profile passed only --profile, so the CLI could not resolve a
+            // host and opened login.databricks.com instead of the workspace.
             let capturedArgs: string[] | undefined;
             const check = new DatabricksCliCheck(
-                createProvider("dev"),
+                createProvider("dev", "https://customer.custom-host.com"),
                 async (_file, args) => {
                     capturedArgs = args;
                     return {stdout: "", stderr: ""};
@@ -33,6 +39,8 @@ describe(__filename, () => {
             assert.deepStrictEqual(capturedArgs, [
                 "auth",
                 "login",
+                "--host",
+                "https://customer.custom-host.com",
                 "--profile",
                 "dev",
                 "--timeout",
@@ -62,6 +70,34 @@ describe(__filename, () => {
             ]);
         });
 
+        it("preserves the SPOG workspace id on the --host so re-login keeps the workspace routing", async () => {
+            let capturedArgs: string[] | undefined;
+            const check = new DatabricksCliCheck(
+                createProvider(
+                    "dev",
+                    "https://test.cloud.databricks.com",
+                    "1234567890"
+                ),
+                async (_file, args) => {
+                    capturedArgs = args;
+                    return {stdout: "", stderr: ""};
+                }
+            );
+
+            await (check as any).login();
+
+            assert.deepStrictEqual(capturedArgs, [
+                "auth",
+                "login",
+                "--host",
+                "https://test.cloud.databricks.com?w=1234567890",
+                "--profile",
+                "dev",
+                "--timeout",
+                `${LOGIN_TIMEOUT_SECONDS}s`,
+            ]);
+        });
+
         it("surfaces an actionable message when login fails (e.g. WSL browser hang/timeout)", async () => {
             const check = new DatabricksCliCheck(
                 createProvider("dev"),
@@ -73,7 +109,12 @@ describe(__filename, () => {
             await assert.rejects((check as any).login(), (e: Error) => {
                 assert.match(e.message, /context deadline exceeded/);
                 // Tells the user how to recover instead of leaving them stuck.
-                assert.match(e.message, /databricks auth login --profile dev/);
+                // The suggested command must include --host so it works even
+                // when the profile does not exist yet.
+                assert.match(
+                    e.message,
+                    /databricks auth login --host \S+ --profile dev/
+                );
                 return true;
             });
         });
