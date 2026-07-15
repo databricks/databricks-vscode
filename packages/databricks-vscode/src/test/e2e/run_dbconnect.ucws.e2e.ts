@@ -333,6 +333,70 @@ async function checkOutputFile(
     await fs.rm(filePath);
 }
 
+// Runs every not-yet-executed code cell of the open notebook whose URI matches
+// `uriMatch` (a substring, e.g. "notebook.ipynb"), or — when `uriMatch` is
+// "interactive" — the Interactive Window document. Returns a short status
+// string for logging.
+//
+// Why we drive cells this way instead of "Run All"/"Jupyter: Run All Cells":
+// in the headless CI harness Run-All executes only the first DBConnect cell and
+// does not advance to the rest (the later cells stay `<not run>`). This is a
+// webdriver/xvfb-harness artifact — a real user's Run All runs every cell, and
+// running the cells one-by-one through the kernel also works. So we keep the
+// execution in VS Code (real kernel + the extension's injected spark/%sql/%run
+// magics) and just drive the remaining cells explicitly.
+//
+// Implementation notes, from the VS Code `notebook.cell.execute` contract
+// (coreActions.ts parseMultiCellExecutionArgs / getEditorFromArgsOrActivePane):
+//   - We look the notebook up in `workspace.notebookDocuments` and pass
+//     `document: doc.uri`, so resolution goes through getContextFromUri (by URI)
+//     and does NOT depend on which editor is focused. The Interactive Window
+//     used by the `.py` Databricks notebook is NOT `window.activeNotebookEditor`
+//     (the focused editor is the `.py` text editor), so an active-editor-only
+//     lookup silently no-ops for it.
+//   - The command silently returns (no throw) if it can't resolve the editor, so
+//     we wait per-cell for an `executionOrder` and throw a precise error if a
+//     cell never starts, instead of failing later on a missing output file.
+// IMPORTANT: only call once a kernel is bound (the initial Run-All does that) —
+// executing a cell with no kernel pops a modal kernel picker that hangs the
+// executeWorkbench promise ("Remote command timeout exceeded").
+async function runNotebookCellsByUri(uriMatch: string) {
+    const status = await browser.executeWorkbench(async (vscode, match) => {
+        const docs = vscode.workspace.notebookDocuments ?? [];
+        const doc =
+            match === "interactive"
+                ? docs.find((d: any) => d.notebookType === "interactive")
+                : docs.find((d: any) => d.uri.toString().includes(match));
+        if (!doc) {
+            return `NO_DOC: no notebook matching "${match}"; open: [${docs
+                .map((d: any) => `${d.uri.toString()} (${d.notebookType})`)
+                .join(", ")}]`;
+        }
+        const ran: number[] = [];
+        for (const cell of doc.getCells()) {
+            // kind === 2 is a code cell; skip markup.
+            if (cell.kind !== 2) {
+                continue;
+            }
+            if (cell.executionSummary?.executionOrder !== undefined) {
+                continue;
+            }
+            await vscode.commands.executeCommand("notebook.cell.execute", {
+                ranges: [{start: cell.index, end: cell.index + 1}],
+                document: doc.uri,
+            });
+            ran.push(cell.index);
+        }
+        return `OK: ${doc.uri.toString()} — dispatched cells [${ran.join(
+            ", "
+        )}]`;
+    }, uriMatch);
+    console.log(`runNotebookCellsByUri("${uriMatch}"): ${status}`);
+    if (typeof status === "string" && status.startsWith("NO_DOC")) {
+        throw new Error(status);
+    }
+}
+
 describe("Run files on serverless compute", async function () {
     let projectDir: string;
     this.timeout(12 * 60 * 1000);
@@ -648,12 +712,16 @@ describe("Run files on serverless compute", async function () {
             "nested",
             "notebook-output.json"
         );
-        // The first cell triggers a cold serverless DBConnect session plus a
-        // kernel bind, which is measurably slower on the Windows shard — give
-        // it a larger budget. Once the session is warm the second cell uses the
-        // default timeout.
+        // "Run All" (above) runs the first cell once the kernel is bound. It
+        // triggers a cold serverless DBConnect session plus a kernel bind, which
+        // is measurably slower on the Windows shard — give it a larger budget.
         await checkOutputFile(firstCellOutput, "hello world", 180_000);
 
+        // Run any remaining cells (cell 1: %run "./hello.py") explicitly. In the
+        // headless CI harness "Run All" does not reliably advance to it after the
+        // first DBConnect cell. The kernel is bound by now (first cell ran), so
+        // this does not re-prompt for a kernel.
+        await runNotebookCellsByUri("notebook.ipynb");
         const secondCellOutput = path.join(
             projectDir,
             "nested",
@@ -662,24 +730,58 @@ describe("Run files on serverless compute", async function () {
         await checkOutputFile(secondCellOutput, "hello world");
     });
 
-    // NOTE: this test can be flaky on the serverless shard. It exercises the
-    // Databricks SQL magic (`%sql` -> `_sqldf`); the kernel starts reliably now
-    // (ipykernel+jupyter+notebook in .venv), but the output file is sometimes
-    // not produced within the wait. Left enabled; treat an isolated failure here
-    // as flakiness in the notebook-magic execution path rather than a regression.
+    // Exercises the Databricks SQL magic (`%sql` -> `_sqldf`) and the `%run`
+    // magic in a `.py` "Databricks notebook" (`# Databricks notebook source` /
+    // `# COMMAND` / `# MAGIC` markers), which the Jupyter extension runs in an
+    // Interactive Window.
     it("should run a databricks notebook with dbconnect and handle magic comments", async () => {
         await openFile("databricks-notebook.py");
+        // Kick off the run: this creates the Interactive Window, binds the
+        // kernel, and runs the first cell (spark.sql(...).show()).
         await executeCommandWhenAvailable("Jupyter: Run All Cells");
 
+        // Wait for the Interactive Window to appear and its first cell to run
+        // (kernel bind + cold serverless DBConnect session) before we drive the
+        // rest. The IW is in `workspace.notebookDocuments` as an "interactive"
+        // document — it is NOT `window.activeNotebookEditor` (the focused editor
+        // is the `.py` text editor).
+        await browser.waitUntil(
+            async () =>
+                (await browser.executeWorkbench((vscode) => {
+                    const doc = (vscode.workspace.notebookDocuments ?? []).find(
+                        (d: any) => d.notebookType === "interactive"
+                    );
+                    const cells = doc?.getCells() ?? [];
+                    return cells.some(
+                        (c: any) =>
+                            c.executionSummary?.executionOrder !== undefined
+                    );
+                })) === true,
+            {
+                timeout: 180_000,
+                interval: 2000,
+                timeoutMsg:
+                    "First Interactive Window cell did not run within 180s",
+            }
+        );
+
+        // Run the remaining Interactive Window cells explicitly (the `%sql` cell
+        // that sets `_sqldf`, the cell that writes databricks-notebook-output,
+        // and the `%run` cell). "Run All Cells" does not reliably advance past
+        // the first DBConnect cell in the headless CI harness, leaving later
+        // cells `<not run>`. The kernel is bound by now, so executing them does
+        // not re-prompt for a kernel.
+        await runNotebookCellsByUri("interactive");
+
+        // Output of the `%sql` -> `_sqldf` -> to_json cell.
         const sqlOutputFile = path.join(
             projectDir,
             "nested",
             "databricks-notebook-output.json"
         );
-        // First cell of this notebook — same cold-start cost as above, so give
-        // it the larger budget too.
         await checkOutputFile(sqlOutputFile, "hello; world", 180_000);
 
+        // Output of the `%run './databricks-run-notebook.py'` cell.
         const runOutputFile = path.join(
             projectDir,
             "nested",
