@@ -36,18 +36,15 @@ interface ServerlessItem extends QuickPickItem {
 const SERVERLESS_ITEMS: ServerlessItem[] = [
     {
         label: SERVERLESS_LABEL,
-        detail: "Connect to serverless compute (no dedicated cluster)",
         alwaysShow: true,
     },
     {
         label: "$(cloud) Serverless GPU 1xA10",
-        detail: "Connect to serverless GPU compute (GPU_1xA10)",
         alwaysShow: true,
         accelerator: "GPU_1xA10",
     },
     {
         label: "$(cloud) Serverless GPU 8xH100",
-        detail: "Connect to serverless GPU compute (GPU_8xH100)",
         alwaysShow: true,
         accelerator: "GPU_8xH100",
     },
