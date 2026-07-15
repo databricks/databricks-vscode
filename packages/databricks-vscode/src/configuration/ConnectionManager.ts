@@ -21,7 +21,7 @@ import {ConfigModel} from "./models/ConfigModel";
 import {onError, withOnErrorHandler} from "../utils/onErrorDecorator";
 import {
     AuthProvider,
-    EnvironmentAuthProvider,
+    PersonalAccessTokenAuthProvider,
     ProfileAuthProvider,
 } from "./auth/AuthProvider";
 import {normalizeHost} from "../utils/urlUtils";
@@ -302,9 +302,14 @@ export class ConnectionManager implements Disposable {
                             "No Databricks host found in the environment"
                         );
                     }
-                    authProvider = new EnvironmentAuthProvider(
+                    if (config.token === undefined) {
+                        throw new Error(
+                            "No Databricks token found in the environment"
+                        );
+                    }
+                    authProvider = new PersonalAccessTokenAuthProvider(
                         normalizeHost(config.host),
-                        config,
+                        config.token,
                         this.cli
                     );
                 }
