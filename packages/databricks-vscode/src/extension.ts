@@ -232,6 +232,17 @@ function registerUnityCatalog(
     );
 }
 
+function registerDocsView(context: ExtensionContext): void {
+    const docsViewTreeDataProvider = new DocsViewTreeDataProvider();
+    context.subscriptions.push(
+        window.registerTreeDataProvider(
+            "databricksDocsView",
+            docsViewTreeDataProvider
+        ),
+        docsViewTreeDataProvider
+    );
+}
+
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
@@ -287,6 +298,33 @@ export async function activate(
             quickstartCommands.openQuickstartCommand(),
             quickstartCommands
         )
+    );
+
+    // Utils. Registered early (before the remote-mode branch below returns) so
+    // that views shared between the normal and remote flows - such as the docs
+    // view, which invokes "databricks.utils.openExternal" - work in both.
+    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.utils.openExternal",
+            utilCommands.openExternalCommand(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.utils.goToDefinition",
+            utilCommands.goToDefinition(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.utils.copy",
+            utilCommands.copyToClipboardCommand(),
+            utilCommands
+        ),
+        telemetry.registerCommand("databricks.call", (fn) => {
+            if (fn) {
+                fn();
+            }
+        })
     );
 
     if (
@@ -463,6 +501,7 @@ export async function activate(
             telemetry,
             connectRemote
         );
+        registerDocsView(context);
 
         connectRemote();
 
@@ -1159,14 +1198,7 @@ export async function activate(
         debugWorkflowFactory
     );
 
-    const docsViewTreeDataProvider = new DocsViewTreeDataProvider();
-    context.subscriptions.push(
-        window.registerTreeDataProvider(
-            "databricksDocsView",
-            docsViewTreeDataProvider
-        ),
-        docsViewTreeDataProvider
-    );
+    registerDocsView(context);
 
     showQuickStartOnFirstUse(context).catch((e) => {
         logging.NamedLogger.getOrCreate("Extension").error(
@@ -1174,31 +1206,6 @@ export async function activate(
             e
         );
     });
-
-    // Utils
-    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
-    context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.utils.openExternal",
-            utilCommands.openExternalCommand(),
-            utilCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.utils.goToDefinition",
-            utilCommands.goToDefinition(),
-            utilCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.utils.copy",
-            utilCommands.copyToClipboardCommand(),
-            utilCommands
-        ),
-        telemetry.registerCommand("databricks.call", (fn) => {
-            if (fn) {
-                fn();
-            }
-        })
-    );
 
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema

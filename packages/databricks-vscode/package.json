@@ -569,7 +569,7 @@
                 {
                     "id": "databricksDocsView",
                     "name": "Documentation",
-                    "when": "databricks.context.activated && !databricks.context.remoteMode"
+                    "when": "databricks.context.activated"
                 }
             ]
         },
