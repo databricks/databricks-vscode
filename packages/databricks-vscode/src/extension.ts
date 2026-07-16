@@ -269,23 +269,6 @@ export async function activate(
             );
         }
 
-        // Auto-open the file the user was editing locally when the tunnel was
-        // started, if it resolves in the remote workspace. Forwarded out of
-        // band via env var since the CLI has no file flag; best-effort only.
-        const remoteOpenFile = process.env["DATABRICKS_REMOTE_OPEN_FILE"];
-        if (remoteOpenFile) {
-            try {
-                const uri = Uri.file(remoteOpenFile);
-                await workspace.fs.stat(uri);
-                await window.showTextDocument(uri);
-            } catch (e) {
-                logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
-                    "Skipping remote auto-open of file (not found remotely)",
-                    {remoteOpenFile}
-                );
-            }
-        }
-
         customWhenContext.setActivated(true);
         return;
     }

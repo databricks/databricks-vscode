@@ -218,10 +218,6 @@ export class SshCommands implements Disposable {
             DATABRICKS_REMOTE_HOME_FOLDER: `/Users/${userName}`,
             /* eslint-enable @typescript-eslint/naming-convention */
         };
-        const activeFile = window.activeTextEditor?.document.uri.fsPath;
-        if (activeFile) {
-            env["DATABRICKS_REMOTE_OPEN_FILE"] = activeFile;
-        }
 
         const terminal = window.createTerminal({
             name: "Databricks SSH Tunnel",
