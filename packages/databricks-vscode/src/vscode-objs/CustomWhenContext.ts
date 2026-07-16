@@ -116,4 +116,12 @@ export class CustomWhenContext {
             value
         );
     }
+
+    setIsCursor(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.isCursor",
+            value
+        );
+    }
 }

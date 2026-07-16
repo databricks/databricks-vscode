@@ -45,11 +45,24 @@ function getEscapedCommandAndAgrs(
     return {cmd, args, options};
 }
 
+export interface ExecFileOptions {
+    /**
+     * Close the child's stdin immediately after spawning. Node's `execFile`
+     * gives the child an open stdin pipe that never receives EOF, so any CLI
+     * command that prompts for confirmation (e.g. `aitools update`) blocks
+     * forever waiting on input. Ending stdin delivers EOF so the prompt
+     * resolves instead of hanging. Only set this for non-interactive commands
+     * that we never feed input to.
+     */
+    closeStdin?: boolean;
+}
+
 export async function cancellableExecFile(
     file: string,
     args: string[],
     options: Omit<SpawnOptionsWithoutStdio, "signal"> = {},
-    cancellationToken?: CancellationToken
+    cancellationToken?: CancellationToken,
+    execOptions: ExecFileOptions = {}
 ): Promise<{
     stdout: string;
     stderr: string;
@@ -58,10 +71,15 @@ export async function cancellableExecFile(
     cancellationToken?.onCancellationRequested(() => abortController.abort());
     const signal = abortController.signal;
 
-    const res = await promisify(execFileCb)(file, args, {
+    const promise = promisify(execFileCb)(file, args, {
         ...options,
         signal,
     });
+    if (execOptions.closeStdin) {
+        // `promisify(execFile)` exposes the spawned child on `.child`.
+        (promise as any).child?.stdin?.end();
+    }
+    const res = await promise;
     return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
 }
 
@@ -69,7 +87,8 @@ export const execFile = async (
     file: string,
     args: string[],
     options: Omit<SpawnOptionsWithoutStdio, "signal"> = {},
-    cancellationToken?: CancellationToken
+    cancellationToken?: CancellationToken,
+    execOptions: ExecFileOptions = {}
 ): Promise<{
     stdout: string;
     stderr: string;
@@ -84,7 +103,8 @@ export const execFile = async (
         cmd,
         escapedArgs,
         escapedOptions,
-        cancellationToken
+        cancellationToken,
+        execOptions
     );
 };
 
@@ -104,6 +124,27 @@ export interface ConfigEntry {
 }
 
 export type SyncType = "full" | "incremental";
+
+export type AiToolsScope = "project" | "global";
+
+/** A single skill entry from `databricks aitools list --output json`. */
+export interface AiToolsSkill {
+    name: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    latest_version: string;
+    experimental: boolean;
+    /**
+     * Installed versions keyed by scope. Empty when the skill is not installed.
+     * e.g. `{ "project": "0.1.0" }` or `{ "global": "0.1.0" }`.
+     */
+    installed: Partial<Record<AiToolsScope, string>>;
+}
+
+/** Parsed output of `databricks aitools list --output json`. */
+export interface AiToolsListResult {
+    release: string;
+    skills: AiToolsSkill[];
+}
 export class ProcessError extends Error {
     constructor(
         message: string,
@@ -466,6 +507,125 @@ export class CliWrapper {
             ...this.getLoggingArguments(),
         ]);
         return stdout;
+    }
+
+    private aitoolsEnv(): Record<string, string | undefined> {
+        return {
+            ...EnvVarGenerators.getEnvVarsForCli(this.extensionContext),
+            ...EnvVarGenerators.getProxyEnvVars(),
+        };
+    }
+
+    /**
+     * Install Databricks AI tools (skills + agent plugins) for the given scope.
+     *
+     * `cwd` should be the project root so that `--scope project` installs into
+     * `.databricks/aitools/skills` under the workspace. The CLI prints
+     * human-readable text (it ignores `--output json` for this subcommand), so
+     * success/failure is determined by the exit code (a non-zero exit rejects
+     * with a {@link ProcessError}).
+     */
+    @withLogContext(Loggers.Extension)
+    public async aitoolsInstall(
+        scope: AiToolsScope,
+        cwd: string,
+        cancellationToken?: CancellationToken,
+        @context ctx?: Context
+    ): Promise<void> {
+        const args = ["aitools", "install", "--scope", scope];
+        try {
+            await execFile(
+                this.cliPath,
+                args,
+                {cwd, env: this.aitoolsEnv()},
+                cancellationToken,
+                {closeStdin: true}
+            );
+        } catch (e: any) {
+            ctx?.logger?.error("Failed to install Databricks AI tools", e);
+            throw new ProcessError(e.message, e.code ?? null);
+        }
+    }
+
+    /**
+     * Update installed Databricks AI tools for the given scope.
+     */
+    @withLogContext(Loggers.Extension)
+    public async aitoolsUpdate(
+        scope: AiToolsScope,
+        cwd: string,
+        cancellationToken?: CancellationToken,
+        @context ctx?: Context
+    ): Promise<void> {
+        const args = ["aitools", "update", "--scope", scope];
+        try {
+            await execFile(
+                this.cliPath,
+                args,
+                {cwd, env: this.aitoolsEnv()},
+                cancellationToken,
+                {closeStdin: true}
+            );
+        } catch (e: any) {
+            ctx?.logger?.error("Failed to update Databricks AI tools", e);
+            throw new ProcessError(e.message, e.code ?? null);
+        }
+    }
+
+    /**
+     * Uninstall Databricks AI tools for the given scope.
+     */
+    @withLogContext(Loggers.Extension)
+    public async aitoolsUninstall(
+        scope: AiToolsScope,
+        cwd: string,
+        cancellationToken?: CancellationToken,
+        @context ctx?: Context
+    ): Promise<void> {
+        const args = ["aitools", "uninstall", "--scope", scope];
+        try {
+            await execFile(
+                this.cliPath,
+                args,
+                {cwd, env: this.aitoolsEnv()},
+                cancellationToken,
+                {closeStdin: true}
+            );
+        } catch (e: any) {
+            ctx?.logger?.error("Failed to uninstall Databricks AI tools", e);
+            throw new ProcessError(e.message, e.code ?? null);
+        }
+    }
+
+    /**
+     * List Databricks AI tools components as structured JSON.
+     *
+     * `aitools list` is the only aitools subcommand that emits real JSON
+     * (`aitools update --check` and `install` print text). We use it both to
+     * detect whether an update is available (any installed skill whose
+     * `installed[scope]` differs from `latest_version`) and to read the current
+     * release.
+     */
+    @withLogContext(Loggers.Extension)
+    public async aitoolsList(
+        cwd: string,
+        @context ctx?: Context
+    ): Promise<AiToolsListResult> {
+        const args = ["aitools", "list", "--output", "json"];
+        let res;
+        try {
+            res = await execFile(
+                this.cliPath,
+                args,
+                {cwd, env: this.aitoolsEnv()},
+                undefined,
+                {closeStdin: true}
+            );
+        } catch (e: any) {
+            ctx?.logger?.error("Failed to list Databricks AI tools", e);
+            throw new ProcessError(e.message, e.code ?? null);
+        }
+        return JSON.parse(res.stdout) as AiToolsListResult;
     }
 
     async getBundleCommandEnvVars(

@@ -19,6 +19,7 @@ import {onError} from "../utils/onErrorDecorator";
 import {BundleInitWizard} from "./BundleInitWizard";
 import {EventReporter, Events, Telemetry} from "../telemetry";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {AiToolsManager} from "../aitools/AiToolsManager";
 import {promptToSelectActiveProjectFolder} from "./activeBundleUtils";
 
 export class BundleProjectManager {
@@ -50,7 +51,8 @@ export class BundleProjectManager {
         private configModel: ConfigModel,
         private bundleFileSet: BundleFileSet,
         private workspaceFolderManager: WorkspaceFolderManager,
-        private telemetry: Telemetry
+        private telemetry: Telemetry,
+        private aiToolsManager?: AiToolsManager
     ) {
         this.disposables.push(
             this.workspaceFolderManager.onDidChangeActiveProjectFolder(
@@ -332,7 +334,11 @@ export class BundleProjectManager {
 
     @onError({popup: {prefix: "Failed to initialize new Databricks project"}})
     public async initNewProject() {
-        const bundleInitWizard = new BundleInitWizard(this.cli, this.telemetry);
+        const bundleInitWizard = new BundleInitWizard(
+            this.cli,
+            this.telemetry,
+            this.aiToolsManager
+        );
         const authProvider =
             this.connectionManager.databricksWorkspace?.authProvider;
         const parentFolder = await bundleInitWizard.initNewProject(

@@ -34,6 +34,9 @@ async function main() {
             launchArgs: [tmpDir, "--user-data-dir", tmpDir],
             extensionTestsEnv: {
                 [EXTENSION_DEVELOPMENT]: "true",
+                ...(process.env.MOCHA_GREP
+                    ? {MOCHA_GREP: process.env.MOCHA_GREP}
+                    : {}),
             },
         });
     } catch (err) {

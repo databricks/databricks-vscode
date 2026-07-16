@@ -4,9 +4,9 @@ import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
-import {writeFile, readFile} from "node:fs/promises";
+import {writeFile, readFile, mkdtemp, rm} from "node:fs/promises";
 import {when, spy, reset, instance, mock} from "ts-mockito";
-import {CliWrapper, waitForProcess} from "./CliWrapper";
+import {cancellableExecFile, CliWrapper, waitForProcess} from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
@@ -56,6 +56,26 @@ describe(__filename, function () {
     it("should embed a working databricks CLI", async () => {
         const result = await execFile(cliPath, ["--help"]);
         assert.ok(result.stdout.indexOf("databricks") > 0);
+    });
+
+    it("aitoolsList returns parsed JSON from the bundled CLI", async () => {
+        const cli = createCliWrapper();
+        const tmpDir = await mkdtemp(path.join(os.tmpdir(), "aitools-cli-"));
+        try {
+            const result = await cli.aitoolsList(tmpDir);
+            // The bundled CLI reports the release and the full skill catalog,
+            // each with a latest_version and an installed map, even when nothing
+            // is installed in the (empty) temp dir.
+            assert.ok(typeof result.release === "string");
+            assert.ok(Array.isArray(result.skills));
+            assert.ok(result.skills.length > 0);
+            const skill = result.skills[0];
+            assert.ok(typeof skill.name === "string");
+            assert.ok(typeof skill.latest_version === "string");
+            assert.ok(typeof skill.installed === "object");
+        } finally {
+            await rm(tmpDir, {recursive: true, force: true});
+        }
     });
 
     it("should resolve the platform-specific CLI binary name", () => {
@@ -307,6 +327,29 @@ token = dapitest5678
             assert.deepStrictEqual(runCmd, expected);
             throw e;
         }
+    });
+});
+
+describe("cancellableExecFile closeStdin", () => {
+    // `cat` with no args reads stdin until EOF. Without closeStdin the child's
+    // stdin pipe stays open forever and the call hangs; closeStdin sends EOF so
+    // it completes. This mirrors why `aitools update` hung on launch when it
+    // prompted for confirmation.
+    it("completes a stdin-reading process when closeStdin is set", async () => {
+        const {stdout} = await cancellableExecFile("cat", [], {}, undefined, {
+            closeStdin: true,
+        });
+        assert.strictEqual(stdout, "");
+    });
+
+    it("hangs on a stdin-reading process without closeStdin", async () => {
+        const raced = await Promise.race([
+            cancellableExecFile("cat", []).then(() => "completed"),
+            new Promise((resolve) =>
+                setTimeout(() => resolve("timed-out"), 500)
+            ),
+        ]);
+        assert.strictEqual(raced, "timed-out");
     });
 });
 

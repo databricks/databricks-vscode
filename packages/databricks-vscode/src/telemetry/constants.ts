@@ -25,6 +25,9 @@ export enum Events {
     DBCONNECT_RUN = "dbconnectRun",
     OPEN_RESOURCE_EXTERNALLY = "openResourceExternally",
     PYTHON_ENV_SETUP_DETECTED = "python_env.setup.detected",
+    AITOOLS_INSTALL = "aitoolsInstall",
+    AITOOLS_UPDATE = "aitoolsUpdate",
+    AITOOLS_UNINSTALL = "aitoolsUninstall",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -43,6 +46,13 @@ export type BundleRunType =
 export type WorkflowTaskType = "python" | "notebook" | "unknown";
 export type LaunchType = "run" | "debug";
 export type ComputeType = "cluster" | "serverless";
+export type AiToolsScope = "project" | "global";
+
+/**
+ * Where an AI tools install was triggered from: the first-load modal prompt or
+ * the manual affordance in the configuration side pane.
+ */
+export type AiToolsInstallSource = "modal" | "sidePane";
 
 // Package-manager / interpreter unions are owned by the pure detection module
 // (the single source of truth) and re-exported here so the event schema and the
@@ -166,9 +176,14 @@ export class EventTypes {
     [Events.BUNDLE_INIT]: EventType<
         {
             success: boolean;
+            hasAiTools?: boolean;
         } & DurationMeasurement
     > = {
         comment: "Initialize a new bundle project",
+        hasAiTools: {
+            comment:
+                "Whether Databricks AI tools are already installed when the project is initialized",
+        },
     };
     [Events.BUNDLE_SUB_PROJECTS]: EventType<{
         count: number;
@@ -224,6 +239,53 @@ export class EventTypes {
         comment: "An external resource URL was opened",
         type: {
             comment: "The resource type",
+        },
+    };
+    [Events.AITOOLS_INSTALL]: EventType<
+        {
+            success: boolean;
+            scope: AiToolsScope;
+            source?: AiToolsInstallSource;
+        } & DurationMeasurement
+    > = {
+        comment: "Install Databricks AI tools",
+        success: {
+            comment: "true if the install succeeded, false otherwise",
+        },
+        scope: {
+            comment: "The install scope (project or global)",
+        },
+        source: {
+            comment:
+                "Where the install was triggered from: 'modal' (first-load prompt) or 'sidePane' (manual click in the configuration view)",
+        },
+    };
+    [Events.AITOOLS_UPDATE]: EventType<
+        {
+            success: boolean;
+            scope: AiToolsScope;
+        } & DurationMeasurement
+    > = {
+        comment: "Update Databricks AI tools",
+        success: {
+            comment: "true if the update succeeded, false otherwise",
+        },
+        scope: {
+            comment: "The update scope (project or global)",
+        },
+    };
+    [Events.AITOOLS_UNINSTALL]: EventType<
+        {
+            success: boolean;
+            scope: AiToolsScope;
+        } & DurationMeasurement
+    > = {
+        comment: "Uninstall Databricks AI tools",
+        success: {
+            comment: "true if the uninstall succeeded, false otherwise",
+        },
+        scope: {
+            comment: "The uninstall scope (project or global)",
         },
     };
     [Events.PYTHON_ENV_SETUP_DETECTED]: EventType<{
