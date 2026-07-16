@@ -333,74 +333,155 @@ async function checkOutputFile(
     await fs.rm(filePath);
 }
 
-// Reads, via the VS Code API, how many code cells across the open notebook
-// documents have started but not finished executing, plus a short per-cell
-// summary. "Run All" is expected to drive every code cell to a terminal
-// `executionSummary`; a cell stuck at `executionOrder=<not run>` after the
-// earlier cells completed is the signature of Run-All failing to advance.
-// Selector-independent (same mechanism as dumpOpenNotebookCells).
-async function getNotebookCellProgress(): Promise<{
-    total: number;
-    notRun: number;
-    summary: string;
-}> {
-    try {
-        return await browser.executeWorkbench((vscode) => {
-            const docs = vscode.workspace.notebookDocuments ?? [];
-            let total = 0;
-            let notRun = 0;
-            const lines: string[] = [];
-            for (const doc of docs) {
-                for (const cell of doc.getCells()) {
-                    // cell.kind === 2 is a code cell.
-                    if (cell.kind !== 2) {
-                        continue;
-                    }
-                    total += 1;
-                    const order = cell.executionSummary?.executionOrder;
-                    if (order === undefined) {
-                        notRun += 1;
-                    }
-                    lines.push(
-                        `#${cell.index} order=${order ?? "<not run>"} ` +
-                            `success=${
-                                cell.executionSummary?.success ?? "<n/a>"
-                            }`
+// Executes exactly ONE code cell of an open notebook by index, via the VS Code
+// CORE command `notebook.cell.execute`, then waits until that cell reaches a
+// TERMINAL executionSummary (executionOrder assigned AND success is a boolean).
+//
+// Driving cells one-by-one bypasses "Run All"'s cell-to-cell chaining, which is
+// orchestrated entirely by VS Code core + the Jupyter extension (this extension
+// registers no NotebookController) and intermittently stalls after the first
+// serverless-DBConnect cell in the headless CI renderer, stranding later cells
+// at `<not run>`. Executing + gating per cell removes that dependency.
+//
+// Fails CLOSED: a cell that never starts trips the waitUntil timeout with a
+// precise message; a cell that runs but raises trips the success assertion.
+async function runNotebookCellAndWait(
+    notebookUri: string,
+    cellIndex: number,
+    timeout = 180_000
+) {
+    await browser.executeWorkbench(
+        async (vscode, uriStr, idx) => {
+            const uri = vscode.Uri.parse(uriStr);
+            await vscode.commands.executeCommand("notebook.cell.execute", {
+                ranges: [{start: idx, end: idx + 1}],
+                document: uri,
+            });
+        },
+        notebookUri,
+        cellIndex
+    );
+
+    let last = "<none>";
+    await browser.waitUntil(
+        async () => {
+            const state = await browser.executeWorkbench(
+                (vscode, uriStr, idx) => {
+                    const doc = (vscode.workspace.notebookDocuments ?? []).find(
+                        (d: any) => d.uri.toString() === uriStr
                     );
-                }
-            }
-            return {total, notRun, summary: lines.join("; ")};
-        });
-    } catch (e) {
-        console.log("could not read notebook cell progress:", e);
-        return {total: 0, notRun: 0, summary: "<unavailable>"};
-    }
+                    if (!doc) {
+                        return {found: false, order: null, success: null};
+                    }
+                    const s = doc.getCells()[idx]?.executionSummary;
+                    return {
+                        found: true,
+                        order: s?.executionOrder ?? null,
+                        success: s?.success ?? null,
+                    };
+                },
+                notebookUri,
+                cellIndex
+            );
+            last = JSON.stringify(state);
+            // Terminal == executionOrder assigned AND success is a boolean.
+            return (
+                state.found && state.order !== null && state.success !== null
+            );
+        },
+        {
+            timeout,
+            interval: 1000,
+            timeoutMsg: `notebook cell #${cellIndex} never reached a terminal execution state (last=${last})`,
+        }
+    );
+
+    const ok = await browser.executeWorkbench(
+        (vscode, uriStr, idx) =>
+            (vscode.workspace.notebookDocuments ?? [])
+                .find((d: any) => d.uri.toString() === uriStr)
+                ?.getCells()[idx]?.executionSummary?.success ?? null,
+        notebookUri,
+        cellIndex
+    );
+    assert.strictEqual(
+        ok,
+        true,
+        `notebook cell #${cellIndex} executed but FAILED (success=false)`
+    );
 }
 
-// Waits until every code cell in the open notebook documents has left the
-// "<not run>" state (i.e. Run All actually advanced through all cells). This
-// turns a silent 120s/180s output-file timeout into a precise, fast
-// "N/M cells never ran" signal, so a genuine Run-All-chaining failure surfaces
-// clearly instead of masquerading as a missing output file. Best-effort: if the
-// cell state can't be read it resolves so the downstream file assertions remain
-// the source of truth.
-async function waitForAllCellsExecuted(timeout = 120_000) {
-    let last = {total: 0, notRun: 0, summary: "<unavailable>"};
-    try {
-        await browser.waitUntil(
-            async () => {
-                last = await getNotebookCellProgress();
-                return last.total > 0 && last.notRun === 0;
-            },
-            {timeout, interval: 2000}
-        );
-    } catch {
-        console.log(
-            `Run All did not advance through all cells within ${timeout}ms: ` +
-                `${last.notRun}/${last.total} still <not run> — cells: ` +
-                `[${last.summary}]`
-        );
-    }
+// Fail-closed gate for the append-only Interactive Window used by the Databricks
+// `.py` notebook. Unlike a real `.ipynb`, the Interactive Window has no per-cell
+// re-execute command, so we still trigger it via "Jupyter: Run All Cells" and
+// gate here. Scopes to the interactive-window document (uri scheme
+// `vscode-interactive`) so a stale `.ipynb` left open by an earlier test cannot
+// satisfy the count. Waits until at least `minCodeCells` code cells reach a
+// terminal executionSummary and asserts none failed — promoting the old
+// best-effort log into a HARD, deterministic failure if Run All stalls after the
+// first Spark cell, instead of a silent 180s output-file timeout.
+async function waitForInteractiveCellsTerminal(
+    minCodeCells: number,
+    timeout = 180_000
+) {
+    let last = "<none>";
+    await browser.waitUntil(
+        async () => {
+            const r = await browser.executeWorkbench((vscode, min) => {
+                let terminal = 0;
+                let failed = 0;
+                let total = 0;
+                const lines: string[] = [];
+                for (const doc of vscode.workspace.notebookDocuments ?? []) {
+                    // Interactive Window docs use the vscode-interactive scheme.
+                    if (doc.uri.scheme !== "vscode-interactive") {
+                        continue;
+                    }
+                    for (const cell of doc.getCells()) {
+                        if (cell.kind !== 2) {
+                            continue; // code cells only
+                        }
+                        total += 1;
+                        const s = cell.executionSummary;
+                        const isTerminal =
+                            s?.executionOrder !== undefined &&
+                            s?.success !== undefined;
+                        if (isTerminal) {
+                            terminal += 1;
+                            if (s?.success === false) {
+                                failed += 1;
+                            }
+                        }
+                        lines.push(
+                            `#${cell.index} order=${
+                                s?.executionOrder ?? "-"
+                            } success=${s?.success ?? "-"}`
+                        );
+                    }
+                }
+                return {
+                    terminal,
+                    failed,
+                    total,
+                    reachedMin: terminal >= min,
+                    summary: lines.join("; "),
+                };
+            }, minCodeCells);
+            last = JSON.stringify(r);
+            // A cell that ran and raised must fail immediately, not time out.
+            assert.strictEqual(
+                r.failed,
+                0,
+                `an interactive-window cell FAILED: ${r.summary}`
+            );
+            return r.reachedMin;
+        },
+        {
+            timeout,
+            interval: 2000,
+            timeoutMsg: `Interactive Window did not advance through all cells within ${timeout}ms (need ${minCodeCells} terminal code cells); last=${last}`,
+        }
+    );
 }
 
 describe("Run files on serverless compute", async function () {
@@ -716,15 +797,18 @@ describe("Run files on serverless compute", async function () {
         await checkOutputFile(output, "hello world", 180_000);
     });
 
-    // NOTE: this test can be flaky on the serverless shard. With the kernel now
-    // starting reliably (ipykernel+jupyter+notebook installed into .venv), it
-    // still intermittently fails because a notebook cell occasionally does not
-    // complete/emit its output within the wait — it has been observed passing on
-    // one OS and failing on the other across otherwise-identical runs
-    // (Win-pass/Linux-fail and vice versa). Left enabled since it usually
-    // passes; treat an isolated failure here as flakiness, not a regression.
     it("should run a notebook with dbconnect", async () => {
         await openFile("notebook.ipynb");
+
+        const nbUri = await browser.executeWorkbench(
+            (vscode) =>
+                vscode.window.activeNotebookEditor?.notebook.uri.toString()
+        );
+        assert(nbUri, "notebook.ipynb did not open as a NotebookDocument");
+
+        // Issue Run All once purely to surface the kernel quick-pick; we then
+        // drive cells individually below, so whether Run All chains or not is
+        // irrelevant.
         await executeCommandWhenAvailable("Notebook: Run All");
 
         // The two-step kernel quick-pick ("Python Environments..." -> ".venv")
@@ -758,22 +842,22 @@ describe("Run files on serverless compute", async function () {
             }
         );
 
-        // Surface a Run-All-chaining stall (first cell succeeds but later cells
-        // stay <not run>) as an explicit, early signal rather than a silent
-        // output-file timeout below.
-        await waitForAllCellsExecuted(180_000);
-
+        // Drive each cell explicitly and wait for it to reach a terminal state,
+        // rather than trusting Run All to chain from cell #0 to cell #1 (the
+        // headless renderer intermittently stalls that advance). Cell #0 runs a
+        // DBConnect query -> notebook-output.json; it pays the cold serverless
+        // session/kernel-bind cost, so give it the larger budget.
+        await runNotebookCellAndWait(nbUri, 0, 180_000);
         const firstCellOutput = path.join(
             projectDir,
             "nested",
             "notebook-output.json"
         );
-        // The first cell triggers a cold serverless DBConnect session plus a
-        // kernel bind, which is measurably slower on the Windows shard — give
-        // it a larger budget. Once the session is warm the second cell uses the
-        // default timeout.
         await checkOutputFile(firstCellOutput, "hello world", 180_000);
 
+        // Cell #1 exercises the %run MAGIC path (`%run "./hello.py"`) ->
+        // file-output.json. Session is warm now, so the default budget suffices.
+        await runNotebookCellAndWait(nbUri, 1, 120_000);
         const secondCellOutput = path.join(
             projectDir,
             "nested",
@@ -782,18 +866,21 @@ describe("Run files on serverless compute", async function () {
         await checkOutputFile(secondCellOutput, "hello world");
     });
 
-    // NOTE: this test can be flaky on the serverless shard. It exercises the
-    // Databricks SQL magic (`%sql` -> `_sqldf`); the kernel starts reliably now
-    // (ipykernel+jupyter+notebook in .venv), but the output file is sometimes
-    // not produced within the wait. Left enabled; treat an isolated failure here
-    // as flakiness in the notebook-magic execution path rather than a regression.
+    // Exercises the Databricks SQL magic (`%sql` -> `_sqldf`) and the `%run`
+    // magic. The Databricks `.py` notebook runs in an append-only Interactive
+    // Window, which has no per-cell re-execute command, so we trigger it via
+    // "Jupyter: Run All Cells" and hard-gate on all cells reaching a terminal
+    // state before checking outputs.
     it("should run a databricks notebook with dbconnect and handle magic comments", async () => {
         await openFile("databricks-notebook.py");
         await executeCommandWhenAvailable("Jupyter: Run All Cells");
 
-        // Surface a Run-All-chaining stall as an explicit, early signal rather
-        // than a silent output-file timeout below.
-        await waitForAllCellsExecuted(180_000);
+        // databricks-notebook.py has 4 executable regions: spark.sql().show(),
+        // the %sql magic, _sqldf.toPandas(), and %run. Fail closed if Run All
+        // stalls after the first Spark cell (a headless-renderer chaining issue)
+        // — a deterministic "N/M cells never ran" failure instead of a silent
+        // output-file timeout. Larger budget covers the cold serverless start.
+        await waitForInteractiveCellsTerminal(4, 240_000);
 
         const sqlOutputFile = path.join(
             projectDir,
