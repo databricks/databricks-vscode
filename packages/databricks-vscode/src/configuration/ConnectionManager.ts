@@ -289,6 +289,12 @@ export class ConnectionManager implements Disposable {
      */
     async connectFromEnvironment(authProvider?: AuthProvider): Promise<void> {
         await this.loginLogoutMutex.synchronise(async () => {
+            // We intentionally inline the connect/disconnect steps here rather
+            // than delegating to _connect()/disconnect(): both of those acquire
+            // loginLogoutMutex, which is non-reentrant, so calling them while we
+            // already hold it would deadlock. We also deliberately skip the
+            // sync/cluster/config-project machinery they run, since remote mode
+            // only needs a workspace client for the Unity Catalog view.
             this._connectionError = undefined;
             this.updateState("CONNECTING");
             try {
