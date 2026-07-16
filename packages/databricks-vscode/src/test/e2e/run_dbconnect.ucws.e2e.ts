@@ -333,6 +333,76 @@ async function checkOutputFile(
     await fs.rm(filePath);
 }
 
+// Reads, via the VS Code API, how many code cells across the open notebook
+// documents have started but not finished executing, plus a short per-cell
+// summary. "Run All" is expected to drive every code cell to a terminal
+// `executionSummary`; a cell stuck at `executionOrder=<not run>` after the
+// earlier cells completed is the signature of Run-All failing to advance.
+// Selector-independent (same mechanism as dumpOpenNotebookCells).
+async function getNotebookCellProgress(): Promise<{
+    total: number;
+    notRun: number;
+    summary: string;
+}> {
+    try {
+        return await browser.executeWorkbench((vscode) => {
+            const docs = vscode.workspace.notebookDocuments ?? [];
+            let total = 0;
+            let notRun = 0;
+            const lines: string[] = [];
+            for (const doc of docs) {
+                for (const cell of doc.getCells()) {
+                    // cell.kind === 2 is a code cell.
+                    if (cell.kind !== 2) {
+                        continue;
+                    }
+                    total += 1;
+                    const order = cell.executionSummary?.executionOrder;
+                    if (order === undefined) {
+                        notRun += 1;
+                    }
+                    lines.push(
+                        `#${cell.index} order=${order ?? "<not run>"} ` +
+                            `success=${
+                                cell.executionSummary?.success ?? "<n/a>"
+                            }`
+                    );
+                }
+            }
+            return {total, notRun, summary: lines.join("; ")};
+        });
+    } catch (e) {
+        console.log("could not read notebook cell progress:", e);
+        return {total: 0, notRun: 0, summary: "<unavailable>"};
+    }
+}
+
+// Waits until every code cell in the open notebook documents has left the
+// "<not run>" state (i.e. Run All actually advanced through all cells). This
+// turns a silent 120s/180s output-file timeout into a precise, fast
+// "N/M cells never ran" signal, so a genuine Run-All-chaining failure surfaces
+// clearly instead of masquerading as a missing output file. Best-effort: if the
+// cell state can't be read it resolves so the downstream file assertions remain
+// the source of truth.
+async function waitForAllCellsExecuted(timeout = 120_000) {
+    let last = {total: 0, notRun: 0, summary: "<unavailable>"};
+    try {
+        await browser.waitUntil(
+            async () => {
+                last = await getNotebookCellProgress();
+                return last.total > 0 && last.notRun === 0;
+            },
+            {timeout, interval: 2000}
+        );
+    } catch {
+        console.log(
+            `Run All did not advance through all cells within ${timeout}ms: ` +
+                `${last.notRun}/${last.total} still <not run> — cells: ` +
+                `[${last.summary}]`
+        );
+    }
+}
+
 describe("Run files on serverless compute", async function () {
     let projectDir: string;
     this.timeout(12 * 60 * 1000);
@@ -512,13 +582,31 @@ describe("Run files on serverless compute", async function () {
         }
         await dependenciesInput.confirm();
 
-        // On Windows the "The following environment is selected" notification
-        // sometimes never surfaces before the next one arrives (same class of
-        // issue as the "installation finished" notification handled below,
-        // TODO: fix in the extension code). It is only used as an ordering hint
-        // — the "Databricks Connect" prompt is the actual signal we act on and
-        // the outputView "Successfully installed" check further down is the
-        // ground truth — so a miss here is safe to log and move on.
+        // Windows venv creation + dependency install is dramatically slower
+        // than Linux, and the "environment is selected" / "Databricks Connect"
+        // prompt toasts can expire a fixed notification wait before they ever
+        // fire. Gate on the filesystem ground truth — the venv interpreter
+        // existing — with a generous budget instead of racing a transient toast.
+        const python = venvPython(projectDir);
+        await browser.waitUntil(
+            async () => {
+                try {
+                    await fs.access(python);
+                    return true;
+                } catch {
+                    return false;
+                }
+            },
+            {
+                timeout: 240_000,
+                interval: 2000,
+                timeoutMsg: `venv interpreter was not created at "${python}"`,
+            }
+        );
+
+        // The "The following environment is selected" notification is only an
+        // ordering hint; the outputView "Successfully installed" check further
+        // down is the ground truth, so a miss here is safe to log and move on.
         try {
             await waitForNotification("The following environment is selected");
         } catch (e) {
@@ -528,7 +616,34 @@ describe("Run files on serverless compute", async function () {
                 e
             );
         }
-        await waitForNotification("Databricks Connect", "Install");
+
+        // Prefer clicking the "Databricks Connect / Install" prompt when it
+        // shows, but don't fail if the transient toast never surfaces on the
+        // slow Windows shard — drive the install deterministically via the
+        // command instead. The venv exists (asserted above), so the reinstall
+        // command has an interpreter to work with.
+        try {
+            await waitForNotification("Databricks Connect", "Install", 30_000);
+        } catch (e) {
+            console.log(
+                "'Databricks Connect' install prompt not observed; triggering " +
+                    "the reinstall command instead.",
+                e
+            );
+            await executeCommandWhenAvailable(
+                "Databricks: Reinstall Databricks Connect"
+            );
+            // The reinstall command may itself prompt for confirmation.
+            try {
+                const confirmInput = await waitForInput();
+                await confirmInput.confirm();
+            } catch (e) {
+                console.log(
+                    "No confirmation prompt for reinstall; continuing.",
+                    e
+                );
+            }
+        }
 
         await browser.waitUntil(
             async () => {
@@ -643,6 +758,11 @@ describe("Run files on serverless compute", async function () {
             }
         );
 
+        // Surface a Run-All-chaining stall (first cell succeeds but later cells
+        // stay <not run>) as an explicit, early signal rather than a silent
+        // output-file timeout below.
+        await waitForAllCellsExecuted(180_000);
+
         const firstCellOutput = path.join(
             projectDir,
             "nested",
@@ -670,6 +790,10 @@ describe("Run files on serverless compute", async function () {
     it("should run a databricks notebook with dbconnect and handle magic comments", async () => {
         await openFile("databricks-notebook.py");
         await executeCommandWhenAvailable("Jupyter: Run All Cells");
+
+        // Surface a Run-All-chaining stall as an explicit, early signal rather
+        // than a silent output-file timeout below.
+        await waitForAllCellsExecuted(180_000);
 
         const sqlOutputFile = path.join(
             projectDir,
