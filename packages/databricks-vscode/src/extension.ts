@@ -4,7 +4,6 @@ import {
     env,
     ExtensionContext,
     extensions,
-    Uri,
     window,
     workspace,
 } from "vscode";
