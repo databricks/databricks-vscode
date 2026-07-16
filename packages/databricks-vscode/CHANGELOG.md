@@ -1,3 +1,12 @@
+# Release: v2.12.3
+
+## packages/databricks-vscode
+
+## (2026-07-14)
+
+-   Always pass `--host` on databricks-cli login so custom workspace hosts are not redirected to the public login page (#2009) ([d2f0518](https://github.com/databricks/databricks-vscode/commit/d2f0518)) — fixes the OAuth sign-in regression reported in [#2011](https://github.com/databricks/databricks-vscode/issues/2011)
+-   Update Databricks CLI to v1.7.0 (#1999) ([f2e56f2](https://github.com/databricks/databricks-vscode/commit/f2e56f2)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes since v1.2.0; notably the direct deployment engine is now GA and the default for new deployments
+
 # Release: v2.12.2
 
 ## packages/databricks-vscode

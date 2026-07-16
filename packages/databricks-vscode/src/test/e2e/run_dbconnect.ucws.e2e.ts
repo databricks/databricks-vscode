@@ -97,6 +97,113 @@ async function listFilesRecursive(dir: string, base = dir): Promise<string[]> {
     return out;
 }
 
+// Dumps every open notebook document's cell outputs straight from the VS Code
+// API. This is the ground truth for "did the cell error out?": a cell that
+// raised shows up here as an `error` output item with the name/message/stack,
+// and a cell that never ran has an empty `executionOrder`. We read it via
+// `executeWorkbench` (runs inside the extension host with the full `vscode`
+// API) so it does not depend on any DOM selector — unlike the Output-channel
+// scrape below, whose `select[title="Tasks"]` locator is stale on current
+// VS Code and silently returns nothing.
+//
+// We iterate `workspace.notebookDocuments` rather than just
+// `window.activeNotebookEditor` because the Databricks `.py` "notebook"
+// (`# Databricks notebook source` + `# MAGIC %sql`) runs in an Interactive
+// Window whose document is NOT the active notebook editor — the focused editor
+// is the plain `.py` text editor, so the active-editor-only view reports "no
+// notebook" and misses exactly the failing cell we need to see.
+async function dumpOpenNotebookCells() {
+    try {
+        // NB: everything here must stay inline arrow functions. This callback is
+        // serialized and run in the extension host, so a named nested function
+        // (e.g. `const formatCell = () => …`) gets an esbuild `__name(...)`
+        // wrapper that is undefined there and throws "__name is not defined".
+        const cells = await browser.executeWorkbench((vscode) => {
+            const docs = vscode.workspace.notebookDocuments ?? [];
+            if (docs.length === 0) {
+                return "<no open notebook documents>";
+            }
+            return docs
+                .map((doc: any) => {
+                    const header = `notebook "${doc.uri?.toString()}" (${
+                        doc.notebookType
+                    }), ${doc.cellCount} cell(s)`;
+                    const cellLines = doc.getCells().map((cell: any) => {
+                        const outputs = (cell.outputs ?? []).flatMap((o: any) =>
+                            (o.items ?? []).map(
+                                (item: any) =>
+                                    `    [${item.mime}] ${Buffer.from(
+                                        item.data
+                                    ).toString("utf8")}`
+                            )
+                        );
+                        return [
+                            `  cell #${cell.index} (${
+                                cell.kind === 2 ? "code" : "markup"
+                            }), ` +
+                                `executionOrder=${
+                                    cell.executionSummary?.executionOrder ??
+                                    "<not run>"
+                                }, ` +
+                                `success=${
+                                    cell.executionSummary?.success ?? "<n/a>"
+                                }`,
+                            ...outputs,
+                        ].join("\n");
+                    });
+                    return [header, ...cellLines].join("\n");
+                })
+                .join("\n\n");
+        });
+        console.log(
+            "=== open notebook documents (via VS Code API) ===\n",
+            cells
+        );
+    } catch (e) {
+        console.log("could not read open notebook documents:", e);
+    }
+}
+
+// Dumps VS Code's on-disk logs (extension host + every Output-channel log the
+// window has written). The Jupyter/DBConnect kernel error lands in one of these
+// files even when the in-UI Output panel can't be scraped, so this is a
+// selector-independent way to capture it.
+async function dumpVscodeLogFiles() {
+    let logsRoot: string | undefined;
+    try {
+        logsRoot = await browser.executeWorkbench(
+            (vscode) => vscode.env.logUri?.fsPath
+        );
+    } catch (e) {
+        console.log("could not resolve VS Code logs directory:", e);
+        return;
+    }
+    if (!logsRoot) {
+        console.log("VS Code logs directory unavailable");
+        return;
+    }
+    let logFiles: string[];
+    try {
+        logFiles = (await listFilesRecursive(logsRoot)).filter((f) =>
+            f.endsWith(".log")
+        );
+    } catch (e) {
+        console.log(`could not list logs under "${logsRoot}":`, e);
+        return;
+    }
+    console.log(`=== VS Code log files under "${logsRoot}" ===`, logFiles);
+    for (const rel of logFiles) {
+        try {
+            const text = await fs.readFile(path.join(logsRoot, rel), "utf-8");
+            if (text.trim().length > 0) {
+                console.log(`=== log "${rel}" ===\n${text}`);
+            }
+        } catch (e) {
+            console.log(`could not read log "${rel}":`, e);
+        }
+    }
+}
+
 // Dumps whatever we can observe about the notebook run when an output file
 // never shows up (or never gets the expected content). Runs only on failure,
 // so the extra work never slows down the happy path.
@@ -104,9 +211,10 @@ async function listFilesRecursive(dir: string, base = dir): Promise<string[]> {
 // It answers the two questions a missing output file raises: (1) did the cell
 // write the file somewhere else? — we list the whole workspace tree, since a
 // cwd mismatch would drop it in the project root rather than `nested/`; and
-// (2) did the cell error out? — the notebook kernel logs to its own VS Code
-// Output channel (not the default one), so we enumerate every channel and dump
-// each, which surfaces a NameError/kernel failure wherever it landed.
+// (2) did the cell error out (or never run)? — we read the notebook's cell
+// outputs and execution summaries via the VS Code API, and dump the on-disk
+// log files. Both are selector-independent. The Output-channel scrape is kept
+// last as best-effort, since its locator is stale on current VS Code.
 async function dumpNotebookDiagnostics(
     filePath: string,
     expectedContent: string,
@@ -136,9 +244,20 @@ async function dumpNotebookDiagnostics(
         }
     }
 
-    // Every Output channel, so the notebook kernel's cell error (which does not
-    // go to the default channel) is captured rather than whatever channel
-    // happens to be selected.
+    // Cell outputs + execution summaries for every open notebook document via
+    // the VS Code API (the reliable source for a cell error/traceback or a
+    // never-run cell, including the Interactive Window used by the `.py`
+    // Databricks notebook).
+    await dumpOpenNotebookCells();
+
+    // On-disk VS Code logs (extension host + Output-channel logs), which
+    // capture the kernel/DBConnect error even when the panel can't be scraped.
+    await dumpVscodeLogFiles();
+
+    // Best-effort Output-channel scrape. Kept for completeness, but its
+    // `select[title="Tasks"]` locator is stale on current VS Code and often
+    // returns nothing — so a failure here is logged and ignored, never fatal to
+    // the rest of the dump.
     try {
         const workbench = await browser.getWorkbench();
         const view = await workbench.getBottomBar().openOutputView();
