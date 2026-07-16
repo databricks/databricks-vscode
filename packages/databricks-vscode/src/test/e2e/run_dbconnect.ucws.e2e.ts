@@ -363,24 +363,20 @@ async function readCellStates(typeFilter = ""): Promise<{
                     }
                     total += 1;
                     const s = cell.executionSummary;
-                    const hasOrder =
-                        s != null &&
-                        s.executionOrder !== undefined &&
-                        s.executionOrder !== null;
+                    const order = s?.executionOrder;
+                    const success = s?.success;
+                    const hasOrder = order !== undefined && order !== null;
                     const hasSuccess =
-                        s != null &&
-                        s.success !== undefined &&
-                        s.success !== null;
+                        success !== undefined && success !== null;
                     if (hasOrder && hasSuccess) {
                         terminal += 1;
-                        if (s.success === false) {
+                        if (success === false) {
                             failed += 1;
                         }
                     }
                     lines.push(
-                        `#${cell.index} order=${
-                            (s && s.executionOrder) ?? "-"
-                        } success=${(s && s.success) ?? "-"}`
+                        `#${cell.index} order=${order ?? "-"} ` +
+                            `success=${success ?? "-"}`
                     );
                 }
             }
