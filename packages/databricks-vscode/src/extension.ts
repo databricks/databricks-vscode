@@ -300,33 +300,6 @@ export async function activate(
         )
     );
 
-    // Utils. Registered early (before the remote-mode branch below returns) so
-    // that views shared between the normal and remote flows - such as the docs
-    // view, which invokes "databricks.utils.openExternal" - work in both.
-    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
-    context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.utils.openExternal",
-            utilCommands.openExternalCommand(),
-            utilCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.utils.goToDefinition",
-            utilCommands.goToDefinition(),
-            utilCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.utils.copy",
-            utilCommands.copyToClipboardCommand(),
-            utilCommands
-        ),
-        telemetry.registerCommand("databricks.call", (fn) => {
-            if (fn) {
-                fn();
-            }
-        })
-    );
-
     if (
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
@@ -353,6 +326,33 @@ export async function activate(
     const workspaceFolderManager = new WorkspaceFolderManager(
         customWhenContext,
         stateStorage
+    );
+
+    // Utils. Registered before the remote-mode branch below returns so that
+    // views shared between the normal and remote flows - such as the docs view,
+    // which invokes "databricks.utils.openExternal" - work in both.
+    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.utils.openExternal",
+            utilCommands.openExternalCommand(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.utils.goToDefinition",
+            utilCommands.goToDefinition(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.utils.copy",
+            utilCommands.copyToClipboardCommand(),
+            utilCommands
+        ),
+        telemetry.registerCommand("databricks.call", (fn) => {
+            if (fn) {
+                fn();
+            }
+        })
     );
 
     // Add the databricks binary to the PATH environment variable in terminals

@@ -279,8 +279,11 @@ export class ConnectionManager implements Disposable {
     }
 
     /**
-     * Connect using the ambient environment credentials resolved by the SDK's
-     * default credential chain (environment variables, metadata service, etc.).
+     * Connect using the host and token that the SDK resolves from the ambient
+     * environment (e.g. the DATABRICKS_HOST / DATABRICKS_TOKEN variables that
+     * the Databricks Remote SSH session injects). Only PAT credentials are
+     * supported here - the remote environment always provides a token, so we
+     * fail fast if one isn't present rather than attempting other auth types.
      *
      * Unlike the normal login flow this does not depend on a bundle/config
      * project (host + target) and skips all sync/cluster/config machinery. It's
