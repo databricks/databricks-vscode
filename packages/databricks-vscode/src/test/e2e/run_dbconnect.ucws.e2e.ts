@@ -393,23 +393,25 @@ async function readCellStates(typeFilter = ""): Promise<{
 }
 
 // Waits until at least `minCodeCells` code cells reach a terminal state, with
-// none failed. "Run All" cell-to-cell chaining is orchestrated by VS Code core +
-// the Jupyter extension (this extension registers no NotebookController) and
-// intermittently stalls after the first serverless-DBConnect cell in the
-// headless CI renderer, stranding later cells at `<not run>`. Since Run All
-// reliably *executes* cells (it just flakily fails to *advance*), we re-issue
-// `runCommand` whenever cells stall for `reRunEveryMs`, nudging the run forward.
+// none failed, after a "Run All" has been issued by the caller. Fails CLOSED
+// with a LIVE cell-state dump built at throw time (not at construction, which is
+// why an earlier `last=<none>` message was useless): a cell that never runs
+// times out with the observed states; a cell that runs and raises trips the
+// success assertion.
 //
-// Fails CLOSED with a LIVE cell-state dump built at throw time (not at
-// construction, which is why the earlier `last=<none>` message was useless): a
-// cell that never runs times out with the observed states; a cell that runs and
-// raises trips the success assertion immediately.
+// NOTE: this gate does NOT re-issue Run All when cells stall. On serverless
+// DBConnect, "Run All" reproducibly executes only the FIRST cell and never
+// advances (see databricks/databricks-vscode#2024), and re-issuing makes it
+// worse — it resets the already-run cell in an `.ipynb`, and appends fresh
+// never-run cells to the append-only Interactive Window. The two tests that hit
+// that stall are `it.skip`-ped pending #2024; this helper stays as the honest,
+// fail-closed gate for when they are re-enabled.
 async function gateNotebookCellsComplete(
     runCommand: string,
     minCodeCells: number,
-    opts: {typeFilter?: string; timeout?: number; reRunEveryMs?: number} = {}
+    opts: {typeFilter?: string; timeout?: number} = {}
 ) {
-    const {typeFilter = "", timeout = 240_000, reRunEveryMs = 90_000} = opts;
+    const {typeFilter = "", timeout = 240_000} = opts;
     // The condition resolves on EITHER outcome — enough cells terminal, or any
     // cell failed — and we assert afterwards. We can't assert *inside* the
     // condition to fail fast: wdio's waitUntil treats a thrown error like a
@@ -422,25 +424,11 @@ async function gateNotebookCellsComplete(
         failed: number;
         summary: string;
     } = {total: 0, terminal: 0, failed: 0, summary: "<no read yet>"};
-    let lastReRun = Date.now();
     try {
         await browser.waitUntil(
             async () => {
                 last = await readCellStates(typeFilter);
-                if (last.failed > 0 || last.terminal >= minCodeCells) {
-                    return true;
-                }
-                // Cells stalled — re-issue Run All to nudge the queue forward.
-                if (Date.now() - lastReRun >= reRunEveryMs) {
-                    console.log(
-                        `Cells stalled (${last.terminal}/${minCodeCells} ` +
-                            `terminal); re-issuing "${runCommand}". States: ` +
-                            last.summary
-                    );
-                    await executeCommandWhenAvailable(runCommand);
-                    lastReRun = Date.now();
-                }
-                return false;
+                return last.failed > 0 || last.terminal >= minCodeCells;
             },
             {timeout, interval: 3000}
         );
@@ -773,7 +761,15 @@ describe("Run files on serverless compute", async function () {
         await checkOutputFile(output, "hello world", 180_000);
     });
 
-    it("should run a notebook with dbconnect", async () => {
+    // TODO(databricks/databricks-vscode#2024): Skipped — on serverless DBConnect
+    // "Notebook: Run All" reproducibly executes only the first cell and never
+    // advances (cell #0 reaches success=true and writes its output, cell #1 stays
+    // <not run>), on both Linux and Windows. This is not the DBConnect progress
+    // widget (the first cell completes and the kernel goes idle) and the extension
+    // registers no NotebookController, so the Run-All advance is owned by VS Code
+    // core + the Jupyter extension. Re-enable once #2024 is root-caused/fixed. The
+    // gateNotebookCellsComplete helper below is the fail-closed gate to use then.
+    it.skip("should run a notebook with dbconnect", async () => {
         await openFile("notebook.ipynb");
 
         const nbUri = await browser.executeWorkbench(
@@ -782,8 +778,8 @@ describe("Run files on serverless compute", async function () {
         );
         assert(nbUri, "notebook.ipynb did not open as a NotebookDocument");
 
-        // Run All starts execution and surfaces the kernel quick-pick; the gate
-        // below re-issues it if the headless renderer stalls the cell advance.
+        // Run All starts execution and surfaces the kernel quick-pick, then the
+        // gate below waits for both cells to reach a terminal state.
         await executeCommandWhenAvailable("Notebook: Run All");
 
         // The two-step kernel quick-pick ("Python Environments..." -> ".venv")
@@ -819,10 +815,9 @@ describe("Run files on serverless compute", async function () {
 
         // notebook.ipynb has 2 code cells (cell #0 -> notebook-output.json;
         // cell #1 is `%run "./hello.py"` -> file-output.json). Gate on both
-        // reaching a terminal state, re-issuing "Notebook: Run All" if the
-        // headless renderer stalls the advance between them. Fails closed if a
-        // cell never runs or raises; the output-file checks below are the real
-        // behavioural assertions. Larger budget covers the cold serverless start.
+        // reaching a terminal state. Fails closed if a cell never runs or raises;
+        // the output-file checks below are the real behavioural assertions.
+        // Larger budget covers the cold serverless start.
         await gateNotebookCellsComplete("Notebook: Run All", 2, {
             timeout: 240_000,
         });
@@ -845,20 +840,21 @@ describe("Run files on serverless compute", async function () {
 
     // Exercises the Databricks SQL magic (`%sql` -> `_sqldf`) and the `%run`
     // magic. The Databricks `.py` notebook runs in an append-only Interactive
-    // Window, which has no per-cell re-execute command, so we trigger it via
-    // "Jupyter: Run All Cells" and hard-gate on all cells reaching a terminal
-    // state before checking outputs.
-    it("should run a databricks notebook with dbconnect and handle magic comments", async () => {
+    // Window, triggered via "Jupyter: Run All Cells".
+    //
+    // TODO(databricks/databricks-vscode#2024): Skipped for the same reason as
+    // "should run a notebook with dbconnect" — on serverless DBConnect only the
+    // first cell executes; cells #2-#4 (the %sql -> _sqldf and %run regions) stay
+    // <not run>, deterministically on both OSes. Re-enable once #2024 is fixed.
+    it.skip("should run a databricks notebook with dbconnect and handle magic comments", async () => {
         await openFile("databricks-notebook.py");
         await executeCommandWhenAvailable("Jupyter: Run All Cells");
 
         // databricks-notebook.py has 4 executable regions: spark.sql().show(),
         // the %sql magic, _sqldf.toPandas(), and %run. Gate on all 4 reaching a
-        // terminal state, re-issuing "Jupyter: Run All Cells" if the headless
-        // renderer stalls the advance after the first Spark cell. Scope to the
-        // Interactive Window doc (notebookType "interactive") so a stale .ipynb
-        // from the previous test can't satisfy the count. Fails closed; larger
-        // budget covers the cold serverless start.
+        // terminal state. Scope to the Interactive Window doc (notebookType
+        // "interactive") so a stale .ipynb from the previous test can't satisfy
+        // the count. Fails closed; larger budget covers the cold serverless start.
         await gateNotebookCellsComplete("Jupyter: Run All Cells", 4, {
             typeFilter: "interactive",
             timeout: 240_000,
