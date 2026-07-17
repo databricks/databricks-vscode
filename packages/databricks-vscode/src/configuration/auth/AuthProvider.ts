@@ -7,6 +7,7 @@ import {
 } from "@databricks/sdk-experimental";
 import {CancellationToken, ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
+import {getProxyAgent} from "../../utils/envVarGenerators";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -56,6 +57,10 @@ export abstract class AuthProvider {
         return new WorkspaceClient(config, {
             product: "databricks-vscode",
             productVersion: extensionVersion,
+            // Route SDK traffic through the user's proxy (env vars and the
+            // http.proxy VS Code setting) so auth/OAuth/API calls work behind
+            // corporate proxies. See getProxyAgent for bypass/SSL behaviour.
+            agent: getProxyAgent(),
         });
     }
 

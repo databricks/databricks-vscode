@@ -9,8 +9,9 @@ import {
     getCommonDatabricksEnvVars,
     getDbConnectEnvVars,
     getProxyEnvVars,
+    syncProxyEnvVars,
 } from "./envVarGenerators";
-import {Uri} from "vscode";
+import {Uri, workspace} from "vscode";
 import assert from "assert";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 
@@ -83,6 +84,90 @@ describe(__filename, () => {
             HTTP_PROXY: "http://example.com",
             HTTPS_PROXY: "https://example.com",
             NO_PROXY: "https://example.com",
+        });
+    });
+
+    describe("syncProxyEnvVars", () => {
+        const originalGetConfiguration = workspace.getConfiguration;
+
+        function stubHttpConfig(values: {
+            proxy?: string;
+            proxyStrictSSL?: boolean;
+        }) {
+            (workspace as any).getConfiguration = (section?: string) => {
+                if (section === "http") {
+                    return {
+                        get: (key: string) => (values as any)[key],
+                    };
+                }
+                return originalGetConfiguration(section);
+            };
+        }
+
+        afterEach(() => {
+            (workspace as any).getConfiguration = originalGetConfiguration;
+        });
+
+        it("bridges http.proxy setting into proxy env vars", () => {
+            delete process.env.HTTP_PROXY;
+            delete process.env.HTTPS_PROXY;
+            delete process.env.http_proxy;
+            delete process.env.https_proxy;
+            stubHttpConfig({proxy: "http://proxy.corp.example.com:8080"});
+
+            syncProxyEnvVars();
+
+            assert.equal(
+                process.env.HTTPS_PROXY,
+                "http://proxy.corp.example.com:8080"
+            );
+            assert.equal(
+                process.env.HTTP_PROXY,
+                "http://proxy.corp.example.com:8080"
+            );
+        });
+
+        it("does not clobber an explicitly set proxy env var", () => {
+            delete process.env.HTTP_PROXY;
+            delete process.env.http_proxy;
+            process.env.HTTPS_PROXY = "http://env.example.com:3128";
+            stubHttpConfig({proxy: "http://setting.example.com:8080"});
+
+            syncProxyEnvVars();
+
+            // Existing env var wins over the VS Code setting.
+            assert.equal(
+                process.env.HTTPS_PROXY,
+                "http://env.example.com:3128"
+            );
+            // The unset one is still populated from the setting.
+            assert.equal(
+                process.env.HTTP_PROXY,
+                "http://setting.example.com:8080"
+            );
+        });
+
+        it("sets DATABRICKS_SDK_PROXY_STRICT_SSL from http.proxyStrictSSL", () => {
+            stubHttpConfig({proxyStrictSSL: false});
+            syncProxyEnvVars();
+            assert.equal(process.env.DATABRICKS_SDK_PROXY_STRICT_SSL, "false");
+
+            stubHttpConfig({proxyStrictSSL: true});
+            syncProxyEnvVars();
+            assert.equal(process.env.DATABRICKS_SDK_PROXY_STRICT_SSL, "true");
+        });
+
+        it("leaves proxy env vars untouched when http.proxy is unset", () => {
+            delete process.env.HTTP_PROXY;
+            delete process.env.HTTPS_PROXY;
+            delete process.env.http_proxy;
+            delete process.env.https_proxy;
+            stubHttpConfig({});
+
+            syncProxyEnvVars();
+
+            assert.equal(process.env.HTTPS_PROXY, undefined);
+            assert.equal(process.env.HTTP_PROXY, undefined);
         });
     });
 

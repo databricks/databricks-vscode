@@ -73,7 +73,10 @@ import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigu
 import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
-import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
+import {
+    getCLIDependenciesEnvVars,
+    syncProxyEnvVars,
+} from "./utils/envVarGenerators";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {PackageManagerTelemetry} from "./language/PackageManagerTelemetry";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
@@ -279,20 +282,12 @@ export async function activate(
         customWhenContext.updateShowClusterView();
     }
 
-    function updateStrictSSLEnv() {
-        const httpConfig = workspace.getConfiguration("http");
-        const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
-        process.env["DATABRICKS_SDK_PROXY_STRICT_SSL"] = proxyStrictSSL
-            ? "true"
-            : "false";
-    }
-
     updateFeatureContexts();
-    updateStrictSSLEnv();
+    syncProxyEnvVars();
     context.subscriptions.push(
         workspace.onDidChangeConfiguration(() => {
             updateFeatureContexts();
-            updateStrictSSLEnv();
+            syncProxyEnvVars();
         })
     );
 

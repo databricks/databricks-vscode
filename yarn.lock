@@ -4041,6 +4041,7 @@ __metadata:
     mocha: ^11.7.6
     nyc: ^18.0.0
     prettier: ^3.1.1
+    proxy-agent: ^6.5.0
     quicktype-core: ^23.0.0
     shell-quote: ^1.8.4
     tmp-promise: ^3.0.3

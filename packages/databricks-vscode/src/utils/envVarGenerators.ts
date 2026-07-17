@@ -1,7 +1,8 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
-import {ExtensionContext, Uri} from "vscode";
+import {ExtensionContext, Uri, workspace} from "vscode";
 import {logging, Headers} from "@databricks/sdk-experimental";
+import {ProxyAgent} from "proxy-agent";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {TerraformMetadata} from "./terraformUtils";
 
@@ -148,6 +149,60 @@ export function getProxyEnvVars() {
         NO_PROXY: process.env.NO_PROXY || process.env.no_proxy,
         /* eslint-enable @typescript-eslint/naming-convention */
     };
+}
+
+/**
+ * Build an HTTP(S) agent that routes SDK requests through the user's proxy.
+ *
+ * `ProxyAgent` resolves the proxy per-request from the HTTP_PROXY/HTTPS_PROXY/
+ * NO_PROXY environment variables (via `proxy-from-env`), so a single shared
+ * instance transparently handles NO_PROXY / localhost bypass and the
+ * no-proxy-configured case (falls through to a direct connection). The
+ * `http.proxy` VS Code setting is bridged into these env vars during activation
+ * (see `syncProxyEnvVars`).
+ *
+ * `rejectUnauthorized` mirrors the `http.proxyStrictSSL` setting so corporate
+ * proxies terminating TLS with a custom CA can be trusted when the user opts in.
+ */
+export function getProxyAgent(): ProxyAgent {
+    const proxyStrictSSL = workspace
+        .getConfiguration("http")
+        .get<boolean>("proxyStrictSSL");
+    return new ProxyAgent({
+        rejectUnauthorized: proxyStrictSSL !== false,
+    });
+}
+
+/**
+ * Sync VS Code's proxy-related settings into process.env so that everything
+ * reading the environment behaves consistently: the bundled CLI, Databricks
+ * Connect (Python), and the SDK's ProxyAgent.
+ *
+ * - `http.proxyStrictSSL` -> DATABRICKS_SDK_PROXY_STRICT_SSL (consumed by the
+ *   SDK's fetch implementation).
+ * - `http.proxy` -> HTTPS_PROXY / HTTP_PROXY, but only when the corresponding
+ *   OS env var is not already set. An explicitly-set env var always wins so we
+ *   never clobber the user's environment; NO_PROXY is left untouched.
+ *
+ * Safe to call repeatedly (e.g. on configuration change).
+ */
+export function syncProxyEnvVars() {
+    const httpConfig = workspace.getConfiguration("http");
+
+    const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
+    process.env["DATABRICKS_SDK_PROXY_STRICT_SSL"] = proxyStrictSSL
+        ? "true"
+        : "false";
+
+    const httpProxy = httpConfig.get<string>("proxy")?.trim();
+    if (httpProxy) {
+        if (!process.env.HTTPS_PROXY && !process.env.https_proxy) {
+            process.env["HTTPS_PROXY"] = httpProxy;
+        }
+        if (!process.env.HTTP_PROXY && !process.env.http_proxy) {
+            process.env["HTTP_PROXY"] = httpProxy;
+        }
+    }
 }
 
 export function getEnvVarsForCli(
