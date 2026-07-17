@@ -1,9 +1,21 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {ApiClient, Time, TimeUnits, compute} from "@databricks/databricks-sdk";
+import {
+    ApiClient,
+    Time,
+    TimeUnits,
+    compute,
+} from "@databricks/sdk-experimental";
 import {Cluster} from "./Cluster";
 import * as assert from "node:assert";
-import {mock, when, instance, deepEqual, verify, anything} from "ts-mockito";
+import {
+    mock,
+    when,
+    instance,
+    verify,
+    anything,
+    objectContaining,
+} from "ts-mockito";
 import {getMockTestCluster} from "./test/ClusterFixtures";
 import {TokenFixture} from "./test/TokenFixtures";
 import FakeTimers from "@sinonjs/fake-timers";
@@ -14,13 +26,16 @@ describe(__filename, function () {
     let mockedClient: ApiClient;
     let mockedCluster: Cluster;
     let testClusterDetails: compute.ClusterDetails;
-    let fakeTimer: FakeTimers.InstalledClock;
+    let fakeTimer: FakeTimers.Clock;
 
     beforeEach(async () => {
         ({mockedCluster, mockedClient, testClusterDetails} =
             await getMockTestCluster());
 
-        fakeTimer = FakeTimers.install();
+        // fake-timers v13+ fakes all timers by default and warns when a native
+        // timer is cleared through the faked clock; opt into auto-cleanup so the
+        // clock silently tolerates native timers created outside the test.
+        fakeTimer = FakeTimers.install({shouldClearNativeTimers: true});
     });
 
     afterEach(() => {
@@ -30,10 +45,9 @@ describe(__filename, function () {
     it("calling start on a non terminated state should not throw an error", async () => {
         when(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                "GET",
-                deepEqual({
-                    cluster_id: testClusterDetails.cluster_id,
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
                 }),
                 anything()
             )
@@ -74,18 +88,20 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                anything(),
-                anything(),
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
                 anything()
             )
         ).times(6);
 
         verify(
             mockedClient.request(
-                "/api/2.1/clusters/start",
-                anything(),
-                anything(),
+                objectContaining({
+                    path: "/api/2.1/clusters/start",
+                    method: "POST",
+                }),
                 anything()
             )
         ).never();
@@ -94,10 +110,9 @@ describe(__filename, function () {
     it("should terminate cluster", async () => {
         when(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                "GET",
-                deepEqual({
-                    cluster_id: testClusterDetails.cluster_id,
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
                 }),
                 anything()
             )
@@ -118,10 +133,9 @@ describe(__filename, function () {
 
         when(
             mockedClient.request(
-                "/api/2.1/clusters/delete",
-                "POST",
-                deepEqual({
-                    cluster_id: testClusterDetails.cluster_id,
+                objectContaining({
+                    path: "/api/2.1/clusters/delete",
+                    method: "POST",
                 }),
                 anything()
             )
@@ -137,18 +151,20 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                anything(),
-                anything(),
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
                 anything()
             )
         ).times(3);
 
         verify(
             mockedClient.request(
-                "/api/2.1/clusters/delete",
-                anything(),
-                anything(),
+                objectContaining({
+                    path: "/api/2.1/clusters/delete",
+                    method: "POST",
+                }),
                 anything()
             )
         ).once();
@@ -157,10 +173,9 @@ describe(__filename, function () {
     it("should terminate non running clusters", async () => {
         when(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                "GET",
-                deepEqual({
-                    cluster_id: testClusterDetails.cluster_id,
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
                 }),
                 anything()
             )
@@ -190,18 +205,20 @@ describe(__filename, function () {
 
         verify(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                anything(),
-                anything(),
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
                 anything()
             )
         ).times(3);
 
         verify(
             mockedClient.request(
-                "/api/2.1/clusters/delete",
-                anything(),
-                anything(),
+                objectContaining({
+                    path: "/api/2.1/clusters/delete",
+                    method: "POST",
+                }),
                 anything()
             )
         ).once();
@@ -210,10 +227,9 @@ describe(__filename, function () {
     it("should cancel cluster start", async () => {
         const whenMockGetCluster = when(
             mockedClient.request(
-                "/api/2.1/clusters/get",
-                "GET",
-                deepEqual({
-                    cluster_id: testClusterDetails.cluster_id,
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
                 }),
                 anything()
             )
@@ -226,10 +242,9 @@ describe(__filename, function () {
 
         when(
             mockedClient.request(
-                "/api/2.1/clusters/delete",
-                "POST",
-                deepEqual({
-                    cluster_id: testClusterDetails.cluster_id,
+                objectContaining({
+                    path: "/api/2.1/clusters/delete",
+                    method: "POST",
                 }),
                 anything()
             )

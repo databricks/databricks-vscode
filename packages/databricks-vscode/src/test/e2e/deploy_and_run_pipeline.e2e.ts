@@ -117,7 +117,7 @@ describe("Deploy and run pipeline", async function () {
                 "Dataset 'test_table' defined as MATERIALIZED_VIEW."
             ) ||
                 labels.includes(
-                    "Dataset `test_table` defined as MATERIALIZED_VIEW."
+                    "Dataset `vscode_integration_test`.`test_table` defined as MATERIALIZED_VIEW."
                 ),
             "test_table item not found"
         );
@@ -143,11 +143,15 @@ describe("Deploy and run pipeline", async function () {
             datasets.push({label, description, item});
         }
         datasets.sort((a, b) => (a.label > b.label ? 1 : -1));
+
         assert.strictEqual(datasets.length, 2);
-        assert.strictEqual(datasets[0].label, "test_table");
-        assert.strictEqual(datasets[0].description, "materialized view");
-        assert.strictEqual(datasets[1].label, "test_view");
-        assert.strictEqual(datasets[1].description, "view");
+        assert.strictEqual(datasets[0].label, "test_view");
+        assert.strictEqual(datasets[0].description, "view");
+        assert.strictEqual(
+            datasets[1].label,
+            "vscode_integration_test.test_table"
+        );
+        assert.strictEqual(datasets[1].description, "");
     });
 
     it("should show expected schema definitions for a dataset", async () => {
@@ -156,7 +160,7 @@ describe("Deploy and run pipeline", async function () {
             "Pipelines",
             pipelineName,
             "Datasets",
-            "test_table"
+            "vscode_integration_test.test_table"
         );
         assert.strictEqual(schemaItems.length, 1);
         assert.strictEqual(await schemaItems[0].getLabel(), "1");

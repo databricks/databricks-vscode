@@ -1,5 +1,5 @@
 import assert from "assert";
-import {jobs} from "@databricks/databricks-sdk";
+import {jobs} from "@databricks/sdk-experimental";
 import {IntegrationTestSetup} from "./test/IntegrationTestSetup";
 import {WorkflowRun} from "./WorkflowRun";
 

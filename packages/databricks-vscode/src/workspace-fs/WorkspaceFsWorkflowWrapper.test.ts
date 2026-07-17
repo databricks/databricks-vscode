@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiError, WorkspaceClient, workspace} from "@databricks/databricks-sdk";
+import {
+    ApiError,
+    WorkspaceClient,
+    workspace,
+} from "@databricks/sdk-experimental";
 import {
     instance,
     mock,

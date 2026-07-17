@@ -22,7 +22,7 @@ export function normalizeHost(host: string): URL {
     }
     try {
         url = new URL(host);
-    } catch (e) {
+    } catch {
         throw new UrlError("Invalid host name");
     }
     if (url.protocol !== "https:") {
@@ -45,5 +45,16 @@ export function isGcpHost(url: URL): boolean {
 export function isAwsHost(url: URL): boolean {
     return !!url.hostname.match(
         /(\.cloud\.databricks\.com|\.dev\.databricks\.com)$/
+    );
+}
+
+export function isSpogHost(url: URL): boolean {
+    // SPOG hosts are *.databricks.com but not the standard cloud-specific subdomains
+    // already classified as AWS (*.cloud.databricks.com, *.dev.databricks.com)
+    // or GCP (*.gcp.databricks.com).
+    return (
+        !!url.hostname.match(/\.databricks\.com$/) &&
+        !isAwsHost(url) &&
+        !isGcpHost(url)
     );
 }

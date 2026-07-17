@@ -1,4 +1,4 @@
-import {Time, TimeUnits, logging} from "@databricks/databricks-sdk";
+import {Time, TimeUnits, logging} from "@databricks/sdk-experimental";
 import assert from "assert";
 import {mkdtemp, readFile} from "fs/promises";
 import {remove} from "fs-extra";

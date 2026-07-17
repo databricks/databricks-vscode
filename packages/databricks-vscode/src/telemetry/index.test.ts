@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import TelemetryReporter from "@vscode/extension-telemetry";
+import {TelemetryReporter} from "@vscode/extension-telemetry";
 import assert from "assert";
 import {mock, instance, capture, when} from "ts-mockito";
 import {Telemetry, getContextMetadata, toUserMetadata} from ".";
 import {Events, Metadata} from "./constants";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {ApiClient, Config} from "@databricks/databricks-sdk";
+import {ApiClient, Config} from "@databricks/sdk-experimental";
 
 describe(__filename, () => {
     let reporter: TelemetryReporter;

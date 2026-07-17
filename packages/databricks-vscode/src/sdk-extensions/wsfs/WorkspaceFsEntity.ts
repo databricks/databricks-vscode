@@ -5,8 +5,8 @@ import {
     WorkspaceClient,
     ApiError,
     logging,
-} from "@databricks/databricks-sdk";
-import {context, Context} from "@databricks/databricks-sdk/dist/context";
+} from "@databricks/sdk-experimental";
+import {context, Context} from "@databricks/sdk-experimental/dist/context";
 
 const {ExposedLoggers, withLogContext} = logging;
 
@@ -122,7 +122,10 @@ export abstract class WorkspaceFsEntity {
             return this;
         } catch (e: unknown) {
             if (e instanceof ApiError) {
-                if (e.errorCode === "RESOURCE_DOES_NOT_EXIST") {
+                if (
+                    e.errorCode === "RESOURCE_DOES_NOT_EXIST" ||
+                    e.statusCode === 404
+                ) {
                     return undefined;
                 }
             }
@@ -154,7 +157,8 @@ export abstract class WorkspaceFsEntity {
         } catch (e) {
             if (
                 e instanceof ApiError &&
-                e.errorCode === "RESOURCE_DOES_NOT_EXIST"
+                (e.errorCode === "RESOURCE_DOES_NOT_EXIST" ||
+                    e.statusCode === 404)
             ) {
                 return undefined;
             }
@@ -170,6 +174,14 @@ export abstract class WorkspaceFsEntity {
 
     get basename(): string {
         return posix.basename(this.path);
+    }
+
+    @withLogContext(ExposedLoggers.SDK)
+    async delete(recursive = false, @context ctx?: Context): Promise<void> {
+        await this._workspaceFsService.delete(
+            {path: this.path, recursive},
+            ctx
+        );
     }
 }
 

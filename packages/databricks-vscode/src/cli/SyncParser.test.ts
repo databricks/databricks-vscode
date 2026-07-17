@@ -1,4 +1,4 @@
-import "@databricks/databricks-sdk";
+import "@databricks/sdk-experimental";
 import assert from "assert";
 import {mock, instance, capture, reset} from "ts-mockito";
 import {EventEmitter} from "vscode";

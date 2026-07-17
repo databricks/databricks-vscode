@@ -5,9 +5,9 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
 import os from "node:os";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {SystemVariables} from "../vscode-objs/SystemVariables";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {EnvVarGenerators, FileUtils} from "../utils";
 import {Mutex} from "../locking/Mutex";
 import {ConfigModel} from "../configuration/models/ConfigModel";
@@ -163,7 +163,7 @@ export class DatabricksEnvFileManager implements Disposable {
         }
         try {
             await stat(this.userEnvPath.fsPath);
-        } catch (err) {
+        } catch {
             logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
                 `${this.userEnvPath.fsPath} does not exist. Not loading user env vars and continuing.`
             );

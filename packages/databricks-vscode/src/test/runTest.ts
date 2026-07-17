@@ -21,6 +21,7 @@ async function main() {
         const vscodeExecutablePath = await downloadAndUnzipVSCode({
             version: process.env.VSCODE_TEST_VERSION || "stable",
             cachePath,
+            timeout: 60000,
         });
 
         const tmpDir = os.tmpdir();

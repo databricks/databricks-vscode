@@ -1,17 +1,15 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-console */
-import type {Options} from "@wdio/types";
-
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import video from "wdio-video-reporter";
 import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
-import {Config, WorkspaceClient} from "@databricks/databricks-sdk";
+import {Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile as execFileCb} from "node:child_process";
-import {cpSync, mkdirSync, rmSync} from "node:fs";
+import {cpSync, mkdirSync, readdirSync, readFileSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
@@ -19,19 +17,41 @@ import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
 
+// WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
+// NODE_OPTIONS for every worker process. wdio-vscode-service installs the
+// Databricks extension by spawning the VS Code (Electron) `code` CLI, which
+// inherits that NODE_OPTIONS — and Electron hard-rejects `--import` in
+// NODE_OPTIONS ("Code.exe: --import is not allowed in NODE_OPTIONS"). The
+// extension install then fails and every spec dies with `Can't find view
+// control "CONFIGURATION"`. By the time this config module loads, tsx has
+// already registered its loader in-process, so we can strip `--import` from
+// the environment that child processes inherit without breaking transpilation.
+// Only do this in workers (WDIO_WORKER_ID is set): the launcher must keep
+// `--import` in NODE_OPTIONS so the workers it spawns still get tsx.
+if (
+    process.env.WDIO_WORKER_ID &&
+    process.env.NODE_OPTIONS?.includes("--import")
+) {
+    process.env.NODE_OPTIONS = process.env.NODE_OPTIONS.replace(
+        /\s*--import(?:=|\s+)\S+/g,
+        ""
+    ).trim();
+}
+
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const {version, name, engines} = packageJson;
+const {engines} = packageJson;
 
 const EXTENSIONS_DIR = path.resolve(tmpdir(), "extension test", "extension");
+const PACKAGE_ROOT = path.resolve(__dirname, "..", "..", "..");
 const VSIX_PATH = path.resolve(
-    __dirname,
-    "..",
-    "..",
-    "..",
-    `${name}-${version}.vsix`
+    PACKAGE_ROOT,
+    readFileSync(
+        path.resolve(PACKAGE_ROOT, ".build", "test-vsix-path"),
+        "utf-8"
+    ).trim()
 );
 const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
 
@@ -91,7 +111,7 @@ const execFile = async (
     return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
 };
 
-export const config: Options.Testrunner = {
+export const config: WebdriverIO.Config = {
     //
     // ====================
     // Runner Configuration
@@ -99,26 +119,14 @@ export const config: Options.Testrunner = {
     //
     //
     // =====================
-    // ts-node Configurations
+    // TypeScript Configuration
     // =====================
     //
-    // You can write tests using TypeScript to get autocompletion and type safety.
-    // You will need typescript and ts-node installed as devDependencies.
-    // WebdriverIO will automatically detect if these dependencies are installed
-    // and will compile your config and tests for you.
-    // If you need to configure how ts-node runs please use the
-    // environment variables for ts-node or use wdio config's autoCompileOpts section.
+    // WebdriverIO v9 transpiles TypeScript config and spec files via `tsx`
+    // (bundled with @wdio/cli). The tsconfig to use is passed on the CLI with
+    // `--tsConfigPath src/test/e2e/tsconfig.json` (see the `test:integ:extension`
+    // npm script), which replaces the v8 `autoCompileOpts`/ts-node mechanism.
     //
-
-    autoCompileOpts: {
-        autoCompile: true,
-        // see https://github.com/TypeStrong/ts-node#cli-and-programmatic-options
-        // for all available options
-        tsNodeOpts: {
-            transpileOnly: true,
-            project: path.join(__dirname, "tsconfig.json"),
-        },
-    },
 
     //
     // ==================
@@ -190,6 +198,15 @@ export const config: Options.Testrunner = {
                         "window.openFoldersInNewWindow": "off",
                         "extensions.autoCheckUpdates": false,
                         "extensions.autoUpdate": false,
+                        // ms-python.python is a hard extensionDependency, so its
+                        // language server always loads. In the headless CI display
+                        // the Jedi server repeatedly fails to connect and crashes,
+                        // and its "Python Jedi server crashed" toasts overlay UI
+                        // targets (e.g. the Output-channel <select title="Tasks">),
+                        // intercepting clicks. We don't need language features in
+                        // e2e, so disable the server (and experiments) at the source.
+                        "python.languageServer": "None",
+                        "python.experiments.enabled": false,
                     },
                 },
             },
@@ -412,9 +429,42 @@ export const config: Options.Testrunner = {
                 );
                 break;
         }
-        const extensionDependencies = packageJson.extensionDependencies.flatMap(
-            (item) => ["--install-extension", item]
-        );
+        // When EXTENSION_VSIX_DIR is set (CI with vendored VSIX files),
+        // resolve extensions from that directory instead of the marketplace.
+        const vsixDir = process.env.EXTENSION_VSIX_DIR;
+        const extensionDependencies: string[] = [];
+        for (const extId of packageJson.extensionDependencies) {
+            if (vsixDir) {
+                const targetPlatform = `${process.platform}-${process.arch}`;
+                const files = readdirSync(vsixDir);
+                const prefix = `${extId}-`;
+                const vsix =
+                    files.find(
+                        (f) =>
+                            f.startsWith(prefix) &&
+                            f.endsWith(`-${targetPlatform}.vsix`)
+                    ) ??
+                    files.find(
+                        (f) =>
+                            f.startsWith(prefix) &&
+                            f.endsWith("-universal.vsix")
+                    );
+                if (vsix) {
+                    console.log(`Using vendored VSIX for ${extId}: ${vsix}`);
+                    extensionDependencies.push(
+                        "--install-extension",
+                        path.resolve(vsixDir, vsix)
+                    );
+                } else {
+                    console.log(
+                        `WARNING: no vendored VSIX for ${extId}, falling back to marketplace`
+                    );
+                    extensionDependencies.push("--install-extension", extId);
+                }
+            } else {
+                extensionDependencies.push("--install-extension", extId);
+            }
+        }
 
         console.log("running vscode cli");
         const res = await execFile(cli, [

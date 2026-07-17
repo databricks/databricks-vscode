@@ -12,9 +12,9 @@ import {mkdir, cp, rm, readdir} from "fs/promises";
 import {glob} from "glob";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {Mutex} from "../../locking";
 import {MsPythonExtensionWrapper} from "../MsPythonExtensionWrapper";
 import {FileUtils} from "../../utils";
@@ -31,7 +31,7 @@ async function isDbnbTextEditor(editor?: TextEditor) {
             (await FileUtils.isNotebook(new LocalUri(editor.document.uri))) ===
                 "PY_DBNB"
         );
-    } catch (e) {
+    } catch {
         return false;
     }
 }

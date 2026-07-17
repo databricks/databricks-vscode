@@ -7,7 +7,7 @@ import {
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {Workbench} from "wdio-vscode-service";
-import {WorkspaceClient} from "@databricks/databricks-sdk";
+import {WorkspaceClient} from "@databricks/sdk-experimental";
 import {createProjectWithJob} from "./utils/dabsFixtures.ts";
 
 describe("Deploy and destroy", async function () {
@@ -106,7 +106,7 @@ describe("Deploy and destroy", async function () {
                         logs.includes("Bundle deployed successfully") &&
                         logs.includes("Bundle configuration refreshed")
                     );
-                } catch (e) {
+                } catch {
                     return false;
                 }
             },
@@ -164,7 +164,7 @@ describe("Deploy and destroy", async function () {
                         logs.includes("Bundle destroyed successfully") &&
                         logs.includes("Bundle configuration refreshed")
                     );
-                } catch (e) {
+                } catch {
                     return false;
                 }
             },

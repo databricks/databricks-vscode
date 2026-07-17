@@ -1,12 +1,12 @@
 import {posix} from "path";
-import {Context, context} from "@databricks/databricks-sdk/dist/context";
+import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {WorkspaceFsEntity} from "./WorkspaceFsEntity";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {isDirectory, isFile} from "./utils";
 
 export class WorkspaceFsDir extends WorkspaceFsEntity {
     override async generateUrl(host: URL): Promise<string> {
-        return `${host.host}/browse/folders/${this.details.object_id}`;
+        return `${host.origin}/browse/folders/${this.details.object_id}`;
     }
 
     public getAbsoluteChildPath(path: string) {
@@ -73,7 +73,7 @@ export class WorkspaceFsDir extends WorkspaceFsEntity {
     @logging.withLogContext(logging.ExposedLoggers.SDK)
     async createFile(
         path: string,
-        content: string,
+        content: string | Uint8Array,
         overwrite = true,
         @context ctx?: Context
     ) {

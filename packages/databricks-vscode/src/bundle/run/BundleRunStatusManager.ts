@@ -7,7 +7,7 @@ import {BundleRunStatus} from "./BundleRunStatus";
 import {PipelineRunStatus} from "./PipelineRunStatus";
 import {Resource, ResourceKey} from "../types";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 /**
  * This class monitors the cli bundle run output and record ids for runs. It also polls for status of the these runs.

@@ -12,10 +12,11 @@ import {
 const ViewSectionTypes = [
     "CLUSTERS",
     "CONFIGURATION",
-    "WORKSPACE EXPLORER",
+    "WORKSPACE FILE SYSTEM",
     "BUNDLE RESOURCE EXPLORER",
     "BUNDLE VARIABLES",
     "DOCUMENTATION",
+    "UNITY CATALOG",
 ] as const;
 export type ViewSectionType = (typeof ViewSectionTypes)[number];
 
@@ -42,11 +43,17 @@ export async function findViewSection(name: ViewSectionType) {
     const views =
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
     for (const v of views) {
-        const title = await v.getTitle();
+        let title = await v.getTitle();
         if (title === null) {
+            // VSCode 1.120+ no longer sets the 'title' HTML attribute on .title elements;
+            // fall back to reading the element's text content.
+            title = await (v as any).title$.getText();
+        }
+        console.log("View title:", title);
+        if (!title) {
             continue;
         }
-        if (title.toUpperCase() === name) {
+        if (title.toUpperCase().includes(name)) {
             return v;
         }
     }
@@ -103,15 +110,74 @@ export async function waitForTreeItems(
     }
 }
 
-export async function dismissNotifications() {
+/**
+ * Drains all VS Code notifications and closes the "What's New" CHANGELOG
+ * preview tab if the extension opened one on activation.
+ *
+ * A single dismissal pass is not sufficient in CI: notifications arrive
+ * asynchronously during extension activation, and on the Windows shard we
+ * observed late-arriving toasts intercepting clicks (e.g. quick-input widget
+ * not displayed, .monaco-select-box not clickable because the notification
+ * list covers it). We poll and dismiss until the notification list stays
+ * empty across two consecutive checks, or the overall timeout expires.
+ *
+ * We also close the CHANGELOG preview: `showWhatsNewPopup` in the extension
+ * fires `markdown.showPreview` on every activation with a fresh globalState
+ * (i.e. every CI run) and races test setup. On Windows it sometimes wins the
+ * race and steals the active-editor slot ("No editor with title
+ * 'vscode.bundlevars.json' found, available editor were: Preview CHANGELOG.md").
+ */
+export async function dismissNotifications({
+    timeoutMs = 8000,
+    quietMs = 500,
+}: {timeoutMs?: number; quietMs?: number} = {}) {
     const workbench = await browser.getWorkbench();
-    await sleep(1000);
-    const notifs = await workbench.getNotifications();
-    try {
-        for (const n of notifs) {
-            await n.dismiss();
+    const deadline = Date.now() + timeoutMs;
+    let consecutiveEmpty = 0;
+    while (Date.now() < deadline) {
+        let notifs;
+        try {
+            notifs = await workbench.getNotifications();
+        } catch {
+            notifs = [];
         }
-    } catch {}
+        if (notifs.length === 0) {
+            consecutiveEmpty += 1;
+            if (consecutiveEmpty >= 2) {
+                break;
+            }
+            await sleep(quietMs);
+            continue;
+        }
+        consecutiveEmpty = 0;
+        for (const n of notifs) {
+            try {
+                await n.dismiss();
+            } catch {
+                // Notification vanished between listing and dismiss — ignore.
+            }
+        }
+        await sleep(quietMs);
+    }
+
+    // Close the "What's New" CHANGELOG preview tab if the extension opened it.
+    try {
+        const editorView = workbench.getEditorView();
+        const tabs = await editorView.getOpenTabs();
+        for (const tab of tabs) {
+            const title = (await tab.getTitle()) ?? "";
+            if (/CHANGELOG\.md/i.test(title)) {
+                try {
+                    await editorView.closeEditor(title);
+                } catch {
+                    // Best-effort: a later test that opens its own editor will
+                    // still succeed because it targets a specific title.
+                }
+            }
+        }
+    } catch {
+        // Ignore: workbench editor view might not be ready yet.
+    }
 }
 
 export async function waitForSyncComplete() {
@@ -224,7 +290,7 @@ export async function waitForWorkflowWebview(
             try {
                 const webView = await workbench.getWebviewByTitle(title);
                 return webView !== undefined;
-            } catch (e) {
+            } catch {
                 return false;
             }
         },
@@ -247,9 +313,23 @@ export async function waitForWorkflowWebview(
         }
     );
 
-    const startTime = await browser.getTextByLabel("run-start-time");
-    console.log("Run start time:", startTime);
-    expect(startTime).not.toHaveText("-");
+    // The run start time renders as a "-" placeholder until the run details
+    // arrive, so poll until it is populated rather than asserting once.
+    // (The previous `expect(startTime).not.toHaveText("-")` was a no-op:
+    // toHaveText is an element matcher and startTime is a plain string, so it
+    // never actually asserted, which is why "-" slipped through on slower runs.)
+    await browser.waitUntil(
+        async () => {
+            const startTime = await browser.getTextByLabel("run-start-time");
+            console.log("Run start time:", startTime);
+            return startTime !== "-" && startTime.trim().length > 0;
+        },
+        {
+            timeout: 60_000,
+            interval: 1_000,
+            timeoutMsg: "Run start time did not populate (still '-')",
+        }
+    );
 
     await browser.waitUntil(
         async () => {
@@ -309,7 +389,11 @@ export async function executeCommandWhenAvailable(command: string) {
     });
 }
 
-export async function waitForNotification(message: string, action?: string) {
+export async function waitForNotification(
+    message: string,
+    action?: string,
+    timeoutMs = 60_000
+) {
     await browser.waitUntil(
         async () => {
             const workbench = await browser.getWorkbench();
@@ -328,7 +412,7 @@ export async function waitForNotification(message: string, action?: string) {
             return false;
         },
         {
-            timeout: 60_000,
+            timeout: timeoutMs,
             interval: 2000,
             timeoutMsg: `Notification with message "${message}" not found`,
         }
@@ -364,7 +448,7 @@ export async function waitForDeployment() {
                     logs.includes("Bundle deployed successfully") &&
                     logs.includes("Bundle configuration refreshed")
                 );
-            } catch (e) {
+            } catch {
                 return false;
             }
         },

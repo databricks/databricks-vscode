@@ -3,7 +3,7 @@ import {
     getContextParamIndex,
     logging,
     Context,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
 
 interface Props {
@@ -58,7 +58,7 @@ export function onError(props: OnErrorProps) {
                         },
                     };
                 }
-            } catch (e) {}
+            } catch {}
         }
         const originalMethod = descriptor.value;
 

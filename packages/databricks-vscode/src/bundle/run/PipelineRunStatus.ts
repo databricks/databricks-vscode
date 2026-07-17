@@ -9,11 +9,11 @@ import {
     Time,
     TimeUnits,
     WorkspaceClient,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 import {
     LinearRetryPolicy,
     RetriableError,
-} from "@databricks/databricks-sdk/dist/retries/retries";
+} from "@databricks/sdk-experimental/dist/retries/retries";
 import {Loggers} from "../../logger";
 
 function isRunning(status?: pipelines.UpdateInfoState) {

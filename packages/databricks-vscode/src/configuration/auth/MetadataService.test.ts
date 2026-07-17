@@ -10,7 +10,7 @@ import {
     MetadataServiceVersionHeader,
     RequestVisitor,
     logging,
-} from "@databricks/databricks-sdk";
+} from "@databricks/sdk-experimental";
 const {NamedLogger} = logging;
 
 describe(__filename, function () {

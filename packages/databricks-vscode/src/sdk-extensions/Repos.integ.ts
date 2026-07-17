@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import {CancellationToken, workspace} from "@databricks/databricks-sdk";
+import {CancellationToken, workspace} from "@databricks/sdk-experimental";
 import {IntegrationTestSetup} from "./test/IntegrationTestSetup";
-import {Context} from "@databricks/databricks-sdk/dist/context";
+import {Context} from "@databricks/sdk-experimental/dist/context";
 import * as assert from "node:assert";
 import {Repo} from "./Repos";
 import {randomUUID} from "node:crypto";
@@ -90,7 +90,9 @@ describe(__filename, function () {
 
         setTimeout(() => {
             token.isCancellationRequested = true;
-            listener && listener();
+            if (listener) {
+                listener();
+            }
         }, 100);
 
         // reponse should finish soon after cancellation

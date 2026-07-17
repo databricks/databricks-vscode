@@ -11,14 +11,22 @@ jobs:
       fail-fast: false
       matrix:
         arch:
-          - cli_arch: darwin_amd64
-            os: macos-latest
+          - cli_arch: linux_amd64
+            runner_group: databricks-protected-runner-group
+            runner_labels: linux-ubuntu-latest
           - cli_arch: windows_amd64
-            os: windows-latest
+            runner_group: databricks-protected-runner-group
+            runner_labels: windows-server-latest
         node-version: [22.x]
         vscode-version: [stable]
 
-    runs-on: ${{ matrix.arch.os }}
+    runs-on:
+      group: ${{ matrix.arch.runner_group }}
+      labels: ${{ matrix.arch.runner_labels }}
+
+    permissions:
+      id-token: write
+      contents: read
 
     env:
       VSCODE_TEST_VERSION: ${{ matrix.vscode-version }}
@@ -29,16 +37,22 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Obtain JFrog OIDC token
+        run: bash .github/scripts/jfrog-oidc-token.sh
+
+      - name: Configure JFrog npm registry
+        run: bash .github/scripts/configure-npm.sh
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: "yarn"
 
       - name: Cache VSCode unit test runner
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: /tmp/vscode-test-databricks
           key: ${{ matrix.arch.cli_arch }}-${{ matrix.vscode-version }}-vscode-test
@@ -59,18 +73,24 @@ jobs:
         run: yarn run build
 
       - name: Unit Tests with Coverage
-        uses: coactions/setup-xvfb@v1
-        with:
-          run: yarn run test:cov
-          working-directory: packages/databricks-vscode
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
+            export DISPLAY=:99
+          fi
+          yarn run test:cov
+        working-directory: packages/databricks-vscode
 
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12" # 3.13+ is not yet supported by the latest DBR
 
+      - name: Configure JFrog pip registry
+        run: bash .github/scripts/configure-pip.sh
+
       - name: Install Python dependencies
-        run: pip install ipython
+        run: pip install ipython==9.11.0
         working-directory: packages/databricks-vscode
 
       - name: Python Unit Tests

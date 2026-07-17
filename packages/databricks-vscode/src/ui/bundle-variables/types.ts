@@ -1,7 +1,7 @@
 import {TreeItem} from "vscode";
 import {BundleVariable} from "../../bundle/models/BundleVariableModel";
 
-export interface BundleVariableTreeItem extends TreeItem {}
+export type BundleVariableTreeItem = TreeItem;
 
 export interface BundleVariableTreeNode {
     readonly key?: string;

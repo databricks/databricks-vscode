@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import assert from "node:assert";
 import {anything, deepEqual, instance, mock, when} from "ts-mockito";
-import {WorkspaceClient, workspace} from "@databricks/databricks-sdk";
+import {WorkspaceClient, workspace} from "@databricks/sdk-experimental";
 import {isDirectory, isFile, isNotebook, isRepo} from "./utils";
 import {WorkspaceFsEntity} from "./WorkspaceFsEntity";
 

@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {ApiClient, CancellationToken, jobs} from "@databricks/databricks-sdk";
-import {SubmitRun, SubmitTask} from "@databricks/databricks-sdk/dist/apis/jobs";
+import {ApiClient, CancellationToken, jobs} from "@databricks/sdk-experimental";
+import {
+    SubmitRun,
+    SubmitTask,
+} from "@databricks/sdk-experimental/dist/apis/jobs";
 
 export class WorkflowRun {
     constructor(
@@ -96,7 +99,9 @@ export class WorkflowRun {
         const run = await this.submitRun(client, submitRunOptions);
         await run.wait(onProgress, token);
         const output = await run.getOutput();
-        onProgress && onProgress(run.lifeCycleState!, run);
+        if (onProgress) {
+            onProgress(run.lifeCycleState!, run);
+        }
         return output;
     }
 
@@ -153,7 +158,9 @@ export class WorkflowRun {
                 return;
             }
             await this.update();
-            onProgress && onProgress(this.lifeCycleState!, this);
+            if (onProgress) {
+                onProgress(this.lifeCycleState!, this);
+            }
         }
     }
 

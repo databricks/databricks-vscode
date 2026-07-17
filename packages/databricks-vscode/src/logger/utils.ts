@@ -1,4 +1,4 @@
-import {logging} from "@databricks/databricks-sdk";
+import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "./LoggerManager";
 
 export interface TryAndLogErrorOpts {
