@@ -57,7 +57,7 @@
                 "title": "Start SSH Tunnel",
                 "category": "Databricks",
                 "icon": "$(remote)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
+                "enablement": "!databricks.context.remoteMode"
             },
             {
                 "command": "databricks.connection.logout",
@@ -547,6 +547,11 @@
                     "when": "!databricks.context.remoteMode"
                 },
                 {
+                    "id": "sshTunnelView",
+                    "name": "SSH Tunnel",
+                    "when": "!databricks.context.remoteMode"
+                },
+                {
                     "id": "clusterView",
                     "when": "databricks.feature.views.cluster && !databricks.context.remoteMode",
                     "name": "Computes"
@@ -714,6 +719,10 @@
             {
                 "view": "configurationView",
                 "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
+            },
+            {
+                "view": "sshTunnelView",
+                "contents": "Connect your IDE to a Databricks SSH Tunnel so you can run workloads using Databricks compute.\n[Start SSH Tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
             }
         ],
         "menus": {
@@ -1107,11 +1116,6 @@
                 {
                     "command": "databricks.sync.stop",
                     "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-running.*$/ && databricks.context.bundle.isDevTarget",
-                    "group": "navigation@0"
-                },
-                {
-                    "command": "databricks.ssh.startTunnel",
-                    "when": "view == configurationView && viewItem == databricks.configuration.sshTunnel",
                     "group": "navigation@0"
                 }
             ],

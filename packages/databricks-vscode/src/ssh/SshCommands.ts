@@ -1,11 +1,14 @@
 import {
     Disposable,
+    Event,
+    EventEmitter,
     QuickPick,
     QuickPickItem,
     QuickPickItemKind,
     ThemeIcon,
     window,
 } from "vscode";
+import {WorkspaceClient} from "@databricks/sdk-experimental";
 import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -14,6 +17,9 @@ import {
     formatQuickPickClusterDetails,
 } from "../configuration/ConnectionCommands";
 import {CliWrapper} from "../cli/CliWrapper";
+import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {LoginWizard} from "../configuration/LoginWizard";
+import {Cluster} from "../sdk-extensions";
 import {onError} from "../utils/onErrorDecorator";
 
 const SERVERLESS_LABEL = "$(cloud) Serverless";
@@ -50,34 +56,155 @@ const SERVERLESS_ITEMS: ServerlessItem[] = [
     },
 ];
 
+/**
+ * Minimal cluster feed the compute picker needs. `ClusterModel` (connected
+ * path) satisfies this directly; `StandaloneClusterSource` (start-screen path,
+ * no workspace folder) implements the same shape from a bare WorkspaceClient.
+ */
+interface ClusterSource extends Disposable {
+    readonly roots: Cluster[] | undefined;
+    readonly onDidChange: Event<void>;
+    refresh(): void;
+}
+
+/**
+ * Fetches eligible clusters directly from a WorkspaceClient for the standalone
+ * (no workspace folder) tunnel flow, where no `ClusterModel` exists.
+ */
+class StandaloneClusterSource implements ClusterSource {
+    private _clusters: Cluster[] | undefined;
+    private readonly onDidChangeEmitter = new EventEmitter<void>();
+    readonly onDidChange = this.onDidChangeEmitter.event;
+
+    constructor(private readonly workspaceClient: WorkspaceClient) {}
+
+    get roots(): Cluster[] | undefined {
+        return this._clusters;
+    }
+
+    refresh() {
+        void this.load();
+    }
+
+    private async load() {
+        const clusters: Cluster[] = [];
+        for await (const cluster of Cluster.list(
+            this.workspaceClient.apiClient
+        )) {
+            clusters.push(cluster);
+        }
+        this._clusters = clusters;
+        this.onDidChangeEmitter.fire();
+    }
+
+    dispose() {
+        this.onDidChangeEmitter.dispose();
+    }
+}
+
+/**
+ * The auth + compute context needed to launch a tunnel, resolved either from an
+ * already-connected workspace or from a standalone login on the start screen.
+ */
+interface TunnelContext {
+    authProvider: AuthProvider;
+    userName: string;
+    clusterSource: ClusterSource;
+    // Cluster sources we create ourselves (standalone) must be disposed after
+    // the picker; the shared ClusterModel is owned by the extension and is not.
+    ownsClusterSource: boolean;
+}
+
 export class SshCommands implements Disposable {
     private disposables: Disposable[] = [];
 
+    /**
+     * `connectionManager`/`clusterModel` are only available once a workspace
+     * folder is open. When they are undefined (start screen) the command falls
+     * back to a standalone login flow so the tunnel can be started from the
+     * dedicated SSH Tunnel panel with no folder open.
+     */
     constructor(
-        private readonly connectionManager: ConnectionManager,
-        private readonly clusterModel: ClusterModel,
-        private readonly cli: CliWrapper
+        private readonly cli: CliWrapper,
+        private readonly connectionManager?: ConnectionManager,
+        private readonly clusterModel?: ClusterModel
     ) {}
 
     @onError({popup: {prefix: "Error starting SSH tunnel."}})
     async startTunnelCommand() {
-        const workspaceClient = this.connectionManager.workspaceClient;
-        const me = this.connectionManager.databricksWorkspace?.userName;
-        if (!workspaceClient || !me) {
-            window.showErrorMessage(
-                "Please connect to a Databricks workspace before starting an SSH tunnel."
+        const context = await this.resolveTunnelContext();
+        if (context === undefined) {
+            return;
+        }
+        try {
+            const compute = await this.pickCompute(
+                context.userName,
+                context.clusterSource
             );
-            return;
+            if (compute === undefined) {
+                return;
+            }
+            await this.launchSshTunnel(
+                context.authProvider,
+                context.userName,
+                compute
+            );
+        } finally {
+            if (context.ownsClusterSource) {
+                context.clusterSource.dispose();
+            }
         }
-
-        const compute = await this.pickCompute(me);
-        if (compute === undefined) {
-            return;
-        }
-        await this.launchSshTunnel(compute);
     }
 
-    private pickCompute(me: string): Promise<Compute | undefined> {
+    /**
+     * Resolves the auth provider, user and cluster feed for the tunnel. Uses the
+     * connected workspace when available (connecting first if needed), otherwise
+     * runs a standalone login wizard so the tunnel works with no folder open.
+     */
+    private async resolveTunnelContext(): Promise<TunnelContext | undefined> {
+        if (this.connectionManager && this.clusterModel) {
+            if (this.connectionManager.state !== "CONNECTED") {
+                await this.connectionManager.login(true);
+            }
+            const workspace = this.connectionManager.databricksWorkspace;
+            if (!workspace || this.connectionManager.state !== "CONNECTED") {
+                window.showErrorMessage(
+                    "Please connect to a Databricks workspace before starting an SSH tunnel."
+                );
+                return undefined;
+            }
+            return {
+                authProvider: workspace.authProvider,
+                userName: workspace.userName,
+                clusterSource: this.clusterModel,
+                ownsClusterSource: false,
+            };
+        }
+
+        const authProvider = await LoginWizard.run(this.cli);
+        if (authProvider === undefined || !(await authProvider.check())) {
+            return undefined;
+        }
+        const workspaceClient = await authProvider.getWorkspaceClient();
+        const userName = (await workspaceClient.currentUser.me()).userName;
+        if (!userName) {
+            window.showErrorMessage(
+                "Could not determine the current user for the SSH tunnel."
+            );
+            return undefined;
+        }
+        return {
+            authProvider,
+            userName,
+            clusterSource: new StandaloneClusterSource(workspaceClient),
+            ownsClusterSource: true,
+        };
+    }
+
+    private pickCompute(
+        me: string,
+        clusterSource: ClusterSource
+    ): Promise<Compute | undefined> {
         return new Promise((resolve) => {
             const quickPick = window.createQuickPick<
                 ClusterItem | ServerlessItem
@@ -99,7 +226,7 @@ export class SshCommands implements Disposable {
             const refreshItems = () => {
                 // Only dedicated single-user clusters owned by the current user
                 // can be used for an SSH tunnel.
-                const clusters = (this.clusterModel.roots ?? []).filter((c) =>
+                const clusters = (clusterSource.roots ?? []).filter((c) =>
                     c.isValidSingleUser(me)
                 );
                 quickPick.items = staticItems.concat(
@@ -133,7 +260,7 @@ export class SshCommands implements Disposable {
             // Register the change listener before triggering refresh() so no
             // onDidChange fired by the (re)started loader can be missed.
             const disposables: Disposable[] = [
-                this.clusterModel.onDidChange(refreshItems),
+                clusterSource.onDidChange(refreshItems),
                 quickPick,
                 {dispose: () => clearTimeout(spinnerTimeout)},
             ];
@@ -141,7 +268,7 @@ export class SshCommands implements Disposable {
             // Paint whatever is already cached first (fast path on reopen), then
             // trigger a reload; fresh results stream in via onDidChange.
             refreshItems();
-            this.clusterModel.refresh();
+            clusterSource.refresh();
             quickPick.show();
 
             quickPick.onDidAccept(() => {
@@ -171,10 +298,11 @@ export class SshCommands implements Disposable {
 
     /**
      * Pre-selects the compute the user already has configured locally: the
-     * attached single-user cluster if any, otherwise serverless.
+     * attached single-user cluster if any, otherwise serverless. Only the
+     * connected path has a configured cluster/serverless preference.
      */
     private preselect(quickPick: QuickPick<ClusterItem | ServerlessItem>) {
-        const currentCluster = this.connectionManager.cluster;
+        const currentCluster = this.connectionManager?.cluster;
         if (currentCluster?.isSingleUser()) {
             const match = quickPick.items.find(
                 (i): i is ClusterItem =>
@@ -185,7 +313,7 @@ export class SshCommands implements Disposable {
                 return;
             }
         }
-        if (this.connectionManager.serverless) {
+        if (this.connectionManager?.serverless) {
             const serverlessItem = quickPick.items.find(
                 (i) => i.label === SERVERLESS_LABEL
             );
@@ -195,17 +323,11 @@ export class SshCommands implements Disposable {
         }
     }
 
-    private async launchSshTunnel(compute: Compute) {
-        const authProvider =
-            this.connectionManager.databricksWorkspace?.authProvider;
-        const userName = this.connectionManager.databricksWorkspace?.userName;
-        if (!authProvider || !userName) {
-            window.showErrorMessage(
-                "Please connect to a Databricks workspace before starting an SSH tunnel."
-            );
-            return;
-        }
-
+    private async launchSshTunnel(
+        authProvider: AuthProvider,
+        userName: string,
+        compute: Compute
+    ) {
         const {args} = this.cli.getSshConnectCommand({compute});
 
         const env: Record<string, string> = {

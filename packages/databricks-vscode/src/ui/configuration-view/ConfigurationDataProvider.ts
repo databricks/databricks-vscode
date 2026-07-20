@@ -20,7 +20,6 @@ import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {EnvironmentComponent} from "./EnvironmentComponent";
-import {SshTunnelComponent} from "./SshTunnelComponent";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {CodeSynchronizer} from "../../sync";
@@ -54,7 +53,6 @@ export class ConfigurationDataProvider
         private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
         this.components = [
-            new SshTunnelComponent(this.connectionManager),
             new WorkspaceFolderComponent(this.workspaceFolderManager),
             new BundleTargetComponent(this.configModel),
             new AuthTypeComponent(

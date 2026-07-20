@@ -166,6 +166,18 @@ export async function activate(
                 }
             )
         );
+        // The SSH Tunnel panel is always visible, including on the start screen
+        // with no folder open. There is no ConnectionManager/ClusterModel here,
+        // so wire the command to the standalone (login-then-tunnel) flow.
+        const sshCommands = new SshCommands(cli);
+        context.subscriptions.push(
+            sshCommands,
+            telemetry.registerCommand(
+                "databricks.ssh.startTunnel",
+                sshCommands.startTunnelCommand,
+                sshCommands
+            )
+        );
         // We show a welcome view when there's no workspace folders, prompting users
         // to either open a new folder or to initialize a new databricks project.
         // In both cases we expect the workspace to be reloaded and the extension will
@@ -827,7 +839,7 @@ export async function activate(
     );
 
     // SSH tunnel (remote development) group
-    const sshCommands = new SshCommands(connectionManager, clusterModel, cli);
+    const sshCommands = new SshCommands(cli, connectionManager, clusterModel);
     context.subscriptions.push(
         sshCommands,
         telemetry.registerCommand(
