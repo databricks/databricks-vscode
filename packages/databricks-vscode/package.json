@@ -1592,7 +1592,7 @@
         "mocha": "^11.7.6",
         "nyc": "^18.0.0",
         "prettier": "^3.1.1",
-        "quicktype-core": "^23.0.0",
+        "quicktype-core": "^25.1.0",
         "tmp-promise": "^3.0.3",
         "ts-mocha": "^11.1.0",
         "ts-mockito": "^2.6.1",
