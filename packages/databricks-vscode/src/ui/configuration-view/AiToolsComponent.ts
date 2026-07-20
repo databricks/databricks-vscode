@@ -107,8 +107,8 @@ export class AiToolsComponent extends BaseComponent {
     public async getChildren(
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
-        // Single top-level row (plus an optional Cursor plugin row). This
-        // feature is independent of the cluster connection state.
+        // A single top-level AI tools row with no children. This feature is
+        // independent of the cluster connection state.
         if (parent !== undefined) {
             return [];
         }
@@ -130,7 +130,8 @@ function getTreeItemsForUpdateStatus(
     switch (status) {
         case "upToDate":
             return {
-                // Stable state: the blue robot is the row's resting identity.
+                // Stable installed state: the green robot is the row's resting
+                // identity.
                 icon: robotIcon("green"),
                 description: versionLabel ?? "Up to date",
                 state: "upToDate",

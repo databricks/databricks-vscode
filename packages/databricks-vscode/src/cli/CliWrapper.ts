@@ -76,8 +76,9 @@ export async function cancellableExecFile(
         signal,
     });
     if (execOptions.closeStdin) {
-        // `promisify(execFile)` exposes the spawned child on `.child`.
-        (promise as any).child?.stdin?.end();
+        // `promisify(execFile)` returns a PromiseWithChild that exposes the
+        // spawned ChildProcess on `.child`.
+        promise.child.stdin?.end();
     }
     const res = await promise;
     return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
@@ -519,11 +520,12 @@ export class CliWrapper {
     /**
      * Install Databricks AI tools (skills + agent plugins) for the given scope.
      *
-     * `cwd` should be the project root so that `--scope project` installs into
-     * `.databricks/aitools/skills` under the workspace. The CLI prints
-     * human-readable text (it ignores `--output json` for this subcommand), so
-     * success/failure is determined by the exit code (a non-zero exit rejects
-     * with a {@link ProcessError}).
+     * `cwd` selects the install root: the project root for `--scope project`
+     * (installs into `.databricks/aitools/skills` under the workspace) or the
+     * home dir for `--scope global` (see AiToolsManager.cwdForScope). The CLI
+     * prints human-readable text (it ignores `--output json` for this
+     * subcommand), so success/failure is determined by the exit code (a non-zero
+     * exit rejects with a {@link ProcessError}).
      */
     @withLogContext(Loggers.Extension)
     public async aitoolsInstall(

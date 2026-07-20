@@ -29,10 +29,11 @@ export class AiToolsCommands implements Disposable {
     }
 
     /**
-     * Show the scope picker. Project scope is always listed, but is shown
-     * disabled (greyed, with a hint) and cannot be selected when no workspace
-     * folder is open, since it installs into the open folder. Resolves to the
-     * chosen scope, or undefined if the picker was dismissed.
+     * Show the scope picker. Project scope is always listed, but when no
+     * workspace folder is open it shows a "Requires an open folder" hint and
+     * cannot be selected (the QuickPick API has no true per-item disable, so we
+     * ignore its selection). Resolves to the chosen scope, or undefined if the
+     * picker was dismissed.
      */
     private pickScope(): Promise<AiToolsScope | undefined> {
         const hasFolder = this.aiToolsManager.hasProjectFolder;
@@ -42,15 +43,16 @@ export class AiToolsCommands implements Disposable {
         quickPick.items = [
             {
                 label: "$(globe) Global",
-                detail: "Install AI tools for all projects on this machine",
+                detail: "Available to you across all projects",
                 scope: "global",
             },
             {
                 label: "$(folder) Project",
                 detail: hasFolder
-                    ? "Install AI tools into this project"
+                    ? "Checked into the repo, shared with everyone on the project"
                     : "Open a folder to install AI tools into a project",
-                // Render as disabled when there's no folder to install into.
+                // Hint that project scope needs an open folder (selection of
+                // this item is ignored in onDidAccept when there's no folder).
                 description: hasFolder ? undefined : "Requires an open folder",
                 scope: "project",
             },

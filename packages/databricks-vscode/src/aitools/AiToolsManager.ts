@@ -269,10 +269,11 @@ export class AiToolsManager implements Disposable {
     }
 
     /**
-     * Entry point run once on activation. Detects the install state and then:
+     * Entry point run on activation (and by the error-row retry). Detects the
+     * install state and then:
      *  - if installed, checks for updates and, when one is available, applies it
      *    automatically (updates are silent — no prompt);
-     *  - if not installed, shows a one-time prompt offering to set them up.
+     *  - if not installed, shows a one-time prompt offering to install them.
      *
      * Non-blocking failures are swallowed so activation can't be delayed or
      * broken by this best-effort flow.
@@ -312,7 +313,7 @@ export class AiToolsManager implements Disposable {
             "Install Databricks AI tools?",
             {
                 modal: true,
-                detail: "Get Databricks-aware skills and agent plugins in your editor. You can install them later from the Databricks configuration panel.",
+                detail: "Get skills and plugins so your coding agents work effectively with Databricks. You can also install them later from the Databricks configuration panel.",
             },
             install
         );
@@ -421,7 +422,8 @@ export class AiToolsManager implements Disposable {
 
     /**
      * Uninstall AI tools for the current install scope, showing progress.
-     * Re-detects the install state afterwards.
+     * Re-detects the install state and clears the Cursor-plugin prompt flag
+     * afterwards (so a later reinstall re-offers the plugin).
      */
     async uninstall(): Promise<void> {
         const scope = this._installLocation;
@@ -503,7 +505,7 @@ export class AiToolsManager implements Disposable {
             // Always reconcile the cached update status with the actual CLI
             // state, even if the update reported an error (it may have
             // partially succeeded). This refreshes the row out of the
-            // "Click to update" state once the tools are up to date.
+            // "Update available" state once the tools are up to date.
             await this.checkForUpdates();
         }
     }

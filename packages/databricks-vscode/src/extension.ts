@@ -205,7 +205,7 @@ export async function activate(
         )
     );
     // Detect install state on activation and, if installed, auto-apply any
-    // available update; otherwise prompt the user (once) to set the tools up.
+    // available update; otherwise prompt the user (once) to install the tools.
     // Non-blocking so it doesn't delay activation.
     aiToolsManager.initialize();
 
