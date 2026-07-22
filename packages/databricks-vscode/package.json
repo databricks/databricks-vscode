@@ -564,12 +564,12 @@
                 {
                     "id": "unityCatalogView",
                     "name": "Unity Catalog",
-                    "when": "databricks.context.activated && databricks.context.loggedIn"
+                    "when": "databricks.context.activated && (databricks.context.loggedIn || databricks.context.remoteMode)"
                 },
                 {
                     "id": "databricksDocsView",
                     "name": "Documentation",
-                    "when": "databricks.context.activated && !databricks.context.remoteMode"
+                    "when": "databricks.context.activated"
                 }
             ]
         },
