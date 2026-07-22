@@ -162,7 +162,12 @@ export class SshCommands implements Disposable {
      * runs a standalone login wizard so the tunnel works with no folder open.
      */
     private async resolveTunnelContext(): Promise<TunnelContext | undefined> {
-        if (this.connectionManager && this.clusterModel) {
+        // Only use the connected path when the connection manager has actually
+        // been initialized. When a folder is open but is not a Databricks
+        // project, init() is never called, so awaiting login() would block on
+        // its initialization barrier forever (the button would silently do
+        // nothing). In that case we fall through to the standalone login flow.
+        if (this.connectionManager?.isInitialized && this.clusterModel) {
             if (this.connectionManager.state !== "CONNECTED") {
                 await this.connectionManager.login(true);
             }
@@ -210,18 +215,39 @@ export class SshCommands implements Disposable {
                 ClusterItem | ServerlessItem
             >();
             quickPick.title = "Select compute for SSH tunnel";
+            quickPick.placeholder = "Loading dedicated clusters…";
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
             quickPick.canSelectMany = false;
 
-            const staticItems: ServerlessItem[] = [
+            // Whether the dedicated-cluster list is still being fetched. Drives
+            // the separator label and placeholder so the user can tell the list
+            // is still loading rather than waiting on them to pick.
+            let loading = true;
+
+            // Serverless items are always ready; the separator that follows them
+            // reflects the dedicated-cluster loading state.
+            const buildStaticItems = (
+                clusterCount: number
+            ): (ServerlessItem | QuickPickItem)[] => [
                 ...SERVERLESS_ITEMS,
                 {
-                    label: "",
+                    label: loading
+                        ? "Loading clusters…"
+                        : clusterCount > 0
+                          ? "Dedicated clusters"
+                          : "No dedicated clusters found",
                     kind: QuickPickItemKind.Separator,
                 },
             ];
-            quickPick.items = staticItems;
+
+            const stopLoading = () => {
+                loading = false;
+                quickPick.busy = false;
+                quickPick.placeholder = undefined;
+            };
+
+            quickPick.items = buildStaticItems(0);
 
             const refreshItems = () => {
                 // Only dedicated single-user clusters owned by the current user
@@ -229,7 +255,15 @@ export class SshCommands implements Disposable {
                 const clusters = (clusterSource.roots ?? []).filter((c) =>
                     c.isValidSingleUser(me)
                 );
-                quickPick.items = staticItems.concat(
+                // Clear the loading state only once clusters have actually
+                // loaded, before building items so the separator label matches
+                // this repaint. On a cold first open the loader is still
+                // fetching, so we keep loading and let onDidChange repaint when
+                // clusters arrive.
+                if (clusters.length > 0) {
+                    stopLoading();
+                }
+                quickPick.items = buildStaticItems(clusters.length).concat(
                     clusters.map((c) => {
                         const treeItem =
                             ClusterListDataProvider.clusterNodeToTreeItem(c);
@@ -242,19 +276,15 @@ export class SshCommands implements Disposable {
                         };
                     })
                 );
-                // Clear the spinner only once clusters have actually loaded.
-                // On a cold first open the loader is still fetching, so we keep
-                // spinning and let onDidChange repaint when clusters arrive.
-                if (clusters.length > 0) {
-                    quickPick.busy = false;
-                }
                 this.preselect(quickPick);
             };
 
             // Fallback so the spinner can't hang forever for a user with no
-            // eligible clusters (onDidChange may never add any).
+            // eligible clusters (onDidChange may never add any). Repaint so the
+            // separator flips to "No dedicated clusters found".
             const spinnerTimeout = setTimeout(() => {
-                quickPick.busy = false;
+                stopLoading();
+                refreshItems();
             }, 10_000);
 
             // Register the change listener before triggering refresh() so no
