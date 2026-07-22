@@ -295,8 +295,12 @@ export async function waitForWorkflowWebview(
             }
         },
         {
-            timeout: 5_000,
-            interval: 1_000,
+            // The workflow run must be submitted and the "Databricks Job Run"
+            // webview panel materialized before this resolves; on the Windows
+            // shard 5s is not enough and the panel intermittently misses the
+            // window ("Webview did not open"). 60s covers observed open times.
+            timeout: 60_000,
+            interval: 2_000,
             timeoutMsg: "Webview did not open",
         }
     );
