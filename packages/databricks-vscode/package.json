@@ -53,6 +53,13 @@
     "contributes": {
         "commands": [
             {
+                "command": "databricks.ssh.startTunnel",
+                "title": "Start SSH Tunnel",
+                "category": "Databricks",
+                "icon": "$(remote)",
+                "enablement": "!databricks.context.remoteMode"
+            },
+            {
                 "command": "databricks.connection.logout",
                 "title": "Logout",
                 "category": "Databricks",
@@ -73,20 +80,20 @@
             },
             {
                 "command": "databricks.connection.attachCluster",
-                "title": "Attach cluster",
+                "title": "Attach compute",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(plug)"
             },
             {
                 "command": "databricks.connection.attachClusterQuickPick",
-                "title": "Configure cluster",
+                "title": "Configure compute",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.connection.detachCluster",
-                "title": "Detach cluster",
+                "title": "Detach compute",
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(debug-disconnect)"
@@ -151,14 +158,14 @@
             },
             {
                 "command": "databricks.cluster.start",
-                "title": "Start Cluster",
+                "title": "Start Compute",
                 "icon": "$(debug-start)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.cluster.stop",
-                "title": "Stop Cluster",
+                "title": "Stop Compute",
                 "icon": "$(stop-circle)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
@@ -540,9 +547,14 @@
                     "when": "!databricks.context.remoteMode"
                 },
                 {
+                    "id": "sshTunnelView",
+                    "name": "SSH Tunnel",
+                    "when": "!databricks.context.remoteMode"
+                },
+                {
                     "id": "clusterView",
                     "when": "databricks.feature.views.cluster && !databricks.context.remoteMode",
-                    "name": "Clusters"
+                    "name": "Computes"
                 },
                 {
                     "id": "dabsResourceExplorerView",
@@ -707,6 +719,10 @@
             {
                 "view": "configurationView",
                 "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
+            },
+            {
+                "view": "sshTunnelView",
+                "contents": "Connect your IDE to a Databricks SSH Tunnel so you can run workloads using Databricks compute.\n[Start SSH Tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
             }
         ],
         "menus": {
@@ -1233,7 +1249,7 @@
         "submenus": [
             {
                 "id": "databricks.cluster.filter",
-                "label": "Filter clusters ...",
+                "label": "Filter compute ...",
                 "icon": "$(filter)"
             },
             {
@@ -1439,7 +1455,7 @@
                     "databricks.clusters.onlyShowAccessibleClusters": {
                         "type": "boolean",
                         "default": false,
-                        "description": "Enable/disable filtering for only accessible clusters (clusters on which the current user can run code)"
+                        "description": "Enable/disable filtering for only accessible computes (computes on which the current user can run code)"
                     },
                     "databricks.overrideDatabricksConfigFile": {
                         "type": "string",
@@ -1455,7 +1471,7 @@
                                 "views.workspace"
                             ],
                             "enumDescriptions": [
-                                "Show cluster view in the explorer.",
+                                "Show compute view in the explorer.",
                                 "Show workspace browser in the explorer."
                             ],
                             "type": "string"

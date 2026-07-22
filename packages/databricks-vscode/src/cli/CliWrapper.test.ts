@@ -128,6 +128,48 @@ describe(__filename, function () {
         assert.equal([command, ...args].join(" "), syncCommand);
     });
 
+    it("should create ssh connect commands", () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+
+        // Logging is configured via env vars, not CLI flags, so no --log-*
+        // args appear on the ssh connect command line.
+
+        // Serverless: no --cluster / --auto-start-cluster.
+        let {args} = cli.getSshConnectCommand({compute: {type: "serverless"}});
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+        ]);
+
+        // Serverless GPU: --accelerator, no --cluster / --auto-start-cluster.
+        ({args} = cli.getSshConnectCommand({
+            compute: {type: "serverless", accelerator: "GPU_1xA10"},
+        }));
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+            "--accelerator=GPU_1xA10",
+        ]);
+
+        // Dedicated cluster: --cluster and --auto-start-cluster.
+        ({args} = cli.getSshConnectCommand({
+            compute: {type: "cluster", clusterId: "1234-clusterid"},
+        }));
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+            "--cluster=1234-clusterid",
+            "--auto-start-cluster",
+        ]);
+    });
+
     it("should list profiles when no config file exists", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);

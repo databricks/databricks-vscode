@@ -10,6 +10,7 @@ import {
     Uri,
     commands,
     CancellationToken,
+    env,
 } from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -572,6 +573,53 @@ export class CliWrapper {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             DATABRICKS_OUTPUT_FORMAT: "text",
         });
+    }
+
+    /**
+     * Env vars for interactive CLI commands run in a terminal (e.g. `ssh
+     * connect`). Auth is forwarded via env vars, matching the bundle init flow.
+     */
+    getSshConnectEnvVars(authProvider: AuthProvider) {
+        return removeUndefinedKeys({
+            ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
+                workspaceConfigs.databrickscfgLocation
+            ),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...this.getLogginEnvVars(),
+            ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_OUTPUT_FORMAT: "text",
+        });
+    }
+
+    /**
+     * Constructs the `databricks ssh connect` command args for opening a remote
+     * IDE window. Serverless is the default when no cluster is given.
+     *
+     * The --ide flag matches the host editor so the CLI opens the right remote
+     * window: Cursor identifies itself via env.uriScheme === "cursor",
+     * everything else (VS Code, Insiders) uses vscode.
+     *
+     * Logging is configured out of band via the DATABRICKS_LOG_* env vars (see
+     * getSshConnectEnvVars), so we do not pass --log-* flags here.
+     */
+    getSshConnectCommand(opts: {
+        compute:
+            | {type: "serverless"; accelerator?: string}
+            | {type: "cluster"; clusterId: string};
+    }): {args: string[]} {
+        const ide = env.uriScheme === "cursor" ? "cursor" : "vscode";
+        const args = ["ssh", "connect", `--ide=${ide}`, "--auto-approve"];
+        if (opts.compute.type === "cluster") {
+            // Start a stopped single-user cluster when connecting.
+            args.push(`--cluster=${opts.compute.clusterId}`);
+            args.push("--auto-start-cluster");
+        } else if (opts.compute.accelerator) {
+            // Serverless GPU: request a specific accelerator type.
+            args.push(`--accelerator=${opts.compute.accelerator}`);
+        }
+        return {args};
     }
 
     async bundleInit(

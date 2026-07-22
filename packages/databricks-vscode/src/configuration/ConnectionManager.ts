@@ -66,6 +66,19 @@ export class ConnectionManager implements Disposable {
         this.onDidChangeSyncDestinationEmitter.event;
 
     private readonly initialization = new Barrier();
+    // Set once init() has resolved the initialization barrier. Guards callers
+    // (e.g. the SSH tunnel flow) that must not `await login()` before init(),
+    // since that would block on the barrier forever when the workspace is not a
+    // Databricks project and init() is never called.
+    private _initialized = false;
+
+    /**
+     * Whether the connection manager has been initialized (init() ran).
+     * Only true once the workspace has been set up as a Databricks project.
+     */
+    get isInitialized(): boolean {
+        return this._initialized;
+    }
 
     get projectRoot() {
         return this.workspaceFolderManager.activeProjectUri;
@@ -212,6 +225,7 @@ export class ConnectionManager implements Disposable {
                     )
                 )
             );
+            this._initialized = true;
             this.initialization.resolve();
         }
     }

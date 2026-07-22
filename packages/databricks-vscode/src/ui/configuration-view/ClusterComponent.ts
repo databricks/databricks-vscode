@@ -114,7 +114,7 @@ export class ClusterComponent extends BaseComponent {
             // We are logged in -> Select cluster prompt
             return [
                 {
-                    label: LabelUtils.highlightedLabel("Select a cluster"),
+                    label: LabelUtils.highlightedLabel("Select a compute"),
                     collapsibleState: TreeItemCollapsibleState.None,
                     contextValue: getContextValue("none"),
                     iconPath: new ThemeIcon(
@@ -123,7 +123,7 @@ export class ClusterComponent extends BaseComponent {
                     ),
                     id: TREE_ICON_ID,
                     command: {
-                        title: "Select a cluster",
+                        title: "Select a compute",
                         command: "databricks.connection.attachClusterQuickPick",
                     },
                 },
