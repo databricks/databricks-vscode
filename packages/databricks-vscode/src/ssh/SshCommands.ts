@@ -5,11 +5,9 @@ import {
     QuickPick,
     QuickPickItem,
     QuickPickItemKind,
-    ThemeIcon,
     window,
 } from "vscode";
 import {WorkspaceClient} from "@databricks/sdk-experimental";
-import {ClusterListDataProvider} from "../cluster/ClusterListDataProvider";
 import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {
@@ -264,17 +262,16 @@ export class SshCommands implements Disposable {
                     stopLoading();
                 }
                 quickPick.items = buildStaticItems(clusters.length).concat(
-                    clusters.map((c) => {
-                        const treeItem =
-                            ClusterListDataProvider.clusterNodeToTreeItem(c);
-                        return {
-                            label: `$(${
-                                (treeItem.iconPath as ThemeIcon).id
-                            }) ${c.name!} (${c.id})`,
-                            detail: formatQuickPickClusterDetails(c),
-                            cluster: c,
-                        };
-                    })
+                    clusters.map((c) => ({
+                        // Use the same compute icon as the "Select a compute"
+                        // entry in the configuration section; the per-state icon
+                        // is dropped in favour of showing the state as text.
+                        label: `$(server) ${c.name!} (${c.id})`,
+                        detail: `${c.state} | ${formatQuickPickClusterDetails(
+                            c
+                        )}`,
+                        cluster: c,
+                    }))
                 );
                 this.preselect(quickPick);
             };
