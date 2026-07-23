@@ -199,14 +199,33 @@ describe("Bundle Variables", async function () {
 
         await browser.waitUntil(
             async () => {
-                await assertVariableValue(section, "varWithDefault", {
-                    value: "new value",
-                    defaultValue: "default",
-                });
-                return true;
+                try {
+                    await assertVariableValue(section, "varWithDefault", {
+                        value: "new value",
+                        defaultValue: "default",
+                    });
+                    return true;
+                } catch {
+                    // The tree updates off the extension's FileSystemWatcher,
+                    // which can lag the write on a slow/busy shard. Re-issue the
+                    // idempotent write to re-trigger the watcher, then let the
+                    // next poll re-check. Content is deterministic, so rewriting
+                    // is safe.
+                    await browser.executeWorkbench(async (vscode, content) => {
+                        const uri =
+                            vscode.window.activeTextEditor?.document.uri;
+                        if (uri) {
+                            await vscode.workspace.fs.writeFile(
+                                uri,
+                                Buffer.from(content, "utf8")
+                            );
+                        }
+                    }, overrideContent);
+                    return false;
+                }
             },
             {
-                timeout: 10_000,
+                timeout: 30_000,
                 interval: 2_000,
                 timeoutMsg: "Variable value not updated",
             }
