@@ -54,6 +54,9 @@ describe("Automatically refresh resource explorer", async function () {
 
     it("should wait for connection", async () => {
         await waitForLogin("DEFAULT");
+        // Drain any post-login notifications so a lingering toast can't overlay
+        // the Output-channel dropdown we click below (mirrors deploy_and_run_job).
+        await dismissNotifications();
     });
 
     it("should find resource explorer view", async function () {
@@ -78,7 +81,26 @@ describe("Automatically refresh resource explorer", async function () {
         const outputView = await (await browser.getWorkbench())
             .getBottomBar()
             .openOutputView();
-        await outputView.selectChannel("Databricks Bundle Logs");
+        // A late notification toast can overlay the channel <select> and
+        // intercept the click. Re-dismiss and retry rather than failing on the
+        // first interception.
+        await browser.waitUntil(
+            async () => {
+                try {
+                    await outputView.selectChannel("Databricks Bundle Logs");
+                    return true;
+                } catch {
+                    await dismissNotifications();
+                    return false;
+                }
+            },
+            {
+                timeout: 20_000,
+                interval: 2_000,
+                timeoutMsg:
+                    "Could not select the 'Databricks Bundle Logs' output channel",
+            }
+        );
 
         const jobDef = await createProjectWithJob(
             projectName,

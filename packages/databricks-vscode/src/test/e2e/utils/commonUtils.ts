@@ -389,7 +389,11 @@ export async function executeCommandWhenAvailable(command: string) {
     });
 }
 
-export async function waitForNotification(message: string, action?: string) {
+export async function waitForNotification(
+    message: string,
+    action?: string,
+    timeoutMs = 60_000
+) {
     await browser.waitUntil(
         async () => {
             const workbench = await browser.getWorkbench();
@@ -408,7 +412,7 @@ export async function waitForNotification(message: string, action?: string) {
             return false;
         },
         {
-            timeout: 60_000,
+            timeout: timeoutMs,
             interval: 2000,
             timeoutMsg: `Notification with message "${message}" not found`,
         }
