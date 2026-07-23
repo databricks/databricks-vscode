@@ -76,15 +76,33 @@ describe("Bundle Init", async function () {
         const initTab = await getTabByTitle(title);
         assert(initTab, "Can't find a tab for project-init terminal wizard");
         await initTab.select();
-        await sleep(1000);
+
+        // The init wizard runs inside an editor-hosted terminal. Keystrokes sent
+        // before the terminal prompt is ready land in the wrong place and desync
+        // the wizard ("Can't complete cli bundle init wizard") on the slow
+        // Windows shard. The terminal buffer text isn't reliably readable via the
+        // wdio API, but the active-tab title is — gate on the init tab being
+        // active before typing, then use longer settle waits between keystrokes.
+        await browser.waitUntil(
+            async () => {
+                const activeTab = await editorView.getActiveTab();
+                return (await activeTab?.getTitle()) === title;
+            },
+            {
+                timeout: 20_000,
+                interval: 1_000,
+                timeoutMsg: "Init wizard terminal tab did not become active",
+            }
+        );
+        await sleep(3000);
 
         //select temaplate type
         await browser.keys("default-python".split(""));
-        await sleep(1000);
+        await sleep(3000);
         await browser.keys([Key.Enter]);
         //enter project name temaplate type
         await browser.keys(projectName.split(""));
-        await sleep(1000);
+        await sleep(3000);
         await browser.keys([Key.Enter]);
         await browser.waitUntil(
             async () => {
@@ -95,7 +113,7 @@ describe("Bundle Init", async function () {
                 await browser.keys([Key.Enter]);
             },
             {
-                timeout: 20_000,
+                timeout: 40_000,
                 interval: 2_000,
                 timeoutMsg: "Can't complete cli bundle init wizard",
             }
