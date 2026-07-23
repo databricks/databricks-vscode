@@ -1502,7 +1502,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.8.0"
+        "version": "1.9.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
