@@ -248,3 +248,7 @@ The choices that affect how you write:
 - Prefer `===` / `!==` and always use curly braces (`curly`).
 
 ---
+
+## Issues
+
+- extension.ts is becoming too big
