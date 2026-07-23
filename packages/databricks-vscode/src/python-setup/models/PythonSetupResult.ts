@@ -97,6 +97,10 @@ export interface PythonSetupResult {
     ok: boolean;
     mode: PythonSetupMode;
     dryRun: boolean;
+    // TODO: rename to `compute` (+ PythonSetupTargetInfo -> PythonSetupComputeInfo)
+    // to match SetupLocalInvocation.compute. This field mirrors the CLI's wire
+    // key `target`, so the rename must land in the CLI's --output json first
+    // (with a schemaVersion bump), then here.
     target?: PythonSetupTargetInfo;
     resolved?: PythonSetupResolvedInfo;
     greenfield: boolean;
