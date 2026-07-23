@@ -23,6 +23,8 @@ import {EnvironmentComponent} from "./EnvironmentComponent";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {CodeSynchronizer} from "../../sync";
+import {AiToolsComponent} from "./AiToolsComponent";
+import {AiToolsManager} from "../../aitools/AiToolsManager";
 
 /**
  * Data provider for the cluster tree view
@@ -50,10 +52,12 @@ export class ConfigurationDataProvider
         private readonly configModel: ConfigModel,
         private readonly cli: CliWrapper,
         private readonly featureManager: FeatureManager,
-        private readonly workspaceFolderManager: WorkspaceFolderManager
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        private readonly aiToolsManager: AiToolsManager
     ) {
         this.components = [
             new WorkspaceFolderComponent(this.workspaceFolderManager),
+            new AiToolsComponent(this.aiToolsManager),
             new BundleTargetComponent(this.configModel),
             new AuthTypeComponent(
                 this.connectionManager,

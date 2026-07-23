@@ -3,6 +3,7 @@ import {
     debug,
     env,
     ExtensionContext,
+    ExtensionMode,
     extensions,
     window,
     workspace,
@@ -14,6 +15,8 @@ import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
+import {AiToolsManager} from "./aitools/AiToolsManager";
+import {AiToolsCommands} from "./aitools/AiToolsCommands";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
@@ -25,6 +28,7 @@ import {logging} from "@databricks/sdk-experimental";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {
     FileUtils,
+    HostUtils,
     PackageJsonUtils,
     TerraformUtils,
     UrlUtils,
@@ -38,6 +42,7 @@ import {
 } from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
+import {StateResetCommand} from "./vscode-objs/StateResetCommand";
 import path from "node:path";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
@@ -97,6 +102,7 @@ export async function activate(
 ): Promise<PublicApi | undefined> {
     customWhenContext.setActivated(false);
     customWhenContext.setDeploymentState("idle");
+    customWhenContext.setIsCursor(HostUtils.isCursor());
 
     const stateStorage = new StateStorage(context);
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
@@ -149,6 +155,82 @@ export async function activate(
         )
     );
 
+    const workspaceFolderManager = new WorkspaceFolderManager(
+        customWhenContext,
+        stateStorage
+    );
+
+    // AI tools: register before the no-folder early return below, since global
+    // installs/updates work without an open workspace folder. Project scope is
+    // gated on a folder being open (see AiToolsCommands / AiToolsManager).
+    const aiToolsManager = new AiToolsManager(
+        cli,
+        stateStorage,
+        workspaceFolderManager,
+        telemetry
+    );
+    const aiToolsCommands = new AiToolsCommands(aiToolsManager);
+    context.subscriptions.push(
+        aiToolsManager,
+        aiToolsCommands,
+        telemetry.registerCommand(
+            "databricks.aitools.install",
+            aiToolsCommands.installCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.checkForUpdates",
+            aiToolsCommands.checkForUpdatesCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.reload",
+            aiToolsCommands.reloadCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.update",
+            aiToolsCommands.updateCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.uninstall",
+            aiToolsCommands.uninstallCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.addCursorPlugin",
+            aiToolsCommands.addCursorPluginCommand(),
+            aiToolsCommands
+        )
+    );
+    // Detect install state on activation and, if installed, auto-apply any
+    // available update; otherwise prompt the user (once) to install the tools.
+    // Non-blocking so it doesn't delay activation.
+    aiToolsManager.initialize();
+
+    // Developer-only "Reset state" command (multi-select of persisted state
+    // keys). Gated to development builds so it isn't exposed to end users; the
+    // matching `databricks.context.development` context key gates its palette
+    // entry (see package.json).
+    const isDevelopment = context.extensionMode === ExtensionMode.Development;
+    commands.executeCommand(
+        "setContext",
+        "databricks.context.development",
+        isDevelopment
+    );
+    if (isDevelopment) {
+        const stateResetCommand = new StateResetCommand(stateStorage);
+        context.subscriptions.push(
+            stateResetCommand,
+            telemetry.registerCommand(
+                "databricks.developer.resetState",
+                stateResetCommand.resetCommand(),
+                stateResetCommand
+            )
+        );
+    }
+
     if (
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
@@ -159,7 +241,8 @@ export async function activate(
                 async () => {
                     const bundleInitWizard = new BundleInitWizard(
                         cli,
-                        telemetry
+                        telemetry,
+                        aiToolsManager
                     );
                     await bundleInitWizard.initNewProject();
                 }
@@ -168,14 +251,10 @@ export async function activate(
         // We show a welcome view when there's no workspace folders, prompting users
         // to either open a new folder or to initialize a new databricks project.
         // In both cases we expect the workspace to be reloaded and the extension will
-        // be activated again.
+        // be activated again. The AI tools setup affordance is added as a
+        // viewsWelcome entry (see package.json) since it works without a folder.
         return undefined;
     }
-
-    const workspaceFolderManager = new WorkspaceFolderManager(
-        customWhenContext,
-        stateStorage
-    );
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
@@ -387,7 +466,8 @@ export async function activate(
         configModel,
         bundleFileSet,
         workspaceFolderManager,
-        telemetry
+        telemetry,
+        aiToolsManager
     );
     context.subscriptions.push(
         bundleProjectManager,
@@ -759,7 +839,8 @@ export async function activate(
         configModel,
         cli,
         featureManager,
-        workspaceFolderManager
+        workspaceFolderManager,
+        aiToolsManager
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,

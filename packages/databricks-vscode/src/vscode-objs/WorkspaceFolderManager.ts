@@ -75,7 +75,11 @@ export class WorkspaceFolderManager implements Disposable {
     }
 
     private setIsActiveFileInActiveProject() {
-        if (this.activeProjectUri === undefined) {
+        // Use the non-throwing private field: the `activeProjectUri` getter
+        // throws when no folder is open, and this runs from the constructor
+        // which may execute in a folderless window.
+        const activeProjectUri = this._activeProjectUri;
+        if (activeProjectUri === undefined) {
             this.customWhenContext.setIsActiveFileInActiveWorkspace(false);
             return;
         }
@@ -83,13 +87,13 @@ export class WorkspaceFolderManager implements Disposable {
         const isActiveFileInActiveWorkspace =
             activeEditor !== undefined &&
             activeEditor.document.uri.fsPath.startsWith(
-                this.activeProjectUri.fsPath
+                activeProjectUri.fsPath
             );
         const activeNotebookEditor = window.activeNotebookEditor;
         const isActiveNotebookInActiveWorkspace =
             activeNotebookEditor !== undefined &&
             activeNotebookEditor.notebook.uri.fsPath.startsWith(
-                this.activeProjectUri?.fsPath
+                activeProjectUri.fsPath
             );
         this.customWhenContext.setIsActiveFileInActiveWorkspace(
             isActiveFileInActiveWorkspace || isActiveNotebookInActiveWorkspace

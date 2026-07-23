@@ -7,6 +7,8 @@ export async function run(): Promise<void> {
     const mocha = new Mocha({
         ui: "bdd",
         color: true,
+        // Optional filter to run a subset of tests locally (no-op when unset).
+        grep: process.env.MOCHA_GREP,
     });
 
     // Add files to the test suite
