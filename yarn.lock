@@ -4042,7 +4042,7 @@ __metadata:
     nyc: ^18.0.0
     prettier: ^3.1.1
     quicktype-core: ^23.0.0
-    shell-quote: ^1.8.4
+    shell-quote: ^1.9.0
     tmp-promise: ^3.0.3
     triple-beam: ^1.4.1
     ts-mocha: ^11.1.0
@@ -9227,10 +9227,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shell-quote@npm:^1.8.4":
-  version: 1.8.4
-  resolution: "shell-quote@npm:1.8.4"
-  checksum: 082dc836baa8ade01144ee3068af487ea45ba570ea6ab13a5eddc11ab16a976b8857b51ef2caf7dc9a1e173ff0aea685b8f78b4f6f5a0a1ef24c7b17c51350e2
+"shell-quote@npm:^1.9.0":
+  version: 1.9.0
+  resolution: "shell-quote@npm:1.9.0"
+  checksum: 2ec85fb903121c684c3536d051e377e98746cf88525e08c298baaa7b42c168de75c3201cef00db66556e89e340a8cf26bd4c18e7a3fd78799449a21cac43da2e
   languageName: node
   linkType: hard
 
