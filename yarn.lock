@@ -1374,19 +1374,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nevware21/ts-utils@npm:>= 0.12.2 < 2.x, @nevware21/ts-utils@npm:>= 0.14.0 < 2.x":
-  version: 0.15.0
-  resolution: "@nevware21/ts-utils@npm:0.15.0"
-  checksum: e0aa6fc9d98236c90da0df91cee01554fd79166e1129fe6ba14add3553f323faf66d7e35fbb1507ee30ab67d5a4754182d08abf289626c94ec35ef89f8dac8bc
-  languageName: node
-  linkType: hard
-
-"@nevware21/ts-utils@npm:>= 0.9.4 < 2.x":
-  version: 0.9.5
-  resolution: "@nevware21/ts-utils@npm:0.9.5"
-  peerDependencies:
-    typescript: ">=1"
-  checksum: a00b89b50712f6e340fe380d975bae43efb1843a97e13f1f03a9a79be945577adc4772c3537759dd2291baefc8087a74922790a6351e6b4fb9e303f4d2f9c1ea
+"@nevware21/ts-utils@npm:>= 0.12.2 < 2.x, @nevware21/ts-utils@npm:>= 0.14.0 < 2.x, @nevware21/ts-utils@npm:>= 0.9.4 < 2.x":
+  version: 0.16.0
+  resolution: "@nevware21/ts-utils@npm:0.16.0"
+  checksum: 96be8b9d19af5095aa8e646260f82ee417e4fa34f1b34f611c25a86a151e0fa0f749487a08e0157a74483cb027b86854427a04a885b3c7a61251ca6d996f87a9
   languageName: node
   linkType: hard
 
