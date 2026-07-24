@@ -57,6 +57,12 @@ matches the responsibility - don't invent new ones.
   handles refresh/polling.
 - **`XCommands`** — thin command handlers that call into the model/manager.
 
+**Keep `window.*` UI out of `Model` / `Manager` / `Loader`.** These surface
+data/results and fire events; let `Commands` / `Component` do the
+`window.show*` rendering. Fusing `window.showInformationMessage` /
+`showErrorMessage` with SDK or `child_process` calls in one class is exactly what
+makes it hard to unit-test (see section 8).
+
 ---
 
 ## 3. Structuring a new feature
@@ -67,14 +73,27 @@ matches the responsibility - don't invent new ones.
 2. **Add classes by role** using the suffixes described in section 2 above:
    `MyFeatureModel.ts`, `MyFeatureManager.ts`, `MyFeatureCommands.ts`, plus any
    providers/wizards the feature needs.
-3. **Only add subfolders when a feature grows large.** Precedent: a `models/`
-   subfolder for a cluster of state classes (as in `configuration/models/`,
-   `bundle/models/`), or a domain subfolder like `bundle/run/`. Don't pre-split a
-   small feature.
-4. **Put UI-heavy code under `ui/`.** Tree data providers, detail panels,
+3. **Group by role-suffix once a feature grows large.** Keep small features flat.
+   Once a feature exceeds ~6–8 files, group files into role-suffix subfolders
+   (`models/`, `managers/`, `commands/`, `providers/`…) — **but only for roles that
+   have 2+ files.** Singleton roles stay at the feature root: even `bundle/`, the
+   biggest feature, has just one Wizard, one Watcher, and one Provider, so a strict
+   folder-per-suffix would scatter logic into one-file folders. The folder name is
+   just the plural of the suffix the class already carries — **no class renames.**
+   Co-locate each role's tests inside its folder. Precedent: `configuration/models/`,
+   `bundle/models/`, `bundle/run/`. Don't pre-split a small feature.
+4. **Put UI-heavy code under `ui/`.** (unresolved) Tree data providers, detail panels,
    wizards, and configuration-view components live in `ui/<feature>/` (e.g.
    `ui/unity-catalog/`). Feature _logic_ (models, managers) stays in the feature
    folder; the tree that renders it lives under `ui/`.
+
+    > _Trade-off:_ a global `ui/` gives one index of all views, but
+    > splits a feature across trees — `bundle` today spans `bundle/`,
+    > `ui/bundle-resource-explorer/`, and `ui/bundle-variables/` (43 files, one
+    > concept, three places). The inverse — co-locating views under the feature
+    > (`bundle/ui/…`) so one feature is one subtree — is worth considering. Follow the
+    > global-`ui/` convention for now; flagged for discussion.
+
 5. **Never touch VS Code globals directly for state/config/context** — go through
    the adapter layer in `vscode-objs/` (see section 5).
 6. **Wire it up in `extension.ts`** (see section 6): construct the objects, inject
@@ -176,6 +195,19 @@ If you need a new piece of global state or a new setting accessor, **add it to t
 relevant `vscode-objs/` class** rather than sprinkling `workspace.getConfiguration`
 or `context.globalState` calls across the feature.
 
+### The SDK is a cross-cutting dependency too
+
+The Databricks SDK (`@databricks/sdk-experimental`) is the biggest unguarded
+cross-cutting dependency in the codebase — dozens of files import it, and many
+reach the `WorkspaceClient` / `apiClient` directly.
+
+- **Reach the workspace client through the connection seam** (`ConnectionManager`),
+  not by constructing your own client in a feature.
+- **Never import through deep `/dist/...` paths** (`.../dist/apis/…`,
+  `.../dist/retries/…`). They're not a stable entry point — import from the package
+  root. Keeping SDK access behind one seam is also what turns a future SDK migration
+  into a bounded change instead of a repo-wide edit.
+
 ---
 
 ## 6. Wiring in `extension.ts`
@@ -214,7 +246,12 @@ or `context.globalState` calls across the feature.
   `export * as FileUtils from "./fileUtils"` in `index.ts`, consumed as
   `import {FileUtils} from "./utils"`.
 - For feature barrels, re-export only the intended public surface; avoid blanket
-  `export *` of internal files.
+  `export *` of internal files. Blanket `export *` barrels hurt navigation —
+  "go to definition" and grep-for-usage land on the barrel instead of the real file,
+  adding an indirection hop with no encapsulation benefit. **Note:** most existing
+  `index.ts` files still use `export *` (10 of 12 today); those should migrate to
+  selective re-exports (or be dropped where under-used), not be treated as the
+  pattern to copy.
 
 ---
 
@@ -252,3 +289,8 @@ The choices that affect how you write:
 ## Issues
 
 - extension.ts is becoming too big
+- Large feature folders mix many role-suffixes (logic / presentation / I/O) flat at
+  one level, which is hard to navigate — and co-located tests double the file count.
+  Today `run/` (14 files), `bundle/` (12), `language/` (11), and `ui/unity-catalog/`
+  (10) sit flat at the top level, across 17 distinct suffixes repo-wide. Needs a
+  grouping convention (see the section 3 role-suffix rule).
