@@ -11,15 +11,14 @@ export type FeatureEnableAction = (...args: any[]) => Promise<void>;
 /**
  * Feature id for the uv-native Python environment setup (python-setup).
  *
- * This exact string is the single source of truth used in three coupled
- * places, and they must stay identical or the feature can never unlock:
+ * This exact string is the single source of truth used in two coupled places,
+ * and they must stay identical or the feature can never unlock:
  *  - the {@link FeatureManager} `disabledFeatures` entry that hides it by
- *    default (see extension.ts),
+ *    default (see extension.ts), and
  *  - the value a user adds to `databricks.experiments.optInto` to opt in
- *    (see the enum in package.json), which {@link FeatureManager.registerFeature}
- *    matches verbatim against the disabled id to decide whether to unlock, and
- *  - the flag reader `workspaceConfigs.pythonSetupEnabled`.
- * Exporting it as a constant keeps those three from drifting apart.
+ *    (see the enum in package.json), which {@link FeatureManager} matches
+ *    verbatim against the disabled id to decide whether to unlock.
+ * Exporting it as a constant keeps those two from drifting apart.
  */
 export const PYTHON_SETUP_FEATURE_ID = "environment.pythonSetup";
 
@@ -66,6 +65,21 @@ export class FeatureManager<T = FeatureId> implements Disposable {
 
     constructor(private readonly disabledFeatures: (T | FeatureId)[]) {}
 
+    /**
+     * A feature is disabled when it is in the {@link disabledFeatures} list and
+     * the user has not opted into it via `databricks.experiments.optInto`.
+     * Both {@link registerFeature} (which picks the factory) and
+     * {@link isEnabled} (which reports availability) must agree on this, or an
+     * opted-in feature would be registered as enabled yet still report
+     * unavailable.
+     */
+    private isDisabled(id: T): boolean {
+        return (
+            this.disabledFeatures.includes(id) &&
+            !workspaceConfigs.experimetalFeatureOverides.includes(id as string)
+        );
+    }
+
     registerFeature(
         id: T,
         featureFactory: () => Feature = () => new EnabledFeature()
@@ -73,11 +87,9 @@ export class FeatureManager<T = FeatureId> implements Disposable {
         if (this.features.has(id)) {
             return;
         }
-        const feature =
-            this.disabledFeatures.includes(id) &&
-            !workspaceConfigs.experimetalFeatureOverides.includes(id as string)
-                ? new DisabledFeature()
-                : featureFactory();
+        const feature = this.isDisabled(id)
+            ? new DisabledFeature()
+            : featureFactory();
         this.disposables.push(
             feature.onDidChangeState((state) => {
                 this.stateCache.set(id, state);
@@ -104,7 +116,7 @@ export class FeatureManager<T = FeatureId> implements Disposable {
         if (!feature) {
             throw new Error(`Feature ${id} has not been registered`);
         }
-        if (this.disabledFeatures.includes(id)) {
+        if (this.isDisabled(id)) {
             return {
                 available: false,
                 steps: new Map(),

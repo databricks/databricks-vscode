@@ -1,6 +1,8 @@
 import {expect} from "chai";
+import {spy, when, reset} from "ts-mockito";
 import {FeatureManager, PYTHON_SETUP_FEATURE_ID} from "./FeatureManager";
 import {EnabledFeature} from "./EnabledFeature";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require("../../package.json");
@@ -68,5 +70,28 @@ describe("python-setup feature flag", () => {
         expect(
             (await manager.isEnabled(PYTHON_SETUP_FEATURE_ID)).available
         ).to.equal(false);
+    });
+
+    it("unlocks once the id is added to experiments.optInto", async () => {
+        // The whole point of the opt-in string: a user who adds
+        // PYTHON_SETUP_FEATURE_ID to `databricks.experiments.optInto` must see
+        // the feature become available. This is the path a later ticket's
+        // consumer relies on, so pin it now.
+        const configsSpy = spy(workspaceConfigs);
+        when(configsSpy.experimetalFeatureOverides).thenReturn([
+            PYTHON_SETUP_FEATURE_ID,
+        ]);
+        try {
+            const manager = new FeatureManager([PYTHON_SETUP_FEATURE_ID]);
+            manager.registerFeature(
+                PYTHON_SETUP_FEATURE_ID,
+                () => new EnabledFeature()
+            );
+            expect(
+                (await manager.isEnabled(PYTHON_SETUP_FEATURE_ID)).available
+            ).to.equal(true);
+        } finally {
+            reset(configsSpy);
+        }
     });
 });
