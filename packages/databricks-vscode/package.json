@@ -1452,16 +1452,23 @@
                         "items": {
                             "enum": [
                                 "views.cluster",
-                                "views.workspace"
+                                "views.workspace",
+                                "environment.pythonSetup"
                             ],
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
-                                "Show workspace browser in the explorer."
+                                "Show workspace browser in the explorer.",
+                                "Enable the uv-native one-click Python environment setup for Databricks Connect."
                             ],
                             "type": "string"
                         },
                         "uniqueItems": true,
                         "description": "Opt into experimental features."
+                    },
+                    "databricks.experiments.cliPathOverride": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Absolute path to a custom Databricks CLI that provides `environments setup-local`. Temporary experimental setting used while the command ships only in custom CLI builds; leave empty to use the bundled CLI. Will be removed once the command is generally available."
                     },
                     "databricks.wsfs.rearrangeCells": {
                         "type": "boolean",
