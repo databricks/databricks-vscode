@@ -39,7 +39,11 @@ import {
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
-import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
+import {
+    FeatureId,
+    FeatureManager,
+    PYTHON_SETUP_FEATURE_ID,
+} from "./feature-manager/FeatureManager";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
@@ -630,7 +634,13 @@ export async function activate(
             connectionManager,
             pythonExtensionWrapper
         );
-    const featureManager = new FeatureManager<FeatureId>([]);
+    // python-setup ships disabled by default: the CLI's `environments
+    // setup-local` command is available only in custom CLI builds for now, so
+    // the whole flow stays hidden until a user opts in via
+    // `databricks.experiments.optInto` (see PYTHON_SETUP_FEATURE_ID).
+    const featureManager = new FeatureManager<FeatureId>([
+        PYTHON_SETUP_FEATURE_ID,
+    ]);
     featureManager.registerFeature(
         "environment.dependencies",
         () =>
