@@ -23,11 +23,10 @@ import {
 } from "../ui/configuration-view/AuthTypeComponent";
 import {ManualLoginSource} from "../telemetry/constants";
 import {onError} from "../utils/onErrorDecorator";
-import {isPythonSetupEnabled} from "../python-setup/utils/serverlessVersionResolver";
 import {
-    scoreServerlessVersions,
-    VersionObservation,
-} from "../python-setup/utils/serverlessVersionScoring";
+    isPythonSetupEnabled,
+    resolveServerlessVersion,
+} from "../python-setup/utils/serverlessVersionResolver";
 import {pickServerlessVersion} from "../python-setup/utils/serverlessVersionPicker";
 import {collectBundleServerlessVersions} from "../python-setup/utils/bundleServerlessVersions";
 
@@ -241,22 +240,29 @@ export class ConnectionCommands implements Disposable {
     }
 
     /**
-     * Rank the serverless environment versions declared in the project's bundle
-     * and let the user confirm one (top candidate pre-selected). Returns the
-     * confirmed bare version, or undefined if dismissed.
+     * Resolve the serverless environment version: gather the project's version
+     * evidence, score it, and let the user confirm the best-ranked candidate.
+     * Returns the confirmed bare version, or undefined if dismissed. Delegates
+     * to {@link resolveServerlessVersion} so the collect->score->pick pipeline
+     * lives in one place; this call site only supplies where the evidence comes
+     * from (the bundle today) and how the user confirms it.
      */
     private async pickServerlessVersion(): Promise<string | undefined> {
-        let observations: VersionObservation[];
-        try {
-            const validateConfig = await this.configModel.get("validateConfig");
-            observations = collectBundleServerlessVersions(validateConfig);
-        } catch {
-            // Bundle not available/parseable -- fall back to scoring with no
-            // observations (yields the default candidate), never block compute
-            // selection on it.
-            observations = [];
-        }
-        return pickServerlessVersion(scoreServerlessVersions(observations));
+        return resolveServerlessVersion({
+            collectObservations: async () => {
+                try {
+                    const validateConfig =
+                        await this.configModel.get("validateConfig");
+                    return collectBundleServerlessVersions(validateConfig);
+                } catch {
+                    // Bundle not available/parseable -- score with no
+                    // observations (yields the default candidate) rather than
+                    // blocking compute selection on it.
+                    return [];
+                }
+            },
+            pick: pickServerlessVersion,
+        });
     }
 
     /**
