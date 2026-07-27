@@ -4,8 +4,13 @@ import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
+import {
+    buildPythonSetupEntry,
+    PythonSetupEntry,
+} from "./pythonSetupEntry";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
+const PYTHON_SETUP_COMMAND = "databricks.environment.setupPythonEnv";
 const getItemContext = (key: string, available: boolean) =>
     `databricks.environment.${key}.${available ? "success" : "error"}`;
 
@@ -13,12 +18,24 @@ export class EnvironmentComponent extends BaseComponent {
     constructor(
         private readonly featureManager: FeatureManager,
         private readonly connectionManager: ConnectionManager,
-        private readonly configModel: ConfigModel
+        private readonly configModel: ConfigModel,
+        // Optional so the legacy construction (and tests) keep working; when
+        // absent the component behaves exactly as before (checklist only).
+        private readonly pythonSetup?: PythonSetupEntry
     ) {
         super();
         this.featureManager.onDidChangeState("environment.dependencies", () =>
             this.onDidChangeEmitter.fire()
         );
+        // Refresh the view when the uv-native setup flips to ready, so the CTA
+        // becomes a done status line without the user re-expanding the section.
+        if (this.pythonSetup) {
+            this.disposables.push(
+                this.pythonSetup.onDidChangeState(() =>
+                    this.onDidChangeEmitter.fire()
+                )
+            );
+        }
     }
 
     public async getRoot(): Promise<ConfigurationTreeItem[]> {
@@ -60,6 +77,16 @@ export class EnvironmentComponent extends BaseComponent {
         }
         if (parent.id !== ENVIRONMENT_COMPONENT_ID) {
             return [];
+        }
+        // The uv-native setup and the legacy pip checklist are mutually
+        // exclusive: when the python-setup entry is visible (opted-in + a
+        // clean uv/greenfield project), show only it and skip the checklist.
+        const pythonSetup = this.pythonSetup;
+        if (pythonSetup && (await pythonSetup.isVisible())) {
+            return buildPythonSetupEntry(
+                {ready: pythonSetup.ready},
+                PYTHON_SETUP_COMMAND
+            );
         }
         const environmentState = await this.featureManager.isEnabled(
             "environment.dependencies"
