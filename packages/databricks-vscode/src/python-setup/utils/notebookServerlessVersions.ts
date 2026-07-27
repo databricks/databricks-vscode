@@ -11,7 +11,12 @@ const DATABRICKS_NOTEBOOK_METADATA_KEY =
  * A Databricks notebook records its serverless environment version at
  * `metadata["application/vnd.databricks.v1+notebook"].environmentMetadata
  * .environment_version` — the same bare-integer form (e.g. "5") the CLI's
- * `--serverless-version` flag takes. We look only inside that Databricks
+ * `--serverless-version` flag takes. Note the mixed casing is intentional and
+ * matches the exported `.ipynb` shape: the parent block `environmentMetadata`
+ * is camelCase (like its `notebookName`/`notebookMetadata` siblings), while the
+ * leaf `environment_version` (alongside `base_environment`, `dependencies`) is
+ * snake_case. Do not "normalize" the leaf to camelCase — that would harvest
+ * nothing. We look only inside that Databricks
  * metadata block (a plain Jupyter notebook has no such key and contributes
  * nothing), and defensively walk it for `environment_version` so a slightly
  * different nesting still resolves. Input is the already-parsed notebook JSON

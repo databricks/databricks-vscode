@@ -26,6 +26,7 @@ import {AutoLoginSource, ManualLoginSource} from "../telemetry/constants";
 import {Barrier} from "../locking/Barrier";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {ProjectConfigFile} from "../file-managers/ProjectConfigFile";
+import {isSupportedVersion} from "../python-setup/utils/serverlessVersionScoring";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -163,8 +164,16 @@ export class ConnectionManager implements Disposable {
             // without re-prompting. A version-less serverless config (older
             // extensions, or serverless enabled before a version was chosen)
             // leaves this undefined, and consumers fall back to their default.
-            this._serverlessVersion =
+            // The stored value is untrusted (config files are hand-editable and
+            // may predate the supported range), so re-validate here rather than
+            // exposing a value the `--serverless-version` flag would reject --
+            // an unsupported version is dropped to undefined (scored default).
+            const storedVersion =
                 await this.configModel.get("serverlessVersion");
+            this._serverlessVersion =
+                storedVersion !== undefined && isSupportedVersion(storedVersion)
+                    ? storedVersion
+                    : undefined;
             await this.enableServerless(this._serverlessVersion);
         } else {
             await this.disableServerless();
