@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import {expect} from "chai";
 import {collectBundleServerlessVersions} from "./bundleServerlessVersions";
 
@@ -51,7 +52,9 @@ describe("collectBundleServerlessVersions", () => {
     it("coerces a numeric environment_version to a bare string", () => {
         // YAML may parse an unquoted version as a number.
         const bundle = {
-            resources: {jobs: {a: {environments: [{spec: {environment_version: 5}}]}}},
+            resources: {
+                jobs: {a: {environments: [{spec: {environment_version: 5}}]}},
+            },
         };
 
         expect(collectBundleServerlessVersions(bundle)).to.deep.equal([
