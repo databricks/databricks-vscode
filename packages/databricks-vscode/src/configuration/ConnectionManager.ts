@@ -50,6 +50,7 @@ export class ConnectionManager implements Disposable {
     private _databricksWorkspace?: DatabricksWorkspace;
     private _metadataService: MetadataService;
     private _serverlessEnabled: boolean = false;
+    private _serverlessVersion: string | undefined;
 
     private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
         new EventEmitter();
@@ -158,7 +159,13 @@ export class ConnectionManager implements Disposable {
         const autoEnable =
             serverless === undefined && !this.cluster && computeId === "auto";
         if (serverless || autoEnable) {
-            await this.enableServerless();
+            // Load the persisted version (if any) so it survives a reload
+            // without re-prompting. A version-less serverless config (older
+            // extensions, or serverless enabled before a version was chosen)
+            // leaves this undefined, and consumers fall back to their default.
+            this._serverlessVersion =
+                await this.configModel.get("serverlessVersion");
+            await this.enableServerless(this._serverlessVersion);
         } else {
             await this.disableServerless();
         }
@@ -226,6 +233,16 @@ export class ConnectionManager implements Disposable {
 
     get serverless(): boolean {
         return this._serverlessEnabled;
+    }
+
+    /**
+     * The persisted serverless environment version (the CLI's bare-integer
+     * `--serverless-version` value, e.g. "5"), or undefined when serverless is
+     * not selected or no version has been chosen yet. Consumers treat undefined
+     * as "fall back to the scored default".
+     */
+    get serverlessVersion(): string | undefined {
+        return this._serverlessEnabled ? this._serverlessVersion : undefined;
     }
 
     get syncDestinationMapper(): SyncDestinationMapper | undefined {
@@ -465,7 +482,15 @@ export class ConnectionManager implements Disposable {
     @onError({
         popup: {prefix: "Failed to enable serverless mode."},
     })
-    async enableServerless() {
+    async enableServerless(version?: string) {
+        // Persist the version whenever one is supplied, even if serverless is
+        // already enabled -- this is how re-picking the version (without
+        // toggling compute) is saved. `undefined` leaves any existing persisted
+        // version in place rather than clearing it.
+        if (version !== undefined && version !== this._serverlessVersion) {
+            this._serverlessVersion = version;
+            await this.configModel.set("serverlessVersion", version);
+        }
         if (!this._serverlessEnabled) {
             this._serverlessEnabled = true;
             await this.configModel.set("serverless", true);
@@ -485,7 +510,12 @@ export class ConnectionManager implements Disposable {
     async disableServerless() {
         if (this._serverlessEnabled) {
             this._serverlessEnabled = false;
+            // Clear the version too: it only has meaning while serverless is
+            // the selected compute, and leaving a stale value would let it
+            // resurface if serverless is re-enabled later without re-picking.
+            this._serverlessVersion = undefined;
             await this.configModel.set("serverless", false);
+            await this.configModel.set("serverlessVersion", undefined);
             this.customWhenContext.setServerless(false);
             this.onDidChangeClusterEmitter.fire(undefined);
         }
