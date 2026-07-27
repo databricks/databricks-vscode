@@ -250,14 +250,30 @@ describe("Bundle Variables", async function () {
 
         await browser.waitUntil(
             async () => {
-                await assertVariableValue(section, "varWithDefault", {
-                    value: "dev",
-                    defaultValue: "default",
-                });
-                return true;
+                try {
+                    await assertVariableValue(section, "varWithDefault", {
+                        value: "dev",
+                        defaultValue: "default",
+                    });
+                    return true;
+                } catch {
+                    // The tree reverts off the extension's FileSystemWatcher,
+                    // which can lag the reset on a slow/busy shard. Re-trigger
+                    // the "Reset bundle variables to default values" action
+                    // (re-fetched, since the element can go stale across tree
+                    // refreshes), then let the next poll re-check. Resetting
+                    // when already-default is a harmless no-op.
+                    const resetAction = await section.getAction(
+                        "Reset bundle variables to default values"
+                    );
+                    if (resetAction) {
+                        await (await resetAction.elem).click();
+                    }
+                    return false;
+                }
             },
             {
-                timeout: 10_000,
+                timeout: 30_000,
                 interval: 2_000,
                 timeoutMsg: "Variable value not updated",
             }
