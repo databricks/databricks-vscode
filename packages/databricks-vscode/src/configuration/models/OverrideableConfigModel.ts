@@ -10,6 +10,17 @@ export type OverrideableConfigState = {
     authProfile?: string;
     clusterId?: string;
     serverless?: boolean;
+    /**
+     * The serverless environment version to provision the local Python
+     * environment against (the CLI's bare-integer `--serverless-version` value,
+     * e.g. "5"). Chosen once alongside the serverless compute selection and
+     * persisted so setup need not re-prompt.
+     *
+     * Optional and independent of `serverless`: existing configs that predate
+     * this field have `serverless: true` with no version, which stays valid --
+     * a version-less serverless selection falls back to the scored default.
+     */
+    serverlessVersion?: string;
     useClusterOverride?: boolean;
 };
 
@@ -21,6 +32,7 @@ export function isOverrideableConfigKey(
         "clusterId",
         "useClusterOverride",
         "serverless",
+        "serverlessVersion",
     ].includes(key);
 }
 
