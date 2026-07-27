@@ -14,7 +14,6 @@ function makeDeps(
     let collectCalls = 0;
     const pickedRankings: ScoredVersion[][] = [];
     const base: ServerlessVersionResolverDeps = {
-        isEnabled: () => true,
         collectObservations: async () => [] as VersionObservation[],
         pick: async (ranked) => {
             pickedRankings.push(ranked);
@@ -37,9 +36,8 @@ function makeDeps(
         pickedRankings: ScoredVersion[][];
     };
     probe.pickedRankings = pickedRankings;
-    // Define a *live* accessor: `Object.assign` would invoke the getter once and
-    // copy its current value (0), freezing `collectCalls` at 0 and making the
-    // "collection is skipped when disabled" assertion a tautology.
+    // Define a *live* accessor so `collectCalls` reflects real invocations at
+    // assert time (a plain copy would freeze it at 0).
     Object.defineProperty(probe, "collectCalls", {
         get: () => collectCalls,
         enumerable: true,
@@ -48,24 +46,9 @@ function makeDeps(
 }
 
 describe("resolveServerlessVersion", () => {
-    it("returns undefined and does nothing when the feature is disabled", async () => {
-        let picked = false;
-        const deps = makeDeps({
-            isEnabled: () => false,
-            pick: async () => {
-                picked = true;
-                return "5";
-            },
-        });
-
-        const version = await resolveServerlessVersion(deps);
-
-        expect(version).to.equal(undefined);
-        // The gate short-circuits before any collection or UI.
-        expect(deps.collectCalls).to.equal(0);
-        expect(picked).to.equal(false);
-    });
-
+    // The feature-flag gate is the caller's responsibility (see
+    // ConnectionCommands.selectServerless); this function is only invoked when
+    // the flow is active, so it always collects, scores, and offers a pick.
     it("scores collected observations and returns the confirmed version", async () => {
         const deps = makeDeps({
             collectObservations: async () => [
