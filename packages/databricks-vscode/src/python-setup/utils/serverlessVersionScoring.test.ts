@@ -1,8 +1,5 @@
 import {expect} from "chai";
-import {
-    scoreServerlessVersions,
-    WEIGHTS,
-} from "./serverlessVersionScoring";
+import {scoreServerlessVersions, WEIGHTS} from "./serverlessVersionScoring";
 
 describe("scoreServerlessVersions", () => {
     it("ranks the version with the most weight first", () => {
@@ -22,9 +19,7 @@ describe("scoreServerlessVersions", () => {
             {version: "5", source: "bundleYaml"},
         ]);
         expect(ranked[0].version).to.equal("4");
-        expect(ranked[0].score).to.equal(
-            WEIGHTS.bundleYaml + WEIGHTS.notebook
-        );
+        expect(ranked[0].score).to.equal(WEIGHTS.bundleYaml + WEIGHTS.notebook);
         expect(ranked[0].sources).to.have.members(["bundleYaml", "notebook"]);
     });
 
