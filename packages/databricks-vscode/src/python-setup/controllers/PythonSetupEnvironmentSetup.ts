@@ -127,6 +127,16 @@ export class PythonSetupEnvironmentSetup implements Disposable {
 
     constructor(private readonly deps: PythonSetupSetupDeps) {}
 
+    /**
+     * Whether the config view should surface the uv-native entry (instead of
+     * the legacy checklist) for the current project. Delegates to the injected
+     * gate so the component can decide dispatch without knowing the gate's
+     * inputs.
+     */
+    isVisible(): Promise<boolean> {
+        return this.deps.isVisible();
+    }
+
     setup(): Promise<void> {
         // Re-entrancy guard: coalesce concurrent callers onto the running run
         // rather than spawning a second project-mutating CLI process.

@@ -44,6 +44,13 @@ import {
     FeatureManager,
     PYTHON_SETUP_FEATURE_ID,
 } from "./feature-manager/FeatureManager";
+import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
+import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
+import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
+import {makePythonSetupDeps} from "./python-setup/controllers/pythonSetupDeps";
+import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
+import {isPythonSetupEnabled} from "./python-setup/utils/serverlessVersionResolver";
+import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
@@ -652,6 +659,52 @@ export async function activate(
                 packageManagerTelemetry
             )
     );
+    // uv-native Python environment setup (python-setup). Constructed always,
+    // but inert unless the user opts in: the detector/gate keep the entry hidden
+    // otherwise, so this changes nothing for existing users.
+    const pythonSetupDetector = new PythonSetupManagerDetector(
+        async (projectRoot) =>
+            collectPackageManagerSignals(
+                projectRoot,
+                await pythonExtensionWrapper.pythonEnvironment
+            )
+    );
+    const pythonSetupClient = new PythonSetupCliClient(() =>
+        resolveCliPath({
+            override: workspaceConfigs.pythonSetupCliPathOverride,
+            bundled: cli.cliPath,
+        })
+    );
+    const pythonSetupEnvironment = new PythonSetupEnvironmentSetup(
+        makePythonSetupDeps({
+            cli: pythonSetupClient,
+            projectRoot: () => workspaceFolderManager.activeProjectUri?.fsPath,
+            isEnabled: isPythonSetupEnabled,
+            detect: (projectRoot) => pythonSetupDetector.detect(projectRoot),
+            attachedCompute: () => ({
+                serverless: connectionManager.serverless,
+                cluster: connectionManager.cluster
+                    ? {id: connectionManager.cluster.id}
+                    : undefined,
+                serverlessVersion: connectionManager.serverlessVersion,
+            }),
+            setActiveInterpreter: async (interpreterPath, root) => {
+                await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
+                    interpreterPath,
+                    root
+                );
+            },
+        })
+    );
+    context.subscriptions.push(
+        pythonSetupEnvironment,
+        telemetry.registerCommand(
+            "databricks.environment.setupPythonEnv",
+            pythonSetupEnvironment.setup,
+            pythonSetupEnvironment
+        )
+    );
+
     const environmentCommands = new EnvironmentCommands(
         featureManager,
         pythonExtensionWrapper,
@@ -769,7 +822,8 @@ export async function activate(
         configModel,
         cli,
         featureManager,
-        workspaceFolderManager
+        workspaceFolderManager,
+        pythonSetupEnvironment
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,

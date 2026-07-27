@@ -455,6 +455,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.environment.setupPythonEnv",
+                "title": "Set up Python environment (uv)",
+                "icon": "$(rocket)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.environment.selectPythonInterpreter",
                 "title": "Change Python environment",
                 "icon": "$(gear)",
