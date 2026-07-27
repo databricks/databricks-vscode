@@ -86,13 +86,18 @@ describe("scoreServerlessVersions", () => {
         expect(fives[0].sources).to.deep.equal(["fallback"]);
     });
 
-    it("drops non-numeric and out-of-range versions", () => {
+    it("drops non-numeric, out-of-range and non-canonical versions", () => {
         const ranked = scoreServerlessVersions([
             {version: "abc", source: "bundleYaml"},
             {version: "", source: "notebook"},
             {version: "0", source: "bundleYaml"},
             {version: "6", source: "bundleYaml"},
             {version: "4.2", source: "notebook"},
+            // Non-canonical bare integers: parse into range but are not the
+            // exact string the CLI expects, so they must be dropped too.
+            {version: "05", source: "bundleYaml"},
+            {version: "+5", source: "notebook"},
+            {version: " 5", source: "workspaceDefault"},
         ]);
         // Everything invalid is filtered; only the fallback survives.
         expect(ranked).to.have.length(1);

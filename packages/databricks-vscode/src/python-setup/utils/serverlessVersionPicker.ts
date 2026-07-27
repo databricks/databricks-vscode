@@ -31,11 +31,15 @@ function describeSources(sources: VersionSource[]): string {
 }
 
 /**
- * Build the QuickPick rows for a ranked version list (pure, so the labelling
- * and pre-selection are unit-testable without a VS Code host). The first, i.e.
- * highest-scoring, candidate is pre-picked and visually starred; every row
- * carries its bare `version` for the caller to forward to the CLI, and a
- * `description` summarising where the version came from.
+ * Build the QuickPick rows for a ranked version list (pure, so the labelling is
+ * unit-testable without a VS Code host). The first, i.e. highest-scoring,
+ * candidate is marked as the recommendation: it is listed first and visually
+ * starred. (`picked` is also set for completeness, but note `showQuickPick`
+ * only honours it in multi-select mode -- see {@link pickServerlessVersion} --
+ * so in this single-select picker the star and ordering are what actually
+ * signal the recommendation.) Every row carries its bare `version` for the
+ * caller to forward to the CLI, and a `description` summarising where the
+ * version came from.
  */
 export function buildVersionPickItems(
     ranked: ScoredVersion[]
@@ -53,9 +57,10 @@ export function buildVersionPickItems(
 
 /**
  * Show an always-visible, ranked serverless-version QuickPick with the top
- * candidate pre-selected, and return the confirmed bare version (or undefined
- * if the user dismissed it). Selection is never silent -- the user must
- * confirm, matching the "no silent auto-selection" requirement.
+ * candidate presented as the recommendation (starred, listed first, and named
+ * in the placeholder), and return the confirmed bare version (or undefined if
+ * the user dismissed it). Selection is never silent -- the user must actively
+ * confirm a row, matching the "no silent auto-selection" requirement.
  */
 export async function pickServerlessVersion(
     ranked: ScoredVersion[]

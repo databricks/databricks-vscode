@@ -61,18 +61,27 @@ export const MIN_SUPPORTED_VERSION = 1;
 export const MAX_SUPPORTED_VERSION = 5;
 
 /**
- * A version is valid only if it is a bare integer (no `vN` prefix, no decimals,
- * no surrounding whitespace) within the supported range. This is the trust
- * boundary: observations gathered from bundle YAML, notebook metadata, etc. are
- * untrusted strings, and anything that is not a value the `--serverless-version`
- * flag would accept must never reach the picker or the CLI.
+ * A version is valid only if it is a bare integer in canonical form (no `vN`
+ * prefix, no `+` sign, no decimals, no leading zeros, no surrounding
+ * whitespace) within the supported range. This is the trust boundary:
+ * observations gathered from bundle YAML, notebook metadata, etc. are untrusted
+ * strings, and anything that is not a value the `--serverless-version` flag
+ * would accept must never reach the picker or the CLI.
+ *
+ * The `String(n) === version` check rejects non-canonical spellings like "05"
+ * that would otherwise parse into the range but not match the bare string the
+ * CLI expects (and would fail to merge with the canonical "5" candidate).
  */
 export function isSupportedVersion(version: string): boolean {
     if (!/^\d+$/.test(version)) {
         return false;
     }
     const n = parseInt(version, 10);
-    return n >= MIN_SUPPORTED_VERSION && n <= MAX_SUPPORTED_VERSION;
+    return (
+        String(n) === version &&
+        n >= MIN_SUPPORTED_VERSION &&
+        n <= MAX_SUPPORTED_VERSION
+    );
 }
 
 function versionNumber(v: string): number {

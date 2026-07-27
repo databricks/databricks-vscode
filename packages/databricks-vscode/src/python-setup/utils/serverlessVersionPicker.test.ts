@@ -2,13 +2,16 @@ import {expect} from "chai";
 import {buildVersionPickItems} from "./serverlessVersionPicker";
 
 describe("buildVersionPickItems", () => {
-    it("pre-picks the top candidate and shows its provenance", () => {
+    it("marks the top candidate as the recommendation and shows its provenance", () => {
         const items = buildVersionPickItems([
             {version: "4", score: 150, sources: ["bundleYaml", "notebook"]},
             {version: "5", score: 20, sources: ["workspaceDefault"]},
         ]);
 
         expect(items[0].version).to.equal("4");
+        // `picked` is set on the top row (cosmetic in single-select, but kept
+        // for completeness); the star label + first-position ordering are the
+        // actual recommendation cues.
         expect(items[0].picked).to.equal(true);
         // Multi-source provenance is summarised in the description.
         expect(items[0].description).to.match(/bundle|notebook|2 source/i);
