@@ -53,18 +53,19 @@ describe("resolveServerlessVersion", () => {
         const deps = makeDeps({
             collectObservations: async () => [
                 {version: "4", source: "bundleYaml"},
-                {version: "6", source: "notebook"},
+                {version: "3", source: "notebook"},
             ],
             pick: async (ranked) => ranked[0].version,
         });
 
         const version = await resolveServerlessVersion(deps);
 
+        // Both versions are in range, so this genuinely exercises weighting:
         // bundleYaml (100) outranks notebook (50), so "4" is recommended.
         expect(version).to.equal("4");
-        // The live counter proves collection actually ran (and that the
-        // disabled-path assertion below is observing a real value, not a frozen
-        // 0): the enabled path must collect exactly once.
+        // The live counter proves collection ran exactly once -- the collector
+        // runs during resolve (after makeDeps wires this accessor), so a plain
+        // snapshot copy would read a stale 0.
         expect(deps.collectCalls).to.equal(1);
     });
 
