@@ -15,7 +15,7 @@ Use this as a lookup while you code.
 | Class / interface / type / enum                             | `PascalCase`                                                  | `ConnectionManager`, `RunState`               |
 | Method / local variable / function                          | `camelCase`                                                   | `refresh()`, `activeCluster`                  |
 | Module-level constant                                       | `UPPER_SNAKE_CASE`                                            | `SCHEME`, `PROD_APP_INSIGHTS_KEY`             |
-| Private field                                               | `camelCase`, `_`-prefix only for event-emitter backing fields | `private disposables`, `private _onDidChange` |
+| Private field                                               | `camelCase`; `_`-prefix a private field backing a public getter/accessor of the same name | `private disposables`, `private _state` (→ `get state()`) |
 | Public event                                                | `onDid<Thing><Verb>`                                          | `onDidChangeState`                            |
 | String-union members                                        | quoted literals                                               | `"CONNECTED" \| "DISCONNECTED"`               |
 | VS Code command ID                                          | `databricks.<domain>.<action>`                                | `databricks.cluster.refresh`                  |
