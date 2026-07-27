@@ -29,6 +29,9 @@ import {
 } from "../python-setup/utils/serverlessVersionResolver";
 import {pickServerlessVersion} from "../python-setup/utils/serverlessVersionPicker";
 import {collectBundleServerlessVersions} from "../python-setup/utils/bundleServerlessVersions";
+import {collectProjectNotebookVersions} from "../python-setup/utils/projectNotebookVersions";
+import {VersionObservation} from "../python-setup/utils/serverlessVersionScoring";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -69,7 +72,8 @@ export class ConnectionCommands implements Disposable {
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel,
         private readonly configModel: ConfigModel,
-        private readonly cli: CliWrapper
+        private readonly cli: CliWrapper,
+        private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {}
 
     /**
@@ -249,20 +253,44 @@ export class ConnectionCommands implements Disposable {
      */
     private async pickServerlessVersion(): Promise<string | undefined> {
         return resolveServerlessVersion({
-            collectObservations: async () => {
+            collectObservations: () => this.collectServerlessObservations(),
+            pick: pickServerlessVersion,
+        });
+    }
+
+    /**
+     * Gather serverless-version evidence from the project's local sources
+     * (bundle config + notebooks). Each source is collected independently and
+     * guarded, so one failing source never blocks the other or compute
+     * selection; the scorer merges and de-dupes across sources. (The
+     * workspace-default API source is not yet available — see DECO-27782.)
+     */
+    private async collectServerlessObservations(): Promise<
+        VersionObservation[]
+    > {
+        const [bundle, notebooks] = await Promise.all([
+            (async () => {
                 try {
                     const validateConfig =
                         await this.configModel.get("validateConfig");
                     return collectBundleServerlessVersions(validateConfig);
                 } catch {
-                    // Bundle not available/parseable -- score with no
-                    // observations (yields the default candidate) rather than
-                    // blocking compute selection on it.
-                    return [];
+                    return [] as VersionObservation[];
                 }
-            },
-            pick: pickServerlessVersion,
-        });
+            })(),
+            (async () => {
+                try {
+                    const projectRoot =
+                        this.workspaceFolderManager.activeProjectUri.fsPath;
+                    return await collectProjectNotebookVersions(projectRoot);
+                } catch {
+                    // No active project, or notebook scan failed -- contribute
+                    // nothing rather than blocking compute selection.
+                    return [] as VersionObservation[];
+                }
+            })(),
+        ]);
+        return [...bundle, ...notebooks];
     }
 
     /**
