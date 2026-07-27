@@ -1146,6 +1146,10 @@
             ],
             "commandPalette": [
                 {
+                    "command": "databricks.environment.setupPythonEnv",
+                    "when": "false"
+                },
+                {
                     "command": "databricks.run.runEditorContents",
                     "when": "resourceLangId == python"
                 },

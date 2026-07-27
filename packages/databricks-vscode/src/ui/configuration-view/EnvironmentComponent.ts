@@ -4,10 +4,7 @@ import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
-import {
-    buildPythonSetupEntry,
-    PythonSetupEntry,
-} from "./pythonSetupEntry";
+import {buildPythonSetupEntry, PythonSetupEntry} from "./pythonSetupEntry";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
 const PYTHON_SETUP_COMMAND = "databricks.environment.setupPythonEnv";
