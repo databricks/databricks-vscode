@@ -8,7 +8,10 @@
  * Versions are the CLI's bare-integer form (e.g. "4", "5") -- the value
  * `--serverless-version` accepts -- NOT the `vN` display form the CLI echoes in
  * its result output. The picker forwards the chosen value straight into the
- * setup-local invocation, so it must stay bare.
+ * setup-local invocation, so it must stay bare. Observations that are not a
+ * bare integer in the supported range (see {@link isSupportedVersion}) are
+ * dropped before scoring, so neither the `vN` form nor an unrealistic version
+ * can ever reach the picker or the CLI.
  */
 
 /** Where a candidate serverless version was observed. */
@@ -53,9 +56,27 @@ export const WEIGHTS: Record<VersionSource, number> = {
  */
 export const FALLBACK_VERSION = "5";
 
+/** Lowest / highest serverless environment version the CLI accepts, inclusive. */
+export const MIN_SUPPORTED_VERSION = 1;
+export const MAX_SUPPORTED_VERSION = 5;
+
+/**
+ * A version is valid only if it is a bare integer (no `vN` prefix, no decimals,
+ * no surrounding whitespace) within the supported range. This is the trust
+ * boundary: observations gathered from bundle YAML, notebook metadata, etc. are
+ * untrusted strings, and anything that is not a value the `--serverless-version`
+ * flag would accept must never reach the picker or the CLI.
+ */
+export function isSupportedVersion(version: string): boolean {
+    if (!/^\d+$/.test(version)) {
+        return false;
+    }
+    const n = parseInt(version, 10);
+    return n >= MIN_SUPPORTED_VERSION && n <= MAX_SUPPORTED_VERSION;
+}
+
 function versionNumber(v: string): number {
-    const n = parseInt(v.replace(/^v/i, ""), 10);
-    return Number.isFinite(n) ? n : 0;
+    return parseInt(v, 10);
 }
 
 /**
@@ -67,8 +88,11 @@ function versionNumber(v: string): number {
 export function scoreServerlessVersions(
     observations: VersionObservation[]
 ): ScoredVersion[] {
+    // Drop anything that is not a supported bare integer before it can be
+    // scored -- a `vN`-form or unrealistic version must never be forwarded to
+    // the CLI. The fallback is known-valid and always kept.
     const all: VersionObservation[] = [
-        ...observations,
+        ...observations.filter((o) => isSupportedVersion(o.version)),
         {version: FALLBACK_VERSION, source: "fallback"},
     ];
 
