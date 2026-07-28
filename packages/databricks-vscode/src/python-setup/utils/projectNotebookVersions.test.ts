@@ -44,6 +44,13 @@ describe("collectProjectNotebookVersions", () => {
         writeFileSync(full, notebookWithVersion(version));
     }
 
+    /** Write arbitrary raw content at `relativePath` under `root`. */
+    function writeRaw(root: string, relativePath: string, content: string) {
+        const full = path.join(root, relativePath);
+        mkdirSync(path.dirname(full), {recursive: true});
+        writeFileSync(full, content);
+    }
+
     it("collects versions from the project's own notebooks", async () => {
         const root = tempProject();
         writeNotebook(root, "analysis.ipynb", "5");
@@ -84,5 +91,37 @@ describe("collectProjectNotebookVersions", () => {
     it("returns nothing for a project with no notebooks", async () => {
         const root = tempProject();
         expect(await collectProjectNotebookVersions(root)).to.deep.equal([]);
+    });
+
+    it("skips the parse for notebooks that don't mention the version field", async () => {
+        const root = tempProject();
+        // A versioned notebook -- collected as usual.
+        writeNotebook(root, "real.ipynb", "5");
+        // A notebook that doesn't mention environment_version: the pre-filter
+        // skips it before parsing. Written as invalid JSON to prove the parse
+        // is skipped -- if it were parsed, this would still be ignored, but the
+        // point is it never reaches JSON.parse.
+        writeRaw(root, "plain.ipynb", '{"cells": [ this is not valid json');
+
+        const observed = await collectProjectNotebookVersions(root);
+
+        expect(observed).to.deep.equal([{version: "5", source: "notebook"}]);
+    });
+
+    it("collects across many notebooks (past the concurrency batch boundary)", async () => {
+        const root = tempProject();
+        // More than SCAN_CONCURRENCY (20) notebooks, with a distinct version
+        // only on the last few, to exercise batching and first-seen ordering.
+        for (let i = 0; i < 25; i++) {
+            writeNotebook(root, `nb${i}.ipynb`, "5");
+        }
+        writeNotebook(root, "late.ipynb", "4");
+
+        const observed = await collectProjectNotebookVersions(root);
+
+        expect(observed).to.have.deep.members([
+            {version: "5", source: "notebook"},
+            {version: "4", source: "notebook"},
+        ]);
     });
 });
