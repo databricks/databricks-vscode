@@ -198,6 +198,15 @@ export const config: WebdriverIO.Config = {
                         "window.openFoldersInNewWindow": "off",
                         "extensions.autoCheckUpdates": false,
                         "extensions.autoUpdate": false,
+                        // ms-python.python is a hard extensionDependency, so its
+                        // language server always loads. In the headless CI display
+                        // the Jedi server repeatedly fails to connect and crashes,
+                        // and its "Python Jedi server crashed" toasts overlay UI
+                        // targets (e.g. the Output-channel <select title="Tasks">),
+                        // intercepting clicks. We don't need language features in
+                        // e2e, so disable the server (and experiments) at the source.
+                        "python.languageServer": "None",
+                        "python.experiments.enabled": false,
                     },
                 },
             },

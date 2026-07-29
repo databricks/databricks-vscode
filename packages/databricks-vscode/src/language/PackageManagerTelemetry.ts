@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {Loggers} from "../logger";
 import {Telemetry} from "../telemetry";
@@ -7,15 +5,8 @@ import {ComputeType, SetupTrigger} from "../telemetry/constants";
 import "../telemetry/packageManagerExtensions";
 import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {ResolvedEnvironment} from "./MsPythonExtensionApi";
-import {
-    detectPackageManagers,
-    interpreterUnderCondaPrefix,
-    InterpreterSource,
-    PackageManagerSignals,
-    pyprojectHasPackagingTable,
-    pyprojectHasToolSection,
-    pyvenvCfgMarksUv,
-} from "./packageManagerDetection";
+import {detectPackageManagers} from "./packageManagerDetection";
+import {collectPackageManagerSignals} from "./packageManagerSignals";
 
 export type {SetupTrigger};
 
@@ -78,7 +69,11 @@ export class PackageManagerTelemetry {
             this.emitted.add(dedupeKey);
 
             const env = await this.resolveEnvironment();
-            const signals = this.collectSignals(projectRoot, env);
+            const signals = collectPackageManagerSignals(
+                projectRoot,
+                env,
+                (message, e) => this.logger.debug(message, e)
+            );
             const detection = detectPackageManagers(signals);
 
             this.telemetry.recordPackageManagerDetection(detection, {
@@ -112,169 +107,5 @@ export class PackageManagerTelemetry {
             return undefined;
         }
         return `${version.major}.${version.minor}`;
-    }
-
-    /**
-     * Classify the *active interpreter's* provenance from the resolved
-     * environment alone. This is deliberately independent of project files: a
-     * project carrying `uv.lock` but running a conda/venv/system interpreter
-     * must report that interpreter's real source, so the setup-flow gap ("uv
-     * project, interpreter not uv-managed yet") stays visible. `uv.lock` is
-     * still captured as a strong *project* signal via `hasUvLock`.
-     */
-    private getInterpreterSource(
-        env: ResolvedEnvironment | undefined
-    ): InterpreterSource {
-        if (env?.environment === undefined) {
-            // No managed environment: a global/system interpreter.
-            return env ? "system" : "unknown";
-        }
-
-        const tools = env.tools ?? [];
-        if (env.environment.type === "Conda" || tools.includes("Conda")) {
-            return "conda";
-        }
-        // Poetry envs are venvs, but must be attributed to poetry rather than
-        // collapsed into the generic venv (which the detector reads as pip).
-        if (tools.includes("Poetry")) {
-            return "poetry";
-        }
-        if (
-            tools.includes("Venv") ||
-            tools.includes("VirtualEnv") ||
-            tools.includes("Pipenv") ||
-            env.environment.type === "VirtualEnvironment"
-        ) {
-            // The MS Python extension reports uv-created venvs as plain virtual
-            // environments. Distinguish a genuinely uv-provisioned interpreter
-            // by the `uv = <version>` line uv writes into pyvenv.cfg -- this is
-            // interpreter provenance, not the mere presence of uv.lock.
-            return this.isUvCreatedVenv(env) ? "uv" : "venv";
-        }
-        return "unknown";
-    }
-
-    /**
-     * True if the active venv's pyvenv.cfg marks it as uv-created. Thin fs
-     * wrapper around the pure {@link pyvenvCfgMarksUv}.
-     */
-    private isUvCreatedVenv(env: ResolvedEnvironment): boolean {
-        try {
-            const sysPrefix = env.executable.sysPrefix;
-            if (!sysPrefix) {
-                return false;
-            }
-            const cfg = path.join(sysPrefix, "pyvenv.cfg");
-            if (!fs.existsSync(cfg)) {
-                return false;
-            }
-            return pyvenvCfgMarksUv(fs.readFileSync(cfg, "utf-8"));
-        } catch (e) {
-            this.logger.debug("Failed to read pyvenv.cfg", e);
-            return false;
-        }
-    }
-
-    /**
-     * Gather raw signals from disk and the environment. Each probe is guarded
-     * so a single failure degrades that signal to absent rather than aborting.
-     */
-    private collectSignals(
-        projectRoot: string,
-        env: ResolvedEnvironment | undefined
-    ): PackageManagerSignals {
-        const exists = (file: string) => this.fileExists(projectRoot, file);
-        const interpreterSource = this.getInterpreterSource(env);
-        const pyproject = this.readPyproject(projectRoot);
-
-        const hasPyprojectToolUv = pyprojectHasToolSection(pyproject, "uv");
-        const hasPyprojectToolPoetry = pyprojectHasToolSection(
-            pyproject,
-            "poetry"
-        );
-        // Only attribute pip when the pyproject actually declares packaging
-        // (`[project]`/`[build-system]`); a file with only tool config such as
-        // `[tool.ruff]` is not a pip signal.
-        const hasPyprojectPipOnly =
-            pyprojectHasPackagingTable(pyproject) &&
-            !hasPyprojectToolUv &&
-            !hasPyprojectToolPoetry;
-
-        return {
-            hasUvLock: exists("uv.lock"),
-            hasPyprojectToolUv,
-            // uvOnPath is intentionally left unset: it is a weak signal that
-            // never attributes a project to uv, and probing it would mean
-            // executing a PATH-resolved `uv` binary purely for telemetry.
-            hasPoetryLock: exists("poetry.lock"),
-            hasPyprojectToolPoetry,
-            poetryOnPath: undefined,
-            hasRequirementsTxt: this.hasRequirementsTxt(projectRoot),
-            hasConstraintsTxt: exists("constraints.txt"),
-            hasPyprojectPipOnly,
-            hasCondaEnvFile:
-                exists("environment.yml") || exists("environment.yaml"),
-            hasCondaPrefix: this.hasActiveCondaInterpreter(env),
-            interpreterSource,
-        };
-    }
-
-    /**
-     * Whether the *active interpreter* lives under `CONDA_PREFIX`.
-     *
-     * We deliberately do NOT fire on the bare presence of `CONDA_PREFIX` /
-     * `CONDA_DEFAULT_ENV`: those are session-global in the extension host (set
-     * for every project when VS Code is launched from an activated conda
-     * shell), so using them directly would over-count conda for uv/poetry/pip
-     * projects. Requiring the active interpreter to reside under the prefix
-     * keeps this a project-scoped signal.
-     */
-    private hasActiveCondaInterpreter(
-        env: ResolvedEnvironment | undefined
-    ): boolean {
-        return interpreterUnderCondaPrefix(
-            env?.executable.sysPrefix,
-            process.env["CONDA_PREFIX"]
-        );
-    }
-
-    private fileExists(projectRoot: string, file: string): boolean {
-        try {
-            return fs.existsSync(path.join(projectRoot, file));
-        } catch (e) {
-            this.logger.debug(`Failed to stat ${file}`, e);
-            return false;
-        }
-    }
-
-    /**
-     * True if any pip-style requirements file exists in the project root:
-     * `requirements.txt` or a separator-suffixed variant such as
-     * `requirements-dev.txt` / `requirements_test.txt` / `requirements.ci.txt`.
-     * Deliberately does not match `requirementsfoo.txt` (no separator), which
-     * isn't a conventional requirements file.
-     */
-    private hasRequirementsTxt(projectRoot: string): boolean {
-        try {
-            return fs
-                .readdirSync(projectRoot)
-                .some((name) => /^requirements([-_.].+)?\.txt$/.test(name));
-        } catch (e) {
-            this.logger.debug("Failed to list project root", e);
-            return false;
-        }
-    }
-
-    private readPyproject(projectRoot: string): string | undefined {
-        try {
-            const file = path.join(projectRoot, "pyproject.toml");
-            if (!fs.existsSync(file)) {
-                return undefined;
-            }
-            return fs.readFileSync(file, "utf-8");
-        } catch (e) {
-            this.logger.debug("Failed to read pyproject.toml", e);
-            return undefined;
-        }
     }
 }

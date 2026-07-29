@@ -1452,16 +1452,23 @@
                         "items": {
                             "enum": [
                                 "views.cluster",
-                                "views.workspace"
+                                "views.workspace",
+                                "environment.pythonSetup"
                             ],
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
-                                "Show workspace browser in the explorer."
+                                "Show workspace browser in the explorer.",
+                                "Enable the uv-native one-click Python environment setup for Databricks Connect."
                             ],
                             "type": "string"
                         },
                         "uniqueItems": true,
                         "description": "Opt into experimental features."
+                    },
+                    "databricks.experiments.cliPathOverride": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Absolute path to a custom Databricks CLI that provides `environments setup-local`. Temporary experimental setting used while the command ships only in custom CLI builds; leave empty to use the bundled CLI. Will be removed once the command is generally available."
                     },
                     "databricks.wsfs.rearrangeCells": {
                         "type": "boolean",
@@ -1502,7 +1509,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.7.0"
+        "version": "1.9.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
@@ -1558,7 +1565,7 @@
         "shell-quote": "^1.8.4",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
-        "yaml": "^2.3.4"
+        "yaml": "^2.8.3"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
