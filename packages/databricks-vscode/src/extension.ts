@@ -675,6 +675,10 @@ export async function activate(
             bundled: cli.cliPath,
         })
     );
+    const pythonSetupLogChannel = window.createOutputChannel(
+        "Databricks Python Environment Setup"
+    );
+    context.subscriptions.push(pythonSetupLogChannel);
     const pythonSetupEnvironment = new PythonSetupEnvironmentSetup(
         makePythonSetupDeps({
             cli: pythonSetupClient,
@@ -695,7 +699,21 @@ export async function activate(
                 );
             },
             persistSetupState: (state) => {
-                stateStorage.set("databricks.pythonSetup.setupState", state);
+                // Fire-and-forget by design (the setup flow does not block on
+                // the write), but a rejected workspaceState update must not
+                // surface as an unhandled rejection -- a lost state write only
+                // weakens future drift detection, so log and move on.
+                void stateStorage
+                    .set("databricks.pythonSetup.setupState", state)
+                    .catch((e) =>
+                        logging.NamedLogger.getOrCreate(
+                            Loggers.Extension
+                        ).error("Failed to persist python-setup state", e)
+                    );
+            },
+            log: {
+                append: (chunk) => pythonSetupLogChannel.append(chunk),
+                show: () => pythonSetupLogChannel.show(true),
             },
         })
     );

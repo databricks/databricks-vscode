@@ -49,8 +49,10 @@ export function resolveComputeFrom(
  * Build the visibility gate for the config-view entry: the feature must be
  * opted into (flag on) AND the active project must be one the uv-native setup
  * fits (a clean uv/greenfield project, no competing manager -- see
- * {@link shouldShowPythonSetup}). Best-effort detection failures degrade to
- * "not a uv project", so the entry simply stays hidden.
+ * {@link shouldShowPythonSetup}). Detection is best-effort: `detect` swallows
+ * collection failures and returns `unknown`/`[]`, which the gate reads as a
+ * greenfield project -- so a detection failure fails *open* (the entry is
+ * shown), consistent with treating an unclassifiable project as safe to offer.
  */
 export function makePythonSetupVisibility(deps: {
     isEnabled: () => boolean;
@@ -85,6 +87,15 @@ export interface PythonSetupWiringDeps {
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
     persistSetupState: (state: PythonSetupState) => void;
+    /**
+     * Sink for the CLI's streamed output (an output channel in the extension).
+     * `append` receives each chunk as it arrives; `show` reveals the channel so
+     * the user can read the full log when a run fails.
+     */
+    log: {
+        append: (chunk: string) => void;
+        show: () => void;
+    };
 }
 
 /**
@@ -123,6 +134,9 @@ export function makePythonSetupDeps(
             });
         },
         showError: async (message: string) => {
+            // Reveal the streamed CLI log alongside the mapped one-liner so the
+            // user can see why the run failed, not just that it did.
+            wiring.log.show();
             await window.showErrorMessage(message);
         },
         showSuccess: async () => {
@@ -132,11 +146,20 @@ export function makePythonSetupDeps(
         },
         withProgress: (title, task) =>
             // window.withProgress returns a Thenable; the seam is typed as a
-            // Promise, so normalise it.
+            // Promise, so normalise it. `cancellable` is required for the token
+            // to ever fire -- without it VS Code shows no Cancel button and the
+            // downstream cancellation path (CLI teardown, PythonSetupCancelledError)
+            // would be dead. `log` is forwarded so the CLI's streamed output
+            // reaches the output channel instead of being dropped.
             Promise.resolve(
                 window.withProgress(
-                    {location: ProgressLocation.Notification, title},
-                    (_progress, token) => task(() => {}, token)
+                    {
+                        location: ProgressLocation.Notification,
+                        title,
+                        cancellable: true,
+                    },
+                    (_progress, token) =>
+                        task((chunk) => wiring.log.append(chunk), token)
                 )
             ),
     };

@@ -101,6 +101,18 @@ describe("resolveComputeFrom", () => {
             })
         ).to.deep.equal({kind: "cluster", clusterId: "c1"});
     });
+
+    it("prefers a cluster even when serverless is also set", () => {
+        // A cluster attachment wins outright regardless of serverless state --
+        // pin the precedence so a future reorder can't silently pick serverless.
+        expect(
+            resolveComputeFrom({
+                serverless: true,
+                cluster: {id: "c1"},
+                serverlessVersion: "5",
+            })
+        ).to.deep.equal({kind: "cluster", clusterId: "c1"});
+    });
 });
 
 describe("makePythonSetupDeps saveState", () => {
@@ -119,6 +131,7 @@ describe("makePythonSetupDeps saveState", () => {
             }),
             setActiveInterpreter: async () => {},
             persistSetupState: () => {},
+            log: {append: () => {}, show: () => {}},
             ...overrides,
         };
     }
@@ -162,5 +175,59 @@ describe("makePythonSetupDeps saveState", () => {
         expect(adopted).to.have.length(1);
         expect(adopted[0].path).to.match(/\.venv[\\/](bin[\\/]python|Scripts)/);
         expect(adopted[0].root).to.equal("/proj");
+    });
+});
+
+describe("makePythonSetupDeps withProgress", () => {
+    function makeWiring(
+        overrides: Partial<PythonSetupWiringDeps> = {}
+    ): PythonSetupWiringDeps {
+        return {
+            cli: {run: async () => ({}) as any},
+            projectRoot: () => "/proj",
+            isEnabled: () => true,
+            detect: async () => ({primary: "uv", managers: ["uv"]}),
+            attachedCompute: () => ({
+                serverless: false,
+                cluster: undefined,
+                serverlessVersion: undefined,
+            }),
+            setActiveInterpreter: async () => {},
+            persistSetupState: () => {},
+            log: {append: () => {}, show: () => {}},
+            ...overrides,
+        };
+    }
+
+    it("forwards streamed log chunks to the injected channel", async () => {
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+
+        const result = await deps.withProgress("Setting up", async (log) => {
+            log("chunk-a");
+            log("chunk-b");
+            return "done";
+        });
+
+        expect(result).to.equal("done");
+        expect(appended).to.deep.equal(["chunk-a", "chunk-b"]);
+    });
+
+    it("hands the task a cancellation token (so cancel can tear down)", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+
+        const token = await deps.withProgress(
+            "Setting up",
+            async (_log, token) => token
+        );
+
+        // A real CancellationToken is provided -- the wiring passes
+        // cancellable:true, so this reflects the user's Cancel button.
+        expect(token).to.not.equal(undefined);
+        expect(token.isCancellationRequested).to.equal(false);
     });
 });
