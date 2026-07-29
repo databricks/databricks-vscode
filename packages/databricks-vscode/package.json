@@ -722,7 +722,7 @@
             },
             {
                 "view": "sshTunnelView",
-                "contents": "Connect your IDE to a Databricks SSH Tunnel so you can run workloads using Databricks compute.\n[Start SSH Tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
+                "contents": "Connect your IDE to a Databricks SSH Tunnel so you can run all Python and SQL workloads using Databricks compute.\n[Start SSH Tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
             }
         ],
         "menus": {
