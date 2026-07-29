@@ -1565,7 +1565,7 @@
         "shell-quote": "^1.8.4",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
-        "yaml": "^2.3.4"
+        "yaml": "^2.8.3"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
