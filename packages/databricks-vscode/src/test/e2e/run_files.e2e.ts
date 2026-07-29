@@ -49,30 +49,76 @@ describe("Run files", async function () {
     it("should cancel a run during deployment", async () => {
         const workbench = await driver.getWorkbench();
         await executeCommandWhenAvailable("Databricks: Upload and Run File");
-        await browser.waitUntil(async () => {
-            const notifications = await workbench.getNotifications();
-            console.log("Notifications:", notifications.length);
-            for (const notification of notifications) {
-                const message = await notification.getMessage();
-                console.log("Message:", message);
-                if (message.includes("Uploading bundle assets")) {
-                    await notification.takeAction("Cancel");
-                    return true;
+
+        // Catching the in-flight "Uploading bundle assets" toast and clicking
+        // its Cancel action is a tight race on the slow Windows shard: the
+        // toast is transient and its action button can lag the toast body by a
+        // few frames. A throw from takeAction() inside a waitUntil condition
+        // rejects the whole wait — wdio does NOT retry a condition that throws
+        // — which is exactly the "element wasn't found" failure observed in CI.
+        // Guard both the message read and the click so a not-yet-rendered
+        // button just retries on the next poll, and only resolve once the click
+        // actually lands. Fail closed with a clear message if the cancellable
+        // toast never appears.
+        let cancelled = false;
+        await browser.waitUntil(
+            async () => {
+                const notifications = await workbench.getNotifications();
+                console.log("Notifications:", notifications.length);
+                for (const notification of notifications) {
+                    let message: string;
+                    try {
+                        message = await notification.getMessage();
+                    } catch {
+                        // Notification vanished between listing and read — skip.
+                        continue;
+                    }
+                    console.log("Message:", message);
+                    if (message.includes("Uploading bundle assets")) {
+                        try {
+                            await notification.takeAction("Cancel");
+                            cancelled = true;
+                            return true;
+                        } catch {
+                            // The Cancel button hasn't rendered yet; retry.
+                            return false;
+                        }
+                    }
                 }
+                return false;
+            },
+            {
+                timeout: 60_000,
+                interval: 500,
+                timeoutMsg:
+                    "The cancellable 'Uploading bundle assets' notification never appeared",
             }
-            return false;
-        });
+        );
+        assert(
+            cancelled,
+            "Failed to click Cancel on the deployment notification"
+        );
+
+        // Previously an unbounded `while (true)` poll: if "Cancelled" never
+        // showed (cancel didn't register, or the deploy already finished) it
+        // spun until the per-test mocha timeout surfaced as a bare
+        // `Error: Timeout` with no context. Bound the wait so a genuine miss
+        // fails fast with a diagnostic reason instead.
         const debugOutput = await workbench
             .getBottomBar()
             .openDebugConsoleView();
-        while (true) {
-            const text = await (await debugOutput.elem).getHTML();
-            if (text && text.includes("Cancelled")) {
-                break;
-            } else {
-                await sleep(2000);
+        await browser.waitUntil(
+            async () => {
+                const text = await (await debugOutput.elem).getHTML();
+                return Boolean(text && text.includes("Cancelled"));
+            },
+            {
+                timeout: 120_000,
+                interval: 2_000,
+                timeoutMsg:
+                    "Deployment run did not report 'Cancelled' in the debug console",
             }
-        }
+        );
     });
 
     it("should run a python file on a cluster", async () => {
