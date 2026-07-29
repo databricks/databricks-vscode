@@ -800,7 +800,8 @@ export async function activate(
         connectionManager,
         clusterModel,
         configModel,
-        cli
+        cli,
+        workspaceFolderManager
     );
 
     context.subscriptions.push(

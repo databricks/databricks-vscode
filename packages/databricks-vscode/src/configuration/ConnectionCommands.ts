@@ -24,6 +24,15 @@ import {
 } from "../ui/configuration-view/AuthTypeComponent";
 import {ManualLoginSource} from "../telemetry/constants";
 import {onError} from "../utils/onErrorDecorator";
+import {
+    isPythonSetupEnabled,
+    resolveServerlessVersion,
+} from "../python-setup/utils/serverlessVersionResolver";
+import {pickServerlessVersion} from "../python-setup/utils/serverlessVersionPicker";
+import {collectBundleServerlessVersions} from "../python-setup/utils/bundleServerlessVersions";
+import {collectProjectNotebookVersions} from "../python-setup/utils/projectNotebookVersions";
+import {VersionObservation} from "../python-setup/utils/serverlessVersionScoring";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -78,7 +87,8 @@ export class ConnectionCommands implements Disposable {
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel,
         private readonly configModel: ConfigModel,
-        private readonly cli: CliWrapper
+        private readonly cli: CliWrapper,
+        private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {}
 
     /**
@@ -202,7 +212,11 @@ export class ConnectionCommands implements Disposable {
                     const cluster = selectedItem.cluster;
                     await this.connectionManager.attachCluster(cluster.id);
                 } else if (selectedItem.label === "$(cloud) Serverless") {
-                    await this.connectionManager.enableServerless();
+                    // Dispose the compute QuickPick before opening the version
+                    // sub-picker so they don't stack visually.
+                    disposables.forEach((d) => d.dispose());
+                    await this.selectServerless();
+                    return;
                 } else {
                     await UrlUtils.openExternal(
                         `${
@@ -221,6 +235,77 @@ export class ConnectionCommands implements Disposable {
                 quickPick.dispose();
             });
         };
+    }
+
+    /**
+     * Enable serverless compute. When the uv-native python-setup feature is
+     * opted into, first ask the user to confirm the serverless environment
+     * version (ranked from the project's bundle) and persist it with the
+     * selection, so setup need not re-prompt. If they dismiss the version
+     * picker, no compute change is made. With the feature off this is the
+     * plain, unchanged serverless enable.
+     */
+    private async selectServerless() {
+        if (!isPythonSetupEnabled()) {
+            await this.connectionManager.enableServerless();
+            return;
+        }
+        const version = await this.pickServerlessVersion();
+        if (version === undefined) {
+            // User dismissed the version picker -- don't switch compute.
+            return;
+        }
+        await this.connectionManager.enableServerless(version);
+    }
+
+    /**
+     * Resolve the serverless environment version: gather the project's version
+     * evidence, score it, and let the user confirm the best-ranked candidate.
+     * Returns the confirmed bare version, or undefined if dismissed. Delegates
+     * to {@link resolveServerlessVersion} so the collect->score->pick pipeline
+     * lives in one place; this call site only supplies where the evidence comes
+     * from (the bundle today) and how the user confirms it.
+     */
+    private async pickServerlessVersion(): Promise<string | undefined> {
+        return resolveServerlessVersion({
+            collectObservations: () => this.collectServerlessObservations(),
+            pick: pickServerlessVersion,
+        });
+    }
+
+    /**
+     * Gather serverless-version evidence from the project's local sources
+     * (bundle config + notebooks). Each source is collected independently and
+     * guarded, so one failing source never blocks the other or compute
+     * selection; the scorer merges and de-dupes across sources. (The
+     * workspace-default API source is not yet available — see DECO-27782.)
+     */
+    private async collectServerlessObservations(): Promise<
+        VersionObservation[]
+    > {
+        const [bundle, notebooks] = await Promise.all([
+            (async () => {
+                try {
+                    const validateConfig =
+                        await this.configModel.get("validateConfig");
+                    return collectBundleServerlessVersions(validateConfig);
+                } catch {
+                    return [] as VersionObservation[];
+                }
+            })(),
+            (async () => {
+                try {
+                    const projectRoot =
+                        this.workspaceFolderManager.activeProjectUri.fsPath;
+                    return await collectProjectNotebookVersions(projectRoot);
+                } catch {
+                    // No active project, or notebook scan failed -- contribute
+                    // nothing rather than blocking compute selection.
+                    return [] as VersionObservation[];
+                }
+            })(),
+        ]);
+        return [...bundle, ...notebooks];
     }
 
     /**
