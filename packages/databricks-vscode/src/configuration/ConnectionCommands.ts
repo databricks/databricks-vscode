@@ -1,4 +1,5 @@
 import {Cluster} from "../sdk-extensions";
+import {compute} from "@databricks/sdk-experimental";
 import {
     Disposable,
     QuickPickItem,
@@ -31,6 +32,20 @@ function formatQuickPickClusterSize(sizeInMB: number): string {
         return `${sizeInMB} MB`;
     }
 }
+// Formats a compute state for display in the picker. RUNNING/TERMINATED map to
+// the softer "Active"/"Inactive" (matching the Workspace UI); other states are
+// title-cased ("PENDING" -> "Pending") so they read less harshly.
+export function formatClusterState(state: compute.State): string {
+    switch (state) {
+        case "RUNNING":
+            return "Active";
+        case "TERMINATED":
+            return "Inactive";
+        default:
+            return state.charAt(0) + state.slice(1).toLowerCase();
+    }
+}
+
 export function formatQuickPickClusterDetails(cluster: Cluster) {
     const details = [];
     if (cluster.memoryMb) {

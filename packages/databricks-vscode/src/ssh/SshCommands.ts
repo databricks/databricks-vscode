@@ -12,6 +12,7 @@ import {ClusterModel} from "../cluster/ClusterModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {
     ClusterItem,
+    formatClusterState,
     formatQuickPickClusterDetails,
 } from "../configuration/ConnectionCommands";
 import {CliWrapper} from "../cli/CliWrapper";
@@ -267,9 +268,9 @@ export class SshCommands implements Disposable {
                         // entry in the configuration section; the per-state icon
                         // is dropped in favour of showing the state as text.
                         label: `$(server) ${c.name!} (${c.id})`,
-                        detail: `${c.state} | ${formatQuickPickClusterDetails(
-                            c
-                        )}`,
+                        detail: `${formatClusterState(
+                            c.state
+                        )} | ${formatQuickPickClusterDetails(c)}`,
                         cluster: c,
                     }))
                 );
