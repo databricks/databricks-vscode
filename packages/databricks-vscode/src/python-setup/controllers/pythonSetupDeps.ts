@@ -1,9 +1,11 @@
 import {ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
+import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {
     CliRunner,
+    PythonSetupPersistedState,
     PythonSetupSetupDeps,
     SetupCompute,
 } from "./PythonSetupEnvironmentSetup";
@@ -81,6 +83,8 @@ export interface PythonSetupWiringDeps {
     attachedCompute: () => AttachedCompute;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
+    /** Persist the post-setup state (workspace-scoped) for drift detection. */
+    persistSetupState: (state: PythonSetupState) => void;
 }
 
 /**
@@ -109,10 +113,15 @@ export function makePythonSetupDeps(
                 Uri.file(root)
             );
         },
-        // TODO(DECO-27784): persist {envKey, pythonVersion, timestamp} to
-        // StateStorage for drift detection. Not yet wired; a no-op keeps the
-        // success path intact until that ticket adds the storage key.
-        saveState: () => {},
+        // Stamp the persisted state with the completion time here (the
+        // orchestrator supplies the env identity; the timestamp is a wiring
+        // concern) and hand it to the injected store for drift detection.
+        saveState: (state: PythonSetupPersistedState) => {
+            wiring.persistSetupState({
+                ...state,
+                timestamp: new Date().toISOString(),
+            });
+        },
         showError: async (message: string) => {
             await window.showErrorMessage(message);
         },

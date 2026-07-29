@@ -56,9 +56,8 @@ export type ProgressTask<T> = (
 
 /**
  * Injected collaborators for {@link PythonSetupEnvironmentSetup}: seams so the
- * flow is tested without a VS Code host, and so the not-yet-built pieces
- * (visibility gate, serverless-version selection) can be stubbed until their
- * own tickets wire the real implementations in.
+ * decision flow is tested without a VS Code host. The extension assembles the
+ * real implementations in `makePythonSetupDeps` (see pythonSetupDeps.ts).
  */
 export interface PythonSetupSetupDeps {
     cli: CliRunner;
@@ -67,24 +66,19 @@ export interface PythonSetupSetupDeps {
     projectRoot: () => string | undefined;
 
     /**
-     * Whether the uv-native setup should run for the current project.
-     *
-     * TODO(#2044): replace the wiring-site stub with
-     * `shouldShowPythonSetup({flagOn: workspaceConfigs.pythonSetupEnabled,
-     * detection: await detector.detect(projectRoot)})`. Until then the extension
-     * passes a stub that returns `false`, so the feature is inert end-to-end.
+     * Whether the uv-native setup should run for the current project. The
+     * extension wires this to the opt-in flag AND the package-manager gate
+     * (`shouldShowPythonSetup` over a live `detect`), so it is false unless the
+     * feature is enabled for a clean uv/greenfield project.
      */
     isVisible: () => Promise<boolean>;
 
     /**
      * The compute target to provision for, or `undefined` to abort silently
-     * (nothing selected / the user dismissed the picker).
-     *
-     * TODO(#2052 / #2053): for a serverless session this must resolve the version
-     * via the serverless-version picker (`scoreServerlessVersions` +
-     * `pickServerlessVersion`). Until that ticket lands the extension passes a
-     * stub that returns `undefined`, so a serverless setup is a no-op; the
-     * cluster case can already return `{kind: "cluster", clusterId}`.
+     * (nothing selected). The extension resolves this from the attached
+     * compute: a cluster maps directly; a serverless session uses the version
+     * the compute picker persisted (`serverlessVersion`), so a serverless
+     * session with no chosen version yields `undefined`.
      */
     resolveCompute: () => Promise<SetupCompute | undefined>;
 

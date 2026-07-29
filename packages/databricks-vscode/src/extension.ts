@@ -694,6 +694,9 @@ export async function activate(
                     root
                 );
             },
+            persistSetupState: (state) => {
+                stateStorage.set("databricks.pythonSetup.setupState", state);
+            },
         })
     );
     context.subscriptions.push(
