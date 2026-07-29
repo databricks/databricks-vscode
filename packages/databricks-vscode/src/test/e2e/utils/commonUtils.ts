@@ -295,8 +295,12 @@ export async function waitForWorkflowWebview(
             }
         },
         {
-            timeout: 5_000,
-            interval: 1_000,
+            // The workflow run must be submitted and the "Databricks Job Run"
+            // webview panel materialized before this resolves; on the Windows
+            // shard 5s is not enough and the panel intermittently misses the
+            // window ("Webview did not open"). 60s covers observed open times.
+            timeout: 60_000,
+            interval: 2_000,
             timeoutMsg: "Webview did not open",
         }
     );
@@ -389,7 +393,11 @@ export async function executeCommandWhenAvailable(command: string) {
     });
 }
 
-export async function waitForNotification(message: string, action?: string) {
+export async function waitForNotification(
+    message: string,
+    action?: string,
+    timeoutMs = 60_000
+) {
     await browser.waitUntil(
         async () => {
             const workbench = await browser.getWorkbench();
@@ -408,7 +416,7 @@ export async function waitForNotification(message: string, action?: string) {
             return false;
         },
         {
-            timeout: 60_000,
+            timeout: timeoutMs,
             interval: 2000,
             timeoutMsg: `Notification with message "${message}" not found`,
         }

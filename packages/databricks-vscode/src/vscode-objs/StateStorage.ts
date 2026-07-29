@@ -5,6 +5,23 @@ import {Mutex} from "../locking";
 import lodash from "lodash";
 import {StoredFavoriteRef} from "../ui/unity-catalog/types";
 
+/**
+ * Persisted after a successful uv-native Python environment setup, so a later
+ * change of compute target can be detected as drift (the provisioned env no
+ * longer matches the selected target) and surfaced to the user.
+ *
+ * - `envKey`: the CLI's resolved environment key for the target that was set up
+ *   (e.g. `serverless/serverless-v5`), from the setup-local result.
+ * - `pythonVersion`: the interpreter minor version that was provisioned (e.g.
+ *   `3.12`).
+ * - `timestamp`: ISO-8601 time of the successful setup.
+ */
+export interface PythonSetupState {
+    envKey: string;
+    pythonVersion: string;
+    timestamp: string;
+}
+
 /* eslint-disable @typescript-eslint/naming-convention */
 type KeyInfo<V> = {
     location: "global" | "workspace";
@@ -75,6 +92,12 @@ const StorageConfigurations = {
     "databricks.lastInstalledExtensionVersion": withType<string>()({
         location: "global",
         defaultValue: "0.0.0",
+    }),
+
+    // Per-project: the environment provisioned by the last successful
+    // python-setup run, used to detect drift when the compute target changes.
+    "databricks.pythonSetup.setupState": withType<PythonSetupState>()({
+        location: "workspace",
     }),
 };
 
