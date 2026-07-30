@@ -643,7 +643,7 @@ describe("Run files on serverless compute", async function () {
     });
 
     it("should select serverless compute", async () => {
-        await executeCommandWhenAvailable("Databricks: Configure cluster");
+        await executeCommandWhenAvailable("Databricks: Configure compute");
         const computeInput = await waitForInput();
         await computeInput.selectQuickPick("Serverless");
     });

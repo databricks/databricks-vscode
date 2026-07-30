@@ -20,6 +20,8 @@ import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {LoginWizard} from "../configuration/LoginWizard";
 import {Cluster} from "../sdk-extensions";
 import {onError} from "../utils/onErrorDecorator";
+import {logging} from "@databricks/sdk-experimental";
+import {Loggers} from "../logger";
 
 const SERVERLESS_LABEL = "$(cloud) Serverless";
 
@@ -86,19 +88,54 @@ class StandaloneClusterSource implements ClusterSource {
     }
 
     private async load() {
-        const clusters: Cluster[] = [];
-        for await (const cluster of Cluster.list(
-            this.workspaceClient.apiClient
-        )) {
-            clusters.push(cluster);
+        try {
+            const clusters: Cluster[] = [];
+            for await (const cluster of Cluster.list(
+                this.workspaceClient.apiClient
+            )) {
+                clusters.push(cluster);
+            }
+            this._clusters = clusters;
+        } catch (e) {
+            // On a list failure (network, permissions, expired token) surface an
+            // empty set rather than leaving the picker spinning until the 10s
+            // fallback, and still fire onDidChange so the state is honest.
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Failed to list clusters for SSH tunnel",
+                e
+            );
+            this._clusters = [];
         }
-        this._clusters = clusters;
         this.onDidChangeEmitter.fire();
     }
 
     dispose() {
         this.onDidChangeEmitter.dispose();
     }
+}
+
+/**
+ * Adapts the shared `ClusterModel` (connected path) to `ClusterSource`, exposing
+ * its *unfiltered* cluster set so the picker doesn't inherit the explorer's
+ * `ALL`/`ME`/`RUNNING` filter. The model is owned by the extension, so `dispose`
+ * is a no-op here.
+ */
+class ClusterModelSource implements ClusterSource {
+    constructor(private readonly clusterModel: ClusterModel) {}
+
+    get roots(): Cluster[] | undefined {
+        return this.clusterModel.allRoots;
+    }
+
+    get onDidChange(): Event<void> {
+        return this.clusterModel.onDidChange;
+    }
+
+    refresh() {
+        this.clusterModel.refresh();
+    }
+
+    dispose() {}
 }
 
 /**
@@ -143,11 +180,7 @@ export class SshCommands implements Disposable {
             if (compute === undefined) {
                 return;
             }
-            await this.launchSshTunnel(
-                context.authProvider,
-                context.userName,
-                compute
-            );
+            await this.launchSshTunnel(context.authProvider, compute);
         } finally {
             if (context.ownsClusterSource) {
                 context.clusterSource.dispose();
@@ -180,7 +213,11 @@ export class SshCommands implements Disposable {
             return {
                 authProvider: workspace.authProvider,
                 userName: workspace.userName,
-                clusterSource: this.clusterModel,
+                // Read the unfiltered cluster set so the picker is independent of
+                // the explorer's active filter — a "Running" filter would
+                // otherwise hide stopped single-user clusters that this flow can
+                // still start via --auto-start-cluster.
+                clusterSource: new ClusterModelSource(this.clusterModel),
                 ownsClusterSource: false,
             };
         }
@@ -223,6 +260,13 @@ export class SshCommands implements Disposable {
             // the separator label and placeholder so the user can tell the list
             // is still loading rather than waiting on them to pick.
             let loading = true;
+
+            // Preselect only once, on the first populated repaint. refreshItems
+            // runs on every onDidChange (the loader fires once per cluster
+            // permission check), and re-applying activeItems would keep yanking
+            // the highlight back to the preselected entry while the user
+            // navigates.
+            let hasPreselected = false;
 
             // Serverless items are always ready; the separator that follows them
             // reflects the dedicated-cluster loading state.
@@ -274,7 +318,9 @@ export class SshCommands implements Disposable {
                         cluster: c,
                     }))
                 );
-                this.preselect(quickPick);
+                if (!hasPreselected) {
+                    hasPreselected = this.preselect(quickPick);
+                }
             };
 
             // Fallback so the spinner can't hang forever for a user with no
@@ -301,7 +347,12 @@ export class SshCommands implements Disposable {
 
             quickPick.onDidAccept(() => {
                 const selectedItem = quickPick.selectedItems[0];
-                disposables.forEach((d) => d.dispose());
+                // Resolve with the accepted value BEFORE disposing. Disposing
+                // the quickPick (it is in `disposables`) synchronously fires
+                // onDidHide, whose handler resolves undefined; since resolve is
+                // idempotent, settling the real value first makes that later
+                // undefined a harmless no-op. Disposing first would let
+                // undefined win and drop the user's selection.
                 if (selectedItem === undefined) {
                     resolve(undefined);
                 } else if ("cluster" in selectedItem) {
@@ -315,11 +366,12 @@ export class SshCommands implements Disposable {
                         accelerator: selectedItem.accelerator,
                     });
                 }
+                disposables.forEach((d) => d.dispose());
             });
 
             quickPick.onDidHide(() => {
                 disposables.forEach((d) => d.dispose());
-                // resolve(undefined);
+                resolve(undefined);
             });
         });
     }
@@ -327,9 +379,14 @@ export class SshCommands implements Disposable {
     /**
      * Pre-selects the compute the user already has configured locally: the
      * attached single-user cluster if any, otherwise serverless. Only the
-     * connected path has a configured cluster/serverless preference.
+     * connected path has a configured cluster/serverless preference. Returns
+     * whether a selection was actually applied so the caller can stop
+     * re-preselecting once the target item exists (the attached cluster may not
+     * be in the list yet on a cold first repaint).
      */
-    private preselect(quickPick: QuickPick<ClusterItem | ServerlessItem>) {
+    private preselect(
+        quickPick: QuickPick<ClusterItem | ServerlessItem>
+    ): boolean {
         const currentCluster = this.connectionManager?.cluster;
         if (currentCluster?.isSingleUser()) {
             const match = quickPick.items.find(
@@ -338,7 +395,7 @@ export class SshCommands implements Disposable {
             );
             if (match) {
                 quickPick.activeItems = [match];
-                return;
+                return true;
             }
         }
         if (this.connectionManager?.serverless) {
@@ -347,35 +404,31 @@ export class SshCommands implements Disposable {
             );
             if (serverlessItem) {
                 quickPick.activeItems = [serverlessItem];
+                return true;
             }
         }
+        return false;
     }
 
     private async launchSshTunnel(
         authProvider: AuthProvider,
-        userName: string,
         compute: Compute
     ) {
         const {args} = this.cli.getSshConnectCommand({compute});
 
         const env: Record<string, string> = {
             ...this.cli.getSshConnectEnvVars(authProvider),
-            // The remote window opens at the user's home folder. Forward the
-            // file the user is currently editing so the remote extension can
-            // auto-open it (see the remote-mode branch in extension.ts). The
-            // CLI has no folder/file flag, so we pass it out of band.
-            /* eslint-disable @typescript-eslint/naming-convention */
-            DATABRICKS_REMOTE_HOME_FOLDER: `/Users/${userName}`,
-            /* eslint-enable @typescript-eslint/naming-convention */
         };
 
+        // The transient terminal is not retained on `this.disposables`: doing so
+        // would only release it on extension deactivate/reload, tearing down an
+        // active tunnel. It is `isTransient` and disposes itself when closed.
         const terminal = window.createTerminal({
             name: "Databricks SSH Tunnel",
             isTransient: true,
             env,
             strictEnv: false,
         });
-        this.disposables.push(terminal);
         terminal.show();
         terminal.sendText(`${this.cli.escapedCliPath} ${args.join(" ")}`);
     }
