@@ -174,7 +174,10 @@ describe("makePythonSetupDeps saveState", () => {
 
         expect(adopted).to.have.length(1);
         expect(adopted[0].path).to.match(/\.venv[\\/](bin[\\/]python|Scripts)/);
-        expect(adopted[0].root).to.equal("/proj");
+        // The seam receives `Uri.file(root).fsPath`; compare against that rather
+        // than the literal so the assertion holds on Windows (where fsPath is
+        // `\proj`) as well as POSIX (`/proj`).
+        expect(adopted[0].root).to.equal(Uri.file("/proj").fsPath);
     });
 });
 
