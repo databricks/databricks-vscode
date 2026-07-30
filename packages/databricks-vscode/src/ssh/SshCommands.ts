@@ -416,6 +416,7 @@ export class SshCommands implements Disposable {
         authProvider: AuthProvider,
         compute: Compute
     ) {
+        const {args} = getSshConnectCommand({compute});
 
         const env: Record<string, string> = {
             ...this.cli.getSshConnectEnvVars(authProvider),
