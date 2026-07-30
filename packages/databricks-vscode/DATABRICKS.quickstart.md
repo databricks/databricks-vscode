@@ -50,7 +50,7 @@ If your folder has multiple [Declarative Automation Bundles](#dabs), you can sel
 
 ## <a id="select-cluster"></a>Select a compute
 
-The extension uses an interactive compute to run code. To select an interactive compute:
+The extension uses interactive compute to run code. To select interactive compute:
 
 1. Open the Databricks panel by clicking on the Databricks icon on the left
 2. Click on the "Select Compute" button.
