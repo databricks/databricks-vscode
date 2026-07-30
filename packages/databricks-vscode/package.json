@@ -554,7 +554,7 @@
                 {
                     "id": "clusterView",
                     "when": "databricks.feature.views.cluster && !databricks.context.remoteMode",
-                    "name": "Computes"
+                    "name": "Compute"
                 },
                 {
                     "id": "dabsResourceExplorerView",
