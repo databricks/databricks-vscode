@@ -1455,7 +1455,7 @@
                     "databricks.clusters.onlyShowAccessibleClusters": {
                         "type": "boolean",
                         "default": false,
-                        "description": "Enable/disable filtering for only accessible computes (computes on which the current user can run code)"
+                        "description": "Enable/disable filtering for only accessible compute (compute on which the current user can run code)"
                     },
                     "databricks.overrideDatabricksConfigFile": {
                         "type": "string",
