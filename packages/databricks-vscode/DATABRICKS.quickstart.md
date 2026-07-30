@@ -54,7 +54,7 @@ The extension uses interactive compute to run code. To select interactive comput
 
 1. Open the Databricks panel by clicking on the Databricks icon on the left
 2. Click on the "Select Compute" button.
-    - If you wish to change the selected cluster, click on the "Configure Cluster" gear icon, next to the name of the selected cluster.
+    - If you wish to change the selected compute, click on the "Configure compute" gear icon, next to the name of the selected compute.
 
 ## <a id="running-code"></a>Run Python code
 
