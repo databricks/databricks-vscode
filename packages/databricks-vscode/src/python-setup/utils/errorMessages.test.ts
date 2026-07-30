@@ -47,14 +47,14 @@ describe("getPythonSetupErrorMessage", () => {
         const r = failure(
             "E_ENV_UNSUPPORTED",
             {failurePhase: "fetch"},
-            {target: {source: "cluster", envKey: "dbr/15.4.x-scala2.12"}}
+            {compute: {source: "cluster", envKey: "dbr/15.4.x-scala2.12"}}
         );
         const msg = getPythonSetupErrorMessage(r);
         expect(msg).to.contain("dbr/15.4.x-scala2.12");
         expect(msg).to.match(/lts|latest/i);
     });
 
-    it("maps E_ENV_UNSUPPORTED without a target gracefully", () => {
+    it("maps E_ENV_UNSUPPORTED without a compute gracefully", () => {
         const msg = getPythonSetupErrorMessage(failure("E_ENV_UNSUPPORTED"));
         expect(msg).to.match(/no matched environment/i);
         expect(msg).to.not.contain("undefined");
