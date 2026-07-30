@@ -114,7 +114,7 @@ export class ClusterComponent extends BaseComponent {
             // We are logged in -> Select cluster prompt
             return [
                 {
-                    label: LabelUtils.highlightedLabel("Select a compute"),
+                    label: LabelUtils.highlightedLabel("Select compute"),
                     collapsibleState: TreeItemCollapsibleState.None,
                     contextValue: getContextValue("none"),
                     iconPath: new ThemeIcon(
