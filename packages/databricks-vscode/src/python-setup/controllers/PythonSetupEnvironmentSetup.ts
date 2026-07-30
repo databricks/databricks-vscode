@@ -85,10 +85,22 @@ export interface PythonSetupSetupDeps {
      */
     resolveCompute: () => Promise<SetupCompute | undefined>;
 
-    /** Point the MS Python extension at the provisioned venv interpreter. */
-    adoptInterpreter: (venvPath: string) => Promise<void>;
+    /**
+     * Point the MS Python extension at the provisioned venv interpreter for
+     * `projectRoot`. The root is passed in (not re-read) so adoption always
+     * targets the project the run provisioned, even if the user switched the
+     * active project during the (multi-second) CLI run.
+     */
+    adoptInterpreter: (venvPath: string, projectRoot: string) => Promise<void>;
 
     saveState: (state: PythonSetupPersistedState) => void;
+
+    /**
+     * A plain user-facing notification for pre-flight guidance (e.g. no compute
+     * attached), where no CLI ran. Unlike {@link showError} it does not reveal
+     * the output channel — there is no log to show.
+     */
+    notify: (message: string) => Promise<void>;
 
     /** Shows the mapped, user-facing copy — not raw CLI text. */
     showError: (message: string) => Promise<void>;
@@ -167,7 +179,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // independent of compute — so a user can click the CTA with no
             // cluster attached or a serverless session without a chosen version.
             // Tell them what to do instead of silently no-op'ing the button.
-            await this.deps.showError(NO_COMPUTE_TARGET_MESSAGE);
+            // Plain notify (not showError): no CLI ran, so there is no log to
+            // reveal.
+            await this.deps.notify(NO_COMPUTE_TARGET_MESSAGE);
             return;
         }
 
@@ -202,7 +216,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // but is unusable from the editor, so a failure here is a setup failure —
         // surface it and stay not-ready rather than rejecting with no message.
         try {
-            await this.deps.adoptInterpreter(result.venvPath);
+            // Adopt for the cwd captured at the top of the run, not the live
+            // active project: a mid-run project switch must not point another
+            // project's interpreter setting at this run's venv.
+            await this.deps.adoptInterpreter(result.venvPath, cwd);
         } catch (e) {
             await this.deps.showError((e as Error).message);
             return;

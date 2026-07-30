@@ -49,10 +49,14 @@ export function resolveComputeFrom(
  * Build the visibility gate for the config-view entry: the feature must be
  * opted into (flag on) AND the active project must be one the uv-native setup
  * fits (a clean uv/greenfield project, no competing manager -- see
- * {@link shouldShowPythonSetup}). Detection is best-effort: `detect` swallows
- * collection failures and returns `unknown`/`[]`, which the gate reads as a
- * greenfield project -- so a detection failure fails *open* (the entry is
- * shown), consistent with treating an unclassifiable project as safe to offer.
+ * {@link shouldShowPythonSetup}).
+ *
+ * The gate is rendered on the config-view path, so it must never throw: any
+ * failure (a rejecting `projectRoot`/`detect`) degrades to `false` so the
+ * Environment section keeps showing the legacy checklist rather than rendering
+ * empty. Note the classification itself still fails *open*: `detect` maps a
+ * signal-collection failure to `unknown`/`[]`, which reads as greenfield and so
+ * shows the entry -- an unclassifiable project is treated as safe to offer.
  */
 export function makePythonSetupVisibility(deps: {
     isEnabled: () => boolean;
@@ -60,15 +64,19 @@ export function makePythonSetupVisibility(deps: {
     projectRoot: () => string | undefined;
 }): () => Promise<boolean> {
     return async () => {
-        if (!deps.isEnabled()) {
+        try {
+            if (!deps.isEnabled()) {
+                return false;
+            }
+            const root = deps.projectRoot();
+            if (root === undefined) {
+                return false;
+            }
+            const detection = await deps.detect(root);
+            return shouldShowPythonSetup({flagOn: true, detection});
+        } catch {
             return false;
         }
-        const root = deps.projectRoot();
-        if (root === undefined) {
-            return false;
-        }
-        const detection = await deps.detect(root);
-        return shouldShowPythonSetup({flagOn: true, detection});
     };
 }
 
@@ -114,14 +122,10 @@ export function makePythonSetupDeps(
         isVisible,
         resolveCompute: async () =>
             resolveComputeFrom(wiring.attachedCompute()),
-        adoptInterpreter: async (venvPath: string) => {
-            const root = wiring.projectRoot();
-            if (root === undefined) {
-                return;
-            }
+        adoptInterpreter: async (venvPath: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
                 venvInterpreterPath(venvPath),
-                Uri.file(root)
+                Uri.file(projectRoot)
             );
         },
         // Stamp the persisted state with the completion time here (the
@@ -132,6 +136,11 @@ export function makePythonSetupDeps(
                 ...state,
                 timestamp: new Date().toISOString(),
             });
+        },
+        notify: async (message: string) => {
+            // Pre-flight guidance: no CLI ran, so show a plain warning without
+            // revealing the (empty) output channel.
+            await window.showWarningMessage(message);
         },
         showError: async (message: string) => {
             // Reveal the streamed CLI log alongside the mapped one-liner so the

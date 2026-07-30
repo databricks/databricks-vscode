@@ -159,18 +159,20 @@ describe("makePythonSetupDeps saveState", () => {
         );
     });
 
-    it("adopts the venv interpreter through the injected seam", async () => {
+    it("adopts the venv interpreter for the passed root, not the live projectRoot", async () => {
         const adopted: Array<{path: string; root: string}> = [];
         const deps = makePythonSetupDeps(
             makeWiring({
-                projectRoot: () => "/proj",
+                // The live active project differs from the run's captured root;
+                // adoption must use the root it is given, not re-read this.
+                projectRoot: () => "/other",
                 setActiveInterpreter: async (path, root: Uri) => {
                     adopted.push({path, root: root.fsPath});
                 },
             })
         );
 
-        await deps.adoptInterpreter("/proj/.venv");
+        await deps.adoptInterpreter("/proj/.venv", "/proj");
 
         expect(adopted).to.have.length(1);
         expect(adopted[0].path).to.match(/\.venv[\\/](bin[\\/]python|Scripts)/);
@@ -178,6 +180,34 @@ describe("makePythonSetupDeps saveState", () => {
         // than the literal so the assertion holds on Windows (where fsPath is
         // `\proj`) as well as POSIX (`/proj`).
         expect(adopted[0].root).to.equal(Uri.file("/proj").fsPath);
+    });
+});
+
+describe("makePythonSetupVisibility error handling", () => {
+    const uvDetection = {primary: "uv" as const, managers: ["uv" as const]};
+
+    it("degrades to not-visible when detection rejects (never throws)", async () => {
+        const isVisible = makePythonSetupVisibility({
+            isEnabled: () => true,
+            detect: async () => {
+                throw new Error("signal collection blew up");
+            },
+            projectRoot: () => "/proj",
+        });
+        // Must resolve false, not reject: a throwing gate would blank the
+        // Environment section instead of showing the legacy checklist.
+        expect(await isVisible()).to.equal(false);
+    });
+
+    it("degrades to not-visible when projectRoot throws", async () => {
+        const isVisible = makePythonSetupVisibility({
+            isEnabled: () => true,
+            detect: async () => uvDetection,
+            projectRoot: () => {
+                throw new Error("no active project folder");
+            },
+        });
+        expect(await isVisible()).to.equal(false);
     });
 });
 

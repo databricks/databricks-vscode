@@ -4,6 +4,7 @@ import {
     env,
     ExtensionContext,
     extensions,
+    OutputChannel,
     window,
     workspace,
 } from "vscode";
@@ -675,14 +676,32 @@ export async function activate(
             bundled: cli.cliPath,
         })
     );
-    const pythonSetupLogChannel = window.createOutputChannel(
-        "Databricks Python Environment Setup"
-    );
-    context.subscriptions.push(pythonSetupLogChannel);
+    // Created lazily on first setup output so a non-opted-in user never gets an
+    // empty "Databricks Python Environment Setup" entry in the Output dropdown
+    // (the feature is otherwise fully inert for them).
+    let pythonSetupLogChannel: OutputChannel | undefined;
+    const getPythonSetupLogChannel = () => {
+        if (pythonSetupLogChannel === undefined) {
+            pythonSetupLogChannel = window.createOutputChannel(
+                "Databricks Python Environment Setup"
+            );
+            context.subscriptions.push(pythonSetupLogChannel);
+        }
+        return pythonSetupLogChannel;
+    };
     const pythonSetupEnvironment = new PythonSetupEnvironmentSetup(
         makePythonSetupDeps({
             cli: pythonSetupClient,
-            projectRoot: () => workspaceFolderManager.activeProjectUri?.fsPath,
+            // activeProjectUri throws when no project is active, so the optional
+            // chaining never applies; honour the string|undefined contract the
+            // orchestrator guards on rather than letting it throw into the flow.
+            projectRoot: () => {
+                try {
+                    return workspaceFolderManager.activeProjectUri.fsPath;
+                } catch {
+                    return undefined;
+                }
+            },
             isEnabled: isPythonSetupEnabled,
             detect: (projectRoot) => pythonSetupDetector.detect(projectRoot),
             attachedCompute: () => ({
@@ -712,8 +731,8 @@ export async function activate(
                     );
             },
             log: {
-                append: (chunk) => pythonSetupLogChannel.append(chunk),
-                show: () => pythonSetupLogChannel.show(true),
+                append: (chunk) => getPythonSetupLogChannel().append(chunk),
+                show: () => getPythonSetupLogChannel().show(true),
             },
         })
     );
