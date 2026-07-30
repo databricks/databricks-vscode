@@ -1,10 +1,16 @@
-import {Disposable, QuickPickItem, window} from "vscode";
+import {
+    CancellationToken,
+    Disposable,
+    ProgressLocation,
+    QuickPickItem,
+    window,
+} from "vscode";
 import {
     AiToolsAgentStatus,
     AiToolsManager,
     CURSOR_AGENT_ID,
 } from "./AiToolsManager";
-import {AiToolsScope} from "../cli/CliWrapper";
+import {AiToolsScope, ProcessError} from "../cli/CliWrapper";
 import {AiToolsInstallSource} from "../telemetry/constants";
 import {HostUtils} from "../utils";
 
@@ -25,22 +31,110 @@ export class AiToolsCommands implements Disposable {
         this.disposables.forEach((d) => d.dispose());
     }
 
+    /**
+     * Run a cancellable operation inside a progress notification, surfacing any
+     * {@link ProcessError} as an error toast whose "Show Logs" button opens the
+     * "Databricks Logs" channel. Non-`ProcessError` failures propagate. This is
+     * the single place the AI tools UI wraps the manager's (logic-only)
+     * install/update/uninstall methods with VS Code chrome.
+     */
+    private async withProgress(
+        title: string,
+        errorPrefix: string,
+        run: (token: CancellationToken) => Promise<void>
+    ): Promise<void> {
+        try {
+            await window.withProgress(
+                {
+                    location: ProgressLocation.Notification,
+                    title,
+                    cancellable: true,
+                },
+                (_progress, token) => run(token)
+            );
+        } catch (e) {
+            if (e instanceof ProcessError) {
+                e.showErrorMessage(errorPrefix, "databricks.logs.show");
+                return;
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Run the one-time activation flow: ask the manager what's needed, then
+     * render it. If not installed (and not opted out), show the install prompt;
+     * if an update is available, apply it silently with progress. Invoked on
+     * activation and by the error-row retry.
+     */
+    initializeCommand() {
+        return async () => {
+            const action = await this.aiToolsManager.initialize();
+            if (action === "promptInstall") {
+                await this.promptInstall();
+            } else if (action === "update") {
+                await this.runUpdate();
+            }
+        };
+    }
+
+    /**
+     * Show the one-time prompt offering to install Databricks AI tools. On
+     * accept, run the install flow (passing the "initModal" source so telemetry
+     * can distinguish first-load prompt installs from manual side-pane ones). On
+     * "Don't show again", opt the user out; a plain dismissal leaves the offer
+     * eligible to reappear on a later activation.
+     */
+    private async promptInstall(): Promise<void> {
+        const install = "Install AI tools";
+        const dontShowAgain = "Don't show again";
+        const choice = await window.showInformationMessage(
+            "Install Databricks AI tools?",
+            {
+                modal: true,
+                detail: "Get skills and plugins so your coding agents work effectively with Databricks. You can also install them later from the Databricks configuration panel.",
+            },
+            install,
+            dontShowAgain
+        );
+        if (choice === dontShowAgain) {
+            await this.aiToolsManager.optOutOfInstallPrompt();
+            return;
+        }
+        if (choice !== install) {
+            return;
+        }
+        await this.runInstall("initModal");
+    }
+
     installCommand() {
         // The command may be invoked with a source argument (e.g. the first-load
         // init modal passes "initModal"); default to "sidePane" for the manual
         // affordance.
         return async (source: AiToolsInstallSource = "sidePane") => {
-            const scope = await this.pickScope();
-            if (scope === undefined) {
-                return;
-            }
-            const agents = await this.pickAgents(scope);
-            // Dismissing the agent picker cancels the whole install flow.
-            if (agents === undefined) {
-                return;
-            }
-            await this.aiToolsManager.install(scope, source, agents);
+            await this.runInstall(source);
         };
+    }
+
+    /**
+     * Drive the install flow: pick a scope, pick the agents, then run the
+     * install with a progress notification. Dismissing either picker cancels.
+     */
+    private async runInstall(source: AiToolsInstallSource): Promise<void> {
+        const scope = await this.pickScope();
+        if (scope === undefined) {
+            return;
+        }
+        const agents = await this.pickAgents(scope);
+        // Dismissing the agent picker cancels the whole install flow.
+        if (agents === undefined) {
+            return;
+        }
+        await this.withProgress(
+            "Installing Databricks AI tools",
+            "Failed to install Databricks AI tools.",
+            (token) => this.aiToolsManager.install(scope, source, agents, token)
+        );
     }
 
     /**
@@ -167,18 +261,24 @@ export class AiToolsCommands implements Disposable {
     }
 
     /**
-     * Re-run install detection (and update check if installed). Used by the
-     * error row to recover after a transient detection failure.
+     * Re-run the activation flow. Used by the error row to recover after a
+     * transient detection failure.
      */
     reloadCommand() {
-        return async () => {
-            await this.aiToolsManager.initialize();
-        };
+        return this.initializeCommand();
+    }
+
+    private async runUpdate(): Promise<void> {
+        await this.withProgress(
+            "Updating Databricks AI tools",
+            "Failed to update Databricks AI tools.",
+            (token) => this.aiToolsManager.update(token)
+        );
     }
 
     updateCommand() {
         return async () => {
-            await this.aiToolsManager.update();
+            await this.runUpdate();
         };
     }
 
@@ -196,7 +296,11 @@ export class AiToolsCommands implements Disposable {
             if (confirm !== "Uninstall") {
                 return;
             }
-            await this.aiToolsManager.uninstall();
+            await this.withProgress(
+                "Uninstalling Databricks AI tools",
+                "Failed to uninstall Databricks AI tools.",
+                (token) => this.aiToolsManager.uninstall(token)
+            );
         };
     }
 
@@ -217,8 +321,11 @@ export class AiToolsCommands implements Disposable {
             if (node?.id === undefined || !node.id.startsWith(prefix)) {
                 return;
             }
-            await this.aiToolsManager.installAgent(
-                node.id.slice(prefix.length)
+            const agentId = node.id.slice(prefix.length);
+            await this.withProgress(
+                "Installing Databricks AI tools agent",
+                "Failed to install Databricks AI tools agent.",
+                (token) => this.aiToolsManager.installAgent(agentId, token)
             );
         };
     }

@@ -1,19 +1,12 @@
 import {readFile} from "fs/promises";
 import path from "path";
-import {
-    commands,
-    Disposable,
-    EventEmitter,
-    ProgressLocation,
-    window,
-} from "vscode";
+import {CancellationToken, commands, Disposable, EventEmitter} from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import {
     AiToolsAgent,
     AiToolsScope,
     AiToolsSkill,
     CliWrapper,
-    ProcessError,
 } from "../cli/CliWrapper";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
@@ -55,6 +48,18 @@ export type AiToolsUpdateStatus =
     | "upToDate"
     | "updateAvailable"
     | "error";
+
+/**
+ * What activation should do after {@link AiToolsManager.initialize} has detected
+ * the install state and (if installed) resolved the update status. The manager
+ * decides *what* is needed but leaves the UI (progress, prompt) to
+ * {@link AiToolsCommands}:
+ *  - `"promptInstall"` — not installed: offer the one-time install prompt.
+ *  - `"update"` — installed and an update is available: apply it (silently).
+ *  - `"none"` — installed and up to date (or opted out / detection errored):
+ *    nothing to do.
+ */
+export type AiToolsInitAction = "promptInstall" | "update" | "none";
 
 export interface AiToolsAgentStatus {
     displayName: string;
@@ -307,76 +312,52 @@ export class AiToolsManager implements Disposable {
     /**
      * Entry point run on activation (and by the error-row retry). Detects the
      * install state and then:
-     *  - if installed, checks for updates and, when one is available, applies it
-     *    automatically (updates are silent — no prompt);
-     *  - if not installed, shows a one-time prompt offering to install them.
+     *  - if installed, checks for updates and reports whether one is available so
+     *    the caller can apply it (updates are silent — no prompt);
+     *  - if not installed (and the user hasn't opted out), reports that the
+     *    one-time install prompt should be shown.
      *
-     * Non-blocking failures are swallowed so activation can't be delayed or
-     * broken by this best-effort flow.
+     * Returns the {@link AiToolsInitAction} the caller should take. All UI
+     * (progress, prompt) is left to {@link AiToolsCommands}. Non-blocking
+     * failures are swallowed (resolving to `"none"`) so activation can't be
+     * delayed or broken by this best-effort flow.
      */
-    async initialize(): Promise<void> {
+    async initialize(): Promise<AiToolsInitAction> {
         try {
             const location = await this.detectInstall();
             if (location === undefined) {
-                await this.maybePromptInstall();
-                return;
+                return this.shouldPromptInstall ? "promptInstall" : "none";
             }
             await this.resolveInstalled();
-            if (this._updateStatus === "updateAvailable") {
-                await this.update();
-            }
+            return this._updateStatus === "updateAvailable" ? "update" : "none";
         } catch (e) {
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Failed to initialize Databricks AI tools",
                 e
             );
+            return "none";
         }
     }
 
     /**
-     * Show the prompt offering to install Databricks AI tools. If the user
-     * accepts, run the install flow (which, in Cursor, also opens the plugin
-     * install modal).
-     *
-     * The prompt reappears on each activation until the user either installs the
-     * tools or opts out via "Don't show again" (which sets the
-     * `hideInstallPrompt` flag). A plain dismissal (Escape/Cancel) does not opt
-     * the user out, so the offer can resurface later.
+     * Whether the one-time "install AI tools" prompt should be offered: true
+     * unless the user opted out via "Don't show again" (see
+     * {@link optOutOfInstallPrompt}). A plain dismissal doesn't opt out, so the
+     * offer can resurface on a later activation.
      */
-    async maybePromptInstall(): Promise<void> {
-        if (this.stateStorage.get("databricks.aitools.hideInstallPrompt")) {
-            return;
-        }
+    get shouldPromptInstall(): boolean {
+        return !this.stateStorage.get("databricks.aitools.hideInstallPrompt");
+    }
 
-        const install = "Install AI tools";
-        const dontShowAgain = "Don't show again";
-        const choice = await window.showInformationMessage(
-            "Install Databricks AI tools?",
-            {
-                modal: true,
-                detail: "Get skills and plugins so your coding agents work effectively with Databricks. You can also install them later from the Databricks configuration panel.",
-            },
-            install,
-            dontShowAgain
-        );
-        if (choice === dontShowAgain) {
-            // The user declined and asked not to be prompted again.
-            await this.stateStorage.set(
-                "databricks.aitools.hideInstallPrompt",
-                true
-            );
-            return;
-        }
-        if (choice !== install) {
-            return;
-        }
-        // Run the install command so the user picks a scope; the install flow
-        // itself opens the Cursor plugin modal when running in Cursor. Pass the
-        // "initModal" source so telemetry can distinguish first-load prompt
-        // installs from manual side-pane installs.
-        await commands.executeCommand(
-            "databricks.aitools.install",
-            "initModal"
+    /**
+     * Record that the user opted out of the install prompt ("Don't show again"),
+     * so it won't be offered again. Called by {@link AiToolsCommands} when the
+     * prompt is declined with the opt-out affordance.
+     */
+    async optOutOfInstallPrompt(): Promise<void> {
+        await this.stateStorage.set(
+            "databricks.aitools.hideInstallPrompt",
+            true
         );
     }
 
@@ -433,8 +414,14 @@ export class AiToolsManager implements Disposable {
     }
 
     /**
-     * Install AI tools for the given scope, showing progress. Re-detects the
-     * install state and refreshes the update status afterwards.
+     * Install AI tools for the given scope. Re-detects the install state and
+     * refreshes the update status afterwards, and rethrows any {@link
+     * ProcessError} for {@link AiToolsCommands} to surface — the reconciliation
+     * still runs first (via `finally`), since a failed install often still
+     * landed some tools.
+     *
+     * `token` is threaded from the caller's progress notification so the CLI run
+     * is cancellable.
      *
      * In Cursor, selecting the Cursor agent means "install the Databricks
      * marketplace plugin" (a superset of the Cursor skills), not "install the
@@ -446,7 +433,8 @@ export class AiToolsManager implements Disposable {
     async install(
         scope: AiToolsScope,
         source?: AiToolsInstallSource,
-        agents?: string[]
+        agents?: string[],
+        token?: CancellationToken
     ): Promise<void> {
         let cliAgents = agents;
         let cursorPlugin = false;
@@ -479,19 +467,11 @@ export class AiToolsManager implements Disposable {
 
         const recordEvent = this.telemetry.start(Events.AITOOLS_INSTALL);
         try {
-            await window.withProgress(
-                {
-                    location: ProgressLocation.Notification,
-                    title: "Installing Databricks AI tools",
-                    cancellable: true,
-                },
-                (_progress, token) =>
-                    this.cli.aitoolsInstall(
-                        scope,
-                        this.cwdForScope(scope),
-                        token,
-                        cliAgents
-                    )
+            await this.cli.aitoolsInstall(
+                scope,
+                this.cwdForScope(scope),
+                token,
+                cliAgents
             );
             recordEvent({
                 success: true,
@@ -508,49 +488,38 @@ export class AiToolsManager implements Disposable {
                 agents: cliAgents,
                 cursorPlugin,
             });
-            if (e instanceof ProcessError) {
-                e.showErrorMessage(
-                    "Failed to install Databricks AI tools.",
-                    "databricks.logs.show"
-                );
-            } else {
-                throw e;
-            }
-            // Fall through: a failed install often still installed some tools
-            // (e.g. one agent's CLI was missing), so refresh the panel to
+            throw e;
+        } finally {
+            // Always reconcile: a failed install often still installed some
+            // tools (e.g. one agent's CLI was missing), so refresh the panel to
             // reflect whatever actually landed rather than leaving it stale.
+            await this.detectInstall();
+            await this.resolveInstalled();
         }
-
-        await this.detectInstall();
-        await this.resolveInstalled();
     }
 
     /**
-     * Install a single coding agent into the current install scope, showing
-     * progress. Used by the per-agent "install" button in the Agents list to
-     * add an agent that wasn't installed alongside the others. Re-resolves the
-     * agent statuses afterwards so the row flips to "installed".
+     * Install a single coding agent into the current install scope. Used by the
+     * per-agent "install" button in the Agents list to add an agent that wasn't
+     * installed alongside the others. Re-resolves the agent statuses afterwards
+     * (even on failure) so the row reflects the real CLI state, and rethrows any
+     * error for {@link AiToolsCommands} to surface.
      */
-    async installAgent(agentId: string): Promise<void> {
+    async installAgent(
+        agentId: string,
+        token?: CancellationToken
+    ): Promise<void> {
         const scope = this._installLocation;
         if (scope === undefined) {
             return;
         }
         const recordEvent = this.telemetry.start(Events.AITOOLS_INSTALL);
         try {
-            await window.withProgress(
-                {
-                    location: ProgressLocation.Notification,
-                    title: "Installing Databricks AI tools agent",
-                    cancellable: true,
-                },
-                (_progress, token) =>
-                    this.cli.aitoolsInstall(
-                        scope,
-                        this.cwdForScope(scope),
-                        token,
-                        [agentId]
-                    )
+            await this.cli.aitoolsInstall(
+                scope,
+                this.cwdForScope(scope),
+                token,
+                [agentId]
             );
             recordEvent({
                 success: true,
@@ -565,65 +534,47 @@ export class AiToolsManager implements Disposable {
                 source: "sidePane",
                 agents: [agentId],
             });
-            if (e instanceof ProcessError) {
-                e.showErrorMessage(
-                    "Failed to install Databricks AI tools agent.",
-                    "databricks.logs.show"
-                );
-            } else {
-                throw e;
-            }
-            // Fall through to refresh the panel: the install may have partially
-            // succeeded, so reconcile the row with the real CLI state.
+            throw e;
+        } finally {
+            // Reconcile the row even on failure: the install may have partially
+            // succeeded.
+            await this.resolveInstalled();
         }
-        await this.resolveInstalled();
     }
 
     /**
-     * Uninstall AI tools for the current install scope, showing progress.
-     * Re-detects the install state afterwards.
+     * Uninstall AI tools for the current install scope. Re-detects the install
+     * state afterwards (even on failure, since a failed uninstall may have
+     * removed some tools) and rethrows any error for {@link AiToolsCommands} to
+     * surface.
      */
-    async uninstall(): Promise<void> {
+    async uninstall(token?: CancellationToken): Promise<void> {
         const scope = this._installLocation;
         if (scope === undefined) {
             return;
         }
         const recordEvent = this.telemetry.start(Events.AITOOLS_UNINSTALL);
         try {
-            await window.withProgress(
-                {
-                    location: ProgressLocation.Notification,
-                    title: "Uninstalling Databricks AI tools",
-                    cancellable: true,
-                },
-                (_progress, token) =>
-                    this.cli.aitoolsUninstall(
-                        scope,
-                        this.cwdForScope(scope),
-                        token
-                    )
+            await this.cli.aitoolsUninstall(
+                scope,
+                this.cwdForScope(scope),
+                token
             );
             recordEvent({success: true, scope});
         } catch (e) {
             recordEvent({success: false, scope});
-            if (e instanceof ProcessError) {
-                e.showErrorMessage(
-                    "Failed to uninstall Databricks AI tools.",
-                    "databricks.logs.show"
-                );
-            } else {
-                throw e;
-            }
-            // Fall through: a failed uninstall may have removed some tools, so
-            // re-detect to reflect the real state rather than leaving it stale.
+            throw e;
+        } finally {
+            await this.detectInstall();
         }
-        await this.detectInstall();
     }
 
     /**
-     * Update AI tools for the current install scope, showing progress.
+     * Update AI tools for the current install scope. Reconciles the cached
+     * update status with the real CLI state afterwards (even on failure) and
+     * rethrows any error for {@link AiToolsCommands} to surface.
      */
-    async update(): Promise<void> {
+    async update(token?: CancellationToken): Promise<void> {
         const scope = this._installLocation;
         if (scope === undefined) {
             return;
@@ -632,30 +583,11 @@ export class AiToolsManager implements Disposable {
         this._updateStatus = "updating";
         this.onDidChangeEmitter.fire();
         try {
-            await window.withProgress(
-                {
-                    location: ProgressLocation.Notification,
-                    title: "Updating Databricks AI tools",
-                    cancellable: true,
-                },
-                (_progress, token) =>
-                    this.cli.aitoolsUpdate(
-                        scope,
-                        this.cwdForScope(scope),
-                        token
-                    )
-            );
+            await this.cli.aitoolsUpdate(scope, this.cwdForScope(scope), token);
             recordEvent({success: true, scope});
         } catch (e) {
             recordEvent({success: false, scope});
-            if (e instanceof ProcessError) {
-                e.showErrorMessage(
-                    "Failed to update Databricks AI tools.",
-                    "databricks.logs.show"
-                );
-            } else {
-                throw e;
-            }
+            throw e;
         } finally {
             // Always reconcile the cached update status with the actual CLI
             // state, even if the update reported an error (it may have

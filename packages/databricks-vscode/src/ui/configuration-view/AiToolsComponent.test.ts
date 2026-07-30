@@ -10,6 +10,7 @@ import {
 } from "../../aitools/AiToolsManager";
 import {resolveProviderResult} from "../../test/utils";
 import {AiToolsComponent} from "./AiToolsComponent";
+import {HostUtils} from "../../utils";
 
 function createManager(
     installLocation: AiToolsInstallLocation,
@@ -358,6 +359,62 @@ describe(__filename, () => {
             assert.deepStrictEqual(row.command?.arguments, [
                 {id: "AITOOLS.agent.codex"},
             ]);
+        });
+
+        describe("in Cursor", () => {
+            let originalIsCursor: typeof HostUtils.isCursor;
+
+            beforeEach(() => {
+                originalIsCursor = HostUtils.isCursor;
+                (HostUtils as any).isCursor = () => true;
+            });
+
+            afterEach(() => {
+                (HostUtils as any).isCursor = originalIsCursor;
+            });
+
+            it("hides the Cursor agent row (it is managed via the marketplace plugin)", async () => {
+                const manager = createManager(
+                    "project",
+                    "upToDate",
+                    "0.2.9",
+                    undefined,
+                    [
+                        agent("claude", "Claude Code", "1.2.0"),
+                        agent("cursor", "Cursor", "0.3.0"),
+                    ]
+                );
+                const rows = await getChildrenOf(manager, {
+                    label: "Agents",
+                    id: "AITOOLS.agents",
+                });
+                assert.deepStrictEqual(
+                    rows.map((r) => r.id),
+                    ["AITOOLS.agent.claude"]
+                );
+            });
+
+            it("excludes the hidden Cursor agent from the installed count", async () => {
+                const manager = createManager(
+                    "project",
+                    "upToDate",
+                    "0.2.9",
+                    undefined,
+                    [
+                        agent("claude", "Claude Code", "1.2.0"),
+                        // Installed, but hidden in Cursor -> must not be counted.
+                        agent("cursor", "Cursor", "0.3.0"),
+                    ]
+                );
+                const children = await getChildrenOf(manager, {
+                    label: "AI tools",
+                    id: "AITOOLS",
+                });
+                const agentsNode = children.find(
+                    (c) => c.id === "AITOOLS.agents"
+                );
+                assert.strictEqual(agentsNode?.description, "1 installed");
+            });
         });
     });
 });

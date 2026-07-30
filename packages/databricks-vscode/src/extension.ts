@@ -217,7 +217,7 @@ export async function activate(
     // Detect install state on activation and, if installed, auto-apply any
     // available update; otherwise prompt the user (once) to install the tools.
     // Non-blocking so it doesn't delay activation.
-    aiToolsManager.initialize();
+    aiToolsCommands.initializeCommand()();
 
     // Developer-only "Reset state" command (multi-select of persisted state
     // keys). Gated to development builds so it isn't exposed to end users; the

@@ -10,7 +10,7 @@ import {
     verify,
     when,
 } from "ts-mockito";
-import {commands, Uri, window} from "vscode";
+import {commands, Uri} from "vscode";
 import {mkdtemp, mkdir, writeFile, rm} from "fs/promises";
 import path from "path";
 import os from "os";
@@ -640,7 +640,8 @@ describe(__filename, () => {
     it("still refreshes the panel when a single-agent install fails", async () => {
         // A partial install (e.g. an agent whose CLI is missing) often still
         // installed some tools, so the panel must reconcile with the real state
-        // rather than staying stale.
+        // rather than staying stale. The error is rethrown for the command layer
+        // to surface.
         await writeStateFile(projectDir);
         when(
             mockCli.aitoolsInstall(
@@ -662,7 +663,7 @@ describe(__filename, () => {
         const manager = createManager();
         await manager.detectInstall();
 
-        await manager.installAgent("codex");
+        await assert.rejects(() => manager.installAgent("codex"), ProcessError);
 
         // resolveInstalled ran despite the failure.
         verify(mockCli.aitoolsList(anything())).once();
@@ -688,7 +689,10 @@ describe(__filename, () => {
         );
         const manager = createManager();
 
-        await manager.install("global", "sidePane", ["codex"]);
+        await assert.rejects(
+            () => manager.install("global", "sidePane", ["codex"]),
+            ProcessError
+        );
 
         // detectInstall + resolveInstalled ran despite the failure, so the row
         // reflects the tools that actually installed.
@@ -737,7 +741,7 @@ describe(__filename, () => {
         const manager = createManager();
         await manager.detectInstall();
 
-        await manager.update();
+        await assert.rejects(() => manager.update(), ProcessError);
 
         // The finally block reconciles state even though the update errored.
         assert.strictEqual(manager.state.updateStatus, "updateAvailable");
@@ -844,55 +848,31 @@ describe(__filename, () => {
     });
 
     describe("initialize", () => {
-        let originalExecuteCommand: typeof commands.executeCommand;
-        let originalShowInfo: typeof window.showInformationMessage;
-        let executed: Array<{command: string; args: any[]}>;
-
-        beforeEach(() => {
-            originalExecuteCommand = commands.executeCommand;
-            originalShowInfo = window.showInformationMessage;
-            executed = [];
-            (commands as any).executeCommand = async (
-                command: string,
-                ...args: any[]
-            ) => {
-                executed.push({command, args});
-            };
-        });
-
-        afterEach(() => {
-            (commands as any).executeCommand = originalExecuteCommand;
-            (window as any).showInformationMessage = originalShowInfo;
-        });
-
-        it("auto-applies an available update when installed", async () => {
+        it("resolves the update status but reports 'update' when installed and behind", async () => {
             await writeStateFile(projectDir);
-            when(
-                mockCli.aitoolsUpdate("project", anything(), anything())
-            ).thenResolve();
-            let call = 0;
-            when(mockCli.aitoolsList(anything())).thenCall(async () => {
-                call++;
-                // First check: behind latest. After update: up to date.
-                return listResult([
+            when(mockCli.aitoolsList(anything())).thenResolve(
+                listResult([
                     {
                         name: "databricks-core",
                         latest_version: "0.1.0",
-                        installed: {project: call === 1 ? "0.0.1" : "0.1.0"},
+                        installed: {project: "0.0.1"},
                     },
-                ]);
-            });
+                ])
+            );
             const manager = createManager();
 
-            await manager.initialize();
+            const action = await manager.initialize();
 
+            // initialize resolves status but leaves applying the update to the
+            // caller (AiToolsCommands).
+            assert.strictEqual(action, "update");
+            assert.strictEqual(manager.state.updateStatus, "updateAvailable");
             verify(
-                mockCli.aitoolsUpdate("project", anything(), anything())
-            ).once();
-            assert.strictEqual(manager.state.updateStatus, "upToDate");
+                mockCli.aitoolsUpdate(anything(), anything(), anything())
+            ).never();
         });
 
-        it("does not update when already up to date", async () => {
+        it("reports 'none' when installed and up to date", async () => {
             await writeStateFile(projectDir);
             when(mockCli.aitoolsList(anything())).thenResolve(
                 listResult([
@@ -905,78 +885,33 @@ describe(__filename, () => {
             );
             const manager = createManager();
 
-            await manager.initialize();
-
-            verify(
-                mockCli.aitoolsUpdate(anything(), anything(), anything())
-            ).never();
+            assert.strictEqual(await manager.initialize(), "none");
         });
 
-        it("prompts to install and runs the install command on accept", async () => {
-            (window as any).showInformationMessage = async () =>
-                "Install AI tools";
+        it("reports 'promptInstall' when not installed", async () => {
             const manager = createManager();
 
-            await manager.initialize();
-
-            assert.ok(
-                executed.some((e) => e.command === "databricks.aitools.install")
-            );
-            // Accepting the install must not set the opt-out flag.
-            assert.notStrictEqual(
-                storedState["databricks.aitools.hideInstallPrompt"],
-                true
-            );
+            assert.strictEqual(await manager.initialize(), "promptInstall");
         });
 
-        it("does not opt out when the prompt is merely dismissed", async () => {
-            (window as any).showInformationMessage = async () => undefined;
+        it("reports 'none' when not installed but opted out", async () => {
+            storedState["databricks.aitools.hideInstallPrompt"] = true;
             const manager = createManager();
 
-            await manager.initialize();
-
-            assert.ok(
-                !executed.some(
-                    (e) => e.command === "databricks.aitools.install"
-                )
-            );
-            // A plain dismissal leaves the prompt eligible to reappear.
-            assert.notStrictEqual(
-                storedState["databricks.aitools.hideInstallPrompt"],
-                true
-            );
+            assert.strictEqual(await manager.initialize(), "none");
         });
 
-        it("opts out permanently when the user picks 'Don't show again'", async () => {
-            (window as any).showInformationMessage = async () =>
-                "Don't show again";
+        it("records the opt-out via optOutOfInstallPrompt", async () => {
             const manager = createManager();
+            assert.strictEqual(manager.shouldPromptInstall, true);
 
-            await manager.initialize();
+            await manager.optOutOfInstallPrompt();
 
-            assert.ok(
-                !executed.some(
-                    (e) => e.command === "databricks.aitools.install"
-                )
-            );
             assert.strictEqual(
                 storedState["databricks.aitools.hideInstallPrompt"],
                 true
             );
-        });
-
-        it("does not prompt again once opted out", async () => {
-            storedState["databricks.aitools.hideInstallPrompt"] = true;
-            let prompted = false;
-            (window as any).showInformationMessage = async () => {
-                prompted = true;
-                return undefined;
-            };
-            const manager = createManager();
-
-            await manager.initialize();
-
-            assert.strictEqual(prompted, false);
+            assert.strictEqual(manager.shouldPromptInstall, false);
         });
     });
 });

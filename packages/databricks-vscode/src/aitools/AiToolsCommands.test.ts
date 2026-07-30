@@ -1,8 +1,15 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {QuickPick, QuickPickItem, window} from "vscode";
+import {
+    CancellationToken,
+    Progress,
+    QuickPick,
+    QuickPickItem,
+    window,
+} from "vscode";
 import {anything, capture, instance, mock, verify, when} from "ts-mockito";
+import {ProcessError} from "../cli/CliWrapper";
 import {
     AiToolsAgentStatus,
     AiToolsManager,
@@ -76,6 +83,7 @@ function agent(
 describe(__filename, () => {
     let mockManager: AiToolsManager;
     let originalCreateQuickPick: typeof window.createQuickPick;
+    let originalWithProgress: typeof window.withProgress;
     let originalIsCursor: typeof HostUtils.isCursor;
     let quickPicks: FakeQuickPick[];
     // Behavior applied to each createQuickPick call, in order.
@@ -84,6 +92,12 @@ describe(__filename, () => {
             pick: FakeQuickPick
         ) => {selected: readonly QuickPickItem[]} | "dismiss"
     >;
+    // A cancellation token whose `isCancellationRequested` is false; enough to
+    // stand in for the token withProgress would hand the task.
+    const fakeToken = {
+        isCancellationRequested: false,
+        onCancellationRequested: () => ({dispose() {}}),
+    } as unknown as CancellationToken;
 
     function stubIsCursor(value: boolean) {
         (HostUtils as any).isCursor = () => value;
@@ -104,6 +118,17 @@ describe(__filename, () => {
             return pick as unknown as QuickPick<QuickPickItem>;
         };
 
+        // Run the progress task synchronously with a non-cancelled token,
+        // skipping the real notification UI.
+        originalWithProgress = window.withProgress;
+        (window as any).withProgress = (
+            _options: unknown,
+            task: (
+                progress: Progress<unknown>,
+                token: CancellationToken
+            ) => Thenable<unknown>
+        ) => task({report() {}}, fakeToken);
+
         // Default to plain VS Code; Cursor-specific tests opt in.
         originalIsCursor = HostUtils.isCursor;
         stubIsCursor(false);
@@ -111,6 +136,7 @@ describe(__filename, () => {
 
     afterEach(() => {
         (window as any).createQuickPick = originalCreateQuickPick;
+        (window as any).withProgress = originalWithProgress;
         (HostUtils as any).isCursor = originalIsCursor;
     });
 
@@ -289,7 +315,9 @@ describe(__filename, () => {
 
     describe("installAgentCommand", () => {
         it("installs the agent recovered from the tree node id", async () => {
-            when(mockManager.installAgent(anything())).thenResolve();
+            when(
+                mockManager.installAgent(anything(), anything())
+            ).thenResolve();
 
             await createCommands().installAgentCommand()({
                 id: "AITOOLS.agent.codex",
@@ -303,7 +331,7 @@ describe(__filename, () => {
             await createCommands().installAgentCommand()({id: "AITOOLS"});
             await createCommands().installAgentCommand()(undefined);
 
-            verify(mockManager.installAgent(anything())).never();
+            verify(mockManager.installAgent(anything(), anything())).never();
         });
     });
 
@@ -315,6 +343,112 @@ describe(__filename, () => {
 
             const [source] = capture(mockManager.addCursorPlugin).last();
             assert.strictEqual(source, "pluginButton");
+        });
+    });
+
+    describe("initializeCommand", () => {
+        it("shows the install prompt and installs on accept when not installed", async () => {
+            when(mockManager.initialize()).thenResolve("promptInstall");
+            when(mockManager.listAgents("global")).thenResolve([]);
+            const originalShowInfo = window.showInformationMessage;
+            (window as any).showInformationMessage = async () =>
+                "Install AI tools";
+            behaviors.push(selectScope("global"));
+            try {
+                await createCommands().initializeCommand()();
+            } finally {
+                (window as any).showInformationMessage = originalShowInfo;
+            }
+
+            // Accepting the prompt runs the install flow with the "initModal"
+            // source (never the opt-out).
+            const [, source] = capture(mockManager.install).last();
+            assert.strictEqual(source, "initModal");
+            verify(mockManager.optOutOfInstallPrompt()).never();
+        });
+
+        it("opts out when the prompt is declined with 'Don't show again'", async () => {
+            when(mockManager.initialize()).thenResolve("promptInstall");
+            when(mockManager.optOutOfInstallPrompt()).thenResolve();
+            const originalShowInfo = window.showInformationMessage;
+            (window as any).showInformationMessage = async () =>
+                "Don't show again";
+            try {
+                await createCommands().initializeCommand()();
+            } finally {
+                (window as any).showInformationMessage = originalShowInfo;
+            }
+
+            verify(mockManager.optOutOfInstallPrompt()).once();
+            verify(
+                mockManager.install(anything(), anything(), anything())
+            ).never();
+        });
+
+        it("does not opt out or install on a plain dismissal", async () => {
+            when(mockManager.initialize()).thenResolve("promptInstall");
+            const originalShowInfo = window.showInformationMessage;
+            (window as any).showInformationMessage = async () => undefined;
+            try {
+                await createCommands().initializeCommand()();
+            } finally {
+                (window as any).showInformationMessage = originalShowInfo;
+            }
+
+            verify(mockManager.optOutOfInstallPrompt()).never();
+            verify(
+                mockManager.install(anything(), anything(), anything())
+            ).never();
+        });
+
+        it("applies the update when one is available", async () => {
+            when(mockManager.initialize()).thenResolve("update");
+            when(mockManager.update(anything())).thenResolve();
+
+            await createCommands().initializeCommand()();
+
+            verify(mockManager.update(anything())).once();
+        });
+
+        it("does nothing when the action is 'none'", async () => {
+            when(mockManager.initialize()).thenResolve("none");
+
+            await createCommands().initializeCommand()();
+
+            verify(mockManager.update(anything())).never();
+            verify(
+                mockManager.install(anything(), anything(), anything())
+            ).never();
+        });
+    });
+
+    describe("error handling", () => {
+        it("surfaces a ProcessError from update as a toast (does not rethrow)", async () => {
+            const err = new ProcessError("boom", 1);
+            let shownPrefix: string | undefined;
+            err.showErrorMessage = (prefix?: string) => {
+                shownPrefix = prefix;
+            };
+            when(mockManager.update(anything())).thenReject(err);
+
+            // A ProcessError is caught and rendered, not propagated.
+            await createCommands().updateCommand()();
+
+            assert.strictEqual(
+                shownPrefix,
+                "Failed to update Databricks AI tools."
+            );
+        });
+
+        it("rethrows a non-ProcessError from update", async () => {
+            when(mockManager.update(anything())).thenReject(
+                new Error("unexpected")
+            );
+
+            await assert.rejects(
+                () => createCommands().updateCommand()(),
+                /unexpected/
+            );
         });
     });
 });

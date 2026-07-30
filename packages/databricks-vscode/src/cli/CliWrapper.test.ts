@@ -1,12 +1,17 @@
 import * as assert from "assert";
-import {Uri} from "vscode";
+import {commands, Uri, window} from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
 import {writeFile, readFile, mkdtemp, rm} from "node:fs/promises";
 import {when, spy, reset, instance, mock} from "ts-mockito";
-import {cancellableExecFile, CliWrapper, waitForProcess} from "./CliWrapper";
+import {
+    cancellableExecFile,
+    CliWrapper,
+    ProcessError,
+    waitForProcess,
+} from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
@@ -73,6 +78,18 @@ describe(__filename, function () {
             assert.ok(typeof skill.name === "string");
             assert.ok(typeof skill.latest_version === "string");
             assert.ok(typeof skill.installed === "object");
+
+            // It also reports the coding agents it knows about, each with a
+            // display name and detection/management flags; the agent picker
+            // relies on these fields.
+            assert.ok(Array.isArray(result.agents));
+            assert.ok(result.agents.length > 0);
+            const agent = result.agents[0];
+            assert.ok(typeof agent.name === "string");
+            assert.ok(typeof agent.display_name === "string");
+            assert.ok(typeof agent.managed === "boolean");
+            assert.ok(typeof agent.detected === "boolean");
+            assert.ok(typeof agent.installed === "object");
         } finally {
             await rm(tmpDir, {recursive: true, force: true});
         }
@@ -375,5 +392,64 @@ describe("waitForProcess", () => {
         const {stdout, stderr} = await waitPromise;
         assert.equal(stdout, `{"hello": "world"}`);
         assert.equal(stderr, `{"error": "nooo"}`);
+    });
+});
+
+describe("ProcessError.showErrorMessage", () => {
+    let originalShowError: typeof window.showErrorMessage;
+    let originalExecuteCommand: typeof commands.executeCommand;
+    let executed: string[];
+
+    beforeEach(() => {
+        executed = [];
+        originalShowError = window.showErrorMessage;
+        // Resolve as if the user clicked the primary action button (the last
+        // vararg), so both the "Show Logs" and "Assign Values" branches fire.
+        (window as any).showErrorMessage = async (
+            _message: string,
+            ...items: string[]
+        ) => items[items.length - 1];
+        originalExecuteCommand = commands.executeCommand;
+        (commands as any).executeCommand = (command: string) => {
+            executed.push(command);
+        };
+    });
+
+    afterEach(() => {
+        (window as any).showErrorMessage = originalShowError;
+        (commands as any).executeCommand = originalExecuteCommand;
+    });
+
+    // `showErrorMessage` handles the toast promise with `.then` (fire and
+    // forget), so a microtask tick is needed before the executeCommand runs.
+    async function flush() {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    it("opens the bundle logs channel by default", async () => {
+        new ProcessError("boom", 1).showErrorMessage("Prefix.");
+        await flush();
+        assert.deepStrictEqual(executed, ["databricks.bundle.showLogs"]);
+    });
+
+    it("opens the given logs channel when one is passed", async () => {
+        new ProcessError("boom", 1).showErrorMessage(
+            "Prefix.",
+            "databricks.logs.show"
+        );
+        await flush();
+        assert.deepStrictEqual(executed, ["databricks.logs.show"]);
+    });
+
+    it("ignores the logsCommand for the missing-variable path", async () => {
+        // The "no value assigned to required variable" branch has its own
+        // fixed set of commands and never consults logsCommand.
+        new ProcessError(
+            "no value assigned to required variable foo",
+            1
+        ).showErrorMessage("Prefix.", "databricks.logs.show");
+        await flush();
+        assert.ok(!executed.includes("databricks.logs.show"));
+        assert.ok(executed.includes("databricks.bundle.showLogs"));
     });
 });
