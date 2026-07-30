@@ -123,7 +123,7 @@ export class ClusterComponent extends BaseComponent {
                     ),
                     id: TREE_ICON_ID,
                     command: {
-                        title: "Select a compute",
+                        title: "Select compute",
                         command: "databricks.connection.attachClusterQuickPick",
                     },
                 },
