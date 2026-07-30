@@ -8,7 +8,10 @@ import {
     isPythonSetupSuccess,
     PythonSetupResult,
 } from "../models/PythonSetupResult";
-import {getPythonSetupErrorMessage} from "../utils/errorMessages";
+import {
+    getPythonSetupErrorMessage,
+    NO_COMPUTE_TARGET_MESSAGE,
+} from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 
 /**
@@ -160,6 +163,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
 
         const compute = await resolveCompute();
         if (compute === undefined) {
+            // The entry is visible whenever the project fits (flag + uv shape),
+            // independent of compute — so a user can click the CTA with no
+            // cluster attached or a serverless session without a chosen version.
+            // Tell them what to do instead of silently no-op'ing the button.
+            await this.deps.showError(NO_COMPUTE_TARGET_MESSAGE);
             return;
         }
 

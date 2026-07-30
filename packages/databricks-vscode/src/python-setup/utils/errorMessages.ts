@@ -17,6 +17,14 @@ import {
  * new file was created.
  */
 
+/**
+ * Guidance shown when no compute target is resolvable. Single-sourced here (and
+ * mapped from the CLI's `E_NO_TARGET`) so the orchestrator's pre-flight check
+ * and the CLI-reported error surface the identical copy.
+ */
+export const NO_COMPUTE_TARGET_MESSAGE =
+    "Select a cluster or serverless compute before setting up the environment.";
+
 /* eslint-disable @typescript-eslint/naming-convention */
 const BASE_MESSAGE: Record<
     PythonSetupErrorCode,
@@ -30,8 +38,7 @@ const BASE_MESSAGE: Record<
         "The project folder is not writable. Check its permissions and try again.",
     E_UV_MISSING: () =>
         "uv was not found and could not be installed automatically. Install uv, then try again.",
-    E_NO_TARGET: () =>
-        "Select a cluster or serverless compute before setting up the environment.",
+    E_NO_TARGET: () => NO_COMPUTE_TARGET_MESSAGE,
     E_RESOLVE: () =>
         "Could not resolve the selected compute. Check the cluster/serverless selection and try again.",
     E_ENV_UNSUPPORTED: (r) => {

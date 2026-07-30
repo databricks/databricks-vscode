@@ -153,16 +153,29 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(setup.ready).to.equal(false);
     });
 
-    it("does not run when no compute could be resolved", async () => {
+    it("guides the user (without running the CLI) when no compute could be resolved", async () => {
         const cli = makeCli();
+        const shownErrors: string[] = [];
         const setup = new PythonSetupEnvironmentSetup(
-            makeDeps({cli, resolveCompute: async () => undefined})
+            makeDeps({
+                cli,
+                resolveCompute: async () => undefined,
+                showError: async (m) => {
+                    shownErrors.push(m);
+                },
+            })
         );
 
         await setup.setup();
 
+        // No project mutation, but the visible CTA must not be a dead button:
+        // tell the user to attach compute rather than silently no-op'ing.
         expect(cli.calls).to.have.length(0);
         expect(setup.ready).to.equal(false);
+        expect(shownErrors).to.have.length(1);
+        expect(shownErrors[0]).to.contain(
+            "Select a cluster or serverless compute"
+        );
     });
 
     it("surfaces a mapped error message on CLI failure and stays not-ready", async () => {
