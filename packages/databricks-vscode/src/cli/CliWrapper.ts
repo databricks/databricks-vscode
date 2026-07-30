@@ -105,6 +105,37 @@ export interface ConfigEntry {
 }
 
 export type SyncType = "full" | "incremental";
+
+export type SshConnectCompute =
+    | {type: "serverless"; accelerator?: string}
+    | {type: "cluster"; clusterId: string};
+
+/**
+ * Constructs the `databricks ssh connect` command args for opening a remote
+ * IDE window. Serverless is the default when no cluster is given.
+ *
+ * The --ide flag matches the host editor so the CLI opens the right remote
+ * window: Cursor identifies itself via env.uriScheme === "cursor",
+ * everything else (VS Code, Insiders) uses vscode.
+ *
+ * Logging is configured out of band via the DATABRICKS_LOG_* env vars (see
+ * CliWrapper.getSshConnectEnvVars), so we do not pass --log-* flags here.
+ */
+export function getSshConnectCommand(opts: {compute: SshConnectCompute}): {
+    args: string[];
+} {
+    const ide = env.uriScheme === "cursor" ? "cursor" : "vscode";
+    const args = ["ssh", "connect", `--ide=${ide}`, "--auto-approve"];
+    if (opts.compute.type === "cluster") {
+        // Start a stopped single-user cluster when connecting.
+        args.push(`--cluster=${opts.compute.clusterId}`);
+        args.push("--auto-start-cluster");
+    } else if (opts.compute.accelerator) {
+        // Serverless GPU: request a specific accelerator type.
+        args.push(`--accelerator=${opts.compute.accelerator}`);
+    }
+    return {args};
+}
 export class ProcessError extends Error {
     constructor(
         message: string,
@@ -591,35 +622,6 @@ export class CliWrapper {
             // eslint-disable-next-line @typescript-eslint/naming-convention
             DATABRICKS_OUTPUT_FORMAT: "text",
         });
-    }
-
-    /**
-     * Constructs the `databricks ssh connect` command args for opening a remote
-     * IDE window. Serverless is the default when no cluster is given.
-     *
-     * The --ide flag matches the host editor so the CLI opens the right remote
-     * window: Cursor identifies itself via env.uriScheme === "cursor",
-     * everything else (VS Code, Insiders) uses vscode.
-     *
-     * Logging is configured out of band via the DATABRICKS_LOG_* env vars (see
-     * getSshConnectEnvVars), so we do not pass --log-* flags here.
-     */
-    getSshConnectCommand(opts: {
-        compute:
-            | {type: "serverless"; accelerator?: string}
-            | {type: "cluster"; clusterId: string};
-    }): {args: string[]} {
-        const ide = env.uriScheme === "cursor" ? "cursor" : "vscode";
-        const args = ["ssh", "connect", `--ide=${ide}`, "--auto-approve"];
-        if (opts.compute.type === "cluster") {
-            // Start a stopped single-user cluster when connecting.
-            args.push(`--cluster=${opts.compute.clusterId}`);
-            args.push("--auto-start-cluster");
-        } else if (opts.compute.accelerator) {
-            // Serverless GPU: request a specific accelerator type.
-            args.push(`--accelerator=${opts.compute.accelerator}`);
-        }
-        return {args};
     }
 
     async bundleInit(

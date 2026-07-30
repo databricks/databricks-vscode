@@ -15,7 +15,11 @@ import {
     formatClusterState,
     formatQuickPickClusterDetails,
 } from "../configuration/ConnectionCommands";
-import {CliWrapper} from "../cli/CliWrapper";
+import {
+    CliWrapper,
+    getSshConnectCommand,
+    SshConnectCompute,
+} from "../cli/CliWrapper";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {LoginWizard} from "../configuration/LoginWizard";
 import {Cluster} from "../sdk-extensions";
@@ -25,9 +29,7 @@ import {Loggers} from "../logger";
 
 const SERVERLESS_LABEL = "$(cloud) Serverless";
 
-type Compute =
-    | {type: "serverless"; accelerator?: string}
-    | {type: "cluster"; clusterId: string};
+type Compute = SshConnectCompute;
 
 /**
  * A serverless QuickPick item, optionally carrying a GPU accelerator type
@@ -414,7 +416,6 @@ export class SshCommands implements Disposable {
         authProvider: AuthProvider,
         compute: Compute
     ) {
-        const {args} = this.cli.getSshConnectCommand({compute});
 
         const env: Record<string, string> = {
             ...this.cli.getSshConnectEnvVars(authProvider),

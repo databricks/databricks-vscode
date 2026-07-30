@@ -6,7 +6,7 @@ import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
 import {writeFile, readFile} from "node:fs/promises";
 import {when, spy, reset, instance, mock} from "ts-mockito";
-import {CliWrapper, waitForProcess} from "./CliWrapper";
+import {CliWrapper, getSshConnectCommand, waitForProcess} from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
@@ -129,14 +129,11 @@ describe(__filename, function () {
     });
 
     it("should create ssh connect commands", () => {
-        const logFilePath = getTempLogFilePath();
-        const cli = createCliWrapper(logFilePath);
-
         // Logging is configured via env vars, not CLI flags, so no --log-*
         // args appear on the ssh connect command line.
 
         // Serverless: no --cluster / --auto-start-cluster.
-        let {args} = cli.getSshConnectCommand({compute: {type: "serverless"}});
+        let {args} = getSshConnectCommand({compute: {type: "serverless"}});
         assert.deepStrictEqual(args, [
             "ssh",
             "connect",
@@ -145,7 +142,7 @@ describe(__filename, function () {
         ]);
 
         // Serverless GPU: --accelerator, no --cluster / --auto-start-cluster.
-        ({args} = cli.getSshConnectCommand({
+        ({args} = getSshConnectCommand({
             compute: {type: "serverless", accelerator: "GPU_1xA10"},
         }));
         assert.deepStrictEqual(args, [
@@ -157,7 +154,7 @@ describe(__filename, function () {
         ]);
 
         // Dedicated cluster: --cluster and --auto-start-cluster.
-        ({args} = cli.getSshConnectCommand({
+        ({args} = getSshConnectCommand({
             compute: {type: "cluster", clusterId: "1234-clusterid"},
         }));
         assert.deepStrictEqual(args, [
