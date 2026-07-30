@@ -48,7 +48,7 @@ The Databricks extension for Visual Studio Code enables you to connect to your r
 
 If your folder has multiple [Declarative Automation Bundles](#dabs), you can select which one to use by clicking "Open Existing Databricks project" button and selecting the desired project.
 
-## <a id="select-cluster"></a>Select a compute
+## <a id="select-cluster"></a>Select compute
 
 The extension uses interactive compute to run code. To select interactive compute:
 
