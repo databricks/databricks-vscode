@@ -1,0 +1,212 @@
+import {Disposable, Event, EventEmitter} from "vscode";
+import {
+    CancellationLike,
+    PythonSetupCancelledError,
+    RunOptions,
+} from "../gateways/PythonSetupCliClient";
+import {
+    isPythonSetupSuccess,
+    PythonSetupResult,
+} from "../models/PythonSetupResult";
+import {getPythonSetupErrorMessage} from "../utils/errorMessages";
+import {SetupLocalInvocation} from "../utils/setupLocalArgs";
+
+/**
+ * The one method the orchestrator needs from {@link PythonSetupCliClient}, typed
+ * structurally so the flow is unit-testable without a spawn/`vscode` dependency.
+ */
+export interface CliRunner {
+    run(
+        invocation: SetupLocalInvocation,
+        options: RunOptions
+    ): Promise<PythonSetupResult>;
+}
+
+export type SetupCompute = SetupLocalInvocation["compute"];
+
+/** Persisted after a successful setup, for later drift detection. */
+export interface PythonSetupPersistedState {
+    envKey: string;
+    pythonVersion: string;
+}
+
+type ReadyLocalEnvironmentResult = PythonSetupResult &
+    Required<Pick<PythonSetupResult, "venvPath" | "target" | "resolved">>;
+
+function isLocalEnvironmentReady(
+    r: PythonSetupResult
+): r is ReadyLocalEnvironmentResult {
+    return (
+        isPythonSetupSuccess(r) &&
+        r.venvPath !== undefined &&
+        r.target !== undefined &&
+        r.resolved !== undefined
+    );
+}
+
+/**
+ * Runs under a progress indicator, forwarding `log` to the client's `onLog` and
+ * `token` to its `RunOptions.token` so a user "Cancel" tears down the CLI. The
+ * production wrapper is `window.withProgress` + an output channel.
+ */
+export type ProgressTask<T> = (
+    log: (chunk: string) => void,
+    token: CancellationLike
+) => Promise<T>;
+
+/**
+ * Injected collaborators for {@link PythonSetupEnvironmentSetup}: seams so the
+ * flow is tested without a VS Code host, and so the not-yet-built pieces
+ * (visibility gate, serverless-version selection) can be stubbed until their
+ * own tickets wire the real implementations in.
+ */
+export interface PythonSetupSetupDeps {
+    cli: CliRunner;
+
+    /** Absolute path of the open project the CLI runs against, if any. */
+    projectRoot: () => string | undefined;
+
+    /**
+     * Whether the uv-native setup should run for the current project.
+     *
+     * TODO(#2044): replace the wiring-site stub with
+     * `shouldShowPythonSetup({flagOn: workspaceConfigs.pythonSetupEnabled,
+     * detection: await detector.detect(projectRoot)})`. Until then the extension
+     * passes a stub that returns `false`, so the feature is inert end-to-end.
+     */
+    isVisible: () => Promise<boolean>;
+
+    /**
+     * The compute target to provision for, or `undefined` to abort silently
+     * (nothing selected / the user dismissed the picker).
+     *
+     * TODO(#2052 / #2053): for a serverless session this must resolve the version
+     * via the serverless-version picker (`scoreServerlessVersions` +
+     * `pickServerlessVersion`). Until that ticket lands the extension passes a
+     * stub that returns `undefined`, so a serverless setup is a no-op; the
+     * cluster case can already return `{kind: "cluster", clusterId}`.
+     */
+    resolveCompute: () => Promise<SetupCompute | undefined>;
+
+    /** Point the MS Python extension at the provisioned venv interpreter. */
+    adoptInterpreter: (venvPath: string) => Promise<void>;
+
+    saveState: (state: PythonSetupPersistedState) => void;
+
+    /** Shows the mapped, user-facing copy — not raw CLI text. */
+    showError: (message: string) => Promise<void>;
+
+    showSuccess: (result: PythonSetupResult) => Promise<void>;
+
+    withProgress: <T>(title: string, task: ProgressTask<T>) => Promise<T>;
+}
+
+/**
+ * Orchestrates the uv-native "set up Python environment" flow: decide whether
+ * to run, resolve the compute target, invoke the CLI under a progress
+ * indicator, then adopt the provisioned interpreter and persist state on
+ * success — or surface a mapped error on failure.
+ */
+export class PythonSetupEnvironmentSetup implements Disposable {
+    private _ready = false;
+    /** True once a setup has completed successfully this session. */
+    get ready(): boolean {
+        return this._ready;
+    }
+
+    private readonly stateEmitter = new EventEmitter<void>();
+    /** Fires when {@link ready} flips to true. */
+    readonly onDidChangeState: Event<void> = this.stateEmitter.event;
+
+    /**
+     * The in-flight run, if any. `setup-local` mutates the project, so
+     * overlapping runs against the same cwd would race each other's writes;
+     * {@link setup} coalesces onto this instead of spawning a second process.
+     */
+    private inFlight: Promise<void> | undefined;
+
+    constructor(private readonly deps: PythonSetupSetupDeps) {}
+
+    setup(): Promise<void> {
+        // Re-entrancy guard: coalesce concurrent callers onto the running run
+        // rather than spawning a second project-mutating CLI process.
+        if (this.inFlight) {
+            return this.inFlight;
+        }
+        const run = this.runSetup().finally(() => {
+            this.inFlight = undefined;
+        });
+        this.inFlight = run;
+        return run;
+    }
+
+    private async runSetup(): Promise<void> {
+        const {cli, projectRoot, isVisible, resolveCompute, withProgress} =
+            this.deps;
+
+        const cwd = projectRoot();
+        if (cwd === undefined) {
+            return;
+        }
+        // Gate first: never touch the project or prompt when the feature is not
+        // meant to be offered here.
+        if (!(await isVisible())) {
+            return;
+        }
+
+        const compute = await resolveCompute();
+        if (compute === undefined) {
+            return;
+        }
+
+        const invocation: SetupLocalInvocation = {
+            mode: "default",
+            compute,
+        };
+
+        let result: PythonSetupResult;
+        try {
+            result = await withProgress(
+                "Setting up Python environment",
+                (log, token) => cli.run(invocation, {cwd, onLog: log, token})
+            );
+        } catch (e) {
+            // A cancelled run is a user action, not a failure: stay quiet.
+            if (e instanceof PythonSetupCancelledError) {
+                return;
+            }
+            // Spawn/parse errors reject with a real Error carrying CLI stderr;
+            // there is no result to map, so surface the message directly.
+            await this.deps.showError((e as Error).message);
+            return;
+        }
+
+        if (!isLocalEnvironmentReady(result)) {
+            await this.deps.showError(getPythonSetupErrorMessage(result));
+            return;
+        }
+
+        // Adoption is the point of the flow: without it the venv exists on disk
+        // but is unusable from the editor, so a failure here is a setup failure —
+        // surface it and stay not-ready rather than rejecting with no message.
+        try {
+            await this.deps.adoptInterpreter(result.venvPath);
+        } catch (e) {
+            await this.deps.showError((e as Error).message);
+            return;
+        }
+
+        this.deps.saveState({
+            envKey: result.target.envKey,
+            pythonVersion: result.resolved.pythonVersion,
+        });
+
+        this._ready = true;
+        this.stateEmitter.fire();
+        await this.deps.showSuccess(result);
+    }
+
+    dispose(): void {
+        this.stateEmitter.dispose();
+    }
+}

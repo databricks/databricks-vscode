@@ -1,3 +1,12 @@
+# Release: v2.12.4
+
+## packages/databricks-vscode
+
+## (2026-07-30)
+
+-   Fix job run status not updating when the CLI returns a modern job-run URL (#2018) ([d8f06d7](https://github.com/databricks/databricks-vscode/commit/d8f06d7))
+-   Update Databricks CLI to v1.9.0 (#2035) ([9e6dc8d](https://github.com/databricks/databricks-vscode/commit/9e6dc8d)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes since v1.7.0
+
 # Release: v2.12.3
 
 ## packages/databricks-vscode
