@@ -85,20 +85,12 @@ const StorageConfigurations = {
         location: "global",
     }),
 
-    // Tracks whether we've prompted the user to add the Databricks plugin to
-    // Cursor. There's no reliable way to detect whether the plugin was actually
-    // added, so this only records that we opened the install modal (on first
-    // install in Cursor, or via the "add plugin" action). Used to hide the
-    // add-plugin affordance once prompted.
-    "databricks.aitools.cursorPluginPrompted": withType<boolean>()({
-        location: "global",
-        defaultValue: false,
-    }),
-
-    // Tracks whether we've already shown the one-time prompt offering to install
-    // Databricks AI tools. Set once the prompt has been shown so we don't nag on
-    // every activation.
-    "databricks.aitools.installPrompted": withType<boolean>()({
+    // Tracks whether the user has opted out of the prompt offering to install
+    // Databricks AI tools. Only set when the user declines the install *and*
+    // asks not to be shown it again (the "Don't show again" affordance); a plain
+    // dismissal leaves this false so the prompt can reappear on a later
+    // activation.
+    "databricks.aitools.hideInstallPrompt": withType<boolean>()({
         location: "global",
         defaultValue: false,
     }),

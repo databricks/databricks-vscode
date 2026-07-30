@@ -1,16 +1,31 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {anything, instance, mock, reset, verify, when} from "ts-mockito";
+import {
+    anything,
+    capture,
+    instance,
+    mock,
+    reset,
+    verify,
+    when,
+} from "ts-mockito";
 import {commands, Uri, window} from "vscode";
 import {mkdtemp, mkdir, writeFile, rm} from "fs/promises";
 import path from "path";
 import os from "os";
-import {AiToolsListResult, CliWrapper, ProcessError} from "../cli/CliWrapper";
+import {
+    AiToolsAgent,
+    AiToolsListResult,
+    CliWrapper,
+    ProcessError,
+} from "../cli/CliWrapper";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {Telemetry} from "../telemetry";
-import {AiToolsManager} from "./AiToolsManager";
+import {Events} from "../telemetry/constants";
+import {AiToolsManager, CURSOR_AGENT_ID} from "./AiToolsManager";
+import {HostUtils} from "../utils";
 
 const STATE_FILE_RELATIVE_PATH = path.join(
     ".databricks",
@@ -24,7 +39,8 @@ function listResult(
         name: string;
         latest_version: string;
         installed: Record<string, string>;
-    }>
+    }>,
+    agents: AiToolsAgent[] = []
 ): AiToolsListResult {
     return {
         release: "0.2.9",
@@ -32,6 +48,7 @@ function listResult(
             experimental: false,
             ...s,
         })),
+        agents,
     };
 }
 
@@ -45,6 +62,18 @@ describe(__filename, () => {
     let projectDir: string;
     let homeDir: string;
     let originalHome: string | undefined;
+    let originalIsCursor: typeof HostUtils.isCursor;
+    // Every telemetry event recorded during a test (via start()'s recorder or a
+    // direct recordEvent), so assertions can inspect the emitted properties.
+    let recordedEvents: Array<{event: string; props: any}>;
+
+    function eventsOfType(event: string) {
+        return recordedEvents.filter((e) => e.event === event);
+    }
+
+    function stubIsCursor(value: boolean) {
+        (HostUtils as any).isCursor = () => value;
+    }
 
     async function writeStateFile(root: string) {
         const dir = path.join(root, path.dirname(STATE_FILE_RELATIVE_PATH));
@@ -75,15 +104,27 @@ describe(__filename, () => {
         when(mockWorkspaceFolderManager.activeProjectUri).thenReturn(
             Uri.file(projectDir)
         );
-        // start() returns a recorder callback; stub it to a no-op so the
-        // manager's install/update/uninstall telemetry calls work.
+        // Capture recorded events. start() returns a recorder callback that
+        // records under the event name; recordEvent records directly.
+        recordedEvents = [];
         telemetry = {
-            start: () => () => {},
+            start: (event: string) => (props: any) => {
+                recordedEvents.push({event, props});
+            },
+            recordEvent: (event: string, props: any) => {
+                recordedEvents.push({event, props});
+            },
         } as unknown as Telemetry;
+
+        // Default to plain VS Code; Cursor-specific tests opt in via
+        // stubIsCursor(true).
+        originalIsCursor = HostUtils.isCursor;
+        stubIsCursor(false);
     });
 
     afterEach(async () => {
         process.env.HOME = originalHome;
+        (HostUtils as any).isCursor = originalIsCursor;
         reset(mockCli);
         reset(mockWorkspaceFolderManager);
         await rm(projectDir, {recursive: true, force: true});
@@ -203,8 +244,7 @@ describe(__filename, () => {
         );
         const manager = createManager();
         await manager.detectInstall();
-        const status = await manager.checkForUpdates();
-        assert.strictEqual(status, "upToDate");
+        await manager.resolveInstalled();
         assert.strictEqual(manager.state.updateStatus, "upToDate");
     });
 
@@ -226,7 +266,8 @@ describe(__filename, () => {
         );
         const manager = createManager();
         await manager.detectInstall();
-        assert.strictEqual(await manager.checkForUpdates(), "updateAvailable");
+        await manager.resolveInstalled();
+        assert.strictEqual(manager.state.updateStatus, "updateAvailable");
     });
 
     it("ignores non-installed skills when computing update status", async () => {
@@ -249,7 +290,8 @@ describe(__filename, () => {
         );
         const manager = createManager();
         await manager.detectInstall();
-        assert.strictEqual(await manager.checkForUpdates(), "upToDate");
+        await manager.resolveInstalled();
+        assert.strictEqual(manager.state.updateStatus, "upToDate");
     });
 
     it("reports error when the list command fails", async () => {
@@ -257,14 +299,15 @@ describe(__filename, () => {
         when(mockCli.aitoolsList(anything())).thenReject(new Error("boom"));
         const manager = createManager();
         await manager.detectInstall();
-        assert.strictEqual(await manager.checkForUpdates(), "error");
+        await manager.resolveInstalled();
+        assert.strictEqual(manager.state.updateStatus, "error");
     });
 
     it("returns unknown update status when not installed", async () => {
         const manager = createManager();
         await manager.detectInstall();
-        const status = await manager.checkForUpdates();
-        assert.strictEqual(status, "unknown");
+        await manager.resolveInstalled();
+        assert.strictEqual(manager.state.updateStatus, "unknown");
         verify(mockCli.aitoolsList(anything())).never();
     });
 
@@ -330,46 +373,6 @@ describe(__filename, () => {
         }
     });
 
-    it("clears the Cursor plugin flag on uninstall so it is re-offered", async () => {
-        await writeStateFile(projectDir);
-        storedState["databricks.aitools.cursorPluginPrompted"] = true;
-        when(
-            mockCli.aitoolsUninstall("project", anything(), anything())
-        ).thenCall(async () => {
-            await rm(path.join(projectDir, STATE_FILE_RELATIVE_PATH), {
-                force: true,
-            });
-        });
-        const manager = createManager();
-        await manager.detectInstall();
-
-        await manager.uninstall();
-
-        assert.strictEqual(
-            storedState["databricks.aitools.cursorPluginPrompted"],
-            false
-        );
-    });
-
-    it("does not clear the Cursor plugin flag when uninstall fails", async () => {
-        await writeStateFile(projectDir);
-        storedState["databricks.aitools.cursorPluginPrompted"] = true;
-        when(
-            mockCli.aitoolsUninstall("project", anything(), anything())
-        ).thenReject(new ProcessError("boom", 1));
-        const manager = createManager();
-        await manager.detectInstall();
-
-        await manager.uninstall();
-
-        // The state file still exists (uninstall failed), so the flag must be
-        // left untouched.
-        assert.strictEqual(
-            storedState["databricks.aitools.cursorPluginPrompted"],
-            true
-        );
-    });
-
     it("does not call the CLI when uninstalling with nothing installed", async () => {
         const manager = createManager();
         await manager.detectInstall();
@@ -380,11 +383,11 @@ describe(__filename, () => {
     });
 
     it("detects install and refreshes status after a global install", async () => {
-        when(mockCli.aitoolsInstall("global", anything(), anything())).thenCall(
-            async () => {
-                await writeStateFile(homeDir);
-            }
-        );
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenCall(async () => {
+            await writeStateFile(homeDir);
+        });
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
                 {
@@ -398,7 +401,297 @@ describe(__filename, () => {
 
         await manager.install("global");
 
-        verify(mockCli.aitoolsInstall("global", anything(), anything())).once();
+        verify(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).once();
+        assert.strictEqual(manager.state.installLocation, "global");
+        assert.strictEqual(manager.state.updateStatus, "upToDate");
+    });
+
+    describe("Cursor install flow", () => {
+        let originalExecuteCommand: typeof commands.executeCommand;
+        let executed: Array<{command: string; args: any[]}>;
+
+        beforeEach(() => {
+            stubIsCursor(true);
+            originalExecuteCommand = commands.executeCommand;
+            executed = [];
+            (commands as any).executeCommand = async (
+                command: string,
+                ...args: any[]
+            ) => {
+                executed.push({command, args});
+            };
+        });
+
+        afterEach(() => {
+            (commands as any).executeCommand = originalExecuteCommand;
+        });
+
+        function openedCursorPlugin() {
+            return executed.some(
+                (e) => e.command === "workbench.action.openMarketplaceEditor"
+            );
+        }
+
+        it("opens the plugin modal and strips cursor from the CLI --agents", async () => {
+            await writeStateFile(projectDir);
+            when(
+                mockCli.aitoolsInstall(
+                    "project",
+                    anything(),
+                    anything(),
+                    anything()
+                )
+            ).thenResolve();
+            when(mockCli.aitoolsList(anything())).thenResolve(
+                listResult([
+                    {
+                        name: "databricks-core",
+                        latest_version: "0.1.0",
+                        installed: {project: "0.1.0"},
+                    },
+                ])
+            );
+            const manager = createManager();
+
+            await manager.install("project", "sidePane", [
+                "claude-code",
+                CURSOR_AGENT_ID,
+            ]);
+
+            assert.ok(
+                openedCursorPlugin(),
+                "expected the plugin modal to open"
+            );
+            const [, , , cliAgents] = capture(mockCli.aitoolsInstall).last();
+            // cursor is never passed to the CLI; the rest are.
+            assert.deepStrictEqual(cliAgents, ["claude-code"]);
+
+            // The install event records only the CLI agents (cursor stripped)
+            // and flags the plugin separately.
+            const [installEvent] = eventsOfType(Events.AITOOLS_INSTALL);
+            assert.deepStrictEqual(installEvent.props.agents, ["claude-code"]);
+            assert.strictEqual(installEvent.props.cursorPlugin, true);
+            // Prompting the plugin is recorded too, inheriting the install's
+            // source.
+            const [pluginEvent] = eventsOfType(
+                Events.AITOOLS_CURSOR_PLUGIN_PROMPT
+            );
+            assert.strictEqual(pluginEvent.props.success, true);
+            assert.strictEqual(pluginEvent.props.source, "sidePane");
+        });
+
+        it("skips the CLI install when only the Cursor plugin is selected", async () => {
+            await writeStateFile(projectDir);
+            const manager = createManager();
+
+            await manager.install("project", "sidePane", [CURSOR_AGENT_ID]);
+
+            assert.ok(
+                openedCursorPlugin(),
+                "expected the plugin modal to open"
+            );
+            // No skills to install via the CLI -> the CLI is not invoked (an
+            // empty --agents would wrongly act on every detected agent).
+            verify(
+                mockCli.aitoolsInstall(
+                    anything(),
+                    anything(),
+                    anything(),
+                    anything()
+                )
+            ).never();
+
+            // The plugin-only install is still recorded, with no CLI agents.
+            const [installEvent] = eventsOfType(Events.AITOOLS_INSTALL);
+            assert.ok(installEvent, "expected an install event");
+            assert.strictEqual(installEvent.props.success, true);
+            assert.deepStrictEqual(installEvent.props.agents, []);
+            assert.strictEqual(installEvent.props.cursorPlugin, true);
+        });
+
+        it("does not open the plugin modal when cursor is not selected", async () => {
+            await writeStateFile(projectDir);
+            when(
+                mockCli.aitoolsInstall(
+                    "project",
+                    anything(),
+                    anything(),
+                    anything()
+                )
+            ).thenResolve();
+            when(mockCli.aitoolsList(anything())).thenResolve(
+                listResult([
+                    {
+                        name: "databricks-core",
+                        latest_version: "0.1.0",
+                        installed: {project: "0.1.0"},
+                    },
+                ])
+            );
+            const manager = createManager();
+
+            await manager.install("project", "sidePane", ["claude-code"]);
+
+            assert.ok(
+                !openedCursorPlugin(),
+                "did not expect the plugin modal to open"
+            );
+            const [, , , cliAgents] = capture(mockCli.aitoolsInstall).last();
+            assert.deepStrictEqual(cliAgents, ["claude-code"]);
+        });
+    });
+
+    describe("addCursorPlugin", () => {
+        let originalExecuteCommand: typeof commands.executeCommand;
+
+        afterEach(() => {
+            (commands as any).executeCommand = originalExecuteCommand;
+        });
+
+        it("records a successful plugin prompt with the given source", async () => {
+            originalExecuteCommand = commands.executeCommand;
+            (commands as any).executeCommand = async () => {};
+            const manager = createManager();
+
+            await manager.addCursorPlugin("pluginButton");
+
+            const [pluginEvent] = eventsOfType(
+                Events.AITOOLS_CURSOR_PLUGIN_PROMPT
+            );
+            assert.strictEqual(pluginEvent.props.success, true);
+            assert.strictEqual(pluginEvent.props.source, "pluginButton");
+        });
+
+        it("records a failed plugin prompt when opening the modal throws", async () => {
+            originalExecuteCommand = commands.executeCommand;
+            (commands as any).executeCommand = async (command: string) => {
+                // Only the marketplace modal fails; setContext etc. are no-ops.
+                if (command === "workbench.action.openMarketplaceEditor") {
+                    throw new Error("no marketplace");
+                }
+            };
+            const manager = createManager();
+
+            await manager.addCursorPlugin();
+
+            assert.deepStrictEqual(
+                eventsOfType(Events.AITOOLS_CURSOR_PLUGIN_PROMPT).map(
+                    (e) => e.props.success
+                ),
+                [false]
+            );
+        });
+    });
+
+    it("installs a single agent into the current scope and refreshes status", async () => {
+        await writeStateFile(projectDir);
+        when(
+            mockCli.aitoolsInstall(
+                "project",
+                anything(),
+                anything(),
+                anything()
+            )
+        ).thenResolve();
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult([
+                {
+                    name: "databricks-core",
+                    latest_version: "0.1.0",
+                    installed: {project: "0.1.0"},
+                },
+            ])
+        );
+        const manager = createManager();
+        await manager.detectInstall();
+
+        await manager.installAgent("codex");
+
+        const [scope, , , agents] = capture(mockCli.aitoolsInstall).last();
+        assert.strictEqual(scope, "project");
+        assert.deepStrictEqual(agents, ["codex"]);
+        verify(mockCli.aitoolsList(anything())).once();
+
+        // The install event records which agent was installed.
+        const [installEvent] = eventsOfType(Events.AITOOLS_INSTALL);
+        assert.strictEqual(installEvent.props.success, true);
+        assert.strictEqual(installEvent.props.source, "sidePane");
+        assert.deepStrictEqual(installEvent.props.agents, ["codex"]);
+    });
+
+    it("does not install an agent when nothing is installed", async () => {
+        const manager = createManager();
+        await manager.detectInstall();
+
+        await manager.installAgent("codex");
+
+        verify(
+            mockCli.aitoolsInstall(
+                anything(),
+                anything(),
+                anything(),
+                anything()
+            )
+        ).never();
+    });
+
+    it("still refreshes the panel when a single-agent install fails", async () => {
+        // A partial install (e.g. an agent whose CLI is missing) often still
+        // installed some tools, so the panel must reconcile with the real state
+        // rather than staying stale.
+        await writeStateFile(projectDir);
+        when(
+            mockCli.aitoolsInstall(
+                "project",
+                anything(),
+                anything(),
+                anything()
+            )
+        ).thenReject(new ProcessError("boom", 1));
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult([
+                {
+                    name: "databricks-core",
+                    latest_version: "0.1.0",
+                    installed: {project: "0.1.0"},
+                },
+            ])
+        );
+        const manager = createManager();
+        await manager.detectInstall();
+
+        await manager.installAgent("codex");
+
+        // resolveInstalled ran despite the failure.
+        verify(mockCli.aitoolsList(anything())).once();
+        assert.strictEqual(manager.state.updateStatus, "upToDate");
+    });
+
+    it("still refreshes the panel when the install command fails", async () => {
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenCall(async () => {
+            // Simulate a partial install: some tools landed before the failure.
+            await writeStateFile(homeDir);
+            throw new ProcessError("boom", 1);
+        });
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult([
+                {
+                    name: "databricks-core",
+                    latest_version: "0.1.0",
+                    installed: {global: "0.1.0"},
+                },
+            ])
+        );
+        const manager = createManager();
+
+        await manager.install("global", "sidePane", ["codex"]);
+
+        // detectInstall + resolveInstalled ran despite the failure, so the row
+        // reflects the tools that actually installed.
         assert.strictEqual(manager.state.installLocation, "global");
         assert.strictEqual(manager.state.updateStatus, "upToDate");
     });
@@ -463,10 +756,11 @@ describe(__filename, () => {
                     installed: {project: "0.1.0"},
                 },
             ],
+            agents: [],
         });
         const manager = createManager();
         await manager.detectInstall();
-        await manager.checkForUpdates();
+        await manager.resolveInstalled();
         assert.strictEqual(manager.state.version, "0.3.1");
     });
 
@@ -483,7 +777,7 @@ describe(__filename, () => {
         );
         const manager = createManager();
         await manager.detectInstall();
-        await manager.checkForUpdates();
+        await manager.resolveInstalled();
         assert.strictEqual(manager.state.version, "0.2.9");
 
         // Uninstalling / re-detecting with no state file clears the version.
@@ -508,7 +802,12 @@ describe(__filename, () => {
 
         it("installs global against the home dir without touching projectRoot", async () => {
             when(
-                mockCli.aitoolsInstall("global", anything(), anything())
+                mockCli.aitoolsInstall(
+                    "global",
+                    anything(),
+                    anything(),
+                    anything()
+                )
             ).thenCall(async () => {
                 await writeStateFile(homeDir);
             });
@@ -527,7 +826,12 @@ describe(__filename, () => {
             await manager.install("global");
 
             verify(
-                mockCli.aitoolsInstall("global", homeDir, anything())
+                mockCli.aitoolsInstall(
+                    "global",
+                    homeDir,
+                    anything(),
+                    anything()
+                )
             ).once();
             assert.strictEqual(manager.state.installLocation, "global");
         });
@@ -618,13 +922,14 @@ describe(__filename, () => {
             assert.ok(
                 executed.some((e) => e.command === "databricks.aitools.install")
             );
-            assert.strictEqual(
-                storedState["databricks.aitools.installPrompted"],
+            // Accepting the install must not set the opt-out flag.
+            assert.notStrictEqual(
+                storedState["databricks.aitools.hideInstallPrompt"],
                 true
             );
         });
 
-        it("does not install when the prompt is dismissed", async () => {
+        it("does not opt out when the prompt is merely dismissed", async () => {
             (window as any).showInformationMessage = async () => undefined;
             const manager = createManager();
 
@@ -635,14 +940,33 @@ describe(__filename, () => {
                     (e) => e.command === "databricks.aitools.install"
                 )
             );
-            assert.strictEqual(
-                storedState["databricks.aitools.installPrompted"],
+            // A plain dismissal leaves the prompt eligible to reappear.
+            assert.notStrictEqual(
+                storedState["databricks.aitools.hideInstallPrompt"],
                 true
             );
         });
 
-        it("does not prompt again once prompted", async () => {
-            storedState["databricks.aitools.installPrompted"] = true;
+        it("opts out permanently when the user picks 'Don't show again'", async () => {
+            (window as any).showInformationMessage = async () =>
+                "Don't show again";
+            const manager = createManager();
+
+            await manager.initialize();
+
+            assert.ok(
+                !executed.some(
+                    (e) => e.command === "databricks.aitools.install"
+                )
+            );
+            assert.strictEqual(
+                storedState["databricks.aitools.hideInstallPrompt"],
+                true
+            );
+        });
+
+        it("does not prompt again once opted out", async () => {
+            storedState["databricks.aitools.hideInstallPrompt"] = true;
             let prompted = false;
             (window as any).showInformationMessage = async () => {
                 prompted = true;

@@ -19,6 +19,8 @@ import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {Cloud} from "../utils/constants";
 import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
+import type {AiToolsScope} from "../telemetry/constants";
+export type {AiToolsScope};
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
@@ -126,8 +128,6 @@ export interface ConfigEntry {
 
 export type SyncType = "full" | "incremental";
 
-export type AiToolsScope = "project" | "global";
-
 /** A single skill entry from `databricks aitools list --output json`. */
 export interface AiToolsSkill {
     name: string;
@@ -141,10 +141,27 @@ export interface AiToolsSkill {
     installed: Partial<Record<AiToolsScope, string>>;
 }
 
+export interface AiToolsAgentInstallation {
+    version: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    native_scope: string;
+}
+
+/** A single agent entry from `databricks aitools list --output json`. */
+export interface AiToolsAgent {
+    name: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    display_name: string;
+    managed: boolean;
+    detected: boolean;
+    installed: Partial<Record<AiToolsScope, AiToolsAgentInstallation>>;
+}
+
 /** Parsed output of `databricks aitools list --output json`. */
 export interface AiToolsListResult {
     release: string;
     skills: AiToolsSkill[];
+    agents: AiToolsAgent[];
 }
 export class ProcessError extends Error {
     constructor(
@@ -154,7 +171,21 @@ export class ProcessError extends Error {
         super(message);
     }
 
-    showErrorMessage(prefix?: string) {
+    /**
+     * Show an error toast for this CLI failure with a "Show Logs" button.
+     *
+     * `logsCommand` selects which output channel that button opens. It defaults
+     * to the bundle logs (`databricks.bundle.showLogs`), since most CLI commands
+     * are bundle operations, but callers whose command logs elsewhere (e.g. the
+     * AI tools commands, which log to the "Databricks Logs" channel) can pass
+     * `databricks.logs.show` so "Show Logs" lands on the right channel.
+     */
+    showErrorMessage(
+        prefix?: string,
+        logsCommand:
+            | "databricks.bundle.showLogs"
+            | "databricks.logs.show" = "databricks.bundle.showLogs"
+    ) {
         if (this.message.includes("no value assigned to required variable")) {
             window
                 .showErrorMessage(
@@ -182,7 +213,7 @@ export class ProcessError extends Error {
             )
             .then((choice) => {
                 if (choice === "Show Logs") {
-                    commands.executeCommand("databricks.bundle.showLogs");
+                    commands.executeCommand(logsCommand);
                 }
             });
     }
@@ -532,9 +563,16 @@ export class CliWrapper {
         scope: AiToolsScope,
         cwd: string,
         cancellationToken?: CancellationToken,
+        agents?: string[],
         @context ctx?: Context
     ): Promise<void> {
         const args = ["aitools", "install", "--scope", scope];
+        // When a specific set of agents is chosen, restrict the install to them
+        // (`--agents a,b`). With no selection the CLI acts on every detected
+        // agent, which is the desired default.
+        if (agents && agents.length > 0) {
+            args.push("--agents", agents.join(","));
+        }
         try {
             await execFile(
                 this.cliPath,

@@ -34,10 +34,10 @@ describe(__filename, () => {
         const {storage} = createStorage();
         const keys = storage.storageKeys;
 
-        const installPrompted = keys.find(
-            (k) => k.key === "databricks.aitools.installPrompted"
+        const hideInstallPrompt = keys.find(
+            (k) => k.key === "databricks.aitools.hideInstallPrompt"
         );
-        assert.strictEqual(installPrompted?.location, "global");
+        assert.strictEqual(hideInstallPrompt?.location, "global");
 
         const bundleTarget = keys.find(
             (k) => k.key === "databricks.bundle.target"
@@ -48,21 +48,21 @@ describe(__filename, () => {
     it("reset clears the stored value so get returns the default", async () => {
         const {storage, globalState} = createStorage();
 
-        await storage.set("databricks.aitools.installPrompted", true);
+        await storage.set("databricks.aitools.hideInstallPrompt", true);
         assert.strictEqual(
-            storage.get("databricks.aitools.installPrompted"),
+            storage.get("databricks.aitools.hideInstallPrompt"),
             true
         );
 
-        await storage.reset("databricks.aitools.installPrompted");
+        await storage.reset("databricks.aitools.hideInstallPrompt");
 
         // Raw entry removed, and get falls back to the configured default.
         assert.strictEqual(
-            globalState.get("databricks.aitools.installPrompted"),
+            globalState.get("databricks.aitools.hideInstallPrompt"),
             undefined
         );
         assert.strictEqual(
-            storage.get("databricks.aitools.installPrompted"),
+            storage.get("databricks.aitools.hideInstallPrompt"),
             false
         );
     });

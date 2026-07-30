@@ -142,6 +142,11 @@ export async function activate(
             "databricks.bundle.showLogs",
             () => loggerManager.showOutputChannel("Databricks Bundle Logs"),
             loggerManager
+        ),
+        telemetry.registerCommand(
+            "databricks.logs.show",
+            () => loggerManager.showOutputChannel("Databricks Logs"),
+            loggerManager
         )
     );
 
@@ -201,6 +206,11 @@ export async function activate(
         telemetry.registerCommand(
             "databricks.aitools.addCursorPlugin",
             aiToolsCommands.addCursorPluginCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.installAgent",
+            aiToolsCommands.installAgentCommand(),
             aiToolsCommands
         )
     );

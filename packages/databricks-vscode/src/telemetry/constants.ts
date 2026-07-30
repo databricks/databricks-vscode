@@ -28,6 +28,7 @@ export enum Events {
     AITOOLS_INSTALL = "aitoolsInstall",
     AITOOLS_UPDATE = "aitoolsUpdate",
     AITOOLS_UNINSTALL = "aitoolsUninstall",
+    AITOOLS_CURSOR_PLUGIN_PROMPT = "aitoolsCursorPluginPrompt",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -49,10 +50,18 @@ export type ComputeType = "cluster" | "serverless";
 export type AiToolsScope = "project" | "global";
 
 /**
- * Where an AI tools install was triggered from: the first-load modal prompt or
- * the manual affordance in the configuration side pane.
+ * Where an AI tools install was triggered from: the first-load init modal prompt
+ * or the manual affordance in the configuration side pane.
  */
-export type AiToolsInstallSource = "modal" | "sidePane";
+export type AiToolsInstallSource = "initModal" | "sidePane";
+
+/**
+ * Where the Cursor plugin prompt was triggered from: as part of an install flow
+ * ('initModal' / 'sidePane', matching {@link AiToolsInstallSource}), or the
+ * standalone "add Databricks plugin to Cursor" button on the AI tools row
+ * ('pluginButton').
+ */
+export type AiToolsCursorPluginSource = AiToolsInstallSource | "pluginButton";
 
 // Package-manager / interpreter unions are owned by the pure detection module
 // (the single source of truth) and re-exported here so the event schema and the
@@ -246,6 +255,8 @@ export class EventTypes {
             success: boolean;
             scope: AiToolsScope;
             source?: AiToolsInstallSource;
+            agents?: string[];
+            cursorPlugin?: boolean;
         } & DurationMeasurement
     > = {
         comment: "Install Databricks AI tools",
@@ -257,7 +268,15 @@ export class EventTypes {
         },
         source: {
             comment:
-                "Where the install was triggered from: 'modal' (first-load prompt) or 'sidePane' (manual click in the configuration view)",
+                "Where the install was triggered from: 'initModal' (first-load prompt) or 'sidePane' (manual click in the configuration view)",
+        },
+        agents: {
+            comment:
+                'The coding agents whose skills were installed via the CLI (the closed set of agent ids, e.g. ["claude-code","cursor"]). Excludes the Cursor plugin, which is tracked separately by cursorPlugin. Undefined when no explicit selection was made (the CLI acts on every detected agent).',
+        },
+        cursorPlugin: {
+            comment:
+                "In Cursor, whether the Databricks marketplace plugin (a superset of the Cursor skills) was installed as part of this flow, rather than the cursor skills via the CLI",
         },
     };
     [Events.AITOOLS_UPDATE]: EventType<
@@ -286,6 +305,21 @@ export class EventTypes {
         },
         scope: {
             comment: "The uninstall scope (project or global)",
+        },
+    };
+    [Events.AITOOLS_CURSOR_PLUGIN_PROMPT]: EventType<{
+        success: boolean;
+        source?: AiToolsCursorPluginSource;
+    }> = {
+        comment:
+            "Prompted the user to install the Databricks plugin from the Cursor marketplace (opened the install modal). We can only observe that we opened the modal, not whether the user actually added the plugin.",
+        success: {
+            comment:
+                "true if the marketplace modal was opened, false if opening it failed",
+        },
+        source: {
+            comment:
+                "Where the plugin prompt was triggered from: 'initModal' (first-load install prompt) or 'sidePane' (install triggered from the configuration view), both via the install flow, or 'pluginButton' (the standalone add-plugin button on the AI tools row)",
         },
     };
     [Events.PYTHON_ENV_SETUP_DETECTED]: EventType<{

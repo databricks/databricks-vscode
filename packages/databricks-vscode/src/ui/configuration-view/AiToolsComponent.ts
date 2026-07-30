@@ -4,20 +4,32 @@ import {ConfigurationTreeItem} from "./types";
 import {
     AiToolsManager,
     AiToolsUpdateStatus,
+    CURSOR_AGENT_ID,
 } from "../../aitools/AiToolsManager";
+import {HostUtils} from "../../utils";
 
-const AITOOLS_COMPONENT_ID = "AITOOLS";
+const TREE_ICON_ID = "AITOOLS";
 
-/**
- * Robot icon used as the AI tools row's identity, in a theme-aware color:
- * blue before the tools are installed, green once they are.
- */
+function getTreeIconId(key: string) {
+    return `${TREE_ICON_ID}.${key}`;
+}
+
 function robotIcon(color: "blue" | "green") {
     return new ThemeIcon("hubot", new ThemeColor(`charts.${color}`));
 }
 
 function getContextValue(key: string) {
     return `databricks.configuration.aitools.${key}`;
+}
+
+/**
+ * Agents that should not be listed under the Agents node. In Cursor the Cursor
+ * plugin is managed via the marketplace modal (surfaced as a button on the
+ * top-level AI tools row), so listing "Cursor" as an agent here would be
+ * redundant and confusing.
+ */
+function isHiddenAgent(agentId: string): boolean {
+    return agentId === CURSOR_AGENT_ID && HostUtils.isCursor();
 }
 
 export class AiToolsComponent extends BaseComponent {
@@ -41,7 +53,7 @@ export class AiToolsComponent extends BaseComponent {
             return [
                 {
                     label: "AI tools",
-                    id: AITOOLS_COMPONENT_ID,
+                    id: TREE_ICON_ID,
                     description:
                         "Failed to check installation · click to retry",
                     tooltip:
@@ -60,12 +72,11 @@ export class AiToolsComponent extends BaseComponent {
             ];
         }
 
-        // Not installed -> prompt to install.
         if (installLocation === undefined) {
             return [
                 {
                     label: "Install AI tools",
-                    id: AITOOLS_COMPONENT_ID,
+                    id: TREE_ICON_ID,
                     contextValue: getContextValue("notInstalled"),
                     iconPath: robotIcon("blue"),
                     collapsibleState: TreeItemCollapsibleState.None,
@@ -84,16 +95,12 @@ export class AiToolsComponent extends BaseComponent {
         const items: ConfigurationTreeItem[] = [
             {
                 label: "AI tools",
-                id: AITOOLS_COMPONENT_ID,
-                description: `${installLocation}${
-                    description ? ` · ${description}` : ""
-                }`,
+                id: TREE_ICON_ID,
+                description: description ?? "",
                 tooltip: `AI tools installed (${installLocation})`,
                 contextValue: getContextValue(state),
                 iconPath: icon,
-                collapsibleState: TreeItemCollapsibleState.None,
-                // Updates are applied automatically on activation, so the row
-                // is not clickable — it only reflects status.
+                collapsibleState: TreeItemCollapsibleState.Collapsed,
             },
         ];
 
@@ -107,12 +114,95 @@ export class AiToolsComponent extends BaseComponent {
     public async getChildren(
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
-        // A single top-level AI tools row with no children. This feature is
-        // independent of the cluster connection state.
-        if (parent !== undefined) {
+        const {installLocation, version, detectError, agents} =
+            this.aiToolsManager.state;
+        // Only the tree root gets the AI tools row. Guarding solely on
+        // `parent === undefined` is important: ConfigurationDataProvider fans
+        // every getChildren(parent) call out to all components and flattens the
+        // results, so returning the root row for a foreign parent (e.g. when a
+        // cluster/auth node is expanded) would register a second element with
+        // id "AITOOLS" and throw "Element with id AITOOLS is already
+        // registered".
+        if (parent === undefined) {
+            return this.getRoot();
+        }
+
+        // The child rows below only exist under an installed, expandable AI
+        // tools row. When nothing is installed (or detection errored) the root
+        // row is non-collapsible, so it is never expanded and these branches
+        // are unreachable for our own nodes; bail out for any other parent.
+        if (installLocation === undefined || detectError) {
             return [];
         }
-        return this.getRoot();
+
+        if (parent.id === TREE_ICON_ID) {
+            // In Cursor, the Cursor plugin is installed via the marketplace
+            // modal (the button on the top-level AI tools row), not the CLI, so
+            // it never appears as a manageable agent under the Agents node.
+            const visibleAgents = agents.filter((a) => !isHiddenAgent(a.id));
+            const installedAgents = visibleAgents.filter(
+                (a) => a.version !== undefined
+            ).length;
+            return [
+                {
+                    label: "Scope",
+                    id: getTreeIconId("scope"),
+                    description: installLocation,
+                    collapsibleState: TreeItemCollapsibleState.None,
+                },
+                version !== undefined && {
+                    label: "Version",
+                    id: getTreeIconId("version"),
+                    description: version,
+                    collapsibleState: TreeItemCollapsibleState.None,
+                },
+                agents !== undefined && {
+                    label: "Agents",
+                    id: getTreeIconId("agents"),
+                    description: `${installedAgents} installed`,
+                    collapsibleState: TreeItemCollapsibleState.Expanded,
+                },
+            ].filter(Boolean) as ConfigurationTreeItem[];
+        }
+        if (parent.id === getTreeIconId("agents")) {
+            return agents
+                .filter((agent) => !isHiddenAgent(agent.id))
+                .map((agent) => {
+                    const id = getTreeIconId(`agent.${agent.id}`);
+                    const installed = agent.version !== undefined;
+                    return {
+                        label: agent.displayName,
+                        id,
+                        description: agent.version ?? "Not installed",
+                        // A green check marks installed agents; uninstalled ones
+                        // get an inline install button (see package.json
+                        // view/item/context) keyed on this context value, and
+                        // clicking the row installs the agent too.
+                        contextValue: getContextValue(
+                            installed ? "agent.installed" : "agent.notInstalled"
+                        ),
+                        iconPath: installed
+                            ? new ThemeIcon(
+                                  "check",
+                                  new ThemeColor("charts.green")
+                              )
+                            : undefined,
+                        command: installed
+                            ? undefined
+                            : {
+                                  title: "Install AI tools for this agent",
+                                  command: "databricks.aitools.installAgent",
+                                  // The handler recovers the agent id from the
+                                  // node id; pass the node explicitly so a click
+                                  // and the inline button behave identically.
+                                  arguments: [{id}],
+                              },
+                        collapsibleState: TreeItemCollapsibleState.None,
+                    };
+                });
+        }
+
+        return [];
     }
 }
 
@@ -130,8 +220,6 @@ function getTreeItemsForUpdateStatus(
     switch (status) {
         case "upToDate":
             return {
-                // Stable installed state: the green robot is the row's resting
-                // identity.
                 icon: robotIcon("green"),
                 description: versionLabel ?? "Up to date",
                 state: "upToDate",
@@ -143,7 +231,6 @@ function getTreeItemsForUpdateStatus(
                 state: "updateAvailable",
             };
         case "checking":
-            // Transient: spinner conveys in-progress work.
             return {
                 icon: new ThemeIcon("sync~spin"),
                 description: "Checking for updates",

@@ -128,6 +128,12 @@
                 "icon": "$(plug)"
             },
             {
+                "command": "databricks.aitools.installAgent",
+                "title": "Install AI tools for this agent",
+                "category": "Databricks",
+                "icon": "$(cloud-download)"
+            },
+            {
                 "command": "databricks.developer.resetState",
                 "title": "Reset State (Developer)",
                 "category": "Databricks",
@@ -474,6 +480,11 @@
                 "command": "databricks.bundle.showLogs",
                 "title": "Show bundle logs",
                 "enablement": "databricks.context.activated && !databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.logs.show",
+                "title": "Show logs",
                 "category": "Databricks"
             },
             {
@@ -1039,6 +1050,11 @@
                     "group": "navigation@9"
                 },
                 {
+                    "command": "databricks.aitools.installAgent",
+                    "when": "view == configurationView && viewItem == databricks.configuration.aitools.agent.notInstalled",
+                    "group": "inline@0"
+                },
+                {
                     "command": "databricks.bundle.deployAndRunJob",
                     "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=jobs.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
@@ -1216,6 +1232,10 @@
                 },
                 {
                     "command": "databricks.aitools.reload",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.aitools.installAgent",
                     "when": "false"
                 },
                 {

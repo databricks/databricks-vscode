@@ -28,7 +28,6 @@ export class StateResetCommand implements Disposable {
                     label: key,
                     description: location,
                 }))
-                // Stable, readable ordering.
                 .sort((a, b) => a.label.localeCompare(b.label));
 
             const picked = await window.showQuickPick(items, {

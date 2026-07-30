@@ -9,20 +9,32 @@ import {
 } from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import {
-    AiToolsListResult,
+    AiToolsAgent,
     AiToolsScope,
+    AiToolsSkill,
     CliWrapper,
     ProcessError,
 } from "../cli/CliWrapper";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {Telemetry} from "../telemetry";
-import {AiToolsInstallSource, Events} from "../telemetry/constants";
+import {
+    AiToolsCursorPluginSource,
+    AiToolsInstallSource,
+    Events,
+} from "../telemetry/constants";
 import {Loggers} from "../logger";
 import {FileUtils, HostUtils} from "../utils";
 
 /** Cursor marketplace numeric ID for the Databricks plugin. */
 const CURSOR_PLUGIN_ID = "26723531";
+
+/**
+ * The Cursor agent id as reported by `aitools list`. In Cursor we install the
+ * marketplace plugin (a superset of the skills) instead of passing this to the
+ * CLI, so it's filtered out of any `--agents` selection.
+ */
+export const CURSOR_AGENT_ID = "cursor";
 
 /** Relative path of the aitools state file within an install root. */
 const STATE_FILE_RELATIVE_PATH = path.join(
@@ -44,6 +56,14 @@ export type AiToolsUpdateStatus =
     | "updateAvailable"
     | "error";
 
+export interface AiToolsAgentStatus {
+    displayName: string;
+    id: string;
+    type: "plugin" | "skills-only";
+    detected: boolean;
+    version?: string;
+}
+
 export interface AiToolsState {
     installLocation: AiToolsInstallLocation;
     updateStatus: AiToolsUpdateStatus;
@@ -56,6 +76,30 @@ export interface AiToolsState {
      * "couldn't determine install state".
      */
     detectError?: boolean;
+    agents: AiToolsAgentStatus[];
+}
+
+function computeUpdateStatus(
+    skills: AiToolsSkill[],
+    scope: AiToolsScope
+): AiToolsUpdateStatus {
+    const updateAvailable = skills.some(
+        (s) => s.installed[scope] && s.installed[scope] !== s.latest_version
+    );
+    return updateAvailable ? "updateAvailable" : "upToDate";
+}
+
+function computeAgentsStatuses(
+    agents: AiToolsAgent[],
+    scope: AiToolsScope
+): AiToolsAgentStatus[] {
+    return agents.map((agent) => ({
+        displayName: agent.display_name,
+        id: agent.name,
+        type: agent.managed ? "plugin" : "skills-only",
+        detected: agent.detected,
+        version: agent.installed[scope]?.version,
+    }));
 }
 
 /**
@@ -72,6 +116,7 @@ export class AiToolsManager implements Disposable {
     private _updateStatus: AiToolsUpdateStatus = "unknown";
     private _version: string | undefined;
     private _detectError = false;
+    private _agents: AiToolsAgentStatus[] = [];
 
     constructor(
         private readonly cli: CliWrapper,
@@ -92,6 +137,7 @@ export class AiToolsManager implements Disposable {
             updateStatus: this._updateStatus,
             version: this._version,
             detectError: this._detectError,
+            agents: this._agents,
         };
     }
 
@@ -100,28 +146,18 @@ export class AiToolsManager implements Disposable {
     }
 
     /**
-     * Whether the "add Databricks plugin to Cursor" affordance should be shown:
-     * only in Cursor, and only if we haven't already prompted for it.
-     * (Cursor exposes no way to query real plugin state, so this is best-effort.)
-     */
-    get shouldOfferCursorPlugin(): boolean {
-        return (
-            HostUtils.isCursor() &&
-            !this.stateStorage.get("databricks.aitools.cursorPluginPrompted")
-        );
-    }
-
-    /**
-     * Open Cursor's marketplace install modal for the Databricks plugin, and
-     * remember that we prompted (to hide the affordance afterwards). We can't
-     * confirm the user actually added it — only that we opened the modal.
+     * Open Cursor's marketplace install modal for the Databricks plugin. We
+     * can't confirm the user actually added it — only that we opened the modal.
      *
      * This is decoupled from the CLI install: it opens Cursor's in-app
      * marketplace install modal, which is independent of the skills install.
      * Any failure here is logged but never propagated, so it can't break the
      * install flow when run in parallel.
      */
-    async addCursorPlugin(): Promise<void> {
+    async addCursorPlugin(source?: AiToolsCursorPluginSource): Promise<void> {
+        const recordEvent = this.telemetry.start(
+            Events.AITOOLS_CURSOR_PLUGIN_PROMPT
+        );
         try {
             await commands.executeCommand(
                 "workbench.action.openMarketplaceEditor",
@@ -131,26 +167,26 @@ export class AiToolsManager implements Disposable {
                     skipTracking: true,
                 }
             );
+            recordEvent({success: true, source});
         } catch (e) {
+            recordEvent({success: false, source});
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Failed to open the Cursor marketplace for the Databricks plugin",
                 e
             );
-            return;
         }
-        await this.stateStorage.set(
-            "databricks.aitools.cursorPluginPrompted",
-            true
-        );
-        this.refreshCursorPluginContext();
-        this.onDidChangeEmitter.fire();
     }
 
+    /**
+     * Whether the "add Databricks plugin to Cursor" button should be visible on
+     * the top-level AI tools row: always, when running in Cursor, so the user
+     * can (re-)open the plugin modal at any time.
+     */
     private refreshCursorPluginContext() {
         commands.executeCommand(
             "setContext",
             "databricks.context.aitools.showCursorPlugin",
-            this.shouldOfferCursorPlugin
+            HostUtils.isCursor()
         );
     }
 
@@ -285,8 +321,8 @@ export class AiToolsManager implements Disposable {
                 await this.maybePromptInstall();
                 return;
             }
-            const status = await this.checkForUpdates();
-            if (status === "updateAvailable") {
+            await this.resolveInstalled();
+            if (this._updateStatus === "updateAvailable") {
                 await this.update();
             }
         } catch (e) {
@@ -298,33 +334,70 @@ export class AiToolsManager implements Disposable {
     }
 
     /**
-     * Show a one-time prompt offering to install Databricks AI tools. If the
-     * user accepts, run the install flow (which, in Cursor, also opens the
-     * plugin install modal). The prompt is shown at most once per machine.
+     * Show the prompt offering to install Databricks AI tools. If the user
+     * accepts, run the install flow (which, in Cursor, also opens the plugin
+     * install modal).
+     *
+     * The prompt reappears on each activation until the user either installs the
+     * tools or opts out via "Don't show again" (which sets the
+     * `hideInstallPrompt` flag). A plain dismissal (Escape/Cancel) does not opt
+     * the user out, so the offer can resurface later.
      */
     async maybePromptInstall(): Promise<void> {
-        if (this.stateStorage.get("databricks.aitools.installPrompted")) {
+        if (this.stateStorage.get("databricks.aitools.hideInstallPrompt")) {
             return;
         }
-        await this.stateStorage.set("databricks.aitools.installPrompted", true);
 
         const install = "Install AI tools";
+        const dontShowAgain = "Don't show again";
         const choice = await window.showInformationMessage(
             "Install Databricks AI tools?",
             {
                 modal: true,
                 detail: "Get skills and plugins so your coding agents work effectively with Databricks. You can also install them later from the Databricks configuration panel.",
             },
-            install
+            install,
+            dontShowAgain
         );
+        if (choice === dontShowAgain) {
+            // The user declined and asked not to be prompted again.
+            await this.stateStorage.set(
+                "databricks.aitools.hideInstallPrompt",
+                true
+            );
+            return;
+        }
         if (choice !== install) {
             return;
         }
         // Run the install command so the user picks a scope; the install flow
         // itself opens the Cursor plugin modal when running in Cursor. Pass the
-        // "modal" source so telemetry can distinguish first-load prompt installs
-        // from manual side-pane installs.
-        await commands.executeCommand("databricks.aitools.install", "modal");
+        // "initModal" source so telemetry can distinguish first-load prompt
+        // installs from manual side-pane installs.
+        await commands.executeCommand(
+            "databricks.aitools.install",
+            "initModal"
+        );
+    }
+
+    /**
+     * List the coding agents known to the CLI for the given scope (via
+     * `aitools list --output json`), used to populate the install-time agent
+     * picker. `detected` marks agents already present on the machine so the UI
+     * can preselect them. Returns an empty array on any failure — the install
+     * flow then falls back to the CLI's default (act on every detected agent).
+     */
+    async listAgents(scope: AiToolsScope): Promise<AiToolsAgentStatus[]> {
+        try {
+            const result = await this.cli.aitoolsList(this.cwdForScope(scope));
+            return computeAgentsStatuses(result.agents, scope);
+        } catch (e) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Failed to list Databricks AI tools agents",
+                e
+            );
+            return [];
+        }
     }
 
     /**
@@ -333,12 +406,12 @@ export class AiToolsManager implements Disposable {
      * `aitools update --check` only prints text, so `list` is the reliable
      * source of truth.
      */
-    async checkForUpdates(): Promise<AiToolsUpdateStatus> {
+    async resolveInstalled(): Promise<void> {
         const scope = this._installLocation;
         if (scope === undefined) {
             this._updateStatus = "unknown";
             this.onDidChangeEmitter.fire();
-            return this._updateStatus;
+            return;
         }
 
         this._updateStatus = "checking";
@@ -347,7 +420,8 @@ export class AiToolsManager implements Disposable {
         try {
             const result = await this.cli.aitoolsList(this.cwdForScope(scope));
             this._version = result.release;
-            this._updateStatus = this.computeUpdateStatus(result, scope);
+            this._updateStatus = computeUpdateStatus(result.skills, scope);
+            this._agents = computeAgentsStatuses(result.agents, scope);
         } catch (e) {
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Failed to check for Databricks AI tools updates",
@@ -356,38 +430,51 @@ export class AiToolsManager implements Disposable {
             this._updateStatus = "error";
         }
         this.onDidChangeEmitter.fire();
-        return this._updateStatus;
-    }
-
-    private computeUpdateStatus(
-        result: AiToolsListResult,
-        scope: AiToolsScope
-    ): AiToolsUpdateStatus {
-        const installed = result.skills.filter(
-            (s) => s.installed[scope] !== undefined
-        );
-        const updateAvailable = installed.some(
-            (s) => s.installed[scope] !== s.latest_version
-        );
-        return updateAvailable ? "updateAvailable" : "upToDate";
     }
 
     /**
      * Install AI tools for the given scope, showing progress. Re-detects the
      * install state and refreshes the update status afterwards.
      *
-     * In Cursor, the plugin install is prompted *in parallel* with the CLI
-     * install — the two are independent, and the plugin modal must not block or
-     * break the skills install / UI refresh.
+     * In Cursor, selecting the Cursor agent means "install the Databricks
+     * marketplace plugin" (a superset of the Cursor skills), not "install the
+     * cursor skills via the CLI". So when running in Cursor and `cursor` is in
+     * the selection, we open the plugin modal in parallel (fire-and-forget) and
+     * strip `cursor` from the CLI `--agents` list — we never pass
+     * `--agents cursor`.
      */
     async install(
         scope: AiToolsScope,
-        source?: AiToolsInstallSource
+        source?: AiToolsInstallSource,
+        agents?: string[]
     ): Promise<void> {
-        // Kick off the Cursor plugin prompt in parallel (fire-and-forget; it
-        // swallows its own errors). Not awaited so it can't gate the CLI flow.
-        if (this.shouldOfferCursorPlugin) {
-            void this.addCursorPlugin();
+        let cliAgents = agents;
+        let cursorPlugin = false;
+        if (HostUtils.isCursor() && agents !== undefined) {
+            if (agents.includes(CURSOR_AGENT_ID)) {
+                // Kick off the Cursor plugin prompt in parallel
+                // (fire-and-forget; it swallows its own errors). Not awaited so
+                // it can't gate the CLI flow. The plugin prompt inherits the
+                // install's source ('initModal' / 'sidePane').
+                cursorPlugin = true;
+                void this.addCursorPlugin(source);
+            }
+            cliAgents = agents.filter((a) => a !== CURSOR_AGENT_ID);
+            // The user picked *only* the Cursor plugin: there are no skills to
+            // install via the CLI. Record the install (the plugin) and bail out
+            // before the CLI call — passing an empty `--agents` list would make
+            // the CLI act on every detected agent, which is not what was chosen.
+            if (agents.length > 0 && cliAgents.length === 0) {
+                this.telemetry.recordEvent(Events.AITOOLS_INSTALL, {
+                    duration: 0,
+                    success: true,
+                    scope,
+                    source,
+                    agents: cliAgents,
+                    cursorPlugin,
+                });
+                return;
+            }
         }
 
         const recordEvent = this.telemetry.start(Events.AITOOLS_INSTALL);
@@ -402,28 +489,99 @@ export class AiToolsManager implements Disposable {
                     this.cli.aitoolsInstall(
                         scope,
                         this.cwdForScope(scope),
-                        token
+                        token,
+                        cliAgents
                     )
             );
-            recordEvent({success: true, scope, source});
+            recordEvent({
+                success: true,
+                scope,
+                source,
+                agents: cliAgents,
+                cursorPlugin,
+            });
         } catch (e) {
-            recordEvent({success: false, scope, source});
+            recordEvent({
+                success: false,
+                scope,
+                source,
+                agents: cliAgents,
+                cursorPlugin,
+            });
             if (e instanceof ProcessError) {
-                e.showErrorMessage("Failed to install Databricks AI tools.");
+                e.showErrorMessage(
+                    "Failed to install Databricks AI tools.",
+                    "databricks.logs.show"
+                );
             } else {
                 throw e;
             }
-            return;
+            // Fall through: a failed install often still installed some tools
+            // (e.g. one agent's CLI was missing), so refresh the panel to
+            // reflect whatever actually landed rather than leaving it stale.
         }
 
         await this.detectInstall();
-        await this.checkForUpdates();
+        await this.resolveInstalled();
+    }
+
+    /**
+     * Install a single coding agent into the current install scope, showing
+     * progress. Used by the per-agent "install" button in the Agents list to
+     * add an agent that wasn't installed alongside the others. Re-resolves the
+     * agent statuses afterwards so the row flips to "installed".
+     */
+    async installAgent(agentId: string): Promise<void> {
+        const scope = this._installLocation;
+        if (scope === undefined) {
+            return;
+        }
+        const recordEvent = this.telemetry.start(Events.AITOOLS_INSTALL);
+        try {
+            await window.withProgress(
+                {
+                    location: ProgressLocation.Notification,
+                    title: "Installing Databricks AI tools agent",
+                    cancellable: true,
+                },
+                (_progress, token) =>
+                    this.cli.aitoolsInstall(
+                        scope,
+                        this.cwdForScope(scope),
+                        token,
+                        [agentId]
+                    )
+            );
+            recordEvent({
+                success: true,
+                scope,
+                source: "sidePane",
+                agents: [agentId],
+            });
+        } catch (e) {
+            recordEvent({
+                success: false,
+                scope,
+                source: "sidePane",
+                agents: [agentId],
+            });
+            if (e instanceof ProcessError) {
+                e.showErrorMessage(
+                    "Failed to install Databricks AI tools agent.",
+                    "databricks.logs.show"
+                );
+            } else {
+                throw e;
+            }
+            // Fall through to refresh the panel: the install may have partially
+            // succeeded, so reconcile the row with the real CLI state.
+        }
+        await this.resolveInstalled();
     }
 
     /**
      * Uninstall AI tools for the current install scope, showing progress.
-     * Re-detects the install state and clears the Cursor-plugin prompt flag
-     * afterwards (so a later reinstall re-offers the plugin).
+     * Re-detects the install state afterwards.
      */
     async uninstall(): Promise<void> {
         const scope = this._installLocation;
@@ -449,23 +607,17 @@ export class AiToolsManager implements Disposable {
         } catch (e) {
             recordEvent({success: false, scope});
             if (e instanceof ProcessError) {
-                e.showErrorMessage("Failed to uninstall Databricks AI tools.");
+                e.showErrorMessage(
+                    "Failed to uninstall Databricks AI tools.",
+                    "databricks.logs.show"
+                );
             } else {
                 throw e;
             }
-            return;
+            // Fall through: a failed uninstall may have removed some tools, so
+            // re-detect to reflect the real state rather than leaving it stale.
         }
         await this.detectInstall();
-
-        // Clear the Cursor-plugin flag so that if the user reinstalls the tools
-        // later they're offered the plugin again (uninstalling the skills does
-        // not remove the Cursor plugin, but re-offering it is harmless and
-        // matches the "fresh install" expectation).
-        await this.stateStorage.set(
-            "databricks.aitools.cursorPluginPrompted",
-            false
-        );
-        this.refreshCursorPluginContext();
     }
 
     /**
@@ -497,7 +649,10 @@ export class AiToolsManager implements Disposable {
         } catch (e) {
             recordEvent({success: false, scope});
             if (e instanceof ProcessError) {
-                e.showErrorMessage("Failed to update Databricks AI tools.");
+                e.showErrorMessage(
+                    "Failed to update Databricks AI tools.",
+                    "databricks.logs.show"
+                );
             } else {
                 throw e;
             }
@@ -506,7 +661,7 @@ export class AiToolsManager implements Disposable {
             // state, even if the update reported an error (it may have
             // partially succeeded). This refreshes the row out of the
             // "Update available" state once the tools are up to date.
-            await this.checkForUpdates();
+            await this.resolveInstalled();
         }
     }
 }
