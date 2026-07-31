@@ -256,7 +256,7 @@
                 "command": "databricks.unityCatalog.refresh",
                 "title": "Refresh Unity Catalog view",
                 "icon": "$(refresh)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && (databricks.context.loggedIn || databricks.context.remoteMode)",
                 "category": "Databricks"
             },
             {

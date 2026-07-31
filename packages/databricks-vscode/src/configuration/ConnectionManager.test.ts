@@ -107,4 +107,54 @@ describe(__filename, () => {
         assert.equal(cm.databricksWorkspace, undefined);
         verify(mockCustomWhenContext.setLoggedIn(false)).atLeast(1);
     });
+
+    describe("connectFromEnvironment without an injected auth provider", () => {
+        // These exercise the production credential path (new Config with an
+        // EnvironmentLoader, PAT-only enforcement) which is skipped when a test
+        // injects an AuthProvider. We only cover the fail-fast branches here:
+        // the successful connect builds a real WorkspaceClient and calls
+        // currentUser.me() against the host, which would hit the network - that
+        // path is already covered by the injected-AuthProvider tests above. We
+        // drive these purely through env vars and restore the environment
+        // afterwards.
+        let savedEnv: NodeJS.ProcessEnv;
+
+        beforeEach(() => {
+            savedEnv = process.env;
+            process.env = {...savedEnv};
+            // Clear anything a local ~/.databrickscfg-style env would set so the
+            // EnvironmentLoader only sees what each test injects.
+            delete process.env.DATABRICKS_HOST;
+            delete process.env.DATABRICKS_TOKEN;
+            delete process.env.DATABRICKS_CONFIG_PROFILE;
+        });
+
+        afterEach(() => {
+            process.env = savedEnv;
+        });
+
+        it("fails fast when no host is present in the environment", async () => {
+            process.env.DATABRICKS_TOKEN = "dapi1234567890";
+            const cm = buildConnectionManager();
+            disposables.push(cm);
+
+            await assert.rejects(
+                () => cm.connectFromEnvironment(),
+                /No Databricks host found in the environment/
+            );
+            assert.equal(cm.state, "DISCONNECTED");
+        });
+
+        it("fails fast when a host but no token is present", async () => {
+            process.env.DATABRICKS_HOST = "https://test.databricks.com";
+            const cm = buildConnectionManager();
+            disposables.push(cm);
+
+            await assert.rejects(
+                () => cm.connectFromEnvironment(),
+                /No Databricks token found in the environment/
+            );
+            assert.equal(cm.state, "DISCONNECTED");
+        });
+    });
 });

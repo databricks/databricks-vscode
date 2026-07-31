@@ -1,5 +1,6 @@
 import {
     Config,
+    EnvironmentLoader,
     WorkspaceClient,
     ApiClient,
     logging,
@@ -325,12 +326,23 @@ export class ConnectionManager implements Disposable {
             // sync/cluster/config-project machinery they run, since remote mode
             // only needs a workspace client for the Unity Catalog view.
             this._connectionError = undefined;
+            // Clear any previously-connected client before re-authenticating so
+            // a concurrent getChildren() (which only checks workspaceClient)
+            // can't briefly use a stale client during a reconnect.
+            this._workspaceClient = undefined;
+            this._databricksWorkspace = undefined;
             this.updateState("CONNECTING");
             try {
                 // The authProvider is only injected by tests; in production it
-                // is resolved from the SDK's default credential chain.
+                // is resolved solely from the ambient environment. We use an
+                // explicit EnvironmentLoader (instead of the SDK default chain)
+                // so a stray ~/.databrickscfg DEFAULT profile can't silently
+                // satisfy the checks below and connect to the wrong workspace -
+                // if the remote env didn't inject credentials, we fail fast.
                 if (authProvider === undefined) {
-                    const config = new Config({});
+                    const config = new Config({
+                        loaders: [new EnvironmentLoader()],
+                    });
                     await config.ensureResolved();
                     if (config.host === undefined) {
                         throw new Error(

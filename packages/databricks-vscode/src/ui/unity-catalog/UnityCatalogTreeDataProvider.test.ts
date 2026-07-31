@@ -192,6 +192,28 @@ describe(__filename, () => {
         assert.strictEqual(children[0].kind, "empty");
     });
 
+    it("shows a connecting status node at the root while connecting", async () => {
+        when(mockConnectionManager.workspaceClient).thenReturn(undefined);
+        when(mockConnectionManager.state).thenReturn("CONNECTING");
+        when(mockConnectionManager.connectionError).thenReturn(undefined);
+        const provider = new UnityCatalogTreeDataProvider(
+            instance(mockConnectionManager),
+            stubStateStorage
+        );
+        disposables.push(provider);
+
+        const children = (await resolveProviderResult(
+            provider.getChildren()
+        )) as UnityCatalogTreeNode[];
+        assert.strictEqual(children.length, 1);
+        const node = children[0] as Extract<
+            UnityCatalogTreeNode,
+            {kind: "empty"}
+        >;
+        assert.strictEqual(node.kind, "empty");
+        assert.strictEqual(node.message, "Connecting…");
+    });
+
     it("shows the connection error at the root when not connected", async () => {
         when(mockConnectionManager.workspaceClient).thenReturn(undefined);
         when(mockConnectionManager.state).thenReturn("DISCONNECTED");

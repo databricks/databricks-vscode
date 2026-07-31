@@ -458,22 +458,28 @@ export async function activate(
             remoteBundleFileSet,
             workspaceFolderManager
         );
+        const remoteBundleValidateModel = new BundleValidateModel(
+            remoteBundleFileWatcher,
+            cli,
+            workspaceFolderManager
+        );
+        const remoteOverrideableConfigModel = new OverrideableConfigModel(
+            workspaceFolderManager
+        );
+        const remoteBundlePreValidateModel = new BundlePreValidateModel(
+            remoteBundleFileSet,
+            remoteBundleFileWatcher
+        );
+        const remoteBundleRemoteStateModel = new BundleRemoteStateModel(
+            cli,
+            workspaceFolderManager,
+            workspaceConfigs
+        );
         const remoteConfigModel = new ConfigModel(
-            new BundleValidateModel(
-                remoteBundleFileWatcher,
-                cli,
-                workspaceFolderManager
-            ),
-            new OverrideableConfigModel(workspaceFolderManager),
-            new BundlePreValidateModel(
-                remoteBundleFileSet,
-                remoteBundleFileWatcher
-            ),
-            new BundleRemoteStateModel(
-                cli,
-                workspaceFolderManager,
-                workspaceConfigs
-            ),
+            remoteBundleValidateModel,
+            remoteOverrideableConfigModel,
+            remoteBundlePreValidateModel,
+            remoteBundleRemoteStateModel,
             customWhenContext,
             stateStorage
         );
@@ -484,8 +490,14 @@ export async function activate(
             customWhenContext,
             telemetry
         );
+        // ConfigModel.dispose() only disposes its own listeners, not its child
+        // models, so push each one individually (mirroring the normal flow).
         context.subscriptions.push(
             remoteBundleFileWatcher,
+            remoteBundleValidateModel,
+            remoteOverrideableConfigModel,
+            remoteBundlePreValidateModel,
+            remoteBundleRemoteStateModel,
             remoteConfigModel,
             remoteConnectionManager
         );
