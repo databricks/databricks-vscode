@@ -1,6 +1,8 @@
-import {spy, verify} from "ts-mockito";
+import {spy, verify, when, reset} from "ts-mockito";
 import {FeatureManager, FeatureStepState} from "./FeatureManager";
 import {MultiStepAccessVerifier} from "./MultiStepAccessVerfier";
+import {EnabledFeature} from "./EnabledFeature";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import * as assert from "assert";
 class TestAccessVerifier extends MultiStepAccessVerifier {
     constructor() {
@@ -93,5 +95,25 @@ describe(__filename, async () => {
             (await fm.isEnabled("test")).message,
             "Feature is disabled"
         );
+    });
+
+    it("disabled features unlock via experiments.optInto (isEnabled honors the override)", async () => {
+        // Simulate the user adding the feature id to
+        // `databricks.experiments.optInto`. registerFeature already honors
+        // this override; isEnabled must agree, otherwise a feature can be
+        // registered as enabled yet still report unavailable.
+        const configsSpy = spy(workspaceConfigs);
+        when(configsSpy.experimetalFeatureOverides).thenReturn(["test"]);
+        try {
+            const fm = new FeatureManager<"test">(["test"]);
+            fm.registerFeature("test", () => new EnabledFeature());
+
+            assert.ok(
+                (await fm.isEnabled("test")).available,
+                "opted-in disabled feature must be available"
+            );
+        } finally {
+            reset(configsSpy);
+        }
     });
 });

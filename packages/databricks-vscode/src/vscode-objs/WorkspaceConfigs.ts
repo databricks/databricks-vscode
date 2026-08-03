@@ -52,6 +52,20 @@ export const workspaceConfigs = {
     },
 
     /**
+     * Absolute path to a custom Databricks CLI that provides
+     * `environments setup-local`. Temporary experimental escape hatch used
+     * while the command ships only in custom CLI builds; empty string means
+     * "use the bundled CLI". Removed once the command is generally available.
+     */
+    get pythonSetupCliPathOverride() {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<string>("experiments.cliPathOverride") ?? ""
+        );
+    },
+
+    /**
      * set the python.envFile configuration in the ms-python extension
      */
     set msPythonEnvFile(value: string | undefined) {
