@@ -97,6 +97,157 @@ const packageJson = require("../package.json");
 
 const customWhenContext = new CustomWhenContext();
 
+/**
+ * Register the Unity Catalog tree view, its commands and the detail panel.
+ * Shared between the normal activation flow and the remote (Databricks Remote
+ * SSH) flow, where Unity Catalog is the only view we surface.
+ */
+function registerUnityCatalog(
+    context: ExtensionContext,
+    connectionManager: ConnectionManager,
+    stateStorage: StateStorage,
+    telemetry: Telemetry,
+    // In remote mode there is no automatic reconnection, so wire the refresh
+    // command to re-establish the connection before refreshing the tree.
+    reconnect?: () => Promise<void>
+): void {
+    const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
+        connectionManager,
+        stateStorage,
+        context.extensionPath
+    );
+
+    const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
+        treeDataProvider: unityCatalogTreeDataProvider,
+    });
+    context.subscriptions.push(
+        unityCatalogTreeDataProvider,
+        unityCatalogTreeView,
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refresh",
+            async () => {
+                if (reconnect) {
+                    await reconnect();
+                }
+                unityCatalogTreeDataProvider.refresh();
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refreshNode",
+            (node: UnityCatalogTreeNode) =>
+                unityCatalogTreeDataProvider.refreshNode(node)
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyStorageLocation",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    (node.kind === "table" || node.kind === "volume") &&
+                    node.storageLocation
+                ) {
+                    await env.clipboard.writeText(node.storageLocation);
+                    window.showInformationMessage("Copied to clipboard");
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyViewSql",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "table" && node.viewDefinition) {
+                    await env.clipboard.writeText(node.viewDefinition);
+                    window.showInformationMessage("Copied to clipboard");
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyName",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "error" ||
+                    node.kind === "empty" ||
+                    node.kind === "favorites" ||
+                    node.kind === "group"
+                ) {
+                    return;
+                }
+                const text = node.kind === "column" ? node.name : node.fullName;
+                await env.clipboard.writeText(text);
+                window.showInformationMessage("Copied to clipboard");
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.openExternal",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "error" || node.kind === "column") {
+                    return;
+                }
+                const url =
+                    unityCatalogTreeDataProvider.getNodeExploreUrl(node);
+                if (!url) {
+                    window.showErrorMessage(
+                        "Databricks: Can't open external link. No URL found."
+                    );
+                    return;
+                }
+                await UrlUtils.openExternal(url);
+            }
+        ),
+        commands.registerCommand("databricks.unityCatalog.filter", async () => {
+            await commands.executeCommand("unityCatalogView.focus");
+            await commands.executeCommand("list.find");
+        }),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.pin",
+            (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.pin(node);
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.unpin",
+            (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.unpin(node);
+                }
+            }
+        ),
+        ...registerDetailPanel(
+            context.extensionUri,
+            connectionManager,
+            unityCatalogTreeView,
+            unityCatalogTreeDataProvider,
+            telemetry
+        )
+    );
+}
+
+function registerDocsView(context: ExtensionContext): void {
+    const docsViewTreeDataProvider = new DocsViewTreeDataProvider();
+    context.subscriptions.push(
+        window.registerTreeDataProvider(
+            "databricksDocsView",
+            docsViewTreeDataProvider
+        ),
+        docsViewTreeDataProvider
+    );
+}
+
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
@@ -194,6 +345,33 @@ export async function activate(
         stateStorage
     );
 
+    // Utils. Registered before the remote-mode branch below returns so that
+    // views shared between the normal and remote flows - such as the docs view,
+    // which invokes "databricks.utils.openExternal" - work in both.
+    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.utils.openExternal",
+            utilCommands.openExternalCommand(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.utils.goToDefinition",
+            utilCommands.goToDefinition(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.utils.copy",
+            utilCommands.copyToClipboardCommand(),
+            utilCommands
+        ),
+        telemetry.registerCommand("databricks.call", (fn) => {
+            if (fn) {
+                fn();
+            }
+        })
+    );
+
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
     context.environmentVariableCollection.persistent = false;
@@ -283,6 +461,78 @@ export async function activate(
                 e
             );
         }
+
+        // Surface only the Unity Catalog view and connect it using the ambient
+        // environment credentials (no bundle/config project required). The
+        // ConfigModel is only needed to satisfy the ConnectionManager
+        // constructor; connectFromEnvironment() never reads from it.
+        const remoteBundleFileSet = new BundleFileSet(workspaceFolderManager);
+        const remoteBundleFileWatcher = new BundleWatcher(
+            remoteBundleFileSet,
+            workspaceFolderManager
+        );
+        const remoteBundleValidateModel = new BundleValidateModel(
+            remoteBundleFileWatcher,
+            cli,
+            workspaceFolderManager
+        );
+        const remoteOverrideableConfigModel = new OverrideableConfigModel(
+            workspaceFolderManager
+        );
+        const remoteBundlePreValidateModel = new BundlePreValidateModel(
+            remoteBundleFileSet,
+            remoteBundleFileWatcher
+        );
+        const remoteBundleRemoteStateModel = new BundleRemoteStateModel(
+            cli,
+            workspaceFolderManager,
+            workspaceConfigs
+        );
+        const remoteConfigModel = new ConfigModel(
+            remoteBundleValidateModel,
+            remoteOverrideableConfigModel,
+            remoteBundlePreValidateModel,
+            remoteBundleRemoteStateModel,
+            customWhenContext,
+            stateStorage
+        );
+        const remoteConnectionManager = new ConnectionManager(
+            cli,
+            remoteConfigModel,
+            workspaceFolderManager,
+            customWhenContext,
+            telemetry
+        );
+        // ConfigModel.dispose() only disposes its own listeners, not its child
+        // models, so push each one individually (mirroring the normal flow).
+        context.subscriptions.push(
+            remoteBundleFileWatcher,
+            remoteBundleValidateModel,
+            remoteOverrideableConfigModel,
+            remoteBundlePreValidateModel,
+            remoteBundleRemoteStateModel,
+            remoteConfigModel,
+            remoteConnectionManager
+        );
+
+        const connectRemote = () =>
+            remoteConnectionManager.connectFromEnvironment().catch((e) => {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    "Remote mode: failed to connect Unity Catalog",
+                    e
+                );
+            });
+
+        registerUnityCatalog(
+            context,
+            remoteConnectionManager,
+            stateStorage,
+            telemetry,
+            connectRemote
+        );
+        registerDocsView(context);
+
+        connectRemote();
 
         customWhenContext.setActivated(true);
         return;
@@ -507,126 +757,7 @@ export async function activate(
         )
     );
 
-    const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
-        connectionManager,
-        stateStorage,
-        context.extensionPath
-    );
-
-    const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
-        treeDataProvider: unityCatalogTreeDataProvider,
-    });
-    context.subscriptions.push(
-        unityCatalogTreeDataProvider,
-        unityCatalogTreeView,
-        telemetry.registerCommand(
-            "databricks.unityCatalog.refresh",
-            unityCatalogTreeDataProvider.refresh,
-            unityCatalogTreeDataProvider
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.refreshNode",
-            (node: UnityCatalogTreeNode) =>
-                unityCatalogTreeDataProvider.refreshNode(node)
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.copyStorageLocation",
-            async (node: UnityCatalogTreeNode) => {
-                if (
-                    (node.kind === "table" || node.kind === "volume") &&
-                    node.storageLocation
-                ) {
-                    await env.clipboard.writeText(node.storageLocation);
-                    window.showInformationMessage("Copied to clipboard");
-                }
-            }
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.copyViewSql",
-            async (node: UnityCatalogTreeNode) => {
-                if (node.kind === "table" && node.viewDefinition) {
-                    await env.clipboard.writeText(node.viewDefinition);
-                    window.showInformationMessage("Copied to clipboard");
-                }
-            }
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.copyName",
-            async (node: UnityCatalogTreeNode) => {
-                if (
-                    node.kind === "error" ||
-                    node.kind === "empty" ||
-                    node.kind === "favorites" ||
-                    node.kind === "group"
-                ) {
-                    return;
-                }
-                const text = node.kind === "column" ? node.name : node.fullName;
-                await env.clipboard.writeText(text);
-                window.showInformationMessage("Copied to clipboard");
-            }
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.openExternal",
-            async (node: UnityCatalogTreeNode) => {
-                if (node.kind === "error" || node.kind === "column") {
-                    return;
-                }
-                const url =
-                    unityCatalogTreeDataProvider.getNodeExploreUrl(node);
-                if (!url) {
-                    window.showErrorMessage(
-                        "Databricks: Can't open external link. No URL found."
-                    );
-                    return;
-                }
-                await UrlUtils.openExternal(url);
-            }
-        ),
-        commands.registerCommand("databricks.unityCatalog.filter", async () => {
-            await commands.executeCommand("unityCatalogView.focus");
-            await commands.executeCommand("list.find");
-        }),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.pin",
-            (node: UnityCatalogTreeNode) => {
-                if (
-                    node.kind === "catalog" ||
-                    node.kind === "schema" ||
-                    node.kind === "table" ||
-                    node.kind === "volume" ||
-                    node.kind === "function" ||
-                    node.kind === "registeredModel" ||
-                    node.kind === "modelVersion"
-                ) {
-                    return unityCatalogTreeDataProvider.pin(node);
-                }
-            }
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.unpin",
-            (node: UnityCatalogTreeNode) => {
-                if (
-                    node.kind === "catalog" ||
-                    node.kind === "schema" ||
-                    node.kind === "table" ||
-                    node.kind === "volume" ||
-                    node.kind === "function" ||
-                    node.kind === "registeredModel" ||
-                    node.kind === "modelVersion"
-                ) {
-                    return unityCatalogTreeDataProvider.unpin(node);
-                }
-            }
-        ),
-        ...registerDetailPanel(
-            context.extensionUri,
-            connectionManager,
-            unityCatalogTreeView,
-            unityCatalogTreeDataProvider,
-            telemetry
-        )
-    );
+    registerUnityCatalog(context, connectionManager, stateStorage, telemetry);
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
@@ -1114,14 +1245,7 @@ export async function activate(
         debugWorkflowFactory
     );
 
-    const docsViewTreeDataProvider = new DocsViewTreeDataProvider();
-    context.subscriptions.push(
-        window.registerTreeDataProvider(
-            "databricksDocsView",
-            docsViewTreeDataProvider
-        ),
-        docsViewTreeDataProvider
-    );
+    registerDocsView(context);
 
     showQuickStartOnFirstUse(context).catch((e) => {
         logging.NamedLogger.getOrCreate("Extension").error(
@@ -1129,31 +1253,6 @@ export async function activate(
             e
         );
     });
-
-    // Utils
-    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
-    context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.utils.openExternal",
-            utilCommands.openExternalCommand(),
-            utilCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.utils.goToDefinition",
-            utilCommands.goToDefinition(),
-            utilCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.utils.copy",
-            utilCommands.copyToClipboardCommand(),
-            utilCommands
-        ),
-        telemetry.registerCommand("databricks.call", (fn) => {
-            if (fn) {
-                fn();
-            }
-        })
-    );
 
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema

@@ -263,7 +263,7 @@
                 "command": "databricks.unityCatalog.refresh",
                 "title": "Refresh Unity Catalog view",
                 "icon": "$(refresh)",
-                "enablement": "databricks.context.activated && databricks.context.loggedIn",
+                "enablement": "databricks.context.activated && (databricks.context.loggedIn || databricks.context.remoteMode)",
                 "category": "Databricks"
             },
             {
@@ -576,12 +576,12 @@
                 {
                     "id": "unityCatalogView",
                     "name": "Unity Catalog",
-                    "when": "databricks.context.activated && databricks.context.loggedIn"
+                    "when": "databricks.context.activated && (databricks.context.loggedIn || databricks.context.remoteMode)"
                 },
                 {
                     "id": "databricksDocsView",
                     "name": "Documentation",
-                    "when": "databricks.context.activated && !databricks.context.remoteMode"
+                    "when": "databricks.context.activated"
                 }
             ]
         },

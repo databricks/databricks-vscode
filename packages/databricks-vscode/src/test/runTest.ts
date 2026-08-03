@@ -18,11 +18,27 @@ async function main() {
         const cachePath = "/tmp/vscode-test-databricks";
         await fs.mkdir(cachePath, {recursive: true});
 
-        const vscodeExecutablePath = await downloadAndUnzipVSCode({
+        let vscodeExecutablePath = await downloadAndUnzipVSCode({
             version: process.env.VSCODE_TEST_VERSION || "stable",
             cachePath,
             timeout: 60000,
         });
+
+        // @vscode/test-electron@3.0.0 hardcodes the macOS executable name as
+        // "Electron", but recent VS Code stable builds renamed it to "Code".
+        // If the returned path doesn't exist, fall back to the "Code" binary.
+        // Symlinking Electron -> Code is not an option: it breaks the app's
+        // code signature and macOS kills the process with SIGKILL.
+        try {
+            await fs.access(vscodeExecutablePath);
+        } catch {
+            const renamed = path.join(
+                path.dirname(vscodeExecutablePath),
+                "Code"
+            );
+            await fs.access(renamed);
+            vscodeExecutablePath = renamed;
+        }
 
         const tmpDir = os.tmpdir();
 
