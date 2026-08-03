@@ -34,7 +34,7 @@ export interface PythonSetupPersistedState {
 }
 
 type ReadyLocalEnvironmentResult = PythonSetupResult &
-    Required<Pick<PythonSetupResult, "venvPath" | "target" | "resolved">>;
+    Required<Pick<PythonSetupResult, "venvPath" | "compute" | "resolved">>;
 
 function isLocalEnvironmentReady(
     r: PythonSetupResult
@@ -42,7 +42,7 @@ function isLocalEnvironmentReady(
     return (
         isPythonSetupSuccess(r) &&
         r.venvPath !== undefined &&
-        r.target !== undefined &&
+        r.compute !== undefined &&
         r.resolved !== undefined
     );
 }
@@ -237,7 +237,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         }
 
         this.deps.saveState({
-            envKey: result.target.envKey,
+            envKey: result.compute.envKey,
             pythonVersion: result.resolved.pythonVersion,
         });
 

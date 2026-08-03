@@ -24,8 +24,8 @@ describe("parsePythonSetupResult", () => {
         expect(r.schemaVersion).to.equal(1);
         expect(r.mode).to.equal("default");
         expect(r.dryRun).to.equal(true);
-        expect(r.target?.serverlessVersion).to.equal("v4");
-        expect(r.target?.envKey).to.equal("serverless/serverless-v4");
+        expect(r.compute?.serverlessVersion).to.equal("v4");
+        expect(r.compute?.envKey).to.equal("serverless/serverless-v4");
         expect(r.resolved?.pythonVersion).to.equal("3.12");
         expect(r.resolved?.dbconnectVersion).to.equal("17.2.0");
         expect(r.error).to.equal(null);

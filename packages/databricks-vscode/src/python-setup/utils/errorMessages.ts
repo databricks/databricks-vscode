@@ -42,7 +42,7 @@ const BASE_MESSAGE: Record<
     E_RESOLVE: () =>
         "Could not resolve the selected compute. Check the cluster/serverless selection and try again.",
     E_ENV_UNSUPPORTED: (r) => {
-        const key = r.target?.envKey;
+        const key = r.compute?.envKey;
         const which = key ? `for ${key}` : "for the selected compute";
         return (
             `No matched environment ${which}. ` +

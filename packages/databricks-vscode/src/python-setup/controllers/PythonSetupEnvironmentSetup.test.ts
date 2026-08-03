@@ -124,7 +124,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         ]);
         expect(saved).to.deep.equal([
             {
-                envKey: SUCCESS_REAL_RUN.target!.envKey,
+                envKey: SUCCESS_REAL_RUN.compute!.envKey,
                 pythonVersion: SUCCESS_REAL_RUN.resolved!.pythonVersion,
             },
         ]);
@@ -322,12 +322,12 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         const shownErrors: string[] = [];
         const adopted: string[] = [];
         const saved: unknown[] = [];
-        // ok:true with a venvPath but no target/resolved: we could adopt an
+        // ok:true with a venvPath but no compute/resolved: we could adopt an
         // interpreter, but drift detection would have no baseline to persist —
         // so this is treated as a failure rather than a hollow "ready".
         const withoutBaseline: PythonSetupResult = {
             ...SUCCESS_REAL_RUN,
-            target: undefined,
+            compute: undefined,
             resolved: undefined,
         };
         const setup = new PythonSetupEnvironmentSetup(

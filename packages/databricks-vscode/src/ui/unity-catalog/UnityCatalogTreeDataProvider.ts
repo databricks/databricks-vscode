@@ -149,7 +149,13 @@ export class UnityCatalogTreeDataProvider
     ): Promise<UnityCatalogTreeNode[] | undefined> {
         const client = this.connectionManager.workspaceClient;
         if (!client) {
-            return undefined;
+            // Without a workspace client there is nothing to load. Only surface
+            // a status node at the root (child requests just return nothing) so
+            // the view explains why it's empty instead of rendering blank.
+            if (element) {
+                return undefined;
+            }
+            return this.getDisconnectedRootChildren();
         }
         const currentUser = this.connectionManager.databricksWorkspace?.user;
 
@@ -184,6 +190,17 @@ export class UnityCatalogTreeDataProvider
             return this.getTableChildren(client, element);
         }
         return undefined;
+    }
+
+    private getDisconnectedRootChildren(): UnityCatalogTreeNode[] {
+        if (this.connectionManager.state === "CONNECTING") {
+            return [{kind: "empty", message: "Connecting…"}];
+        }
+        const error = this.connectionManager.connectionError;
+        if (error) {
+            return [{kind: "error", message: `Not connected: ${error}`}];
+        }
+        return [{kind: "empty", message: "Not connected"}];
     }
 
     private async getRootChildren(

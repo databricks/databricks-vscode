@@ -31,7 +31,7 @@ export const SUCCESS_DEFAULT: PythonSetupResult = {
     ok: true,
     mode: "default",
     dryRun: true,
-    target: {
+    compute: {
         source: "serverless",
         serverlessVersion: "v4",
         envKey: "serverless/serverless-v4",
@@ -67,7 +67,7 @@ export const SUCCESS_CONSTRAINTS_ONLY: PythonSetupResult = {
     ok: true,
     mode: "constraints-only",
     dryRun: true,
-    target: {
+    compute: {
         source: "serverless",
         serverlessVersion: "v4",
         envKey: "serverless/serverless-v4",
@@ -164,7 +164,7 @@ export const SUCCESS_REAL_RUN: PythonSetupResult = {
     ok: true,
     mode: "default",
     dryRun: false,
-    target: {
+    compute: {
         source: "serverless",
         serverlessVersion: "v4",
         envKey: "serverless/serverless-v4",
