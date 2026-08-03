@@ -53,6 +53,7 @@ import {Events, Metadata} from "./telemetry/constants";
 import {EnvironmentDependenciesInstaller} from "./language/EnvironmentDependenciesInstaller";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
+import {SshCommands} from "./ssh/SshCommands";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 import {
@@ -167,6 +168,18 @@ export async function activate(
                     );
                     await bundleInitWizard.initNewProject();
                 }
+            )
+        );
+        // The SSH Tunnel panel is always visible, including on the start screen
+        // with no folder open. There is no ConnectionManager/ClusterModel here,
+        // so wire the command to the standalone (login-then-tunnel) flow.
+        const sshCommands = new SshCommands(cli);
+        context.subscriptions.push(
+            sshCommands,
+            telemetry.registerCommand(
+                "databricks.ssh.startTunnel",
+                sshCommands.startTunnelCommand,
+                sshCommands
             )
         );
         // We show a welcome view when there's no workspace folders, prompting users
@@ -833,6 +846,17 @@ export async function activate(
             "databricks.connection.saveNewProfile",
             connectionCommands.saveNewProfileCommand,
             connectionCommands
+        )
+    );
+
+    // SSH tunnel (remote development) group
+    const sshCommands = new SshCommands(cli, connectionManager, clusterModel);
+    context.subscriptions.push(
+        sshCommands,
+        telemetry.registerCommand(
+            "databricks.ssh.startTunnel",
+            sshCommands.startTunnelCommand,
+            sshCommands
         )
     );
 
