@@ -23,6 +23,7 @@ import {EnvironmentComponent} from "./EnvironmentComponent";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {CodeSynchronizer} from "../../sync";
+import {PythonSetupEntry} from "./pythonSetupEntry";
 
 /**
  * Data provider for the cluster tree view
@@ -50,7 +51,8 @@ export class ConfigurationDataProvider
         private readonly configModel: ConfigModel,
         private readonly cli: CliWrapper,
         private readonly featureManager: FeatureManager,
-        private readonly workspaceFolderManager: WorkspaceFolderManager
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        private readonly pythonSetup?: PythonSetupEntry
     ) {
         this.components = [
             new WorkspaceFolderComponent(this.workspaceFolderManager),
@@ -69,7 +71,8 @@ export class ConfigurationDataProvider
             new EnvironmentComponent(
                 this.featureManager,
                 this.connectionManager,
-                this.configModel
+                this.configModel,
+                this.pythonSetup
             ),
         ];
         this.disposables.push(

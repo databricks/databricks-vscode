@@ -4,6 +4,7 @@ import {
     env,
     ExtensionContext,
     extensions,
+    OutputChannel,
     window,
     workspace,
 } from "vscode";
@@ -44,6 +45,13 @@ import {
     FeatureManager,
     PYTHON_SETUP_FEATURE_ID,
 } from "./feature-manager/FeatureManager";
+import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
+import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
+import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
+import {makePythonSetupDeps} from "./python-setup/controllers/pythonSetupDeps";
+import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
+import {isPythonSetupEnabled} from "./python-setup/utils/serverlessVersionResolver";
+import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
@@ -796,6 +804,91 @@ export async function activate(
                 packageManagerTelemetry
             )
     );
+    // uv-native Python environment setup (python-setup). Constructed always,
+    // but inert unless the user opts in: the detector/gate keep the entry hidden
+    // otherwise, so this changes nothing for existing users.
+    const pythonSetupDetector = new PythonSetupManagerDetector(
+        async (projectRoot) =>
+            collectPackageManagerSignals(
+                projectRoot,
+                await pythonExtensionWrapper.pythonEnvironment
+            )
+    );
+    const pythonSetupClient = new PythonSetupCliClient(() =>
+        resolveCliPath({
+            override: workspaceConfigs.pythonSetupCliPathOverride,
+            bundled: cli.cliPath,
+        })
+    );
+    // Created lazily on first setup output so a non-opted-in user never gets an
+    // empty "Databricks Python Environment Setup" entry in the Output dropdown
+    // (the feature is otherwise fully inert for them).
+    let pythonSetupLogChannel: OutputChannel | undefined;
+    const getPythonSetupLogChannel = () => {
+        if (pythonSetupLogChannel === undefined) {
+            pythonSetupLogChannel = window.createOutputChannel(
+                "Databricks Python Environment Setup"
+            );
+            context.subscriptions.push(pythonSetupLogChannel);
+        }
+        return pythonSetupLogChannel;
+    };
+    const pythonSetupEnvironment = new PythonSetupEnvironmentSetup(
+        makePythonSetupDeps({
+            cli: pythonSetupClient,
+            // activeProjectUri throws when no project is active, so the optional
+            // chaining never applies; honour the string|undefined contract the
+            // orchestrator guards on rather than letting it throw into the flow.
+            projectRoot: () => {
+                try {
+                    return workspaceFolderManager.activeProjectUri.fsPath;
+                } catch {
+                    return undefined;
+                }
+            },
+            isEnabled: isPythonSetupEnabled,
+            detect: (projectRoot) => pythonSetupDetector.detect(projectRoot),
+            attachedCompute: () => ({
+                serverless: connectionManager.serverless,
+                cluster: connectionManager.cluster
+                    ? {id: connectionManager.cluster.id}
+                    : undefined,
+                serverlessVersion: connectionManager.serverlessVersion,
+            }),
+            setActiveInterpreter: async (interpreterPath, root) => {
+                await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
+                    interpreterPath,
+                    root
+                );
+            },
+            persistSetupState: (state) => {
+                // Fire-and-forget by design (the setup flow does not block on
+                // the write), but a rejected workspaceState update must not
+                // surface as an unhandled rejection -- a lost state write only
+                // weakens future drift detection, so log and move on.
+                void stateStorage
+                    .set("databricks.pythonSetup.setupState", state)
+                    .catch((e) =>
+                        logging.NamedLogger.getOrCreate(
+                            Loggers.Extension
+                        ).error("Failed to persist python-setup state", e)
+                    );
+            },
+            log: {
+                append: (chunk) => getPythonSetupLogChannel().append(chunk),
+                show: () => getPythonSetupLogChannel().show(true),
+            },
+        })
+    );
+    context.subscriptions.push(
+        pythonSetupEnvironment,
+        telemetry.registerCommand(
+            "databricks.environment.setupPythonEnv",
+            pythonSetupEnvironment.setup,
+            pythonSetupEnvironment
+        )
+    );
+
     const environmentCommands = new EnvironmentCommands(
         featureManager,
         pythonExtensionWrapper,
@@ -913,7 +1006,8 @@ export async function activate(
         configModel,
         cli,
         featureManager,
-        workspaceFolderManager
+        workspaceFolderManager,
+        pythonSetupEnvironment
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,

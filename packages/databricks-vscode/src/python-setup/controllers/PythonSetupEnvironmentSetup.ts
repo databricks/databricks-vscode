@@ -8,7 +8,10 @@ import {
     isPythonSetupSuccess,
     PythonSetupResult,
 } from "../models/PythonSetupResult";
-import {getPythonSetupErrorMessage} from "../utils/errorMessages";
+import {
+    getPythonSetupErrorMessage,
+    NO_COMPUTE_TARGET_MESSAGE,
+} from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 
 /**
@@ -56,9 +59,8 @@ export type ProgressTask<T> = (
 
 /**
  * Injected collaborators for {@link PythonSetupEnvironmentSetup}: seams so the
- * flow is tested without a VS Code host, and so the not-yet-built pieces
- * (visibility gate, serverless-version selection) can be stubbed until their
- * own tickets wire the real implementations in.
+ * decision flow is tested without a VS Code host. The extension assembles the
+ * real implementations in `makePythonSetupDeps` (see pythonSetupDeps.ts).
  */
 export interface PythonSetupSetupDeps {
     cli: CliRunner;
@@ -67,31 +69,38 @@ export interface PythonSetupSetupDeps {
     projectRoot: () => string | undefined;
 
     /**
-     * Whether the uv-native setup should run for the current project.
-     *
-     * TODO(#2044): replace the wiring-site stub with
-     * `shouldShowPythonSetup({flagOn: workspaceConfigs.pythonSetupEnabled,
-     * detection: await detector.detect(projectRoot)})`. Until then the extension
-     * passes a stub that returns `false`, so the feature is inert end-to-end.
+     * Whether the uv-native setup should run for the current project. The
+     * extension wires this to the opt-in flag AND the package-manager gate
+     * (`shouldShowPythonSetup` over a live `detect`), so it is false unless the
+     * feature is enabled for a clean uv/greenfield project.
      */
     isVisible: () => Promise<boolean>;
 
     /**
      * The compute target to provision for, or `undefined` to abort silently
-     * (nothing selected / the user dismissed the picker).
-     *
-     * TODO(#2052 / #2053): for a serverless session this must resolve the version
-     * via the serverless-version picker (`scoreServerlessVersions` +
-     * `pickServerlessVersion`). Until that ticket lands the extension passes a
-     * stub that returns `undefined`, so a serverless setup is a no-op; the
-     * cluster case can already return `{kind: "cluster", clusterId}`.
+     * (nothing selected). The extension resolves this from the attached
+     * compute: a cluster maps directly; a serverless session uses the version
+     * the compute picker persisted (`serverlessVersion`), so a serverless
+     * session with no chosen version yields `undefined`.
      */
     resolveCompute: () => Promise<SetupCompute | undefined>;
 
-    /** Point the MS Python extension at the provisioned venv interpreter. */
-    adoptInterpreter: (venvPath: string) => Promise<void>;
+    /**
+     * Point the MS Python extension at the provisioned venv interpreter for
+     * `projectRoot`. The root is passed in (not re-read) so adoption always
+     * targets the project the run provisioned, even if the user switched the
+     * active project during the (multi-second) CLI run.
+     */
+    adoptInterpreter: (venvPath: string, projectRoot: string) => Promise<void>;
 
     saveState: (state: PythonSetupPersistedState) => void;
+
+    /**
+     * A plain user-facing notification for pre-flight guidance (e.g. no compute
+     * attached), where no CLI ran. Unlike {@link showError} it does not reveal
+     * the output channel — there is no log to show.
+     */
+    notify: (message: string) => Promise<void>;
 
     /** Shows the mapped, user-facing copy — not raw CLI text. */
     showError: (message: string) => Promise<void>;
@@ -108,10 +117,21 @@ export interface PythonSetupSetupDeps {
  * success — or surface a mapped error on failure.
  */
 export class PythonSetupEnvironmentSetup implements Disposable {
-    private _ready = false;
-    /** True once a setup has completed successfully this session. */
+    /**
+     * Project roots this session has provisioned successfully. Keyed by root
+     * (not a single flag) so readiness does not leak across projects: switching
+     * the active project to one that was never set up must not render a green
+     * "ready" line for it.
+     */
+    private readonly readyRoots = new Set<string>();
+    /**
+     * True when the currently active project has been set up successfully this
+     * session. Reads the live `projectRoot` so it tracks the active project the
+     * config view renders for.
+     */
     get ready(): boolean {
-        return this._ready;
+        const root = this.deps.projectRoot();
+        return root !== undefined && this.readyRoots.has(root);
     }
 
     private readonly stateEmitter = new EventEmitter<void>();
@@ -126,6 +146,16 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     private inFlight: Promise<void> | undefined;
 
     constructor(private readonly deps: PythonSetupSetupDeps) {}
+
+    /**
+     * Whether the config view should surface the uv-native entry (instead of
+     * the legacy checklist) for the current project. Delegates to the injected
+     * gate so the component can decide dispatch without knowing the gate's
+     * inputs.
+     */
+    isVisible(): Promise<boolean> {
+        return this.deps.isVisible();
+    }
 
     setup(): Promise<void> {
         // Re-entrancy guard: coalesce concurrent callers onto the running run
@@ -156,6 +186,13 @@ export class PythonSetupEnvironmentSetup implements Disposable {
 
         const compute = await resolveCompute();
         if (compute === undefined) {
+            // The entry is visible whenever the project fits (flag + uv shape),
+            // independent of compute — so a user can click the CTA with no
+            // cluster attached or a serverless session without a chosen version.
+            // Tell them what to do instead of silently no-op'ing the button.
+            // Plain notify (not showError): no CLI ran, so there is no log to
+            // reveal.
+            await this.deps.notify(NO_COMPUTE_TARGET_MESSAGE);
             return;
         }
 
@@ -190,7 +227,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // but is unusable from the editor, so a failure here is a setup failure —
         // surface it and stay not-ready rather than rejecting with no message.
         try {
-            await this.deps.adoptInterpreter(result.venvPath);
+            // Adopt for the cwd captured at the top of the run, not the live
+            // active project: a mid-run project switch must not point another
+            // project's interpreter setting at this run's venv.
+            await this.deps.adoptInterpreter(result.venvPath, cwd);
         } catch (e) {
             await this.deps.showError((e as Error).message);
             return;
@@ -201,7 +241,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             pythonVersion: result.resolved.pythonVersion,
         });
 
-        this._ready = true;
+        // Record readiness for the project this run provisioned (the captured
+        // cwd), not the live active project — a mid-run switch must not mark a
+        // different project ready.
+        this.readyRoots.add(cwd);
         this.stateEmitter.fire();
         await this.deps.showSuccess(result);
     }
