@@ -99,9 +99,9 @@ export interface PythonSetupResult {
     dryRun: boolean;
     /**
      * The resolved compute the environment was provisioned against. Mirrors the
-     * CLI's `compute` result key (renamed from `target` in databricks/cli#6100,
-     * DECO-27794) so the structural cast in {@link parsePythonSetupResult} keeps
-     * matching the wire shape.
+     * CLI's `compute` result key (renamed from `target` in databricks/cli#6100)
+     * so the structural cast in {@link parsePythonSetupResult} keeps matching the
+     * wire shape.
      */
     compute?: PythonSetupComputeInfo;
     resolved?: PythonSetupResolvedInfo;
