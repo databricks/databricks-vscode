@@ -117,10 +117,21 @@ export interface PythonSetupSetupDeps {
  * success — or surface a mapped error on failure.
  */
 export class PythonSetupEnvironmentSetup implements Disposable {
-    private _ready = false;
-    /** True once a setup has completed successfully this session. */
+    /**
+     * Project roots this session has provisioned successfully. Keyed by root
+     * (not a single flag) so readiness does not leak across projects: switching
+     * the active project to one that was never set up must not render a green
+     * "ready" line for it.
+     */
+    private readonly readyRoots = new Set<string>();
+    /**
+     * True when the currently active project has been set up successfully this
+     * session. Reads the live `projectRoot` so it tracks the active project the
+     * config view renders for.
+     */
     get ready(): boolean {
-        return this._ready;
+        const root = this.deps.projectRoot();
+        return root !== undefined && this.readyRoots.has(root);
     }
 
     private readonly stateEmitter = new EventEmitter<void>();
@@ -230,7 +241,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             pythonVersion: result.resolved.pythonVersion,
         });
 
-        this._ready = true;
+        // Record readiness for the project this run provisioned (the captured
+        // cwd), not the live active project — a mid-run switch must not mark a
+        // different project ready.
+        this.readyRoots.add(cwd);
         this.stateEmitter.fire();
         await this.deps.showSuccess(result);
     }

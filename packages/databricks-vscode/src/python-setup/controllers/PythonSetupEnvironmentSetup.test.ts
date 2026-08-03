@@ -160,6 +160,29 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         ]);
     });
 
+    it("reports ready only for the project it was set up for, not another active project", async () => {
+        // Set up /projA, then model the active project switching to /projB
+        // (never provisioned). readiness must track the run's project, not leak
+        // across a project switch — otherwise the config view shows a green
+        // "ready" line for a project that has no venv.
+        let activeRoot = "/projA";
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({projectRoot: () => activeRoot})
+        );
+
+        await setup.setup();
+        // Still on /projA (the project just provisioned): ready.
+        expect(setup.ready).to.equal(true);
+
+        // Switch the active project to one that was never set up.
+        activeRoot = "/projB";
+        expect(setup.ready).to.equal(false);
+
+        // Switch back: /projA's readiness is remembered, not discarded.
+        activeRoot = "/projA";
+        expect(setup.ready).to.equal(true);
+    });
+
     it("does nothing when there is no open project", async () => {
         const cli = makeCli();
         const setup = new PythonSetupEnvironmentSetup(
