@@ -7,10 +7,11 @@ import {withFile} from "tmp-promise";
 import {writeFile, readFile, mkdtemp, rm} from "node:fs/promises";
 import {when, spy, reset, instance, mock} from "ts-mockito";
 import {
-    cancellableExecFile,
-    CliWrapper,
-    ProcessError,
-    waitForProcess,
+  cancellableExecFile,
+  CliWrapper,
+  ProcessError,
+  getSshConnectCommand,
+  waitForProcess,
 } from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
@@ -163,6 +164,45 @@ describe(__filename, function () {
         when(configsSpy.loggingEnabled).thenReturn(false);
         ({command, args} = cli.getSyncCommand("incremental"));
         assert.equal([command, ...args].join(" "), syncCommand);
+    });
+
+    it("should create ssh connect commands", () => {
+        // Logging is configured via env vars, not CLI flags, so no --log-*
+        // args appear on the ssh connect command line.
+
+        // Serverless: no --cluster / --auto-start-cluster.
+        let {args} = getSshConnectCommand({compute: {type: "serverless"}});
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+        ]);
+
+        // Serverless GPU: --accelerator, no --cluster / --auto-start-cluster.
+        ({args} = getSshConnectCommand({
+            compute: {type: "serverless", accelerator: "GPU_1xA10"},
+        }));
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+            "--accelerator=GPU_1xA10",
+        ]);
+
+        // Dedicated cluster: --cluster and --auto-start-cluster.
+        ({args} = getSshConnectCommand({
+            compute: {type: "cluster", clusterId: "1234-clusterid"},
+        }));
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+            "--cluster=1234-clusterid",
+            "--auto-start-cluster",
+        ]);
     });
 
     it("should list profiles when no config file exists", async () => {
