@@ -8,18 +8,18 @@ A practical guide for **writing new code that matches the existing codebase**.
 
 Use this as a lookup while you code.
 
-| Thing                                                       | Convention                                                                                | Example                                                   |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| File exporting a **class**                                  | `PascalCase.ts`                                                                           | `ClusterModel.ts`                                         |
-| File exporting **functions** (util / helper / registration) | `camelCase.ts`                                                                            | `fileUtils.ts`, `registerDetailPanel.ts`                  |
-| Class / interface / type / enum                             | `PascalCase`                                                                              | `ConnectionManager`, `RunState`                           |
-| Method / local variable / function                          | `camelCase`                                                                               | `refresh()`, `activeCluster`                              |
-| Module-level constant                                       | `UPPER_SNAKE_CASE`                                                                        | `SCHEME`, `PROD_APP_INSIGHTS_KEY`                         |
+| Thing                                                       | Convention                                                    | Example                                       |
+| ----------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
+| File exporting a **class**                                  | `PascalCase.ts`                                               | `ClusterModel.ts`                             |
+| File exporting **functions** (util / helper / registration) | `camelCase.ts`                                                | `fileUtils.ts`, `registerDetailPanel.ts`      |
+| Class / interface / type / enum                             | `PascalCase`                                                  | `ConnectionManager`, `RunState`               |
+| Method / local variable / function                          | `camelCase`                                                   | `refresh()`, `activeCluster`                  |
+| Module-level constant                                       | `UPPER_SNAKE_CASE`                                            | `SCHEME`, `PROD_APP_INSIGHTS_KEY`             |
 | Private field                                               | `camelCase`; `_`-prefix a private field backing a public getter/accessor of the same name | `private disposables`, `private _state` (→ `get state()`) |
-| Public event                                                | `onDid<Thing><Verb>`                                                                      | `onDidChangeState`                                        |
-| String-union members                                        | quoted literals                                                                           | `"CONNECTED" \| "DISCONNECTED"`                           |
-| VS Code command ID                                          | `databricks.<domain>.<action>`                                                            | `databricks.cluster.refresh`                              |
-| Unit test                                                   | `<Name>.test.ts`, co-located                                                              | `ClusterModel.test.ts`                                    |
+| Public event                                                | `onDid<Thing><Verb>`                                          | `onDidChangeState`                            |
+| String-union members                                        | quoted literals                                               | `"CONNECTED" \| "DISCONNECTED"`               |
+| VS Code command ID                                          | `databricks.<domain>.<action>`                                | `databricks.cluster.refresh`                  |
+| Unit test                                                   | `<Name>.test.ts`, co-located                                  | `ClusterModel.test.ts`                        |
 
 **Rule of thumb for file casing:** does the file's _primary_ export have a name
 starting with a capital (a class/type)? Name the file to match it exactly
@@ -52,10 +52,10 @@ matches the responsibility - don't invent new ones.
 
 **The core triad.** Most features are built from three cooperating classes:
 
--   **`XModel`** — owns the data and fires events when it changes. No VS Code UI.
--   **`XManager`** — orchestrates: constructs collaborators, reacts to events,
-    handles refresh/polling.
--   **`XCommands`** — thin command handlers that call into the model/manager.
+- **`XModel`** — owns the data and fires events when it changes. No VS Code UI.
+- **`XManager`** — orchestrates: constructs collaborators, reacts to events,
+  handles refresh/polling.
+- **`XCommands`** — thin command handlers that call into the model/manager.
 
 **Keep `window.*` UI out of `Model` / `Manager` / `Loader`.** These surface
 data/results and fire events; let `Commands` / `Component` do the
@@ -100,8 +100,6 @@ makes it hard to unit-test (see section 8).
    dependencies, register commands.
 7. **Add a barrel (`index.ts`) only if the feature has a clear public surface**
    other modules import — and make it a _selective_ re-export, not `export *`.
-8. **If the feature needs a prose doc, add `README.md` to its folder** — see
-   section 4a. Most features don't.
 
 A typical new feature:
 
@@ -163,80 +161,21 @@ dispose() {
 
 Three decorators are in use — prefer them over hand-rolled equivalents:
 
--   **`@Mutex.synchronise("someMutexField")`** — serialize an async method against a
-    named `Mutex` field on the instance (`locking/Mutex.ts`). The local ESLint rule
-    `mutex-synchronised-decorator` verifies correct usage, so it will fail lint if
-    misapplied.
--   **`@onError({log, popup})`** — uniform error handling / notifications on an async
-    method (`utils/onErrorDecorator.ts`).
--   **`@logging.withLogContext(Loggers.Extension)`** — attach a logging context
-    (from `@databricks/sdk-experimental`), optionally with a `@context` parameter.
+- **`@Mutex.synchronise("someMutexField")`** — serialize an async method against a
+  named `Mutex` field on the instance (`locking/Mutex.ts`). The local ESLint rule
+  `mutex-synchronised-decorator` verifies correct usage, so it will fail lint if
+  misapplied.
+- **`@onError({log, popup})`** — uniform error handling / notifications on an async
+  method (`utils/onErrorDecorator.ts`).
+- **`@logging.withLogContext(Loggers.Extension)`** — attach a logging context
+  (from `@databricks/sdk-experimental`), optionally with a `@context` parameter.
 
 ### Logging & telemetry
 
--   Log through the named loggers in `logger/` (`Loggers.Extension`, …) — **never
-    `console.log`** (`no-console` is an ESLint error outside tests).
--   Define new telemetry events in `telemetry/constants.ts`. User-facing commands are
-    instrumented automatically by the `telemetry.registerCommand` wrapper (section 6).
--   **`EventTypes` in `telemetry/constants.ts` is the only source of truth for an
-    event's schema.** Each field carries a `comment`; `telemetry.json` is generated
-    from the class by `scripts/generateTelemetry.ts` and is gitignored. Never
-    hand-maintain a field list elsewhere — including in prose docs, which go stale
-    silently while the generated file stays correct.
-
----
-
-## 4a. Where module documentation goes
-
-Most code needs no prose doc — a class doc-comment and good names are enough.
-When a module genuinely needs one (a design rationale, a privacy posture, a
-protocol), write a **`README.md` in the module's folder**, next to the code it
-describes.
-
--   **`README.md`, not a descriptive name.** `src/telemetry/README.md`, not
-    `src/telemetry/PYTHON_SETUP_TELEMETRY.md`. A file named for one feature inside a
-    shared folder is undiscoverable — nothing links to it, and the next person adds
-    a second one rather than extending it. `README.md` is the name tooling and
-    humans already look for, and GitHub renders it when browsing the folder.
--   **Document the _why_, not the _what_.** Schemas, field lists, and signatures
-    belong in the code (or, for telemetry, in generated output). A doc that restates
-    them acquires a second source of truth that drifts. Record the decisions and
-    trade-offs that have nowhere else to live.
--   **No top-level `docs/`.** It is gitignored in this repo (local scratch only), so
-    anything committed must live beside the code or in an existing root file
-    (`README.md`, `CONTRIBUTING.md`, this file).
-
-### Why colocation
-
-Surveyed when this convention was written (August 2026):
-
-| Project                             | Practice                                                                                                        |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| [microsoft/vscode][vsc]             | Colocated docs, **no top-level `docs/`**: ~29 architecture docs under `src/` (e.g. `src/vs/sessions/LAYOUT.md`) |
-| [facebook/react][react]             | Colocated `README.md` per package (`packages/react-reconciler/README.md`)                                       |
-| [rust-lang/rust][rust]              | Colocated `README.md` per crate, a few lines, pointing at the external dev guide                                |
-| [vscode-pull-request-github][vscpr] | Centralized `documentation/` directory                                                                          |
-| [kubernetes][k8s], [eslint][eslint] | Centralized `docs/` + external enhancement proposals                                                            |
-
-Both colocation and centralization are well-established; there is no universal
-answer. We colocate because this repo has no committed `docs/` tree, and we
-standardize on `README.md` (React/Rust style) rather than VS Code's
-descriptive-filename style because the latter only stays navigable when a folder
-is one subsystem — `src/telemetry/` serves every feature.
-
-**Telemetry specifically:** VS Code documents events _inline in TypeScript_ —
-GDPR classification, purpose, and comment in a type beside the emit call — with no
-per-event markdown ([`telemetry.instructions.md`][vsctel]). Our `EventTypes`
-`comment` fields are the same idea, which is why prose docs must not duplicate
-them.
-
-[vsc]: https://github.com/microsoft/vscode/tree/main/src/vs/sessions
-[vsctel]: https://github.com/microsoft/vscode/blob/main/.github/instructions/telemetry.instructions.md
-[react]: https://github.com/facebook/react/blob/main/packages/react-reconciler/README.md
-[rust]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/README.md
-[vscpr]: https://github.com/microsoft/vscode-pull-request-github/tree/main/documentation
-[k8s]: https://github.com/kubernetes/enhancements
-[eslint]: https://github.com/eslint/eslint/tree/main/docs
+- Log through the named loggers in `logger/` (`Loggers.Extension`, …) — **never
+  `console.log`** (`no-console` is an ESLint error outside tests).
+- Define new telemetry events in `telemetry/constants.ts`. User-facing commands are
+  instrumented automatically by the `telemetry.registerCommand` wrapper (section 6).
 
 ---
 
@@ -262,12 +201,12 @@ The Databricks SDK (`@databricks/sdk-experimental`) is the biggest unguarded
 cross-cutting dependency in the codebase — dozens of files import it, and many
 reach the `WorkspaceClient` / `apiClient` directly.
 
--   **Reach the workspace client through the connection seam** (`ConnectionManager`),
-    not by constructing your own client in a feature.
--   **Never import through deep `/dist/...` paths** (`.../dist/apis/…`,
-    `.../dist/retries/…`). They're not a stable entry point — import from the package
-    root. Keeping SDK access behind one seam is also what turns a future SDK migration
-    into a bounded change instead of a repo-wide edit.
+- **Reach the workspace client through the connection seam** (`ConnectionManager`),
+  not by constructing your own client in a feature.
+- **Never import through deep `/dist/...` paths** (`.../dist/apis/…`,
+  `.../dist/retries/…`). They're not a stable entry point — import from the package
+  root. Keeping SDK access behind one seam is also what turns a future SDK migration
+  into a bounded change instead of a repo-wide edit.
 
 ---
 
@@ -299,29 +238,29 @@ reach the `WorkspaceClient` / `apiClient` directly.
 
 ## 7. Imports & exports
 
--   **Double quotes** for imports (Prettier-enforced).
--   Order: external packages first (`vscode`, `@databricks/sdk-experimental`, …),
-    then local relative imports.
--   Use **`import type { … }`** for type-only imports and to break dependency cycles.
--   For utility folders, follow the **namespace-barrel** pattern —
-    `export * as FileUtils from "./fileUtils"` in `index.ts`, consumed as
-    `import {FileUtils} from "./utils"`.
--   For feature barrels, re-export only the intended public surface; avoid blanket
-    `export *` of internal files. Blanket `export *` barrels hurt navigation —
-    "go to definition" and grep-for-usage land on the barrel instead of the real file,
-    adding an indirection hop with no encapsulation benefit. **Note:** most existing
-    `index.ts` files still use `export *` (10 of 12 today); those should migrate to
-    selective re-exports (or be dropped where under-used), not be treated as the
-    pattern to copy.
+- **Double quotes** for imports (Prettier-enforced).
+- Order: external packages first (`vscode`, `@databricks/sdk-experimental`, …),
+  then local relative imports.
+- Use **`import type { … }`** for type-only imports and to break dependency cycles.
+- For utility folders, follow the **namespace-barrel** pattern —
+  `export * as FileUtils from "./fileUtils"` in `index.ts`, consumed as
+  `import {FileUtils} from "./utils"`.
+- For feature barrels, re-export only the intended public surface; avoid blanket
+  `export *` of internal files. Blanket `export *` barrels hurt navigation —
+  "go to definition" and grep-for-usage land on the barrel instead of the real file,
+  adding an indirection hop with no encapsulation benefit. **Note:** most existing
+  `index.ts` files still use `export *` (10 of 12 today); those should migrate to
+  selective re-exports (or be dropped where under-used), not be treated as the
+  pattern to copy.
 
 ---
 
 ## 8. Tests
 
--   **Co-locate** unit tests: `X.test.ts` beside `X.ts` (Mocha via
-    `@vscode/test-electron`). Prefer testing `Model`/`Manager`/util logic — it's the
-    most testable, since UI is isolated behind `vscode-objs/`.
--   Use the right suffix for the right kind of test:
+- **Co-locate** unit tests: `X.test.ts` beside `X.ts` (Mocha via
+  `@vscode/test-electron`). Prefer testing `Model`/`Manager`/util logic — it's the
+  most testable, since UI is isolated behind `vscode-objs/`.
+- Use the right suffix for the right kind of test:
 
     | Suffix       | Kind                             | Where                |
     | ------------ | -------------------------------- | -------------------- |
@@ -330,7 +269,7 @@ reach the `WorkspaceClient` / `apiClient` directly.
     | `*.e2e.ts`   | end-to-end (WebdriverIO)         | `test/e2e/`          |
     | `*_test.py`  | Python unit                      | `test/python/`       |
 
--   Mock with `ts-mockito`. Never commit `.only` — `no-only-tests` is an error.
+- Mock with `ts-mockito`. Never commit `.only` — `no-only-tests` is an error.
 
 ---
 
@@ -339,19 +278,19 @@ reach the `WorkspaceClient` / `apiClient` directly.
 Formatting is enforced by Prettier + ESLint; `yarn fix` auto-applies most of it.
 The choices that affect how you write:
 
--   4-space indentation, double quotes, semicolons required.
--   `{a: 1}` — **no** space inside braces (`bracketSpacing: false`).
--   `(x) => …` — always parenthesize arrow params.
--   Trailing commas where ES5 allows.
--   Prefer `===` / `!==` and always use curly braces (`curly`).
+- 4-space indentation, double quotes, semicolons required.
+- `{a: 1}` — **no** space inside braces (`bracketSpacing: false`).
+- `(x) => …` — always parenthesize arrow params.
+- Trailing commas where ES5 allows.
+- Prefer `===` / `!==` and always use curly braces (`curly`).
 
 ---
 
 ## Issues
 
--   extension.ts is becoming too big
--   Large feature folders mix many role-suffixes (logic / presentation / I/O) flat at
-    one level, which is hard to navigate — and co-located tests double the file count.
-    Today `run/` (14 files), `bundle/` (12), `language/` (11), and `ui/unity-catalog/`
-    (10) sit flat at the top level, across 17 distinct suffixes repo-wide. Needs a
-    grouping convention (see the section 3 role-suffix rule).
+- extension.ts is becoming too big
+- Large feature folders mix many role-suffixes (logic / presentation / I/O) flat at
+  one level, which is hard to navigate — and co-located tests double the file count.
+  Today `run/` (14 files), `bundle/` (12), `language/` (11), and `ui/unity-catalog/`
+  (10) sit flat at the top level, across 17 distinct suffixes repo-wide. Needs a
+  grouping convention (see the section 3 role-suffix rule).
