@@ -127,9 +127,9 @@ declare module "." {
 // would be emitted automatically, with objects JSON-stringified by
 // recordEvent's addKeys. That would make this transport silently widen what is
 // collected on a clean build. Enumerating the fields makes the event schema an
-// allowlist the compiler enforces, which is what the privacy claim in
-// PYTHON_SETUP_TELEMETRY.md rests on. Optionals are spread individually so an
-// absent one is omitted rather than serialized as the string "undefined".
+// allowlist the compiler enforces, which is what the privacy claim in this
+// folder's README rests on. Optionals are spread individually so an absent one
+// is omitted rather than serialized as the string "undefined".
 Telemetry.prototype.recordPythonSetupAttempt = function (
     attempt: PythonSetupAttempt
 ): PythonSetupResultReporter {
