@@ -3,7 +3,6 @@ import {
     debug,
     env,
     ExtensionContext,
-    ExtensionMode,
     extensions,
     window,
     workspace,
@@ -43,7 +42,6 @@ import {
 } from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
-import {StateResetCommand} from "./vscode-objs/StateResetCommand";
 import path from "node:path";
 import {
     FeatureId,
@@ -377,28 +375,6 @@ export async function activate(
     // available update; otherwise prompt the user (once) to install the tools.
     // Non-blocking so it doesn't delay activation.
     aiToolsCommands.initializeCommand()();
-
-    // Developer-only "Reset state" command (multi-select of persisted state
-    // keys). Gated to development builds so it isn't exposed to end users; the
-    // matching `databricks.context.development` context key gates its palette
-    // entry (see package.json).
-    const isDevelopment = context.extensionMode === ExtensionMode.Development;
-    commands.executeCommand(
-        "setContext",
-        "databricks.context.development",
-        isDevelopment
-    );
-    if (isDevelopment) {
-        const stateResetCommand = new StateResetCommand(stateStorage);
-        context.subscriptions.push(
-            stateResetCommand,
-            telemetry.registerCommand(
-                "databricks.developer.resetState",
-                stateResetCommand.resetCommand(),
-                stateResetCommand
-            )
-        );
-    }
 
     if (
         workspace.workspaceFolders === undefined ||

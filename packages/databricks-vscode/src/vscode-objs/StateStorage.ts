@@ -119,8 +119,7 @@ const StorageConfigurations = {
     }),
 };
 
-export type StorageKey = keyof typeof StorageConfigurations;
-type Keys = StorageKey;
+type Keys = keyof typeof StorageConfigurations;
 type ValueType<K extends Keys> = (typeof StorageConfigurations)[K]["_type"];
 type GetterReturnType<D extends KeyInfo<any>> = D extends {getter: infer G}
     ? G extends (...args: any[]) => any
@@ -218,28 +217,6 @@ export class StateStorage {
             return;
         }
         await this.getStateObject(details.location).update(key, value);
-        this.changeEmitters.get(key)?.emitter.fire();
-    }
-
-    /** All configured storage keys and where each is persisted. */
-    get storageKeys(): Array<{key: Keys; location: "global" | "workspace"}> {
-        return (Object.keys(StorageConfigurations) as Keys[]).map((key) => ({
-            key,
-            location: StorageConfigurations[key].location,
-        }));
-    }
-
-    /**
-     * Remove the persisted value for a key so it reverts to its default. Unlike
-     * {@link set}, this clears the raw stored entry (rather than writing a
-     * value), which is what a "reset state" action wants.
-     */
-    @Mutex.synchronise("mutex")
-    async reset<K extends Keys>(key: K) {
-        const details = StorageConfigurations[key] as KeyInfoWithType<
-            ValueType<K>
-        >;
-        await this.getStateObject(details.location).update(key, undefined);
         this.changeEmitters.get(key)?.emitter.fire();
     }
 }

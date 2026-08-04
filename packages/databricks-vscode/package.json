@@ -141,12 +141,6 @@
                 "icon": "$(cloud-download)"
             },
             {
-                "command": "databricks.developer.resetState",
-                "title": "Reset State (Developer)",
-                "category": "Databricks",
-                "icon": "$(debug-restart)"
-            },
-            {
                 "command": "databricks.cluster.filterByAll",
                 "title": "All",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
@@ -1222,10 +1216,6 @@
                 }
             ],
             "commandPalette": [
-                {
-                    "command": "databricks.developer.resetState",
-                    "when": "databricks.context.development"
-                },
                 {
                     "command": "databricks.aitools.addCursorPlugin",
                     "when": "databricks.context.aitools.showCursorPlugin && !databricks.context.remoteMode"
