@@ -124,4 +124,20 @@ export class CustomWhenContext {
             value
         );
     }
+
+    setAiToolsInstalled(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.aitools.installed",
+            value
+        );
+    }
+
+    setAiToolsShowCursorPlugin(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.aitools.showCursorPlugin",
+            value
+        );
+    }
 }

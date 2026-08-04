@@ -1,15 +1,12 @@
 import {
-    CancellationToken,
-    Disposable,
     ProgressLocation,
-    QuickPickItem,
-    window,
+    type CancellationToken,
+    type Disposable,
+    type QuickPickItem,
+    type window,
 } from "vscode";
-import {
-    AiToolsAgentStatus,
-    AiToolsManager,
-    CURSOR_AGENT_ID,
-} from "./AiToolsManager";
+import {AiToolsManager, CURSOR_AGENT_ID} from "./AiToolsManager";
+import {AiToolsAgentStatus} from "./AiToolsModel";
 import {AiToolsScope, ProcessError} from "../cli/CliWrapper";
 import {AiToolsInstallSource} from "../telemetry/constants";
 import {HostUtils} from "../utils";
@@ -22,10 +19,24 @@ interface AgentQuickPickItem extends QuickPickItem {
     agentId: string;
 }
 
+/**
+ * The prompting UI surface {@link AiToolsCommands} needs, behind one seam. The
+ * real implementation just delegates to `window`
+ */
+export interface AiToolsPrompter {
+    withProgress: (typeof window)["withProgress"];
+    showInformationMessage: (typeof window)["showInformationMessage"];
+    showWarningMessage: (typeof window)["showWarningMessage"];
+    createQuickPick: (typeof window)["createQuickPick"];
+}
+
 export class AiToolsCommands implements Disposable {
     private disposables: Disposable[] = [];
 
-    constructor(private readonly aiToolsManager: AiToolsManager) {}
+    constructor(
+        private readonly aiToolsManager: AiToolsManager,
+        private readonly prompter: AiToolsPrompter
+    ) {}
 
     dispose() {
         this.disposables.forEach((d) => d.dispose());
@@ -44,7 +55,7 @@ export class AiToolsCommands implements Disposable {
         run: (token: CancellationToken) => Promise<void>
     ): Promise<void> {
         try {
-            await window.withProgress(
+            await this.prompter.withProgress(
                 {
                     location: ProgressLocation.Notification,
                     title,
@@ -88,7 +99,7 @@ export class AiToolsCommands implements Disposable {
     private async promptInstall(): Promise<void> {
         const install = "Install AI tools";
         const dontShowAgain = "Don't show again";
-        const choice = await window.showInformationMessage(
+        const choice = await this.prompter.showInformationMessage(
             "Install Databricks AI tools?",
             {
                 modal: true,
@@ -146,7 +157,7 @@ export class AiToolsCommands implements Disposable {
      */
     private pickScope(): Promise<AiToolsScope | undefined> {
         const hasFolder = this.aiToolsManager.hasProjectFolder;
-        const quickPick = window.createQuickPick<ScopeQuickPickItem>();
+        const quickPick = this.prompter.createQuickPick<ScopeQuickPickItem>();
         quickPick.title = "Install Databricks AI tools";
         quickPick.placeholder = "Choose where to install the AI tools";
         quickPick.items = [
@@ -211,7 +222,7 @@ export class AiToolsCommands implements Disposable {
         }
 
         const inCursor = HostUtils.isCursor();
-        const quickPick = window.createQuickPick<AgentQuickPickItem>();
+        const quickPick = this.prompter.createQuickPick<AgentQuickPickItem>();
         quickPick.title = "Install Databricks AI tools";
         quickPick.placeholder = "Choose which coding agents to install for";
         quickPick.canSelectMany = true;
@@ -284,11 +295,11 @@ export class AiToolsCommands implements Disposable {
 
     uninstallCommand() {
         return async () => {
-            const location = this.aiToolsManager.state.installLocation;
+            const location = this.aiToolsManager.model.installLocation;
             if (location === undefined) {
                 return;
             }
-            const confirm = await window.showWarningMessage(
+            const confirm = await this.prompter.showWarningMessage(
                 `Uninstall Databricks AI tools (${location})?`,
                 {modal: true},
                 "Uninstall"

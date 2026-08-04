@@ -114,8 +114,8 @@ const StorageConfigurations = {
     // dismissal leaves this false so the prompt can reappear on a later
     // activation.
     "databricks.aitools.hideInstallPrompt": withType<boolean>()({
-      location: "global",
-      defaultValue: false,
+        location: "global",
+        defaultValue: false,
     }),
 };
 

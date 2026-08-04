@@ -7,11 +7,11 @@ import {withFile} from "tmp-promise";
 import {writeFile, readFile, mkdtemp, rm} from "node:fs/promises";
 import {when, spy, reset, instance, mock} from "ts-mockito";
 import {
-  cancellableExecFile,
-  CliWrapper,
-  ProcessError,
-  getSshConnectCommand,
-  waitForProcess,
+    cancellableExecFile,
+    CliWrapper,
+    ProcessError,
+    getSshConnectCommand,
+    waitForProcess,
 } from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";

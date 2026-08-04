@@ -57,7 +57,7 @@ export class ConfigurationDataProvider
     ) {
         this.components = [
             new WorkspaceFolderComponent(this.workspaceFolderManager),
-            new AiToolsComponent(this.aiToolsManager),
+            new AiToolsComponent(this.aiToolsManager.model),
             new BundleTargetComponent(this.configModel),
             new AuthTypeComponent(
                 this.connectionManager,

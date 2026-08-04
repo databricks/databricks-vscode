@@ -1,10 +1,9 @@
 import {env} from "vscode";
 
 /**
- * Detect whether the extension is running inside Cursor rather than plain
- * VS Code. Cursor reports `env.appName` as "Cursor" (and `env.appHost` as
- * "desktop", same as VS Code), so we match on the app name.
+ * Cursor identifies itself via env.uriScheme === "cursor",
+ * everything else (VS Code, Insiders) uses vscode.
  */
 export function isCursor(): boolean {
-    return /cursor/i.test(env.appName);
+    return env.uriScheme === "cursor";
 }

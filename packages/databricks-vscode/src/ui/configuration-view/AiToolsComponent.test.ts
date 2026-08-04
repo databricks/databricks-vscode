@@ -5,37 +5,37 @@ import {ThemeIcon} from "vscode";
 import {
     AiToolsAgentStatus,
     AiToolsInstallLocation,
-    AiToolsManager,
+    AiToolsModel,
     AiToolsUpdateStatus,
-} from "../../aitools/AiToolsManager";
+} from "../../aitools/AiToolsModel";
 import {resolveProviderResult} from "../../test/utils";
 import {AiToolsComponent} from "./AiToolsComponent";
 import {HostUtils} from "../../utils";
 
-function createManager(
+function createModel(
     installLocation: AiToolsInstallLocation,
     updateStatus: AiToolsUpdateStatus,
     version?: string,
     detectError?: boolean,
     agents: AiToolsAgentStatus[] = []
-): AiToolsManager {
+): AiToolsModel {
     return {
         state: {installLocation, updateStatus, version, detectError, agents},
         onDidChange: () => ({dispose() {}}),
-    } as unknown as AiToolsManager;
+    } as unknown as AiToolsModel;
 }
 
-async function getRoot(manager: AiToolsManager) {
-    const component = new AiToolsComponent(manager);
+async function getRoot(model: AiToolsModel) {
+    const component = new AiToolsComponent(model);
     const items = await resolveProviderResult(component.getChildren());
     return items ?? [];
 }
 
 async function getChildrenOf(
-    manager: AiToolsManager,
+    model: AiToolsModel,
     parent: {label?: string; id?: string}
 ) {
-    const component = new AiToolsComponent(manager);
+    const component = new AiToolsComponent(model);
     const items = await resolveProviderResult(component.getChildren(parent));
     return items ?? [];
 }
@@ -56,7 +56,7 @@ function agent(
 
 describe(__filename, () => {
     it("renders a setup prompt when not installed", async () => {
-        const items = await getRoot(createManager(undefined, "unknown"));
+        const items = await getRoot(createModel(undefined, "unknown"));
         assert.strictEqual(items.length, 1);
         const [row] = items;
         assert.strictEqual(
@@ -68,7 +68,7 @@ describe(__filename, () => {
 
     it("renders a retry row when detection failed with no cached location", async () => {
         const items = await getRoot(
-            createManager(undefined, "unknown", undefined, true)
+            createModel(undefined, "unknown", undefined, true)
         );
         assert.strictEqual(items.length, 1);
         const [row] = items;
@@ -84,7 +84,7 @@ describe(__filename, () => {
     it("shows the installed row (not the retry row) when a cached location survives an error", async () => {
         // detectError is true but a cached location is preserved -> normal row.
         const items = await getRoot(
-            createManager("project", "upToDate", "0.2.9", true)
+            createModel("project", "upToDate", "0.2.9", true)
         );
         const [row] = items;
         assert.strictEqual(row.label, "AI tools");
@@ -93,7 +93,7 @@ describe(__filename, () => {
 
     it("renders the installed version in the subtext for a project install", async () => {
         const items = await getRoot(
-            createManager("project", "upToDate", "0.2.9")
+            createModel("project", "upToDate", "0.2.9")
         );
         assert.strictEqual(items.length, 1);
         const [row] = items;
@@ -107,7 +107,7 @@ describe(__filename, () => {
     });
 
     it("falls back to 'Up to date' when the version is unknown", async () => {
-        const items = await getRoot(createManager("project", "upToDate"));
+        const items = await getRoot(createModel("project", "upToDate"));
         const [row] = items;
         assert.ok(String(row.description).includes("Up to date"));
         // Stable states use the robot icon.
@@ -115,7 +115,7 @@ describe(__filename, () => {
     });
 
     it("renders an update-available row without a click command", async () => {
-        const items = await getRoot(createManager("global", "updateAvailable"));
+        const items = await getRoot(createModel("global", "updateAvailable"));
         const [row] = items;
         assert.strictEqual(
             row.contextValue,
@@ -129,7 +129,7 @@ describe(__filename, () => {
     });
 
     it("renders an updating spinner while auto-updating", async () => {
-        const items = await getRoot(createManager("project", "updating"));
+        const items = await getRoot(createModel("project", "updating"));
         const [row] = items;
         assert.strictEqual(
             row.contextValue,
@@ -140,13 +140,13 @@ describe(__filename, () => {
     });
 
     it("does not attach a click command to an up-to-date row", async () => {
-        const items = await getRoot(createManager("project", "upToDate"));
+        const items = await getRoot(createModel("project", "upToDate"));
         const [row] = items;
         assert.strictEqual(row.command, undefined);
     });
 
     it("renders a checking spinner while checking for updates", async () => {
-        const items = await getRoot(createManager("project", "checking"));
+        const items = await getRoot(createModel("project", "checking"));
         const [row] = items;
         assert.strictEqual(
             row.contextValue,
@@ -156,7 +156,7 @@ describe(__filename, () => {
     });
 
     it("uses the generic installed context value for unknown status", async () => {
-        const items = await getRoot(createManager("project", "unknown"));
+        const items = await getRoot(createModel("project", "unknown"));
         const [row] = items;
         assert.strictEqual(
             row.contextValue,
@@ -166,7 +166,7 @@ describe(__filename, () => {
 
     it("returns nothing for a non-root parent", async () => {
         const component = new AiToolsComponent(
-            createManager("project", "upToDate")
+            createModel("project", "upToDate")
         );
         const children = await resolveProviderResult(
             component.getChildren({label: "AI tools", id: "unknown"})
@@ -180,7 +180,7 @@ describe(__filename, () => {
     // register a second element with id "AITOOLS" and throw.
     it("does not re-emit the root row for a foreign parent when not installed", async () => {
         const component = new AiToolsComponent(
-            createManager(undefined, "unknown")
+            createModel(undefined, "unknown")
         );
         const children = await resolveProviderResult(
             component.getChildren({label: "Some other node", id: "cluster"})
@@ -190,7 +190,7 @@ describe(__filename, () => {
 
     it("does not re-emit the root row for a foreign parent when detection errored", async () => {
         const component = new AiToolsComponent(
-            createManager(undefined, "unknown", undefined, true)
+            createModel(undefined, "unknown", undefined, true)
         );
         const children = await resolveProviderResult(
             component.getChildren({label: "Some other node", id: "cluster"})
@@ -200,7 +200,7 @@ describe(__filename, () => {
 
     describe("agents", () => {
         it("renders an Agents node summarizing how many are installed", async () => {
-            const manager = createManager(
+            const model = createModel(
                 "project",
                 "upToDate",
                 "0.2.9",
@@ -211,7 +211,7 @@ describe(__filename, () => {
                     agent("copilot", "GitHub Copilot", "0.5.0"),
                 ]
             );
-            const children = await getChildrenOf(manager, {
+            const children = await getChildrenOf(model, {
                 label: "AI tools",
                 id: "AITOOLS",
             });
@@ -223,14 +223,14 @@ describe(__filename, () => {
         });
 
         it("reports 0 installed when no agents have a version", async () => {
-            const manager = createManager(
+            const model = createModel(
                 "project",
                 "upToDate",
                 "0.2.9",
                 undefined,
                 [agent("cursor", "Cursor")]
             );
-            const children = await getChildrenOf(manager, {
+            const children = await getChildrenOf(model, {
                 label: "AI tools",
                 id: "AITOOLS",
             });
@@ -239,14 +239,14 @@ describe(__filename, () => {
         });
 
         it("still renders the Agents node when there are no agents", async () => {
-            const manager = createManager(
+            const model = createModel(
                 "project",
                 "upToDate",
                 "0.2.9",
                 undefined,
                 []
             );
-            const children = await getChildrenOf(manager, {
+            const children = await getChildrenOf(model, {
                 label: "AI tools",
                 id: "AITOOLS",
             });
@@ -256,7 +256,7 @@ describe(__filename, () => {
         });
 
         it("lists each agent with its version under the Agents node", async () => {
-            const manager = createManager(
+            const model = createModel(
                 "project",
                 "upToDate",
                 "0.2.9",
@@ -266,7 +266,7 @@ describe(__filename, () => {
                     agent("cursor", "Cursor"),
                 ]
             );
-            const rows = await getChildrenOf(manager, {
+            const rows = await getChildrenOf(model, {
                 label: "Agents",
                 id: "AITOOLS.agents",
             });
@@ -284,14 +284,14 @@ describe(__filename, () => {
         });
 
         it("returns no agent rows when the agents list is empty", async () => {
-            const manager = createManager(
+            const model = createModel(
                 "project",
                 "upToDate",
                 "0.2.9",
                 undefined,
                 []
             );
-            const rows = await getChildrenOf(manager, {
+            const rows = await getChildrenOf(model, {
                 label: "Agents",
                 id: "AITOOLS.agents",
             });
@@ -299,14 +299,14 @@ describe(__filename, () => {
         });
 
         it("marks installed agents with a green check and no install affordance", async () => {
-            const manager = createManager(
+            const model = createModel(
                 "project",
                 "upToDate",
                 "0.2.9",
                 undefined,
                 [agent("claude", "Claude Code", "1.2.0")]
             );
-            const [row] = await getChildrenOf(manager, {
+            const [row] = await getChildrenOf(model, {
                 label: "Agents",
                 id: "AITOOLS.agents",
             });
@@ -320,14 +320,14 @@ describe(__filename, () => {
         });
 
         it("gives uninstalled agents the install context value used by the inline button", async () => {
-            const manager = createManager(
+            const model = createModel(
                 "project",
                 "upToDate",
                 "0.2.9",
                 undefined,
                 [agent("codex", "Codex CLI")]
             );
-            const [row] = await getChildrenOf(manager, {
+            const [row] = await getChildrenOf(model, {
                 label: "Agents",
                 id: "AITOOLS.agents",
             });
@@ -339,14 +339,14 @@ describe(__filename, () => {
         });
 
         it("makes an uninstalled agent row clickable to install it", async () => {
-            const manager = createManager(
+            const model = createModel(
                 "project",
                 "upToDate",
                 "0.2.9",
                 undefined,
                 [agent("codex", "Codex CLI")]
             );
-            const [row] = await getChildrenOf(manager, {
+            const [row] = await getChildrenOf(model, {
                 label: "Agents",
                 id: "AITOOLS.agents",
             });
@@ -374,7 +374,7 @@ describe(__filename, () => {
             });
 
             it("hides the Cursor agent row (it is managed via the marketplace plugin)", async () => {
-                const manager = createManager(
+                const model = createModel(
                     "project",
                     "upToDate",
                     "0.2.9",
@@ -384,7 +384,7 @@ describe(__filename, () => {
                         agent("cursor", "Cursor", "0.3.0"),
                     ]
                 );
-                const rows = await getChildrenOf(manager, {
+                const rows = await getChildrenOf(model, {
                     label: "Agents",
                     id: "AITOOLS.agents",
                 });
@@ -395,7 +395,7 @@ describe(__filename, () => {
             });
 
             it("excludes the hidden Cursor agent from the installed count", async () => {
-                const manager = createManager(
+                const model = createModel(
                     "project",
                     "upToDate",
                     "0.2.9",
@@ -406,7 +406,7 @@ describe(__filename, () => {
                         agent("cursor", "Cursor", "0.3.0"),
                     ]
                 );
-                const children = await getChildrenOf(manager, {
+                const children = await getChildrenOf(model, {
                     label: "AI tools",
                     id: "AITOOLS",
                 });

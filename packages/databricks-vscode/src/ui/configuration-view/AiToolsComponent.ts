@@ -1,11 +1,8 @@
 import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
-import {
-    AiToolsManager,
-    AiToolsUpdateStatus,
-    CURSOR_AGENT_ID,
-} from "../../aitools/AiToolsManager";
+import {CURSOR_AGENT_ID} from "../../aitools/AiToolsManager";
+import {AiToolsModel, AiToolsUpdateStatus} from "../../aitools/AiToolsModel";
 import {HostUtils} from "../../utils";
 
 const TREE_ICON_ID = "AITOOLS";
@@ -33,10 +30,10 @@ function isHiddenAgent(agentId: string): boolean {
 }
 
 export class AiToolsComponent extends BaseComponent {
-    constructor(private readonly aiToolsManager: AiToolsManager) {
+    constructor(private readonly aiToolsModel: AiToolsModel) {
         super();
         this.disposables.push(
-            this.aiToolsManager.onDidChange(() => {
+            this.aiToolsModel.onDidChange(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
@@ -44,7 +41,7 @@ export class AiToolsComponent extends BaseComponent {
 
     private getRoot(): ConfigurationTreeItem[] {
         const {installLocation, updateStatus, version, detectError} =
-            this.aiToolsManager.state;
+            this.aiToolsModel.state;
 
         // Detection failed with an unexpected error and we have no cached
         // location to fall back on -> show a reload affordance rather than
@@ -115,7 +112,7 @@ export class AiToolsComponent extends BaseComponent {
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
         const {installLocation, version, detectError, agents} =
-            this.aiToolsManager.state;
+            this.aiToolsModel.state;
         // Only the tree root gets the AI tools row. Guarding solely on
         // `parent === undefined` is important: ConfigurationDataProvider fans
         // every getChildren(parent) call out to all components and flattens the

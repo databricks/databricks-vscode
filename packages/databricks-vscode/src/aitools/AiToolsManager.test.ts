@@ -1,19 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {
-    anything,
-    capture,
-    instance,
-    mock,
-    reset,
-    verify,
-    when,
-} from "ts-mockito";
+import {anything, capture, instance, mock, verify, when} from "ts-mockito";
 import {commands, Uri} from "vscode";
-import {mkdtemp, mkdir, writeFile, rm} from "fs/promises";
 import path from "path";
-import os from "os";
 import {
     AiToolsAgent,
     AiToolsListResult,
@@ -22,17 +12,42 @@ import {
 } from "../cli/CliWrapper";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {Telemetry} from "../telemetry";
 import {Events} from "../telemetry/constants";
-import {AiToolsManager, CURSOR_AGENT_ID} from "./AiToolsManager";
-import {HostUtils} from "../utils";
+import {
+    AiToolsManager,
+    CURSOR_AGENT_ID,
+    StateFileLoader,
+} from "./AiToolsManager";
+import {FileUtils, HostUtils} from "../utils";
 
-const STATE_FILE_RELATIVE_PATH = path.join(
-    ".databricks",
-    "aitools",
-    "skills",
-    ".state.json"
-);
+// State-file loaders passed to createManager, one per scope, standing in for the
+// on-disk `.state.json` read with no real I/O. The manager only cares whether
+// the read resolves or rejects (and whether the rejection is ENOENT).
+
+/** The state file exists and was read successfully -> tools are installed. */
+const loadSuccess: StateFileLoader = async () => undefined;
+
+/** The state file is absent (ENOENT) -> tools are not installed. */
+const throwNotFound: StateFileLoader = async () => {
+    const err: NodeJS.ErrnoException = new Error("ENOENT: no such file");
+    err.code = "ENOENT";
+    throw err;
+};
+
+/** An unexpected read failure (non-ENOENT), e.g. a permission/IO error. */
+const throwReadError: StateFileLoader = async () => {
+    const err: NodeJS.ErrnoException = new Error("EACCES: permission denied");
+    err.code = "EACCES";
+    throw err;
+};
+
+/** Per-scope state-file loaders; a missing scope defaults to {@link throwNotFound}. */
+interface ScopeLoaders {
+    project?: StateFileLoader;
+    global?: StateFileLoader;
+}
 
 function listResult(
     skills: Array<{
@@ -52,187 +67,171 @@ function listResult(
     };
 }
 
+// The project root the WorkspaceFolderManager mock reports; the global root is
+// the real home dir (the manager derives it from getHomedir()). The injected
+// loader maps a state-file path back to its scope by the projectDir prefix.
+const projectDir = path.join(path.sep, "tmp", "aitools-proj");
+const homeDir = FileUtils.getHomedir();
+
+// Build a manager whose state-file loader resolves per scope. `loaders` is
+// read on every load, so tests can reassign `loaders.project` /
+// `loaders.global` mid-test to simulate an install/uninstall. A scope with
+// no loader defaults to throwNotFound (not installed).
+function setup(loaders: ScopeLoaders = {}) {
+    const loadStateFile: StateFileLoader = (p) => {
+        const scope = p.startsWith(projectDir) ? "project" : "global";
+        return (loaders[scope] ?? throwNotFound)(p);
+    };
+
+    const mockCli = mock(CliWrapper);
+
+    const mockWorkspaceFolderManager = mock(WorkspaceFolderManager);
+    when(mockWorkspaceFolderManager.activeProjectUri).thenReturn(
+        Uri.file(projectDir)
+    );
+
+    const stubStateStorage = {
+        state: {} as Record<string, any>,
+        get(key: string) {
+            return this.state[key];
+        },
+        set(key: string, value: any) {
+            this.state[key] = value;
+        },
+        onDidChange: () => ({dispose() {}}),
+    };
+    const stubTelemetry = {
+        events: [] as {event: string; props: any}[],
+        start(event: string) {
+            return (props: any) => {
+                this.events.push({event, props});
+            };
+        },
+        recordEvent(event: string, props: any) {
+            this.events.push({event, props});
+        },
+        eventsOfType(event: string) {
+            return this.events.filter((e) => e.event === event);
+        },
+    };
+
+    return {
+        mockCli,
+        mockWorkspaceFolderManager,
+        stubStateStorage,
+        stubTelemetry,
+        manager: new AiToolsManager(
+            instance(mockCli),
+            stubStateStorage as unknown as StateStorage,
+            instance(mockWorkspaceFolderManager),
+            // A real CustomWhenContext delegates to commands.executeCommand,
+            // which the when-context test stubs to observe setContext calls.
+            new CustomWhenContext(),
+            stubTelemetry as unknown as Telemetry,
+            loadStateFile
+        ),
+    };
+}
+
+function stubIsCursor(value: boolean) {
+    (HostUtils as any).isCursor = () => value;
+}
+
 describe(__filename, () => {
-    let mockCli: CliWrapper;
-    let mockWorkspaceFolderManager: WorkspaceFolderManager;
-    let telemetry: Telemetry;
-    let storedState: Record<string, any>;
-    let stubStateStorage: StateStorage;
-
-    let projectDir: string;
-    let homeDir: string;
-    let originalHome: string | undefined;
     let originalIsCursor: typeof HostUtils.isCursor;
-    // Every telemetry event recorded during a test (via start()'s recorder or a
-    // direct recordEvent), so assertions can inspect the emitted properties.
-    let recordedEvents: Array<{event: string; props: any}>;
 
-    function eventsOfType(event: string) {
-        return recordedEvents.filter((e) => e.event === event);
-    }
-
-    function stubIsCursor(value: boolean) {
-        (HostUtils as any).isCursor = () => value;
-    }
-
-    async function writeStateFile(root: string) {
-        const dir = path.join(root, path.dirname(STATE_FILE_RELATIVE_PATH));
-        await mkdir(dir, {recursive: true});
-        await writeFile(
-            path.join(root, STATE_FILE_RELATIVE_PATH),
-            JSON.stringify({schema_version: 1, release: "v0.2.9", skills: {}})
-        );
-    }
-
-    beforeEach(async () => {
-        projectDir = await mkdtemp(path.join(os.tmpdir(), "aitools-proj-"));
-        homeDir = await mkdtemp(path.join(os.tmpdir(), "aitools-home-"));
-        originalHome = process.env.HOME;
-        process.env.HOME = homeDir;
-
-        storedState = {};
-        stubStateStorage = {
-            get: (key: string) => storedState[key],
-            set: async (key: string, value: any) => {
-                storedState[key] = value;
-            },
-            onDidChange: () => ({dispose() {}}),
-        } as unknown as StateStorage;
-
-        mockCli = mock(CliWrapper);
-        mockWorkspaceFolderManager = mock(WorkspaceFolderManager);
-        when(mockWorkspaceFolderManager.activeProjectUri).thenReturn(
-            Uri.file(projectDir)
-        );
-        // Capture recorded events. start() returns a recorder callback that
-        // records under the event name; recordEvent records directly.
-        recordedEvents = [];
-        telemetry = {
-            start: (event: string) => (props: any) => {
-                recordedEvents.push({event, props});
-            },
-            recordEvent: (event: string, props: any) => {
-                recordedEvents.push({event, props});
-            },
-        } as unknown as Telemetry;
-
+    beforeEach(() => {
         // Default to plain VS Code; Cursor-specific tests opt in via
         // stubIsCursor(true).
         originalIsCursor = HostUtils.isCursor;
         stubIsCursor(false);
     });
 
-    afterEach(async () => {
-        process.env.HOME = originalHome;
+    afterEach(() => {
         (HostUtils as any).isCursor = originalIsCursor;
-        reset(mockCli);
-        reset(mockWorkspaceFolderManager);
-        await rm(projectDir, {recursive: true, force: true});
-        await rm(homeDir, {recursive: true, force: true});
     });
 
-    function createManager() {
-        return new AiToolsManager(
-            instance(mockCli),
-            stubStateStorage,
-            instance(mockWorkspaceFolderManager),
-            telemetry
-        );
-    }
-
     it("detects no install when no state file exists", async () => {
-        const manager = createManager();
+        const {manager, stubStateStorage} = setup();
         const location = await manager.detectInstall();
         assert.strictEqual(location, undefined);
         assert.strictEqual(manager.isInstalled, false);
         assert.strictEqual(
-            storedState["databricks.aitools.installLocation"],
+            stubStateStorage.get("databricks.aitools.installLocation"),
             undefined
         );
     });
 
     it("detects a project install", async () => {
-        await writeStateFile(projectDir);
-        const manager = createManager();
+        const {manager, stubStateStorage} = setup({project: loadSuccess});
         const location = await manager.detectInstall();
         assert.strictEqual(location, "project");
         assert.strictEqual(manager.isInstalled, true);
         assert.strictEqual(
-            storedState["databricks.aitools.installLocation"],
+            stubStateStorage.get("databricks.aitools.installLocation"),
             "project"
         );
     });
 
     it("detects a global install when only the home state file exists", async () => {
-        await writeStateFile(homeDir);
-        const manager = createManager();
+        const {manager, stubStateStorage} = setup({global: loadSuccess});
         const location = await manager.detectInstall();
         assert.strictEqual(location, "global");
         assert.strictEqual(
-            storedState["databricks.aitools.installLocation"],
+            stubStateStorage.get("databricks.aitools.installLocation"),
             "global"
         );
     });
 
     it("prefers project over global when both exist", async () => {
-        await writeStateFile(projectDir);
-        await writeStateFile(homeDir);
-        const manager = createManager();
+        const {manager} = setup({
+            project: loadSuccess,
+            global: loadSuccess,
+        });
         assert.strictEqual(await manager.detectInstall(), "project");
     });
 
     it("preserves the cached location on an unexpected detection error", async () => {
         // First, a clean detect that finds a project install.
-        await writeStateFile(projectDir);
-        const manager = createManager();
+        const loaders: ScopeLoaders = {project: loadSuccess};
+        const {manager, stubStateStorage} = setup(loaders);
         assert.strictEqual(await manager.detectInstall(), "project");
-        assert.strictEqual(manager.state.detectError ?? false, false);
+        assert.strictEqual(manager.model.state.detectError ?? false, false);
 
-        // Now make the state file unreadable as a file: replace it with a
-        // directory so readFile throws EISDIR (a non-ENOENT error).
-        await rm(path.join(projectDir, STATE_FILE_RELATIVE_PATH), {
-            force: true,
-        });
-        await mkdir(path.join(projectDir, STATE_FILE_RELATIVE_PATH));
+        // Now the state-file read fails unexpectedly (a non-ENOENT error).
+        loaders.project = throwReadError;
 
         const location = await manager.detectInstall();
 
         // Location is preserved (not flipped to undefined) and the error flag is set.
         assert.strictEqual(location, "project");
-        assert.strictEqual(manager.state.installLocation, "project");
-        assert.strictEqual(manager.state.detectError, true);
+        assert.strictEqual(manager.model.state.installLocation, "project");
+        assert.strictEqual(manager.model.state.detectError, true);
         assert.strictEqual(
-            storedState["databricks.aitools.installLocation"],
+            stubStateStorage.get("databricks.aitools.installLocation"),
             "project"
         );
     });
 
     it("clears the detect error flag on a subsequent successful detect", async () => {
-        await writeStateFile(projectDir);
-        const manager = createManager();
+        const loaders: ScopeLoaders = {project: loadSuccess};
+        const {manager} = setup(loaders);
         await manager.detectInstall();
 
-        // Trigger an error (state file is a directory), then recover.
-        await rm(path.join(projectDir, STATE_FILE_RELATIVE_PATH), {
-            force: true,
-        });
-        await mkdir(path.join(projectDir, STATE_FILE_RELATIVE_PATH));
+        // Trigger an unexpected read error, then recover.
+        loaders.project = throwReadError;
         await manager.detectInstall();
-        assert.strictEqual(manager.state.detectError, true);
+        assert.strictEqual(manager.model.state.detectError, true);
 
-        // Restore a real state file; detection should succeed and clear the flag.
-        await rm(path.join(projectDir, STATE_FILE_RELATIVE_PATH), {
-            recursive: true,
-            force: true,
-        });
-        await writeStateFile(projectDir);
+        // Restore a readable state file; detection should succeed and clear the flag.
+        loaders.project = loadSuccess;
         await manager.detectInstall();
-        assert.strictEqual(manager.state.detectError, false);
-        assert.strictEqual(manager.state.installLocation, "project");
+        assert.strictEqual(manager.model.state.detectError, false);
+        assert.strictEqual(manager.model.state.installLocation, "project");
     });
 
     it("reports upToDate when all installed skills match latest", async () => {
-        await writeStateFile(projectDir);
+        const {manager, mockCli} = setup({project: loadSuccess});
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
                 {
@@ -242,14 +241,13 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
         await manager.detectInstall();
         await manager.resolveInstalled();
-        assert.strictEqual(manager.state.updateStatus, "upToDate");
+        assert.strictEqual(manager.model.state.updateStatus, "upToDate");
     });
 
     it("reports updateAvailable when an installed skill is behind latest", async () => {
-        await writeStateFile(projectDir);
+        const {manager, mockCli} = setup({project: loadSuccess});
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
                 {
@@ -264,14 +262,13 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
         await manager.detectInstall();
         await manager.resolveInstalled();
-        assert.strictEqual(manager.state.updateStatus, "updateAvailable");
+        assert.strictEqual(manager.model.state.updateStatus, "updateAvailable");
     });
 
     it("ignores non-installed skills when computing update status", async () => {
-        await writeStateFile(projectDir);
+        const {manager, mockCli} = setup({project: loadSuccess});
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
                 {
@@ -288,39 +285,35 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
         await manager.detectInstall();
         await manager.resolveInstalled();
-        assert.strictEqual(manager.state.updateStatus, "upToDate");
+        assert.strictEqual(manager.model.state.updateStatus, "upToDate");
     });
 
     it("reports error when the list command fails", async () => {
-        await writeStateFile(projectDir);
+        const {manager, mockCli} = setup({project: loadSuccess});
         when(mockCli.aitoolsList(anything())).thenReject(new Error("boom"));
-        const manager = createManager();
         await manager.detectInstall();
         await manager.resolveInstalled();
-        assert.strictEqual(manager.state.updateStatus, "error");
+        assert.strictEqual(manager.model.state.updateStatus, "error");
     });
 
     it("returns unknown update status when not installed", async () => {
-        const manager = createManager();
+        const {manager, mockCli} = setup();
         await manager.detectInstall();
         await manager.resolveInstalled();
-        assert.strictEqual(manager.state.updateStatus, "unknown");
+        assert.strictEqual(manager.model.state.updateStatus, "unknown");
         verify(mockCli.aitoolsList(anything())).never();
     });
 
     it("uninstalls for the detected scope and re-detects", async () => {
-        await writeStateFile(projectDir);
+        const loaders: ScopeLoaders = {project: loadSuccess};
+        const {manager, mockCli, stubStateStorage} = setup(loaders);
         when(
             mockCli.aitoolsUninstall("project", anything(), anything())
         ).thenCall(async () => {
-            await rm(path.join(projectDir, STATE_FILE_RELATIVE_PATH), {
-                force: true,
-            });
+            loaders.project = throwNotFound;
         });
-        const manager = createManager();
         await manager.detectInstall();
         assert.strictEqual(manager.isInstalled, true);
 
@@ -331,7 +324,7 @@ describe(__filename, () => {
         ).once();
         assert.strictEqual(manager.isInstalled, false);
         assert.strictEqual(
-            storedState["databricks.aitools.installLocation"],
+            stubStateStorage.get("databricks.aitools.installLocation"),
             undefined
         );
     });
@@ -351,15 +344,13 @@ describe(__filename, () => {
             }
         };
         try {
-            await writeStateFile(projectDir);
+            const loaders: ScopeLoaders = {project: loadSuccess};
+            const {manager, mockCli} = setup(loaders);
             when(
                 mockCli.aitoolsUninstall("project", anything(), anything())
             ).thenCall(async () => {
-                await rm(path.join(projectDir, STATE_FILE_RELATIVE_PATH), {
-                    force: true,
-                });
+                loaders.project = throwNotFound;
             });
-            const manager = createManager();
 
             await manager.detectInstall();
             await manager.uninstall();
@@ -374,7 +365,7 @@ describe(__filename, () => {
     });
 
     it("does not call the CLI when uninstalling with nothing installed", async () => {
-        const manager = createManager();
+        const {manager, mockCli} = setup();
         await manager.detectInstall();
         await manager.uninstall();
         verify(
@@ -383,10 +374,12 @@ describe(__filename, () => {
     });
 
     it("detects install and refreshes status after a global install", async () => {
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli} = setup(loaders);
         when(
             mockCli.aitoolsInstall("global", anything(), anything(), anything())
         ).thenCall(async () => {
-            await writeStateFile(homeDir);
+            loaders.global = loadSuccess;
         });
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
@@ -397,15 +390,14 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
 
         await manager.install("global");
 
         verify(
             mockCli.aitoolsInstall("global", anything(), anything(), anything())
         ).once();
-        assert.strictEqual(manager.state.installLocation, "global");
-        assert.strictEqual(manager.state.updateStatus, "upToDate");
+        assert.strictEqual(manager.model.state.installLocation, "global");
+        assert.strictEqual(manager.model.state.updateStatus, "upToDate");
     });
 
     describe("Cursor install flow", () => {
@@ -435,7 +427,9 @@ describe(__filename, () => {
         }
 
         it("opens the plugin modal and strips cursor from the CLI --agents", async () => {
-            await writeStateFile(projectDir);
+            const {manager, mockCli, stubTelemetry} = setup({
+                project: loadSuccess,
+            });
             when(
                 mockCli.aitoolsInstall(
                     "project",
@@ -453,7 +447,6 @@ describe(__filename, () => {
                     },
                 ])
             );
-            const manager = createManager();
 
             await manager.install("project", "sidePane", [
                 "claude-code",
@@ -470,12 +463,14 @@ describe(__filename, () => {
 
             // The install event records only the CLI agents (cursor stripped)
             // and flags the plugin separately.
-            const [installEvent] = eventsOfType(Events.AITOOLS_INSTALL);
+            const [installEvent] = stubTelemetry.eventsOfType(
+                Events.AITOOLS_INSTALL
+            );
             assert.deepStrictEqual(installEvent.props.agents, ["claude-code"]);
             assert.strictEqual(installEvent.props.cursorPlugin, true);
             // Prompting the plugin is recorded too, inheriting the install's
             // source.
-            const [pluginEvent] = eventsOfType(
+            const [pluginEvent] = stubTelemetry.eventsOfType(
                 Events.AITOOLS_CURSOR_PLUGIN_PROMPT
             );
             assert.strictEqual(pluginEvent.props.success, true);
@@ -483,8 +478,9 @@ describe(__filename, () => {
         });
 
         it("skips the CLI install when only the Cursor plugin is selected", async () => {
-            await writeStateFile(projectDir);
-            const manager = createManager();
+            const {manager, mockCli, stubTelemetry} = setup({
+                project: loadSuccess,
+            });
 
             await manager.install("project", "sidePane", [CURSOR_AGENT_ID]);
 
@@ -504,7 +500,9 @@ describe(__filename, () => {
             ).never();
 
             // The plugin-only install is still recorded, with no CLI agents.
-            const [installEvent] = eventsOfType(Events.AITOOLS_INSTALL);
+            const [installEvent] = stubTelemetry.eventsOfType(
+                Events.AITOOLS_INSTALL
+            );
             assert.ok(installEvent, "expected an install event");
             assert.strictEqual(installEvent.props.success, true);
             assert.deepStrictEqual(installEvent.props.agents, []);
@@ -512,7 +510,7 @@ describe(__filename, () => {
         });
 
         it("does not open the plugin modal when cursor is not selected", async () => {
-            await writeStateFile(projectDir);
+            const {manager, mockCli} = setup({project: loadSuccess});
             when(
                 mockCli.aitoolsInstall(
                     "project",
@@ -530,7 +528,6 @@ describe(__filename, () => {
                     },
                 ])
             );
-            const manager = createManager();
 
             await manager.install("project", "sidePane", ["claude-code"]);
 
@@ -553,11 +550,11 @@ describe(__filename, () => {
         it("records a successful plugin prompt with the given source", async () => {
             originalExecuteCommand = commands.executeCommand;
             (commands as any).executeCommand = async () => {};
-            const manager = createManager();
+            const {manager, stubTelemetry} = setup();
 
             await manager.addCursorPlugin("pluginButton");
 
-            const [pluginEvent] = eventsOfType(
+            const [pluginEvent] = stubTelemetry.eventsOfType(
                 Events.AITOOLS_CURSOR_PLUGIN_PROMPT
             );
             assert.strictEqual(pluginEvent.props.success, true);
@@ -572,21 +569,21 @@ describe(__filename, () => {
                     throw new Error("no marketplace");
                 }
             };
-            const manager = createManager();
+            const {manager, stubTelemetry} = setup();
 
             await manager.addCursorPlugin();
 
             assert.deepStrictEqual(
-                eventsOfType(Events.AITOOLS_CURSOR_PLUGIN_PROMPT).map(
-                    (e) => e.props.success
-                ),
+                stubTelemetry
+                    .eventsOfType(Events.AITOOLS_CURSOR_PLUGIN_PROMPT)
+                    .map((e) => e.props.success),
                 [false]
             );
         });
     });
 
     it("installs a single agent into the current scope and refreshes status", async () => {
-        await writeStateFile(projectDir);
+        const {manager, mockCli, stubTelemetry} = setup({project: loadSuccess});
         when(
             mockCli.aitoolsInstall(
                 "project",
@@ -604,7 +601,6 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
         await manager.detectInstall();
 
         await manager.installAgent("codex");
@@ -615,14 +611,16 @@ describe(__filename, () => {
         verify(mockCli.aitoolsList(anything())).once();
 
         // The install event records which agent was installed.
-        const [installEvent] = eventsOfType(Events.AITOOLS_INSTALL);
+        const [installEvent] = stubTelemetry.eventsOfType(
+            Events.AITOOLS_INSTALL
+        );
         assert.strictEqual(installEvent.props.success, true);
         assert.strictEqual(installEvent.props.source, "sidePane");
         assert.deepStrictEqual(installEvent.props.agents, ["codex"]);
     });
 
     it("does not install an agent when nothing is installed", async () => {
-        const manager = createManager();
+        const {manager, mockCli} = setup();
         await manager.detectInstall();
 
         await manager.installAgent("codex");
@@ -638,11 +636,11 @@ describe(__filename, () => {
     });
 
     it("still refreshes the panel when a single-agent install fails", async () => {
+        const {manager, mockCli} = setup({project: loadSuccess});
         // A partial install (e.g. an agent whose CLI is missing) often still
         // installed some tools, so the panel must reconcile with the real state
         // rather than staying stale. The error is rethrown for the command layer
         // to surface.
-        await writeStateFile(projectDir);
         when(
             mockCli.aitoolsInstall(
                 "project",
@@ -660,22 +658,23 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
         await manager.detectInstall();
 
         await assert.rejects(() => manager.installAgent("codex"), ProcessError);
 
         // resolveInstalled ran despite the failure.
         verify(mockCli.aitoolsList(anything())).once();
-        assert.strictEqual(manager.state.updateStatus, "upToDate");
+        assert.strictEqual(manager.model.state.updateStatus, "upToDate");
     });
 
     it("still refreshes the panel when the install command fails", async () => {
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli} = setup(loaders);
         when(
             mockCli.aitoolsInstall("global", anything(), anything(), anything())
         ).thenCall(async () => {
             // Simulate a partial install: some tools landed before the failure.
-            await writeStateFile(homeDir);
+            loaders.global = loadSuccess;
             throw new ProcessError("boom", 1);
         });
         when(mockCli.aitoolsList(anything())).thenResolve(
@@ -687,7 +686,6 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
 
         await assert.rejects(
             () => manager.install("global", "sidePane", ["codex"]),
@@ -696,12 +694,12 @@ describe(__filename, () => {
 
         // detectInstall + resolveInstalled ran despite the failure, so the row
         // reflects the tools that actually installed.
-        assert.strictEqual(manager.state.installLocation, "global");
-        assert.strictEqual(manager.state.updateStatus, "upToDate");
+        assert.strictEqual(manager.model.state.installLocation, "global");
+        assert.strictEqual(manager.model.state.updateStatus, "upToDate");
     });
 
     it("refreshes update status to upToDate after a successful update", async () => {
-        await writeStateFile(projectDir);
+        const {manager, mockCli} = setup({project: loadSuccess});
         when(
             mockCli.aitoolsUpdate("project", anything(), anything())
         ).thenResolve();
@@ -715,17 +713,16 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
         await manager.detectInstall();
 
         await manager.update();
 
-        assert.strictEqual(manager.state.updateStatus, "upToDate");
+        assert.strictEqual(manager.model.state.updateStatus, "upToDate");
         verify(mockCli.aitoolsList(anything())).once();
     });
 
     it("still refreshes update status when the update command fails", async () => {
-        await writeStateFile(projectDir);
+        const {manager, mockCli} = setup({project: loadSuccess});
         when(
             mockCli.aitoolsUpdate("project", anything(), anything())
         ).thenReject(new ProcessError("boom", 1));
@@ -738,18 +735,17 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
         await manager.detectInstall();
 
         await assert.rejects(() => manager.update(), ProcessError);
 
         // The finally block reconciles state even though the update errored.
-        assert.strictEqual(manager.state.updateStatus, "updateAvailable");
+        assert.strictEqual(manager.model.state.updateStatus, "updateAvailable");
         verify(mockCli.aitoolsList(anything())).once();
     });
 
     it("captures the installed release version from list", async () => {
-        await writeStateFile(projectDir);
+        const {manager, mockCli} = setup({project: loadSuccess});
         when(mockCli.aitoolsList(anything())).thenResolve({
             release: "0.3.1",
             skills: [
@@ -762,14 +758,14 @@ describe(__filename, () => {
             ],
             agents: [],
         });
-        const manager = createManager();
         await manager.detectInstall();
         await manager.resolveInstalled();
-        assert.strictEqual(manager.state.version, "0.3.1");
+        assert.strictEqual(manager.model.state.version, "0.3.1");
     });
 
     it("clears the version when nothing is installed", async () => {
-        await writeStateFile(projectDir);
+        const loaders: ScopeLoaders = {project: loadSuccess};
+        const {manager, mockCli} = setup(loaders);
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
                 {
@@ -779,32 +775,34 @@ describe(__filename, () => {
                 },
             ])
         );
-        const manager = createManager();
         await manager.detectInstall();
         await manager.resolveInstalled();
-        assert.strictEqual(manager.state.version, "0.2.9");
+        assert.strictEqual(manager.model.state.version, "0.2.9");
 
         // Uninstalling / re-detecting with no state file clears the version.
-        await rm(path.join(projectDir, STATE_FILE_RELATIVE_PATH), {
-            force: true,
-        });
+        loaders.project = throwNotFound;
         await manager.detectInstall();
-        assert.strictEqual(manager.state.version, undefined);
+        assert.strictEqual(manager.model.state.version, undefined);
     });
 
     describe("no open folder", () => {
-        beforeEach(() => {
-            // Mirror WorkspaceFolderManager throwing when no folder is active.
-            when(mockWorkspaceFolderManager.activeProjectUri).thenThrow(
+        // Like setup(), but with no active workspace folder: activeProjectUri
+        // throws, mirroring WorkspaceFolderManager when no folder is active.
+        function setupNoFolder(loaders: ScopeLoaders = {}) {
+            const s = setup(loaders);
+            when(s.mockWorkspaceFolderManager.activeProjectUri).thenThrow(
                 new Error("No active project folder")
             );
-        });
+            return s;
+        }
 
         it("reports no project folder", () => {
-            assert.strictEqual(createManager().hasProjectFolder, false);
+            assert.strictEqual(setupNoFolder().manager.hasProjectFolder, false);
         });
 
         it("installs global against the home dir without touching projectRoot", async () => {
+            const loaders: ScopeLoaders = {};
+            const {manager, mockCli} = setupNoFolder(loaders);
             when(
                 mockCli.aitoolsInstall(
                     "global",
@@ -813,7 +811,7 @@ describe(__filename, () => {
                     anything()
                 )
             ).thenCall(async () => {
-                await writeStateFile(homeDir);
+                loaders.global = loadSuccess;
             });
             when(mockCli.aitoolsList(anything())).thenResolve(
                 listResult([
@@ -824,7 +822,6 @@ describe(__filename, () => {
                     },
                 ])
             );
-            const manager = createManager();
 
             // Must not throw even though no folder is open.
             await manager.install("global");
@@ -837,19 +834,18 @@ describe(__filename, () => {
                     anything()
                 )
             ).once();
-            assert.strictEqual(manager.state.installLocation, "global");
+            assert.strictEqual(manager.model.state.installLocation, "global");
         });
 
         it("detects a global install with no folder open", async () => {
-            await writeStateFile(homeDir);
-            const manager = createManager();
+            const {manager} = setupNoFolder({global: loadSuccess});
             assert.strictEqual(await manager.detectInstall(), "global");
         });
     });
 
     describe("initialize", () => {
         it("resolves the update status but reports 'update' when installed and behind", async () => {
-            await writeStateFile(projectDir);
+            const {manager, mockCli} = setup({project: loadSuccess});
             when(mockCli.aitoolsList(anything())).thenResolve(
                 listResult([
                     {
@@ -859,21 +855,23 @@ describe(__filename, () => {
                     },
                 ])
             );
-            const manager = createManager();
 
             const action = await manager.initialize();
 
             // initialize resolves status but leaves applying the update to the
             // caller (AiToolsCommands).
             assert.strictEqual(action, "update");
-            assert.strictEqual(manager.state.updateStatus, "updateAvailable");
+            assert.strictEqual(
+                manager.model.state.updateStatus,
+                "updateAvailable"
+            );
             verify(
                 mockCli.aitoolsUpdate(anything(), anything(), anything())
             ).never();
         });
 
         it("reports 'none' when installed and up to date", async () => {
-            await writeStateFile(projectDir);
+            const {manager, mockCli} = setup({project: loadSuccess});
             when(mockCli.aitoolsList(anything())).thenResolve(
                 listResult([
                     {
@@ -883,32 +881,31 @@ describe(__filename, () => {
                     },
                 ])
             );
-            const manager = createManager();
 
             assert.strictEqual(await manager.initialize(), "none");
         });
 
         it("reports 'promptInstall' when not installed", async () => {
-            const manager = createManager();
+            const {manager} = setup();
 
             assert.strictEqual(await manager.initialize(), "promptInstall");
         });
 
         it("reports 'none' when not installed but opted out", async () => {
-            storedState["databricks.aitools.hideInstallPrompt"] = true;
-            const manager = createManager();
+            const {manager, stubStateStorage} = setup();
+            stubStateStorage.set("databricks.aitools.hideInstallPrompt", true);
 
             assert.strictEqual(await manager.initialize(), "none");
         });
 
         it("records the opt-out via optOutOfInstallPrompt", async () => {
-            const manager = createManager();
+            const {manager, stubStateStorage} = setup();
             assert.strictEqual(manager.shouldPromptInstall, true);
 
             await manager.optOutOfInstallPrompt();
 
             assert.strictEqual(
-                storedState["databricks.aitools.hideInstallPrompt"],
+                stubStateStorage.get("databricks.aitools.hideInstallPrompt"),
                 true
             );
             assert.strictEqual(manager.shouldPromptInstall, false);

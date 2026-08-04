@@ -8,6 +8,7 @@ import {
     window,
     workspace,
 } from "vscode";
+import {readFile} from "fs/promises";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -328,9 +329,11 @@ export async function activate(
         cli,
         stateStorage,
         workspaceFolderManager,
-        telemetry
+        customWhenContext,
+        telemetry,
+        (path) => readFile(path)
     );
-    const aiToolsCommands = new AiToolsCommands(aiToolsManager);
+    const aiToolsCommands = new AiToolsCommands(aiToolsManager, window);
     context.subscriptions.push(
         aiToolsManager,
         aiToolsCommands,

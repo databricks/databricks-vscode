@@ -5,35 +5,30 @@ import {isCursor} from "./hostUtils";
 describe(__filename, () => {
     let originalAppName: PropertyDescriptor | undefined;
 
-    function stubAppName(value: string) {
-        Object.defineProperty(env, "appName", {
+    function stubUriScheme(value: string) {
+        Object.defineProperty(env, "uriScheme", {
             value,
             configurable: true,
         });
     }
 
     beforeEach(() => {
-        originalAppName = Object.getOwnPropertyDescriptor(env, "appName");
+        originalAppName = Object.getOwnPropertyDescriptor(env, "uriScheme");
     });
 
     afterEach(() => {
         if (originalAppName) {
-            Object.defineProperty(env, "appName", originalAppName);
+            Object.defineProperty(env, "uriScheme", originalAppName);
         }
     });
 
-    it("is true when the app name is Cursor", () => {
-        stubAppName("Cursor");
+    it("is true for Cursor", () => {
+        stubUriScheme("cursor");
         assert.strictEqual(isCursor(), true);
     });
 
-    it("matches case-insensitively and as a substring", () => {
-        stubAppName("cursor nightly");
-        assert.strictEqual(isCursor(), true);
-    });
-
-    it("is false for plain VS Code", () => {
-        stubAppName("Visual Studio Code");
+    it("is false for VS Code", () => {
+        stubUriScheme("vscode");
         assert.strictEqual(isCursor(), false);
     });
 });

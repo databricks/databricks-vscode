@@ -10,7 +10,6 @@ import {
     Uri,
     commands,
     CancellationToken,
-    env,
 } from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
@@ -18,7 +17,7 @@ import {logging} from "@databricks/sdk-experimental";
 import {LoggerManager, Loggers} from "../logger";
 import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {Cloud} from "../utils/constants";
-import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
+import {EnvVarGenerators, FileUtils, HostUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import type {AiToolsScope} from "../telemetry/constants";
 export type {AiToolsScope};
@@ -117,8 +116,7 @@ export const execFile = async (
  * IDE window. Serverless is the default when no cluster is given.
  *
  * The --ide flag matches the host editor so the CLI opens the right remote
- * window: Cursor identifies itself via env.uriScheme === "cursor",
- * everything else (VS Code, Insiders) uses vscode.
+ * window
  *
  * Logging is configured out of band via the DATABRICKS_LOG_* env vars (see
  * CliWrapper.getSshConnectEnvVars), so we do not pass --log-* flags here.
@@ -126,7 +124,7 @@ export const execFile = async (
 export function getSshConnectCommand(opts: {compute: SshConnectCompute}): {
     args: string[];
 } {
-    const ide = env.uriScheme === "cursor" ? "cursor" : "vscode";
+    const ide = HostUtils.isCursor() ? "cursor" : "vscode";
     const args = ["ssh", "connect", `--ide=${ide}`, "--auto-approve"];
     if (opts.compute.type === "cluster") {
         // Start a stopped single-user cluster when connecting.

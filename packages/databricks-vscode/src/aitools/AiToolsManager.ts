@@ -1,6 +1,5 @@
-import {readFile} from "fs/promises";
 import path from "path";
-import {CancellationToken, commands, Disposable, EventEmitter} from "vscode";
+import {CancellationToken, commands, Disposable} from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import {
     AiToolsAgent,
@@ -10,6 +9,7 @@ import {
 } from "../cli/CliWrapper";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {Telemetry} from "../telemetry";
 import {
     AiToolsCursorPluginSource,
@@ -18,6 +18,19 @@ import {
 } from "../telemetry/constants";
 import {Loggers} from "../logger";
 import {FileUtils, HostUtils} from "../utils";
+import {
+    AiToolsAgentStatus,
+    AiToolsInstallLocation,
+    AiToolsModel,
+    AiToolsUpdateStatus,
+} from "./AiToolsModel";
+
+/**
+ * Reads the aitools state file at `path`, resolving with its contents and
+ * rejecting with an `ENOENT`-coded error when it is absent (i.e. the same
+ * contract as `fs/promises` `readFile`)
+ */
+export type StateFileLoader = (path: string) => Promise<unknown>;
 
 /** Cursor marketplace numeric ID for the Databricks plugin. */
 const CURSOR_PLUGIN_ID = "26723531";
@@ -37,18 +50,6 @@ const STATE_FILE_RELATIVE_PATH = path.join(
     ".state.json"
 );
 
-/** Where AI tools are installed, or undefined if not installed. */
-export type AiToolsInstallLocation = AiToolsScope | undefined;
-
-/** The status of the update check. */
-export type AiToolsUpdateStatus =
-    | "unknown"
-    | "checking"
-    | "updating"
-    | "upToDate"
-    | "updateAvailable"
-    | "error";
-
 /**
  * What activation should do after {@link AiToolsManager.initialize} has detected
  * the install state and (if installed) resolved the update status. The manager
@@ -60,29 +61,6 @@ export type AiToolsUpdateStatus =
  *    nothing to do.
  */
 export type AiToolsInitAction = "promptInstall" | "update" | "none";
-
-export interface AiToolsAgentStatus {
-    displayName: string;
-    id: string;
-    type: "plugin" | "skills-only";
-    detected: boolean;
-    version?: string;
-}
-
-export interface AiToolsState {
-    installLocation: AiToolsInstallLocation;
-    updateStatus: AiToolsUpdateStatus;
-    /** The installed AI tools release version, if known. */
-    version?: string;
-    /**
-     * True when the last install detection failed with an unexpected error
-     * (e.g. a permission/IO error reading the state file) rather than the state
-     * file simply being absent. Distinguishes "genuinely not installed" from
-     * "couldn't determine install state".
-     */
-    detectError?: boolean;
-    agents: AiToolsAgentStatus[];
-}
 
 function computeUpdateStatus(
     skills: AiToolsSkill[],
@@ -114,40 +92,26 @@ function computeAgentsStatuses(
  */
 export class AiToolsManager implements Disposable {
     private disposables: Disposable[] = [];
-    private readonly onDidChangeEmitter = new EventEmitter<void>();
-    public readonly onDidChange = this.onDidChangeEmitter.event;
 
-    private _installLocation: AiToolsInstallLocation;
-    private _updateStatus: AiToolsUpdateStatus = "unknown";
-    private _version: string | undefined;
-    private _detectError = false;
-    private _agents: AiToolsAgentStatus[] = [];
+    public readonly model: AiToolsModel;
 
     constructor(
         private readonly cli: CliWrapper,
         private readonly stateStorage: StateStorage,
         private readonly workspaceFolderManager: WorkspaceFolderManager,
-        private readonly telemetry: Telemetry
+        private readonly customWhenContext: CustomWhenContext,
+        private readonly telemetry: Telemetry,
+        private readonly loadStateFile: StateFileLoader
     ) {
-        this._installLocation = this.stateStorage.get(
-            "databricks.aitools.installLocation"
+        this.model = new AiToolsModel(
+            this.stateStorage.get("databricks.aitools.installLocation")
         );
         this.refreshCursorPluginContext();
         this.refreshInstalledContext();
     }
 
-    get state(): AiToolsState {
-        return {
-            installLocation: this._installLocation,
-            updateStatus: this._updateStatus,
-            version: this._version,
-            detectError: this._detectError,
-            agents: this._agents,
-        };
-    }
-
     get isInstalled(): boolean {
-        return this._installLocation !== undefined;
+        return this.model.isInstalled;
     }
 
     /**
@@ -188,11 +152,7 @@ export class AiToolsManager implements Disposable {
      * can (re-)open the plugin modal at any time.
      */
     private refreshCursorPluginContext() {
-        commands.executeCommand(
-            "setContext",
-            "databricks.context.aitools.showCursorPlugin",
-            HostUtils.isCursor()
-        );
+        this.customWhenContext.setAiToolsShowCursorPlugin(HostUtils.isCursor());
     }
 
     /**
@@ -201,16 +161,12 @@ export class AiToolsManager implements Disposable {
      * Uninstall appropriately.
      */
     private refreshInstalledContext() {
-        commands.executeCommand(
-            "setContext",
-            "databricks.context.aitools.installed",
-            this.isInstalled
-        );
+        this.customWhenContext.setAiToolsInstalled(this.isInstalled);
     }
 
     dispose() {
         this.disposables.forEach((d) => d.dispose());
-        this.onDidChangeEmitter.dispose();
+        this.model.dispose();
     }
 
     /**
@@ -247,10 +203,10 @@ export class AiToolsManager implements Disposable {
 
     private async stateFileExists(scope: AiToolsScope): Promise<boolean> {
         try {
-            await readFile(this.stateFilePath(scope));
+            await this.loadStateFile(this.stateFilePath(scope));
             return true;
-        } catch (e: any) {
-            if (e?.code === "ENOENT") {
+        } catch (e: unknown) {
+            if (e instanceof Error && "code" in e && e.code === "ENOENT") {
                 return false;
             }
             throw e;
@@ -261,7 +217,7 @@ export class AiToolsManager implements Disposable {
      * Determine whether AI tools are installed by checking for
      * `.databricks/aitools/skills/.state.json`, first in the project root and
      * then in the user's home directory. Caches and persists the resolved
-     * location and fires {@link onDidChange}.
+     * location and fires {@link AiToolsModel.onDidChange}.
      */
     async detectInstall(): Promise<AiToolsInstallLocation> {
         let location: AiToolsInstallLocation;
@@ -276,8 +232,6 @@ export class AiToolsManager implements Disposable {
             } else if (await this.stateFileExists("global")) {
                 location = "global";
             }
-            // Detection succeeded (a definitive present/absent answer).
-            this._detectError = false;
         } catch (e) {
             // Unexpected error (e.g. EACCES/EIO reading the state file) rather
             // than the file being absent. Don't overwrite the last-known-good
@@ -289,23 +243,26 @@ export class AiToolsManager implements Disposable {
                 "Failed to detect Databricks AI tools install state",
                 e
             );
-            this._detectError = true;
+            this.model.update({detectError: true});
             this.refreshInstalledContext();
-            this.onDidChangeEmitter.fire();
-            return this._installLocation;
+            return this.model.installLocation;
         }
 
-        this._installLocation = location;
         await this.stateStorage.set(
             "databricks.aitools.installLocation",
             location
         );
-        if (location === undefined) {
-            this._updateStatus = "unknown";
-            this._version = undefined;
-        }
+        // Detection succeeded (a definitive present/absent answer), so clear the
+        // error flag. When nothing is installed, also reset the derived status
+        // and version.
+        this.model.update({
+            installLocation: location,
+            detectError: false,
+            ...(location === undefined
+                ? {updateStatus: "unknown", version: undefined}
+                : {}),
+        });
         this.refreshInstalledContext();
-        this.onDidChangeEmitter.fire();
         return location;
     }
 
@@ -329,7 +286,9 @@ export class AiToolsManager implements Disposable {
                 return this.shouldPromptInstall ? "promptInstall" : "none";
             }
             await this.resolveInstalled();
-            return this._updateStatus === "updateAvailable" ? "update" : "none";
+            return this.model.state.updateStatus === "updateAvailable"
+                ? "update"
+                : "none";
         } catch (e) {
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Failed to initialize Databricks AI tools",
@@ -388,29 +347,28 @@ export class AiToolsManager implements Disposable {
      * source of truth.
      */
     async resolveInstalled(): Promise<void> {
-        const scope = this._installLocation;
+        const scope = this.model.installLocation;
         if (scope === undefined) {
-            this._updateStatus = "unknown";
-            this.onDidChangeEmitter.fire();
+            this.model.update({updateStatus: "unknown"});
             return;
         }
 
-        this._updateStatus = "checking";
-        this.onDidChangeEmitter.fire();
+        this.model.update({updateStatus: "checking"});
 
         try {
             const result = await this.cli.aitoolsList(this.cwdForScope(scope));
-            this._version = result.release;
-            this._updateStatus = computeUpdateStatus(result.skills, scope);
-            this._agents = computeAgentsStatuses(result.agents, scope);
+            this.model.update({
+                version: result.release,
+                updateStatus: computeUpdateStatus(result.skills, scope),
+                agents: computeAgentsStatuses(result.agents, scope),
+            });
         } catch (e) {
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Failed to check for Databricks AI tools updates",
                 e
             );
-            this._updateStatus = "error";
+            this.model.update({updateStatus: "error"});
         }
-        this.onDidChangeEmitter.fire();
     }
 
     /**
@@ -509,7 +467,7 @@ export class AiToolsManager implements Disposable {
         agentId: string,
         token?: CancellationToken
     ): Promise<void> {
-        const scope = this._installLocation;
+        const scope = this.model.installLocation;
         if (scope === undefined) {
             return;
         }
@@ -549,7 +507,7 @@ export class AiToolsManager implements Disposable {
      * surface.
      */
     async uninstall(token?: CancellationToken): Promise<void> {
-        const scope = this._installLocation;
+        const scope = this.model.installLocation;
         if (scope === undefined) {
             return;
         }
@@ -575,13 +533,12 @@ export class AiToolsManager implements Disposable {
      * rethrows any error for {@link AiToolsCommands} to surface.
      */
     async update(token?: CancellationToken): Promise<void> {
-        const scope = this._installLocation;
+        const scope = this.model.installLocation;
         if (scope === undefined) {
             return;
         }
         const recordEvent = this.telemetry.start(Events.AITOOLS_UPDATE);
-        this._updateStatus = "updating";
-        this.onDidChangeEmitter.fire();
+        this.model.update({updateStatus: "updating"});
         try {
             await this.cli.aitoolsUpdate(scope, this.cwdForScope(scope), token);
             recordEvent({success: true, scope});
