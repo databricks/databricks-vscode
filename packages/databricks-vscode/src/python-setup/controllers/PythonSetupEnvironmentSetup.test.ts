@@ -14,6 +14,30 @@ import {
     ERROR_NO_TARGET,
 } from "../models/fixtures/setupLocalResults";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
+import {
+    PythonSetupAttempt,
+    PythonSetupOutcomeReport,
+} from "../../telemetry/pythonSetupExtensions";
+
+/**
+ * Records the attempt/result telemetry the orchestrator emits. Stands in for
+ * `Telemetry.recordPythonSetupAttempt`, keeping its shape: recording an attempt
+ * hands back the reporter for that run's outcome.
+ */
+function makeTelemetryRecorder() {
+    const attempts: PythonSetupAttempt[] = [];
+    const results: PythonSetupOutcomeReport[] = [];
+    return {
+        attempts,
+        results,
+        recordSetupAttempt: (attempt: PythonSetupAttempt) => {
+            attempts.push(attempt);
+            return (report: PythonSetupOutcomeReport) => {
+                results.push(report);
+            };
+        },
+    };
+}
 
 /**
  * A never-cancelled {@link CancellationLike} that can be flipped via `cancel()`,
@@ -82,6 +106,11 @@ function makeDeps(
         // Mirror the production wrapper: hand the task a log sink and a
         // (never-cancelled) progress token.
         withProgress: async (_title, task) => task(() => {}, makeToken()),
+        // Telemetry defaults to a no-op sink; tests that assert on events pass
+        // a recorder instead.
+        recordSetupAttempt: () => () => {},
+        getPackageManager: async () => "uv",
+        hasPyprojectToml: async () => true,
         ...overrides,
     };
 }
@@ -517,5 +546,250 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(shownErrors).to.deep.equal(["could not select interpreter"]);
         expect(saved).to.have.length(0);
         expect(succeeded).to.have.length(0);
+    });
+});
+
+describe("PythonSetupEnvironmentSetup telemetry", () => {
+    it("records an attempt and an ok result on a successful run", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({...telemetry, getPackageManager: async () => "uv"})
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts).to.deep.equal([
+            {
+                packageManager: "uv",
+                targetType: "serverless",
+                serverlessVersion: "5",
+                mode: "default",
+                // hasPyprojectToml defaults to true, so this is not greenfield.
+                isGreenfield: false,
+            },
+        ]);
+        expect(telemetry.results).to.deep.equal([
+            {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},
+        ]);
+    });
+
+    it("omits serverlessVersion and reports cluster for a cluster target", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                resolveCompute: async () => ({
+                    kind: "cluster",
+                    clusterId: "0710-abc",
+                }),
+            })
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts).to.have.length(1);
+        expect(telemetry.attempts[0].targetType).to.equal("cluster");
+        // Never emit a cluster id: the attempt carries only the target *kind*.
+        expect(telemetry.attempts[0].serverlessVersion).to.equal(undefined);
+        expect(JSON.stringify(telemetry.attempts[0])).to.not.contain("0710");
+    });
+
+    it("reports isGreenfield when the project has no pyproject.toml", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                getPackageManager: async () => "unknown",
+                hasPyprojectToml: async () => false,
+            })
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts[0].isGreenfield).to.equal(true);
+    });
+
+    it("omits isGreenfield for a non-uv project (the signal is unreliable there)", async () => {
+        const telemetry = makeTelemetryRecorder();
+        let probed = 0;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                // pip/conda users may never have a pyproject.toml, so its
+                // absence says nothing about greenfield-ness.
+                getPackageManager: async () => "pip",
+                hasPyprojectToml: async () => {
+                    probed += 1;
+                    return false;
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts[0].packageManager).to.equal("pip");
+        expect(telemetry.attempts[0].isGreenfield).to.equal(undefined);
+        // Not even probed: the answer could not be reported either way.
+        expect(probed).to.equal(0);
+    });
+
+    it("reports the failure phase, error code and disk state on CLI failure", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({...telemetry, cli: makeCli({resolve: ERROR_NO_TARGET})})
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts).to.have.length(1);
+        expect(telemetry.results).to.deep.equal([
+            {
+                outcome: "failed",
+                failurePhase: ERROR_NO_TARGET.error!.failurePhase,
+                errorCode: ERROR_NO_TARGET.error!.code,
+                envKey: ERROR_NO_TARGET.compute?.envKey,
+                diskMutated: ERROR_NO_TARGET.error!.diskMutated,
+            },
+        ]);
+    });
+
+    it('reports the synthetic "adopt" phase when interpreter adoption fails', async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                adoptInterpreter: async () => {
+                    throw new Error("could not select interpreter");
+                },
+            })
+        );
+
+        await setup.setup();
+
+        // The CLI exited ok, so there is no CLI error code — but the flow
+        // failed, at the extension's own phase.
+        expect(telemetry.results).to.deep.equal([
+            {
+                outcome: "failed",
+                failurePhase: "adopt",
+                envKey: SUCCESS_REAL_RUN.compute!.envKey,
+            },
+        ]);
+    });
+
+    it("reports cancelled when the user aborts the run", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                cli: makeCli({reject: new PythonSetupCancelledError()}),
+            })
+        );
+
+        await setup.setup();
+
+        // Distinct from `failed`: the user gave up, nothing broke.
+        expect(telemetry.results).to.deep.equal([{outcome: "cancelled"}]);
+    });
+
+    it("reports not_started when the CLI produces no result", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                cli: makeCli({reject: new Error("spawn databricks ENOENT")}),
+            })
+        );
+
+        await setup.setup();
+
+        // A spawn/parse error has no result object, so there is no phase or
+        // error code to attribute the break to.
+        expect(telemetry.results).to.deep.equal([{outcome: "not_started"}]);
+    });
+
+    it("records nothing when the run never starts", async () => {
+        for (const overrides of [
+            {projectRoot: () => undefined},
+            {isVisible: async () => false},
+            {resolveCompute: async () => undefined},
+        ]) {
+            const telemetry = makeTelemetryRecorder();
+            const setup = new PythonSetupEnvironmentSetup(
+                makeDeps({...telemetry, ...overrides})
+            );
+
+            await setup.setup();
+
+            // No CLI ran, so there is no attempt to pair a result with. These
+            // clicks are covered by python_env.setup.detected instead.
+            expect(telemetry.attempts).to.have.length(0);
+            expect(telemetry.results).to.have.length(0);
+        }
+    });
+
+    it("records exactly one result per attempt, including across runs", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(makeDeps(telemetry));
+
+        // Two coalesced calls (one run), then a second, separate run.
+        await Promise.all([setup.setup(), setup.setup()]);
+        await setup.setup();
+
+        expect(telemetry.attempts).to.have.length(2);
+        expect(telemetry.results).to.have.length(2);
+    });
+
+    it("completes the setup even when the telemetry emit itself throws", async () => {
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                recordSetupAttempt: () => {
+                    throw new Error("telemetry blew up");
+                },
+            })
+        );
+
+        await setup.setup();
+
+        // Measurement must never break the flow it measures.
+        expect(setup.ready).to.equal(true);
+    });
+
+    it("completes the setup even when the result reporter throws", async () => {
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                recordSetupAttempt: () => () => {
+                    throw new Error("reporter blew up");
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(setup.ready).to.equal(true);
+    });
+
+    it("still records the attempt when gathering its context fails", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                getPackageManager: async () => {
+                    throw new Error("detection blew up");
+                },
+            })
+        );
+
+        await setup.setup();
+
+        // Telemetry must never cost the user their setup run: the attempt
+        // degrades to `unknown` rather than propagating.
+        expect(setup.ready).to.equal(true);
+        expect(telemetry.attempts).to.have.length(1);
+        expect(telemetry.attempts[0].packageManager).to.equal("unknown");
+        expect(telemetry.attempts[0].isGreenfield).to.equal(undefined);
+        expect(telemetry.results).to.deep.equal([
+            {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},
+        ]);
     });
 });

@@ -1,5 +1,9 @@
+import {existsSync} from "fs";
+import path from "path";
 import {ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
+import {Telemetry} from "../../telemetry";
+import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
@@ -104,6 +108,8 @@ export interface PythonSetupWiringDeps {
         append: (chunk: string) => void;
         show: () => void;
     };
+    /** Records the setup attempt/result events. */
+    telemetry: Telemetry;
 }
 
 /**
@@ -153,6 +159,20 @@ export function makePythonSetupDeps(
                 "Python environment is set up for Databricks Connect."
             );
         },
+        recordSetupAttempt: (attempt) =>
+            wiring.telemetry.recordPythonSetupAttempt(attempt),
+        getPackageManager: async () => {
+            const root = wiring.projectRoot();
+            if (root === undefined) {
+                return undefined;
+            }
+            // Same detection the gate ran for this click. It is re-run rather
+            // than cached because a project's markers can change between the
+            // config view rendering the entry and the user pressing it.
+            return (await wiring.detect(root)).primary;
+        },
+        hasPyprojectToml: async (projectRoot: string) =>
+            existsSync(path.join(projectRoot, "pyproject.toml")),
         withProgress: (title, task) =>
             // window.withProgress returns a Thenable; the seam is typed as a
             // Promise, so normalise it. `cancellable` is required for the token

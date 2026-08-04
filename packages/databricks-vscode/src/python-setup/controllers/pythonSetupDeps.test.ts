@@ -7,6 +7,7 @@ import {
     resolveComputeFrom,
 } from "./pythonSetupDeps";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
+import {Telemetry} from "../../telemetry";
 
 describe("makePythonSetupVisibility", () => {
     const uvDetection = {primary: "uv" as const, managers: ["uv" as const]};
@@ -132,6 +133,9 @@ describe("makePythonSetupDeps saveState", () => {
             setActiveInterpreter: async () => {},
             persistSetupState: () => {},
             log: {append: () => {}, show: () => {}},
+            // A reporter-less client: recordEvent short-circuits, so the setup
+            // events are inert here (they have their own tests).
+            telemetry: new Telemetry(undefined),
             ...overrides,
         };
     }
@@ -228,6 +232,9 @@ describe("makePythonSetupDeps withProgress", () => {
             setActiveInterpreter: async () => {},
             persistSetupState: () => {},
             log: {append: () => {}, show: () => {}},
+            // A reporter-less client: recordEvent short-circuits, so the setup
+            // events are inert here (they have their own tests).
+            telemetry: new Telemetry(undefined),
             ...overrides,
         };
     }
