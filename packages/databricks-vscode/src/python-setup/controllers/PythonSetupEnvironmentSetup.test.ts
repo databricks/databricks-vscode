@@ -36,6 +36,9 @@ function makeTelemetryRecorder() {
                 results.push(report);
             };
         },
+        recordNoCompute: () => {
+            results.push({outcome: "no_compute"});
+        },
     };
 }
 
@@ -109,6 +112,7 @@ function makeDeps(
         // Telemetry defaults to a no-op sink; tests that assert on events pass
         // a recorder instead.
         recordSetupAttempt: () => () => {},
+        recordNoCompute: () => {},
         getPackageManager: async () => "uv",
         hasPyprojectToml: async () => true,
         ...overrides,
@@ -708,11 +712,10 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         expect(telemetry.results).to.deep.equal([{outcome: "not_started"}]);
     });
 
-    it("records nothing when the run never starts", async () => {
+    it("records nothing when there is no project or the gate is closed", async () => {
         for (const overrides of [
             {projectRoot: () => undefined},
             {isVisible: async () => false},
-            {resolveCompute: async () => undefined},
         ]) {
             const telemetry = makeTelemetryRecorder();
             const setup = new PythonSetupEnvironmentSetup(
@@ -721,11 +724,45 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
 
             await setup.setup();
 
-            // No CLI ran, so there is no attempt to pair a result with. These
-            // clicks are covered by python_env.setup.detected instead.
+            // Neither is a user-visible dead end: with no project there is
+            // nothing to set up, and a closed gate means the CTA was never shown.
             expect(telemetry.attempts).to.have.length(0);
             expect(telemetry.results).to.have.length(0);
         }
+    });
+
+    it("reports no_compute (without an attempt) when the CTA is a dead end", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({...telemetry, resolveCompute: async () => undefined})
+        );
+
+        await setup.setup();
+
+        // The entry is visible whenever the project fits, independent of
+        // compute, so this is a real dead-end click worth measuring. No run
+        // started, hence no attempt to pair with.
+        expect(telemetry.attempts).to.have.length(0);
+        expect(telemetry.results).to.deep.equal([{outcome: "no_compute"}]);
+    });
+
+    it("still guides the user when the no_compute emit throws", async () => {
+        const notified: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                resolveCompute: async () => undefined,
+                recordNoCompute: () => {
+                    throw new Error("telemetry blew up");
+                },
+                notify: async (m) => {
+                    notified.push(m);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(notified).to.have.length(1);
     });
 
     it("records exactly one result per attempt, including across runs", async () => {
@@ -819,6 +856,27 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         expect(setup.ready).to.equal(true);
     });
 
+    it("keeps the detected manager when only the pyproject probe fails", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                getPackageManager: async () => "uv",
+                hasPyprojectToml: async () => {
+                    throw new Error("stat failed");
+                },
+            })
+        );
+
+        await setup.setup();
+
+        // The two probes are independent: a failing greenfield probe must not
+        // discard a successfully detected manager, or the manager distribution
+        // would skew toward `unknown`.
+        expect(telemetry.attempts[0].packageManager).to.equal("uv");
+        expect(telemetry.attempts[0].isGreenfield).to.equal(undefined);
+    });
+
     it("still records the attempt when gathering its context fails", async () => {
         const telemetry = makeTelemetryRecorder();
         const setup = new PythonSetupEnvironmentSetup(
@@ -837,7 +895,10 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         expect(setup.ready).to.equal(true);
         expect(telemetry.attempts).to.have.length(1);
         expect(telemetry.attempts[0].packageManager).to.equal("unknown");
-        expect(telemetry.attempts[0].isGreenfield).to.equal(undefined);
+        // The greenfield probe is independent and still runs: `unknown` is one
+        // of the two managers for which the signal is meaningful, and this
+        // project has a pyproject.toml.
+        expect(telemetry.attempts[0].isGreenfield).to.equal(false);
         expect(telemetry.results).to.deep.equal([
             {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},
         ]);

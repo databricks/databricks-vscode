@@ -196,6 +196,12 @@ describe(__filename, () => {
             "/Users/someone/projects/secret-project",
             "serverless/serverless-vNEXT",
             "",
+            // Cluster *names* are user-chosen and often contain a person's
+            // name. These must not pass as a "spark version".
+            "dbr/janes-dev-cluster",
+            "dbr/johns.laptop.cluster",
+            "dbr/jdoe-databricks-com",
+            `dbr/${"a".repeat(500)}`,
         ]) {
             const {telemetry, events} = makeTelemetry();
             telemetry.recordPythonSetupAttempt({
@@ -205,6 +211,61 @@ describe(__filename, () => {
             })({outcome: "ok", envKey});
             expect(events[1].props["event.envKey"]).to.equal("other");
         }
+    });
+
+    it("emits only the schema's fields, never extra ones on the caller's object", () => {
+        const {telemetry, events} = makeTelemetry();
+
+        // Model a future refactor that widens the attempt/report objects (or
+        // passes a wider object through this seam). The transport must be an
+        // allowlist: TypeScript's excess-property check does not apply to a
+        // spread variable, so the emit half is the only place this can be
+        // enforced.
+        telemetry.recordPythonSetupAttempt({
+            packageManager: "uv",
+            targetType: "cluster",
+            mode: "default",
+            clusterId: "0710-142042-secretcluster",
+            projectPath: "/Users/jane/projects/acme",
+        } as any)({
+            outcome: "ok",
+            envKey: "dbr/15.4.x-scala2.12",
+            rawCliMessage: "failed for user jane@example.com",
+        } as any);
+
+        for (const event of events) {
+            const serialized = JSON.stringify(event.props);
+            expect(serialized).to.not.contain("0710");
+            expect(serialized).to.not.contain("jane");
+            expect(serialized).to.not.contain("acme");
+        }
+        expect(Object.keys(events[0].props).sort()).to.deep.equal([
+            "event.mode",
+            "event.packageManager",
+            "event.targetType",
+            "version",
+        ]);
+        expect(Object.keys(events[1].props).sort()).to.deep.equal([
+            "event.envKey",
+            "event.outcome",
+            "version",
+        ]);
+    });
+
+    it("reports no_compute on its own, with no attempt and no duration", () => {
+        const {telemetry, events} = makeTelemetry();
+
+        telemetry.recordPythonSetupNoCompute();
+
+        expect(events).to.have.length(1);
+        expect(events[0].name).to.equal("python_env.setup.result");
+        expect(events[0].props).to.deep.equal({
+            "version": "1.0",
+            "event.outcome": "no_compute",
+        });
+        // Nothing ran, so a 0ms duration would drag the setup-time percentiles
+        // down rather than describing anything.
+        expect(events[0].metrics).to.not.have.property("event.duration");
     });
 
     it("sends nothing when the telemetry reporter is unavailable", () => {

@@ -129,6 +129,16 @@ export interface PythonSetupSetupDeps {
     ) => PythonSetupResultReporter;
 
     /**
+     * Record that the CTA was pressed with nothing to set up for, so no run
+     * started. Reported without an attempt (the one exception to the pairing),
+     * because a visible button that dead-ends is worth measuring and no other
+     * event covers it: `python_env.setup.detected`'s `explicit_command` trigger
+     * fires only from the legacy setup command, which the config view shows
+     * mutually exclusively with this entry.
+     */
+    recordNoCompute: () => void;
+
+    /**
      * The project's detected package manager, for the attempt event. Reads the
      * same detection the visibility gate runs; `undefined` when detection was
      * unavailable, in which case the attempt reports `unknown`.
@@ -244,6 +254,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // Tell them what to do instead of silently no-op'ing the button.
             // Plain notify (not showError): no CLI ran, so there is no log to
             // reveal.
+            try {
+                this.deps.recordNoCompute();
+            } catch {
+                // Measurement must never break the flow it measures.
+            }
             await this.deps.notify(NO_COMPUTE_TARGET_MESSAGE);
             return;
         }
@@ -358,17 +373,24 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         const {compute} = invocation;
         let packageManager: PrimaryManager = "unknown";
         let isGreenfield: boolean | undefined;
+        // Two independent probes, so they get independent try blocks: a failing
+        // pyproject.toml probe must not discard a package manager that was
+        // detected successfully (that would bias the manager distribution toward
+        // `unknown`). Either failing just narrows the attempt, never breaks the
+        // user's setup run.
         try {
             packageManager = (await this.deps.getPackageManager()) ?? "unknown";
+        } catch {
+            // Keep `unknown`.
+        }
+        try {
             isGreenfield = await greenfieldSignal(
                 packageManager,
                 projectRoot,
                 this.deps.hasPyprojectToml
             );
         } catch {
-            // Keep the defaults: an attempt with a coarser package-manager
-            // value is still worth recording, and a probe failure must not cost
-            // the user their setup run.
+            // Leave isGreenfield undefined, i.e. omitted from the event.
         }
         try {
             const reportResult = this.deps.recordSetupAttempt({

@@ -30,17 +30,28 @@ inflate into several results.
 
 The attempt is recorded once the compute target is resolved and immediately
 before the CLI is spawned — that is, once a run is genuinely about to happen.
-Clicks that stop earlier (no project open, the visibility gate closed, or no
-compute attached) record **nothing**; those are already visible as
-`python_env.setup.detected` with trigger `explicit_command`.
 
-That gives a three-stage funnel:
+Clicks that stop earlier fall into two groups:
+
+-   **No compute attached** (or a serverless session with no chosen version) — the
+    CTA is a visible dead end, so this reports a lone
+    `python_env.setup.result` with `outcome: "no_compute"` and no attempt.
+-   **No project open, or the visibility gate closed** — records nothing. Neither
+    is a dead end: with no project there is nothing to set up, and a closed gate
+    means the entry was never shown in the first place.
 
 ```
-python_env.setup.detected (explicit_command)   user clicked
-  └─ python_env.setup.attempt                  a run started
-       └─ python_env.setup.result              how it ended
+python_env.setup.attempt                a run started
+  └─ python_env.setup.result            how it ended
+python_env.setup.result(no_compute)     the CTA dead-ended, no run
 ```
+
+Note that `python_env.setup.detected` does **not** provide a top-of-funnel stage
+for this flow. Its `explicit_command` trigger fires only from the _legacy_
+`databricks.environment.setup` command, whereas the uv-native entry dispatches
+`databricks.environment.setupPythonEnv` — and the config view renders the two
+mutually exclusively, so a user who sees this entry never emits that event. Any
+click-through analysis has to start from `attempt` plus the `no_compute` result.
 
 Overlapping clicks coalesce onto the in-flight run (the orchestrator's
 re-entrancy guard), so they produce one attempt, not two.
@@ -73,14 +84,14 @@ result event instead; the two join on session.
 
 ## `python_env.setup.result` schema
 
-| Field          | Type       | Notes                                                       |
-| -------------- | ---------- | ----------------------------------------------------------- |
-| `outcome`      | enum       | `ok \| failed \| cancelled \| not_started`.                 |
-| `failurePhase` | enum?      | The CLI's six phases, plus `adopt` / `persist` (see below). |
-| `errorCode`    | enum?      | The CLI's stable `E_*` failure class.                       |
-| `envKey`       | `string?`  | e.g. `dbr/15.4.x-scala2.12`, `serverless/serverless-v5`.    |
-| `diskMutated`  | `boolean?` | Whether a failed run had already modified project files.    |
-| `duration`     | number     | Milliseconds, measured by the extension (see below).        |
+| Field          | Type       | Notes                                                             |
+| -------------- | ---------- | ----------------------------------------------------------------- |
+| `outcome`      | enum       | `ok \| failed \| cancelled \| not_started \| no_compute`.         |
+| `failurePhase` | enum?      | The CLI's six phases, plus `adopt` / `persist` (see below).       |
+| `errorCode`    | enum?      | The CLI's stable `E_*` failure class.                             |
+| `envKey`       | `string?`  | e.g. `dbr/15.4.x-scala2.12`, `serverless/serverless-v5`.          |
+| `diskMutated`  | `boolean?` | Whether a failed run had already modified project files.          |
+| `duration`     | `number?`  | Milliseconds, measured by the extension. Absent for `no_compute`. |
 
 ### Outcome values
 
@@ -90,10 +101,15 @@ result event instead; the two join on session.
 | `failed`      | CLI returned `ok:false`, **or** adoption failed after a good run.   |
 | `cancelled`   | The user cancelled the progress notification.                       |
 | `not_started` | Spawn/parse error — the CLI produced no result object at all.       |
+| `no_compute`  | The CTA dead-ended: nothing was attached to set up for.             |
 
 `cancelled` is kept distinct from `failed` on purpose: a user abandoning a slow
 setup is a signal about provisioning time, not about breakage. `not_started` is
 distinct because there is no phase or error code to attribute the break to.
+
+`no_compute` is the one outcome emitted **without** a preceding attempt, and the
+only one with no `duration` — nothing ran, and a 0 ms value would drag the
+setup-time percentiles down. Exclude it when computing a per-run success rate.
 
 ### The extension-side phases
 
@@ -153,6 +169,15 @@ Only categorical/enum values and a duration. No file paths, cluster names or
 IDs, package names, project names, or user content. Optional fields are **omitted
 when unknown** rather than sent as `undefined` — the transport would stringify
 that to the literal `"undefined"` and pollute the schema.
+
+The emit half names every field explicitly instead of spreading the caller's
+object. This is load-bearing, not style: spreading a _variable_ disables
+TypeScript's excess-property check, so any field later added to
+`PythonSetupAttempt` / `PythonSetupOutcomeReport` — or any wider object passed
+through the seam — would be emitted automatically (with objects
+JSON-stringified), on a clean build. Enumerating the fields makes the schema an
+allowlist the compiler enforces, so this document's privacy claim cannot silently
+go stale.
 
 Telemetry never costs the user their setup run: gathering the attempt's context
 is wrapped so a detection/probe failure degrades to `unknown` (and an omitted

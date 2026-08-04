@@ -81,8 +81,19 @@ export type {PythonSetupMode, PythonSetupErrorCode};
  * (spawn/parse error), so no phase or error code exists to attribute. And
  * `cancelled` is distinct from both — a user abandoning a slow setup is the
  * signal that the provisioning time is unacceptable, not that it broke.
+ *
+ * `no_compute` is the pre-flight dead end: the user pressed the CTA with no
+ * cluster attached (or a serverless session with no chosen version), so nothing
+ * could run. It is reported without a preceding attempt — see
+ * {@link Telemetry.recordPythonSetupNoCompute} — because measuring how often the
+ * button is a dead end is the whole point of tracking it.
  */
-export type PythonSetupOutcome = "ok" | "failed" | "cancelled" | "not_started";
+export type PythonSetupOutcome =
+    | "ok"
+    | "failed"
+    | "cancelled"
+    | "not_started"
+    | "no_compute";
 
 /**
  * Where a failed setup broke: the CLI's six canonical phases, plus the two
@@ -344,22 +355,27 @@ export class EventTypes {
                 "nothing about greenfield-ness, so the signal would be misleading",
         },
     };
-    [Events.PYTHON_ENV_SETUP_RESULT]: EventType<
-        {
-            outcome: PythonSetupOutcome;
-            failurePhase?: PythonSetupFailurePhase;
-            errorCode?: PythonSetupErrorCode;
-            envKey?: string;
-            diskMutated?: boolean;
-        } & DurationMeasurement
-    > = {
+    [Events.PYTHON_ENV_SETUP_RESULT]: EventType<{
+        outcome: PythonSetupOutcome;
+        failurePhase?: PythonSetupFailurePhase;
+        errorCode?: PythonSetupErrorCode;
+        envKey?: string;
+        diskMutated?: boolean;
+        // Optional rather than the usual required DurationMeasurement: the
+        // `no_compute` outcome is reported without a run having started, so
+        // there is no elapsed time. Emitting 0 there would drag the
+        // setup-time percentiles toward zero.
+        duration?: number;
+    }> = {
         comment:
             "The outcome of a uv-native Python environment setup run. Pairs 1:1 with a preceding " +
-            "python_env.setup.attempt. The failure phase localises where the funnel breaks without " +
-            "requiring funnel tracking. Categorical data only.",
+            "python_env.setup.attempt, except for outcome=no_compute, which is reported on its own " +
+            "when the user pressed the CTA with nothing attached to set up for. The failure phase " +
+            "localises where the funnel breaks without requiring funnel tracking. Categorical data only.",
         outcome: {
             comment:
-                "ok | failed | cancelled (user aborted) | not_started (the CLI produced no result)",
+                "ok | failed | cancelled (user aborted) | not_started (the CLI produced no " +
+                "result) | no_compute (the CTA was a dead end: nothing was attached to set up for)",
         },
         failurePhase: {
             comment:

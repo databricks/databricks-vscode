@@ -42,29 +42,19 @@ export type PythonSetupResultReporter = (
 ) => void;
 
 /**
- * Drop keys whose value is `undefined`.
- *
- * `recordEvent` stringifies an explicit `undefined` to the literal "undefined",
- * so passing an absent optional through would pollute the event schema with a
- * bogus value. Callers build reports straight from optional chaining
- * (`result.error?.code`), so the filtering belongs here rather than at every
- * call site.
- */
-function withoutUndefined<T extends object>(source: T): Partial<T> {
-    return Object.fromEntries(
-        Object.entries(source).filter(([, v]) => v !== undefined)
-    ) as Partial<T>;
-}
-
-/**
  * The env-key shapes the CLI produces: `serverless/serverless-v<N>` and
  * `dbr/<sparkVersion>` (see `EnvKeyForServerless` / `EnvKeyForSparkVersion`).
- * The DBR arm is deliberately narrow — a Spark version is dotted/dashed
- * alphanumerics, nothing else.
+ *
+ * The DBR arm matches the Spark-version grammar (`15.4.x-scala2.12`,
+ * `14.3.x-photon-scala2.12`) rather than "alphanumerics and punctuation": the
+ * looser form would admit a cluster *name*, which is user-chosen and routinely
+ * contains a person's name (`dbr/janes-dev-cluster` would have passed). The
+ * leading `<major>.<minor>.` requirement and the length bound are what keep this
+ * a closed vocabulary.
  */
 const ENV_KEY_PATTERNS = [
     /^serverless\/serverless-v\d+$/,
-    /^dbr\/[A-Za-z0-9][A-Za-z0-9.\-_]*$/,
+    /^dbr\/\d+\.\d+\.[A-Za-z0-9.-]{1,30}$/,
 ];
 
 /**
@@ -112,19 +102,47 @@ declare module "." {
         recordPythonSetupAttempt(
             attempt: PythonSetupAttempt
         ): PythonSetupResultReporter;
+
+        /**
+         * Record that the setup CTA was a dead end: it was pressed with no
+         * compute attached (or a serverless session with no chosen version), so
+         * no run could start.
+         *
+         * Emits a lone PYTHON_ENV_SETUP_RESULT with `outcome: "no_compute"` and
+         * no attempt, since no run was attempted. This is the one intentional
+         * exception to the 1:1 pairing, and it exists because the alternative —
+         * relying on `python_env.setup.detected` to cover early aborts — does not
+         * work for this cohort: that event's `explicit_command` trigger fires
+         * only from the *legacy* setup command, and the config view shows the
+         * legacy checklist and the uv-native entry mutually exclusively.
+         */
+        recordPythonSetupNoCompute(): void;
     }
 }
 
+// Both payloads below name every field explicitly instead of spreading the
+// caller's object. Spreading a *variable* switches off TypeScript's
+// excess-property check, so any field later added to PythonSetupAttempt /
+// PythonSetupOutcomeReport — or any wider object passed through this seam —
+// would be emitted automatically, with objects JSON-stringified by
+// recordEvent's addKeys. That would make this transport silently widen what is
+// collected on a clean build. Enumerating the fields makes the event schema an
+// allowlist the compiler enforces, which is what the privacy claim in
+// PYTHON_SETUP_TELEMETRY.md rests on. Optionals are spread individually so an
+// absent one is omitted rather than serialized as the string "undefined".
 Telemetry.prototype.recordPythonSetupAttempt = function (
     attempt: PythonSetupAttempt
 ): PythonSetupResultReporter {
     this.recordEvent(Events.PYTHON_ENV_SETUP_ATTEMPT, {
-        ...withoutUndefined(attempt),
-        // Re-assert the required fields: withoutUndefined widens everything to
-        // optional, and the event schema requires these three.
         packageManager: attempt.packageManager,
         targetType: attempt.targetType,
         mode: attempt.mode,
+        ...(attempt.serverlessVersion !== undefined
+            ? {serverlessVersion: attempt.serverlessVersion}
+            : {}),
+        ...(attempt.isGreenfield !== undefined
+            ? {isGreenfield: attempt.isGreenfield}
+            : {}),
     });
 
     // start() stamps the elapsed time onto the result event as `duration`.
@@ -139,11 +157,26 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
         }
         reported = true;
         reportResult({
-            ...withoutUndefined(report),
             outcome: report.outcome,
+            ...(report.failurePhase !== undefined
+                ? {failurePhase: report.failurePhase}
+                : {}),
+            ...(report.errorCode !== undefined
+                ? {errorCode: report.errorCode}
+                : {}),
             ...(report.envKey !== undefined
                 ? {envKey: categoricalEnvKey(report.envKey)}
                 : {}),
+            ...(report.diskMutated !== undefined
+                ? {diskMutated: report.diskMutated}
+                : {}),
         });
     };
+};
+
+Telemetry.prototype.recordPythonSetupNoCompute = function () {
+    // `duration` is deliberately omitted, not 0: nothing ran, and a zero would
+    // drag the setup-time percentiles down. Recorded directly rather than via
+    // start(), which always stamps an elapsed time.
+    this.recordEvent(Events.PYTHON_ENV_SETUP_RESULT, {outcome: "no_compute"});
 };

@@ -161,6 +161,7 @@ export function makePythonSetupDeps(
         },
         recordSetupAttempt: (attempt) =>
             wiring.telemetry.recordPythonSetupAttempt(attempt),
+        recordNoCompute: () => wiring.telemetry.recordPythonSetupNoCompute(),
         getPackageManager: async () => {
             const root = wiring.projectRoot();
             if (root === undefined) {
