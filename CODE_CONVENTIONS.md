@@ -100,6 +100,8 @@ makes it hard to unit-test (see section 8).
    dependencies, register commands.
 7. **Add a barrel (`index.ts`) only if the feature has a clear public surface**
    other modules import — and make it a _selective_ re-export, not `export *`.
+8. **If the feature needs a prose doc, add `README.md` to its folder** — see
+   section 4a. Most features don't.
 
 A typical new feature:
 
@@ -176,6 +178,66 @@ Three decorators are in use — prefer them over hand-rolled equivalents:
   `console.log`** (`no-console` is an ESLint error outside tests).
 - Define new telemetry events in `telemetry/constants.ts`. User-facing commands are
   instrumented automatically by the `telemetry.registerCommand` wrapper (section 6).
+- **`EventTypes` in `telemetry/constants.ts` is the only source of truth for an
+  event's schema.** Each field carries a `comment`; `telemetry.json` is generated
+  from the class by `scripts/generateTelemetry.ts` and is gitignored. Never
+  hand-maintain a field list elsewhere — including in prose docs, which go stale
+  silently while the generated file stays correct.
+
+---
+
+## 4a. Where module documentation goes
+
+Most code needs no prose doc — a class doc-comment and good names are enough.
+When a module genuinely needs one (a design rationale, a privacy posture, a
+protocol), write a **`README.md` in the module's folder**, next to the code it
+describes.
+
+- **`README.md`, not a descriptive name.** Prefer `src/telemetry/README.md` over
+  `src/telemetry/MY_FEATURE_TELEMETRY.md`. A file named for one feature inside a
+  shared folder is undiscoverable — nothing links to it, and the next person adds
+  a second one rather than extending it. `README.md` is the name tooling and humans
+  already look for, and GitHub renders it when browsing the folder.
+  (`src/telemetry/PACKAGE_MANAGER_DETECTION.md` predates this rule; fold such files
+  into the folder's `README.md` when you next touch them.)
+- **Document the _why_, not the _what_.** Schemas, field lists, and signatures
+  belong in the code (or, for telemetry, in generated output). A doc that restates
+  them acquires a second source of truth that drifts. Record the decisions and
+  trade-offs that have nowhere else to live.
+- **No top-level `docs/`.** It is gitignored in this repo (local scratch only), so
+  anything committed must live beside the code or in an existing root file
+  (`README.md`, `CONTRIBUTING.md`, this file).
+
+### Why colocation
+
+Surveyed when this convention was written (August 2026):
+
+| Project                             | Practice                                                                                                        |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [microsoft/vscode][vsc]             | Colocated docs, **no top-level `docs/`**: ~29 architecture docs under `src/` (e.g. `src/vs/sessions/LAYOUT.md`) |
+| [facebook/react][react]             | Colocated `README.md` per package (`packages/react-reconciler/README.md`)                                       |
+| [rust-lang/rust][rust]              | Colocated `README.md` per crate, a few lines, pointing at the external dev guide                                |
+| [vscode-pull-request-github][vscpr] | Centralized `documentation/` directory                                                                          |
+| [kubernetes][k8s], [eslint][eslint] | Centralized `docs/` + external enhancement proposals                                                            |
+
+Both colocation and centralization are well-established; there is no universal
+answer. We colocate because this repo has no committed `docs/` tree, and we
+standardize on `README.md` (React/Rust style) rather than VS Code's
+descriptive-filename style because the latter only stays navigable when a folder is
+one subsystem — `src/telemetry/` serves every feature.
+
+**Telemetry specifically:** VS Code documents events _inline in TypeScript_ — GDPR
+classification, purpose, and comment in a type beside the emit call — with no
+per-event markdown ([`telemetry.instructions.md`][vsctel]). Our `EventTypes`
+`comment` fields are the same idea, which is why prose docs must not duplicate them.
+
+[vsc]: https://github.com/microsoft/vscode/tree/main/src/vs/sessions
+[vsctel]: https://github.com/microsoft/vscode/blob/main/.github/instructions/telemetry.instructions.md
+[react]: https://github.com/facebook/react/blob/main/packages/react-reconciler/README.md
+[rust]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/README.md
+[vscpr]: https://github.com/microsoft/vscode-pull-request-github/tree/main/documentation
+[k8s]: https://github.com/kubernetes/enhancements
+[eslint]: https://github.com/eslint/eslint/tree/main/docs
 
 ---
 
