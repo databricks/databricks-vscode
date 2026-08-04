@@ -47,7 +47,7 @@ export type PythonSetupErrorCode =
     | "E_PROVISION"
     | "E_VALIDATE";
 
-export interface PythonSetupTargetInfo {
+export interface PythonSetupComputeInfo {
     source: string;
     clusterId?: string;
     serverlessVersion?: string;
@@ -97,11 +97,13 @@ export interface PythonSetupResult {
     ok: boolean;
     mode: PythonSetupMode;
     dryRun: boolean;
-    // TODO: rename to `compute` (+ PythonSetupTargetInfo -> PythonSetupComputeInfo)
-    // to match SetupLocalInvocation.compute. This field mirrors the CLI's wire
-    // key `target`, so the rename must land in the CLI's --output json first
-    // (with a schemaVersion bump), then here.
-    target?: PythonSetupTargetInfo;
+    /**
+     * The resolved compute the environment was provisioned against. Mirrors the
+     * CLI's `compute` result key (renamed from `target` in databricks/cli#6100)
+     * so the structural cast in {@link parsePythonSetupResult} keeps matching the
+     * wire shape.
+     */
+    compute?: PythonSetupComputeInfo;
     resolved?: PythonSetupResolvedInfo;
     greenfield: boolean;
     plan?: PythonSetupPlan;
