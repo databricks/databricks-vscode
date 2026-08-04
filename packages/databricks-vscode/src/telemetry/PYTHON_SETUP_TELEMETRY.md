@@ -21,9 +21,10 @@ Transport is the shared `Telemetry` client, so properties are prefixed with
 user/workspace envelope is attached automatically.
 
 `recordPythonSetupAttempt` emits the attempt and **returns the reporter for that
-run's result**. The pairing is therefore structural: an outcome cannot be
-reported without an attempt having been recorded, and each attempt has exactly
-one result.
+run's result**. The pairing is therefore structural rather than a convention: an
+outcome cannot be reported without an attempt having been recorded, and the
+reporter is once-only — a second call is dropped, so one attempt can never
+inflate into several results.
 
 ## When they fire
 
@@ -72,14 +73,14 @@ result event instead; the two join on session.
 
 ## `python_env.setup.result` schema
 
-| Field          | Type       | Notes                                                           |
-| -------------- | ---------- | --------------------------------------------------------------- |
-| `outcome`      | enum       | `ok \| failed \| cancelled \| not_started`.                     |
-| `failurePhase` | enum?      | `preflight\|resolve\|fetch\|merge\|provision\|validate\|adopt`. |
-| `errorCode`    | enum?      | The CLI's stable `E_*` failure class.                           |
-| `envKey`       | `string?`  | e.g. `dbr/15.4.x-scala2.12`, `serverless/serverless-v5`.        |
-| `diskMutated`  | `boolean?` | Whether a failed run had already modified project files.        |
-| `duration`     | number     | Milliseconds, measured by the extension (see below).            |
+| Field          | Type       | Notes                                                       |
+| -------------- | ---------- | ----------------------------------------------------------- |
+| `outcome`      | enum       | `ok \| failed \| cancelled \| not_started`.                 |
+| `failurePhase` | enum?      | The CLI's six phases, plus `adopt` / `persist` (see below). |
+| `errorCode`    | enum?      | The CLI's stable `E_*` failure class.                       |
+| `envKey`       | `string?`  | e.g. `dbr/15.4.x-scala2.12`, `serverless/serverless-v5`.    |
+| `diskMutated`  | `boolean?` | Whether a failed run had already modified project files.    |
+| `duration`     | number     | Milliseconds, measured by the extension (see below).        |
 
 ### Outcome values
 
@@ -94,16 +95,34 @@ result event instead; the two join on session.
 setup is a signal about provisioning time, not about breakage. `not_started` is
 distinct because there is no phase or error code to attribute the break to.
 
-### The `adopt` phase
+### The extension-side phases
 
-`adopt` is a **synthetic seventh phase**, appended to the CLI's canonical six. It
-covers pointing the MS Python extension at the provisioned venv — an
-extension-side step that happens _after_ the CLI exits, so the CLI's own `phases`
-array cannot describe it. A venv the editor never selects is unusable, so this
-counts as a setup failure.
+Two phases are appended to the CLI's canonical six. Both cover steps that run
+_after_ the CLI has already exited ok, so its own `phases` array cannot describe
+them:
+
+-   **`adopt`** — pointing the MS Python extension at the provisioned venv. A venv
+    the editor never selects is unusable, so this counts as a setup failure.
+-   **`persist`** — recording the drift-detection baseline and readiness. The
+    environment itself works, but the extension's own state did not stick.
+
+The success report is emitted only after both have completed, so a throw in
+either is never recorded as `ok`. It is emitted _before_ the success toast,
+though: `showSuccess` resolves only when the user dismisses the notification, and
+folding think-time into `duration` would wreck the metric.
+
+### `envKey` is constrained before emission
 
 `envKey` is a runtime coordinate from a closed vocabulary, **never** a cluster id
-or a user-chosen cluster name.
+or a user-chosen cluster name. It is validated against the CLI's two documented
+shapes (`serverless/serverless-v<N>` and `dbr/<sparkVersion>`) before being
+emitted; anything else collapses to `"other"`.
+
+This matters because the key is copied out of CLI JSON that the parser
+deliberately validates only minimally, and the DBR arm is a raw
+`"dbr/" + sparkVersion` concatenation. Without the check, schema drift or an
+unexpected runtime string could put unbounded, potentially identifying,
+high-cardinality content into a field documented as categorical.
 
 ## Two ERD fields deliberately not reported
 

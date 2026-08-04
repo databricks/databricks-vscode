@@ -313,18 +313,32 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             return;
         }
 
+        // Do the state bookkeeping *before* reporting success, so a throw here
+        // is never recorded as `ok`.
+        try {
+            this.deps.saveState({
+                envKey: result.compute.envKey,
+                pythonVersion: result.resolved.pythonVersion,
+            });
+            // Record readiness for the project this run provisioned (the
+            // captured cwd), not the live active project — a mid-run switch must
+            // not mark a different project ready.
+            this.readyRoots.add(cwd);
+            this.stateEmitter.fire();
+        } catch (e) {
+            reportResult({
+                outcome: "failed",
+                failurePhase: "persist",
+                envKey: result.compute.envKey,
+            });
+            throw e;
+        }
+
+        // Reported before `showSuccess` on purpose: that awaits the user
+        // dismissing a toast, and folding think-time into `duration` would wreck
+        // the setup-time metric this event exists to measure.
         reportResult({outcome: "ok", envKey: result.compute.envKey});
 
-        this.deps.saveState({
-            envKey: result.compute.envKey,
-            pythonVersion: result.resolved.pythonVersion,
-        });
-
-        // Record readiness for the project this run provisioned (the captured
-        // cwd), not the live active project — a mid-run switch must not mark a
-        // different project ready.
-        this.readyRoots.add(cwd);
-        this.stateEmitter.fire();
         await this.deps.showSuccess(result);
     }
 

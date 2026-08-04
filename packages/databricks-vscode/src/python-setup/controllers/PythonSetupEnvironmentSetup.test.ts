@@ -740,6 +740,56 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         expect(telemetry.results).to.have.length(2);
     });
 
+    it("does not report ok when the post-adoption state bookkeeping throws", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                saveState: () => {
+                    throw new Error("workspaceState write failed");
+                },
+            })
+        );
+
+        let rejected = false;
+        try {
+            await setup.setup();
+        } catch {
+            rejected = true;
+        }
+
+        // The run rejected, so recording success would permanently overstate the
+        // success rate.
+        expect(rejected).to.equal(true);
+        expect(telemetry.results).to.deep.equal([
+            {
+                outcome: "failed",
+                failurePhase: "persist",
+                envKey: SUCCESS_REAL_RUN.compute!.envKey,
+            },
+        ]);
+    });
+
+    it("reports ok before showSuccess, so user think-time is not in the duration", async () => {
+        const telemetry = makeTelemetryRecorder();
+        let reportedBeforeToast = false;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                // showSuccess wraps window.showInformationMessage, whose promise
+                // settles only once the user dismisses the toast.
+                showSuccess: async () => {
+                    reportedBeforeToast = telemetry.results.length === 1;
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(reportedBeforeToast).to.equal(true);
+        expect(telemetry.results[0].outcome).to.equal("ok");
+    });
+
     it("completes the setup even when the telemetry emit itself throws", async () => {
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({

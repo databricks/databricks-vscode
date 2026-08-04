@@ -149,6 +149,64 @@ describe(__filename, () => {
         });
     });
 
+    it("reports at most one result per attempt", () => {
+        const {telemetry, events} = makeTelemetry();
+
+        const reportResult = telemetry.recordPythonSetupAttempt({
+            packageManager: "uv",
+            targetType: "cluster",
+            mode: "default",
+        });
+        reportResult({outcome: "ok"});
+        // A second call (e.g. from a future refactor that adds a terminal path
+        // without returning) must not inflate one attempt into two results.
+        reportResult({outcome: "failed", failurePhase: "persist"});
+
+        expect(events.map((e) => e.name)).to.deep.equal([
+            "python_env.setup.attempt",
+            "python_env.setup.result",
+        ]);
+        expect(events[1].props["event.outcome"]).to.equal("ok");
+    });
+
+    it("passes through the CLI's documented env-key shapes", () => {
+        for (const envKey of [
+            "serverless/serverless-v5",
+            "serverless/serverless-v12",
+            "dbr/15.4.x-scala2.12",
+            "dbr/14.3.x-photon-scala2.12",
+        ]) {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAttempt({
+                packageManager: "uv",
+                targetType: "cluster",
+                mode: "default",
+            })({outcome: "ok", envKey});
+            expect(events[1].props["event.envKey"]).to.equal(envKey);
+        }
+    });
+
+    it("collapses an unrecognised env key to a categorical placeholder", () => {
+        // The DBR arm of the key is a raw "dbr/" + sparkVersion concatenation
+        // from minimally-validated CLI JSON, so schema drift must not put
+        // unbounded (potentially identifying) content into the field.
+        for (const envKey of [
+            "cluster-0710-142042-abcdefgh",
+            "dbr/../../etc/passwd",
+            "/Users/someone/projects/secret-project",
+            "serverless/serverless-vNEXT",
+            "",
+        ]) {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAttempt({
+                packageManager: "uv",
+                targetType: "cluster",
+                mode: "default",
+            })({outcome: "ok", envKey});
+            expect(events[1].props["event.envKey"]).to.equal("other");
+        }
+    });
+
     it("sends nothing when the telemetry reporter is unavailable", () => {
         // No reporter: recordEvent short-circuits, so neither event is built.
         // (Level-based opt-out is enforced inside the real reporter and covered

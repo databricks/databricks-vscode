@@ -85,13 +85,20 @@ export type {PythonSetupMode, PythonSetupErrorCode};
 export type PythonSetupOutcome = "ok" | "failed" | "cancelled" | "not_started";
 
 /**
- * Where a failed setup broke. The CLI's six canonical phases plus `adopt`, the
- * extension-side step that points the MS Python extension at the provisioned
- * venv. Adoption is the point of the flow (an unselected venv is unusable from
- * the editor), so its failure is a setup failure — but it happens after the CLI
- * has exited ok, so the CLI's own `phases` array cannot describe it.
+ * Where a failed setup broke: the CLI's six canonical phases, plus the two
+ * extension-side steps that run after the CLI has already exited ok (so its own
+ * `phases` array cannot describe them).
+ *
+ * - `adopt` — pointing the MS Python extension at the provisioned venv.
+ *   Adoption is the point of the flow: an unselected venv is unusable from the
+ *   editor, so failing here is a setup failure.
+ * - `persist` — recording the drift-detection baseline and readiness. The
+ *   environment works, but the extension's own state did not stick.
  */
-export type PythonSetupFailurePhase = PythonSetupPhaseName | "adopt";
+export type PythonSetupFailurePhase =
+    | PythonSetupPhaseName
+    | "adopt"
+    | "persist";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -357,8 +364,9 @@ export class EventTypes {
         failurePhase: {
             comment:
                 "Which phase broke: the CLI's preflight/resolve/fetch/merge/provision/validate, " +
-                'or "adopt" when the venv was provisioned but could not be selected as the ' +
-                "interpreter. Omitted unless the outcome is failed",
+                'or the extension-side "adopt" (venv provisioned but not selectable as the ' +
+                'interpreter) / "persist" (state bookkeeping failed). Omitted unless the ' +
+                "outcome is failed",
         },
         errorCode: {
             comment:
@@ -368,6 +376,7 @@ export class EventTypes {
             comment:
                 'The resolved environment key (e.g. "dbr/15.4.x-scala2.12", ' +
                 '"serverless/serverless-v5") — a runtime coordinate, never a cluster ID or name. ' +
+                'Constrained to those two shapes before emission; anything else becomes "other". ' +
                 "Omitted when the run failed before resolving one",
         },
         diskMutated: {

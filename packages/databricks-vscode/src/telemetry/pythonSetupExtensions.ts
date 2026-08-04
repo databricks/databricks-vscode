@@ -56,6 +56,42 @@ function withoutUndefined<T extends object>(source: T): Partial<T> {
     ) as Partial<T>;
 }
 
+/**
+ * The env-key shapes the CLI produces: `serverless/serverless-v<N>` and
+ * `dbr/<sparkVersion>` (see `EnvKeyForServerless` / `EnvKeyForSparkVersion`).
+ * The DBR arm is deliberately narrow — a Spark version is dotted/dashed
+ * alphanumerics, nothing else.
+ */
+const ENV_KEY_PATTERNS = [
+    /^serverless\/serverless-v\d+$/,
+    /^dbr\/[A-Za-z0-9][A-Za-z0-9.\-_]*$/,
+];
+
+/**
+ * Reported in place of an env key that does not match a known shape.
+ */
+const UNRECOGNISED_ENV_KEY = "other";
+
+/**
+ * Constrain `envKey` to the CLI's documented shapes before it is emitted.
+ *
+ * The key is copied from CLI JSON that {@link parsePythonSetupResult}
+ * deliberately validates only minimally, and the DBR arm is a raw
+ * `"dbr/" + sparkVersion` concatenation. Without this, schema drift or an
+ * unexpected runtime string would put unbounded — potentially identifying —
+ * high-cardinality content into a field documented as a closed vocabulary.
+ * Anything unrecognised collapses to {@link UNRECOGNISED_ENV_KEY}, which keeps
+ * the dimension categorical while still flagging that drift happened.
+ */
+function categoricalEnvKey(envKey: string | undefined): string | undefined {
+    if (envKey === undefined) {
+        return undefined;
+    }
+    return ENV_KEY_PATTERNS.some((p) => p.test(envKey))
+        ? envKey
+        : UNRECOGNISED_ENV_KEY;
+}
+
 declare module "." {
     interface Telemetry {
         /**
@@ -93,9 +129,21 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
 
     // start() stamps the elapsed time onto the result event as `duration`.
     const reportResult = this.start(Events.PYTHON_ENV_SETUP_RESULT);
-    return (report: PythonSetupOutcomeReport) =>
+    // Enforce the 1:1 pairing rather than only documenting it: a second call
+    // (from a future refactor that adds a terminal path without returning) is
+    // dropped, so one attempt can never inflate into several results.
+    let reported = false;
+    return (report: PythonSetupOutcomeReport) => {
+        if (reported) {
+            return;
+        }
+        reported = true;
         reportResult({
             ...withoutUndefined(report),
             outcome: report.outcome,
+            ...(report.envKey !== undefined
+                ? {envKey: categoricalEnvKey(report.envKey)}
+                : {}),
         });
+    };
 };
