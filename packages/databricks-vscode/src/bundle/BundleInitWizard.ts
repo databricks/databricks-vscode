@@ -5,6 +5,7 @@ import {
     window,
     TerminalLocation,
     commands,
+    env,
 } from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
@@ -13,9 +14,9 @@ import {LoginWizard} from "../configuration/LoginWizard";
 import {CliWrapper} from "../cli/CliWrapper";
 import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
-import {ShellUtils} from "../utils";
 import {Events, Telemetry} from "../telemetry";
-import {escapePathArgument} from "../utils/shellUtils";
+import {detectShellKind} from "../utils/shellUtils";
+import {buildBundleInitCommand} from "./bundleInitCommand";
 import {promptToSelectActiveProjectFolder} from "./activeBundleUtils";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
@@ -154,10 +155,17 @@ export class BundleInitWizard {
                 }
             });
         });
+        // Pin the shell instead of inheriting the user's default profile, so the
+        // shell that runs the command is the one we generated it for. Without
+        // this, a cmd.exe-shaped command (` & ` separators) sent to a PowerShell
+        // profile fails to parse, nothing executes — not even the trailing
+        // `exit` — and the await below would hang until the user closes the tab.
+        const shell = env.shell;
         const terminal = window.createTerminal({
             name: "Databricks Project Init",
             isTransient: true,
             location: TerminalLocation.Editor,
+            shellPath: shell === "" ? undefined : shell,
             env: {
                 // Without supplying full environment and with `strictEnv: true` PowerShell will fail to start.
                 // On unix-like systems we don't require full environment, but it doesn't hurt.
@@ -172,16 +180,13 @@ export class BundleInitWizard {
             cwd: tmpdir(),
         });
         await terminalDidOpenPromise;
-        const args = [
-            "bundle",
-            "init",
-            "--output-dir",
-            escapePathArgument(parentFolder.fsPath),
-        ].join(" ");
-        const initialPrompt = `clear; echo "Executing: databricks ${args}\nFollow the steps below to create your new Databricks project.\n"`;
-        const finalPrompt = `echo "\nPress any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`;
+        const kind = detectShellKind(shell, process.platform);
         terminal.sendText(
-            `${initialPrompt}; ${this.cli.escapedCliPath} ${args}; ${finalPrompt}`
+            buildBundleInitCommand(
+                this.cli.escapedCliPathFor(kind),
+                parentFolder.fsPath,
+                kind
+            )
         );
         return terminalDidClosePromise;
     }

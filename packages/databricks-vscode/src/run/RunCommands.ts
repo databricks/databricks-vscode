@@ -7,6 +7,7 @@ import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
 import {FeatureManager, FeatureState} from "../feature-manager/FeatureManager";
 import {
+    currentShellKind,
     escapeExecutableForTerminal,
     escapePathArgument,
 } from "../utils/shellUtils";
@@ -244,10 +245,13 @@ export class RunCommands {
             path.join("resources", "python", "dbconnect-bootstrap.py")
         );
         terminal.show();
+        const kind = currentShellKind();
         terminal.sendText(
-            `${escapeExecutableForTerminal(executable)} ${escapePathArgument(
-                bootstrapPath
-            )} ${escapePathArgument(targetResource.fsPath)}`
+            [
+                escapeExecutableForTerminal(executable, kind),
+                escapePathArgument(bootstrapPath, kind),
+                escapePathArgument(targetResource.fsPath, kind),
+            ].join(" ")
         );
 
         this.telemetry.recordEvent(Events.DBCONNECT_RUN, {

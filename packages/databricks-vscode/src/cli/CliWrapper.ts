@@ -25,7 +25,7 @@ import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
-import {isPowershell} from "../utils/shellUtils";
+import {escapeExecutableForTerminal, ShellKind} from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
 function getEscapedCommandAndAgrs(
@@ -368,10 +368,16 @@ export class CliWrapper {
         };
     }
 
+    /**
+     * The CLI path quoted for a terminal. Takes the shell kind so it cannot
+     * disagree with the shell the rest of the command line was built for.
+     */
+    escapedCliPathFor(kind: ShellKind): string {
+        return escapeExecutableForTerminal(this.cliPath, kind);
+    }
+
     get escapedCliPath(): string {
-        return isPowershell()
-            ? `& "${this.cliPath.replace('"', '\\"')}"`
-            : `'${this.cliPath.replaceAll("'", "\\'")}'`;
+        return escapeExecutableForTerminal(this.cliPath);
     }
 
     /**
