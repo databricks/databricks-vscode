@@ -7,6 +7,7 @@ import {
     AiToolsSkill,
     CliWrapper,
 } from "../cli/CliWrapper";
+import {Mutex} from "../locking";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
@@ -94,6 +95,12 @@ function computeAgentsStatuses(
  */
 export class AiToolsManager implements Disposable {
     public readonly model: AiToolsModel;
+
+    /**
+     * Serializes the operations that run the CLI and mutate the model
+     * so they can't interleave
+     */
+    private readonly mutex = new Mutex();
 
     constructor(
         private readonly cli: CliWrapper,
@@ -218,7 +225,15 @@ export class AiToolsManager implements Disposable {
      * then in the user's home directory. Caches and persists the resolved
      * location and fires {@link AiToolsModel.onDidChange}.
      */
+    @Mutex.synchronise("mutex")
     async detectInstall(): Promise<AiToolsInstallLocation> {
+        return this.detectInstallImpl();
+    }
+
+    /**
+     * Non-mutex detect install used to reconcile state after other operations
+     */
+    private async detectInstallImpl(): Promise<AiToolsInstallLocation> {
         let location: AiToolsInstallLocation;
         try {
             // Project scope only exists when a folder is open; otherwise skip
@@ -345,7 +360,15 @@ export class AiToolsManager implements Disposable {
      * `aitools update --check` only prints text, so `list` is the reliable
      * source of truth.
      */
+    @Mutex.synchronise("mutex")
     async resolveInstalled(): Promise<void> {
+        return this.resolveInstalledImpl();
+    }
+
+    /**
+     * Non-mutex resolve installed used to reconcile state after other operations
+     */
+    private async resolveInstalledImpl(): Promise<void> {
         const scope = this.model.installLocation;
         if (scope === undefined) {
             this.model.update({updateStatus: "unknown"});
@@ -387,15 +410,21 @@ export class AiToolsManager implements Disposable {
      * strip `cursor` from the CLI `--agents` list — we never pass
      * `--agents cursor`.
      */
+    @Mutex.synchronise("mutex")
     async install(
         scope: AiToolsScope,
-        source?: AiToolsInstallSource,
-        agents?: string[],
+        source: AiToolsInstallSource,
+        agents: string[],
         token?: CancellationToken
     ): Promise<void> {
-        let cliAgents = agents;
+        // don't run install without some agents specified
+        if (agents.length === 0) {
+            return;
+        }
+
+        let agentsToInstall = agents;
         let cursorPlugin = false;
-        if (HostUtils.isCursor() && agents !== undefined) {
+        if (HostUtils.isCursor()) {
             if (agents.includes(CURSOR_AGENT_ID)) {
                 // Kick off the Cursor plugin prompt in parallel
                 // (fire-and-forget; it swallows its own errors). Not awaited so
@@ -404,12 +433,12 @@ export class AiToolsManager implements Disposable {
                 cursorPlugin = true;
                 void this.addCursorPlugin(source);
             }
-            cliAgents = agents.filter((a) => a !== CURSOR_AGENT_ID);
+            agentsToInstall = agents.filter((a) => a !== CURSOR_AGENT_ID);
             // The user picked *only* the Cursor plugin: there are no skills to
             // install via the CLI. Record the install (the plugin) and bail out
             // before the CLI call — passing an empty `--agents` list would make
             // the CLI act on every detected agent, which is not what was chosen.
-            if (agents.length > 0 && cliAgents.length === 0) {
+            if (agentsToInstall.length === 0) {
                 this.telemetry.recordEvent(Events.AITOOLS_INSTALL, {
                     duration: 0,
                     // The plugin is installed via Cursor's marketplace modal,
@@ -418,7 +447,7 @@ export class AiToolsManager implements Disposable {
                     result: "possible-success",
                     scope,
                     source,
-                    agents: cliAgents,
+                    agents: [],
                     cursorPlugin,
                 });
                 return;
@@ -431,13 +460,13 @@ export class AiToolsManager implements Disposable {
                 scope,
                 this.cwdForScope(scope),
                 token,
-                cliAgents
+                agentsToInstall
             );
             recordEvent({
                 result: "success",
                 scope,
                 source,
-                agents: cliAgents,
+                agents: agentsToInstall,
                 cursorPlugin,
             });
         } catch (e) {
@@ -445,7 +474,7 @@ export class AiToolsManager implements Disposable {
                 result: "error",
                 scope,
                 source,
-                agents: cliAgents,
+                agents: agentsToInstall,
                 cursorPlugin,
             });
             throw e;
@@ -453,8 +482,9 @@ export class AiToolsManager implements Disposable {
             // Always reconcile: a failed install often still installed some
             // tools (e.g. one agent's CLI was missing), so refresh the panel to
             // reflect whatever actually landed rather than leaving it stale.
-            await this.detectInstall();
-            await this.resolveInstalled();
+            // Call the `*Impl` helpers directly — we already hold the mutex.
+            await this.detectInstallImpl();
+            await this.resolveInstalledImpl();
         }
     }
 
@@ -465,6 +495,7 @@ export class AiToolsManager implements Disposable {
      * (even on failure) so the row reflects the real CLI state, and rethrows any
      * error for {@link AiToolsCommands} to surface.
      */
+    @Mutex.synchronise("mutex")
     async installAgent(
         agentId: string,
         token?: CancellationToken
@@ -497,8 +528,9 @@ export class AiToolsManager implements Disposable {
             throw e;
         } finally {
             // Reconcile the row even on failure: the install may have partially
-            // succeeded.
-            await this.resolveInstalled();
+            // succeeded. Call the `*Impl` helper directly — we already hold the
+            // mutex.
+            await this.resolveInstalledImpl();
         }
     }
 
@@ -508,6 +540,7 @@ export class AiToolsManager implements Disposable {
      * removed some tools) and rethrows any error for {@link AiToolsCommands} to
      * surface.
      */
+    @Mutex.synchronise("mutex")
     async uninstall(token?: CancellationToken): Promise<void> {
         const scope = this.model.installLocation;
         if (scope === undefined) {
@@ -525,7 +558,8 @@ export class AiToolsManager implements Disposable {
             recordEvent({success: false, scope});
             throw e;
         } finally {
-            await this.detectInstall();
+            // Call the `*Impl` helper directly — we already hold the mutex.
+            await this.detectInstallImpl();
         }
     }
 
@@ -534,6 +568,7 @@ export class AiToolsManager implements Disposable {
      * update status with the real CLI state afterwards (even on failure) and
      * rethrows any error for {@link AiToolsCommands} to surface.
      */
+    @Mutex.synchronise("mutex")
     async update(token?: CancellationToken): Promise<void> {
         const scope = this.model.installLocation;
         if (scope === undefined) {
@@ -551,8 +586,9 @@ export class AiToolsManager implements Disposable {
             // Always reconcile the cached update status with the actual CLI
             // state, even if the update reported an error (it may have
             // partially succeeded). This refreshes the row out of the
-            // "Update available" state once the tools are up to date.
-            await this.resolveInstalled();
+            // "Update available" state once the tools are up to date. Call the
+            // `*Impl` helper directly — we already hold the mutex.
+            await this.resolveInstalledImpl();
         }
     }
 }

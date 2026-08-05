@@ -599,17 +599,22 @@ export class CliWrapper {
     public async aitoolsInstall(
         scope: AiToolsScope,
         cwd: string,
-        cancellationToken?: CancellationToken,
-        agents?: string[],
+        cancellationToken: CancellationToken | undefined,
+        agents: string[],
         @context ctx?: Context
     ): Promise<void> {
-        const args = ["aitools", "install", "--scope", scope];
-        // When a specific set of agents is chosen, restrict the install to them
-        // (`--agents a,b`). With no selection the CLI acts on every detected
-        // agent, which is the desired default.
-        if (agents && agents.length > 0) {
-            args.push("--agents", agents.join(","));
+        if (agents.length === 0) {
+            return;
         }
+
+        const args = [
+            "aitools",
+            "install",
+            "--scope",
+            scope,
+            "--agents",
+            agents.join(","),
+        ];
         try {
             await execFile(
                 this.cliPath,

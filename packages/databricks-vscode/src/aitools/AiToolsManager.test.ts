@@ -391,7 +391,7 @@ describe(__filename, () => {
             ])
         );
 
-        await manager.install("global");
+        await manager.install("global", "initModal", ["claude-code"]);
 
         verify(
             mockCli.aitoolsInstall("global", anything(), anything(), anything())
@@ -506,10 +506,7 @@ describe(__filename, () => {
             assert.ok(installEvent, "expected an install event");
             // The plugin install isn't observable by the extension, so the
             // outcome is a possible success, not a confirmed one.
-            assert.strictEqual(
-                installEvent.props.result,
-                "possible-success"
-            );
+            assert.strictEqual(installEvent.props.result, "possible-success");
             assert.deepStrictEqual(installEvent.props.agents, []);
             assert.strictEqual(installEvent.props.cursorPlugin, true);
         });
@@ -755,6 +752,53 @@ describe(__filename, () => {
         verify(mockCli.aitoolsList(anything())).once();
     });
 
+    it("serializes a concurrent resolveInstalled behind an in-flight update", async () => {
+        const {manager, mockCli} = setup({project: loadSuccess});
+        // Hold the update CLI call open so we can fire a concurrent
+        // "check for updates" (resolveInstalled) while update() is still
+        // in-flight, then release it.
+        let releaseUpdate!: () => void;
+        const updateGate = new Promise<void>((resolve) => {
+            releaseUpdate = resolve;
+        });
+        when(
+            mockCli.aitoolsUpdate("project", anything(), anything())
+        ).thenReturn(updateGate);
+        // Both the update's reconciliation and the concurrent check use list;
+        // report everything up to date.
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult([
+                {
+                    name: "databricks-core",
+                    latest_version: "0.1.0",
+                    installed: {project: "0.1.0"},
+                },
+            ])
+        );
+        await manager.detectInstall();
+
+        const updatePromise = manager.update();
+        // Kick off the concurrent check while update is blocked on the CLI. The
+        // mutex must queue it until update() (including its reconciliation)
+        // completes, so it can't strand the row on "checking".
+        const checkPromise = manager.resolveInstalled();
+
+        // Let update()'s body run (it's now past the mutex's await boundary and
+        // blocked on the CLI gate). The queued check is still waiting on the
+        // mutex, so the row reflects the update in progress — not the check's
+        // "checking". Without serialization the check would run concurrently and
+        // have already overwritten this.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        assert.strictEqual(manager.model.state.updateStatus, "updating");
+
+        releaseUpdate();
+        await Promise.all([updatePromise, checkPromise]);
+
+        // The check ran after the update fully reconciled, so the final state is
+        // the resolved "upToDate" rather than a stranded "checking".
+        assert.strictEqual(manager.model.state.updateStatus, "upToDate");
+    });
+
     it("captures the installed release version from list", async () => {
         const {manager, mockCli} = setup({project: loadSuccess});
         when(mockCli.aitoolsList(anything())).thenResolve({
@@ -901,7 +945,7 @@ describe(__filename, () => {
             );
 
             // Must not throw even though no folder is open.
-            await manager.install("global");
+            await manager.install("global", "initModal", ["codex"]);
 
             verify(
                 mockCli.aitoolsInstall(

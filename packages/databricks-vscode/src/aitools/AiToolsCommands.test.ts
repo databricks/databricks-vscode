@@ -325,8 +325,9 @@ describe(__filename, () => {
         assert.deepStrictEqual(agents, ["cursor"]);
     });
 
-    it("skips the agent picker and installs with an empty selection when no agents are reported", async () => {
-        const {commands, mockManager, behaviors, quickPicks} = setup();
+    it("aborts install and shows an error when no agents are reported", async () => {
+        const {commands, mockManager, behaviors, quickPicks, prompter} =
+            setup();
         when(mockManager.listAgents("global")).thenResolve([]);
         behaviors.push(selectScope("global"));
 
@@ -334,9 +335,11 @@ describe(__filename, () => {
 
         // Only the scope picker is created; the agent picker is skipped.
         assert.strictEqual(quickPicks.length, 1);
-        const [scope, , agents] = capture(mockManager.install).last();
-        assert.strictEqual(scope, "global");
-        assert.deepStrictEqual(agents, []);
+        verify(mockManager.install(anything(), anything(), anything())).never();
+        assert.match(
+            prompter.shownMessages[0].message,
+            /Failed to load Databricks AI tools installer/i
+        );
     });
 
     it("cancels the install when the agent picker is dismissed", async () => {
@@ -416,16 +419,24 @@ describe(__filename, () => {
         it("shows the install prompt and installs on accept when not installed", async () => {
             const {commands, mockManager, prompter, behaviors} = setup();
             when(mockManager.initialize()).thenResolve("promptInstall");
-            when(mockManager.listAgents("global")).thenResolve([]);
+            when(mockManager.listAgents("global")).thenResolve([
+                agent("claude-code", "Claude Code", true),
+                agent("cursor", "Cursor", false),
+                agent("codex", "Codex CLI", true),
+            ]);
             prompter.messageResponses.push("Install AI tools");
             behaviors.push(selectScope("global"));
+            // select all agents
+            behaviors.push((pick: FakeQuickPick) => ({selected: pick.items}));
 
             await commands.initializeCommand()();
 
             // Accepting the prompt runs the install flow with the "initModal"
             // source (never the opt-out).
-            const [, source] = capture(mockManager.install).last();
+            const [scope, source, agents] = capture(mockManager.install).last();
+            assert.strictEqual(scope, "global");
             assert.strictEqual(source, "initModal");
+            assert.deepEqual(agents, ["claude-code", "cursor", "codex"]);
             verify(mockManager.optOutOfInstallPrompt()).never();
         });
 

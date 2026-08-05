@@ -158,8 +158,8 @@ export class AiToolsCommands implements Disposable {
             return;
         }
         const agents = await this.pickAgents(scope);
-        // Dismissing the agent picker cancels the whole install flow.
-        if (agents === undefined) {
+        // Dismissing the agent picker or an error when listing agents cancels the whole install flow.
+        if (agents.length === 0) {
             return;
         }
         await this.withProgress(
@@ -234,11 +234,14 @@ export class AiToolsCommands implements Disposable {
      * picker is skipped and we resolve to an empty selection so the install
      * falls back to the CLI's default (act on every detected agent).
      */
-    private async pickAgents(
-        scope: AiToolsScope
-    ): Promise<string[] | undefined> {
+    private async pickAgents(scope: AiToolsScope): Promise<string[]> {
         const agents = await this.aiToolsManager.listAgents(scope);
         if (agents.length === 0) {
+            this.prompter.showErrorMessage(
+                "Failed to load Databricks AI tools installer."
+            );
+
+            // return empty agents array to abort the install flow
             return [];
         }
 
@@ -270,8 +273,8 @@ export class AiToolsCommands implements Disposable {
         // selection explicitly so detected agents start checked.
         quickPick.selectedItems = items.filter((i) => i.picked);
 
-        return new Promise<string[] | undefined>((resolve) => {
-            let resolved: string[] | undefined;
+        return new Promise<string[]>((resolve) => {
+            let resolved: string[] = [];
             this.disposables.push(
                 quickPick.onDidAccept(() => {
                     resolved = quickPick.selectedItems.map((i) => i.agentId);
