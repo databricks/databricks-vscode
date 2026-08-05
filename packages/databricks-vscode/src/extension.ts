@@ -837,7 +837,7 @@ export async function activate(
             }
             return {
                 ...process.env,
-                ...cli.getSetupLocalEnvVars(authProvider),
+                ...cli.getSetupLocalEnvVars(authProvider, configModel.target),
             };
         }
     );

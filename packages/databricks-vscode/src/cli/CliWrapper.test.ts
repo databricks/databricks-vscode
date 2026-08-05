@@ -358,7 +358,7 @@ token = dapitest5678
             true
         );
 
-        const env = cli.getSetupLocalEnvVars(authProvider);
+        const env = cli.getSetupLocalEnvVars(authProvider, "dev");
 
         // The two vars this exists for: the CLI resolves auth itself, so the
         // profile and host must arrive via the environment.
@@ -369,6 +369,36 @@ token = dapitest5678
         // The bundle-init/ssh-connect flows override this to "text" because they
         // render CLI output to a terminal; this flow must not.
         assert.equal(env.DATABRICKS_OUTPUT_FORMAT, "json");
+    });
+
+    it("should pin the bundle target alongside the profile for setup-local", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+
+        // Without a --profile flag the CLI loads the bundle and picks its
+        // *default* target, then rejects the run when that target's host
+        // disagrees with the injected profile's host. The target must travel
+        // with the profile so the two always refer to the same workspace.
+        assert.equal(
+            cli.getSetupLocalEnvVars(authProvider, "prod")
+                .DATABRICKS_BUNDLE_TARGET,
+            "prod"
+        );
+
+        // No target selected yet: omit the var rather than pass an empty
+        // string, which the CLI would treat as an explicit (invalid) target.
+        assert.ok(
+            !(
+                "DATABRICKS_BUNDLE_TARGET" in
+                cli.getSetupLocalEnvVars(authProvider, undefined)
+            )
+        );
     });
 });
 

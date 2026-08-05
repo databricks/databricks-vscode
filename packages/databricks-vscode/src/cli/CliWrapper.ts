@@ -644,8 +644,17 @@ export class CliWrapper {
      * = json` rather than overriding it to "text": they render CLI output into a
      * terminal for a human, whereas this run's stdout is parsed as the single
      * JSON result object (the argv also passes `--output json` explicitly).
+     *
+     * `DATABRICKS_BUNDLE_TARGET` must accompany the profile. `setup-local` runs
+     * `MustWorkspaceClient` without a `--profile` flag, so the CLI does not skip
+     * loading the bundle and selects its *default* target; the profile we inject
+     * then reaches `Workspace.Client`, which rejects the run outright when that
+     * target's host disagrees with the profile's host ("the host in the profile
+     * doesn't match the host configured in the bundle"). Naming the target we
+     * are actually connected to keeps the two in agreement. `dbconnect` forwards
+     * this var for the same reason (see `getCommonDatabricksEnvVars`).
      */
-    getSetupLocalEnvVars(authProvider: AuthProvider) {
+    getSetupLocalEnvVars(authProvider: AuthProvider, target?: string) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
                 this.extensionContext,
@@ -654,6 +663,8 @@ export class CliWrapper {
             ...EnvVarGenerators.getProxyEnvVars(),
             ...this.getLogginEnvVars(),
             ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_BUNDLE_TARGET: target,
         });
     }
 
