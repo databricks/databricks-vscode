@@ -347,6 +347,29 @@ token = dapitest5678
             throw e;
         }
     });
+
+    it("should forward auth to the setup-local env vars", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+
+        const env = cli.getSetupLocalEnvVars(authProvider);
+
+        // The two vars this exists for: the CLI resolves auth itself, so the
+        // profile and host must arrive via the environment.
+        assert.equal(env.DATABRICKS_CONFIG_PROFILE, "PROFILE");
+        assert.equal(env.DATABRICKS_HOST, "https://test.com/");
+        // Inherited from getEnvVarsForCli and left alone: it agrees with the
+        // explicit `--output json` on the argv that the result parser needs.
+        // The bundle-init/ssh-connect flows override this to "text" because they
+        // render CLI output to a terminal; this flow must not.
+        assert.equal(env.DATABRICKS_OUTPUT_FORMAT, "json");
+    });
 });
 
 describe("waitForProcess", () => {

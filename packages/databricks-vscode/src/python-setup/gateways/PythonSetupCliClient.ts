@@ -121,6 +121,18 @@ export interface RunOptions {
 }
 
 /**
+ * Supplies the environment the CLI child is spawned with. This is how the
+ * extension's workspace authentication reaches the command: the CLI resolves
+ * auth itself (via `MustWorkspaceClient`), so without these vars it would fall
+ * back to its own default-profile resolution and could provision against a
+ * different workspace than the one the extension is connected to.
+ *
+ * A seam rather than a direct read so the gateway keeps carrying no `vscode`
+ * import and the auth wiring is assertable in tests.
+ */
+export type EnvFn = () => NodeJS.ProcessEnv;
+
+/**
  * Gateway to the `databricks environments setup-local` CLI command.
  *
  * Runs the CLI with `--output json`, captures stdout (the single structured
@@ -141,6 +153,7 @@ export interface RunOptions {
 export class PythonSetupCliClient {
     constructor(
         private readonly resolvePath: () => string,
+        private readonly envFn: EnvFn,
         private readonly spawnFn: SpawnFn = nodeSpawn as unknown as SpawnFn,
         private readonly terminateFn: TerminateFn = defaultTerminate
     ) {}
@@ -161,7 +174,7 @@ export class PythonSetupCliClient {
             try {
                 child = this.spawnFn(this.resolvePath(), args, {
                     cwd: options.cwd,
-                    env: process.env,
+                    env: this.envFn(),
                     // Give the child its own process group on POSIX so cancel
                     // can kill the whole tree (see defaultTerminate). On Windows
                     // `detached` opens a new console; we use taskkill there, so

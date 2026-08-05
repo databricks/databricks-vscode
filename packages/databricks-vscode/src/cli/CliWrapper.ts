@@ -624,6 +624,39 @@ export class CliWrapper {
         });
     }
 
+    /**
+     * Env vars for `environments setup-local` (the uv-native Python environment
+     * setup).
+     *
+     * Auth is forwarded the same way as the bundle-init and ssh-connect flows,
+     * so the command provisions against the workspace the extension is actually
+     * connected to: `authProvider.toEnv()` carries the host and profile, and
+     * `getEnvVarsForCli` carries `DATABRICKS_CONFIG_FILE` for users who have
+     * relocated their `.databrickscfg`. Without them the CLI's
+     * `MustWorkspaceClient` falls back to its own default-profile resolution.
+     *
+     * Like the sibling methods this returns only the Databricks vars; the caller
+     * overlays them onto the ambient environment, because `setup-local` shells
+     * out to `uv` and needs the real OS environment (platform paths, `UV_*`
+     * vars) as its base.
+     *
+     * Unlike those two this keeps `getEnvVarsForCli`'s `DATABRICKS_OUTPUT_FORMAT
+     * = json` rather than overriding it to "text": they render CLI output into a
+     * terminal for a human, whereas this run's stdout is parsed as the single
+     * JSON result object (the argv also passes `--output json` explicitly).
+     */
+    getSetupLocalEnvVars(authProvider: AuthProvider) {
+        return removeUndefinedKeys({
+            ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
+                workspaceConfigs.databrickscfgLocation
+            ),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...this.getLogginEnvVars(),
+            ...authProvider.toEnv(),
+        });
+    }
+
     async bundleInit(
         templateDirPath: string,
         outputDirPath: string,
