@@ -485,11 +485,6 @@
                 "category": "Databricks"
             },
             {
-                "command": "databricks.logs.show",
-                "title": "Show logs",
-                "category": "Databricks"
-            },
-            {
                 "command": "databricks.utils.copy",
                 "title": "Copy",
                 "enablement": "databricks.context.activated",

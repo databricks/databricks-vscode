@@ -5,11 +5,13 @@ import {
     type QuickPickItem,
     type window,
 } from "vscode";
+import {logging} from "@databricks/sdk-experimental";
 import {AiToolsManager, CURSOR_AGENT_ID} from "./AiToolsManager";
 import {AiToolsAgentStatus} from "./AiToolsModel";
 import {AiToolsScope, ProcessError} from "../cli/CliWrapper";
 import {AiToolsInstallSource} from "../telemetry/constants";
 import {HostUtils} from "../utils";
+import {Loggers} from "../logger";
 
 interface ScopeQuickPickItem extends QuickPickItem {
     scope: AiToolsScope;
@@ -27,6 +29,7 @@ export interface AiToolsPrompter {
     withProgress: (typeof window)["withProgress"];
     showInformationMessage: (typeof window)["showInformationMessage"];
     showWarningMessage: (typeof window)["showWarningMessage"];
+    showErrorMessage: (typeof window)["showErrorMessage"];
     createQuickPick: (typeof window)["createQuickPick"];
 }
 
@@ -65,7 +68,10 @@ export class AiToolsCommands implements Disposable {
             );
         } catch (e) {
             if (e instanceof ProcessError) {
-                e.showErrorMessage(errorPrefix, "databricks.logs.show");
+                e.showErrorMessage(
+                    errorPrefix,
+                    "databricks.internal.showOutput"
+                );
                 return;
             }
             throw e;
@@ -80,11 +86,26 @@ export class AiToolsCommands implements Disposable {
      */
     initializeCommand() {
         return async () => {
-            const action = await this.aiToolsManager.initialize();
-            if (action === "promptInstall") {
-                await this.promptInstall();
-            } else if (action === "update") {
-                await this.runUpdate();
+            // Called fire-and-forget on activation, so an unexpected throw here
+            // would surface as an unhandled rejection. Surface it as an error
+            // toast instead. (CLI failures are already caught and shown by
+            // withProgress; this backstops everything else, e.g. withProgress
+            // itself throwing.)
+            try {
+                const action = await this.aiToolsManager.initialize();
+                if (action === "promptInstall") {
+                    await this.promptInstall();
+                } else if (action === "update") {
+                    await this.runUpdate();
+                }
+            } catch (e) {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    "Failed to initialize Databricks AI tools",
+                    e
+                );
+                this.prompter.showErrorMessage(
+                    "Failed to initialize Databricks AI tools."
+                );
             }
         };
     }

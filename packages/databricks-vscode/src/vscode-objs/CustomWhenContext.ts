@@ -117,14 +117,6 @@ export class CustomWhenContext {
         );
     }
 
-    setIsCursor(value: boolean) {
-        commands.executeCommand(
-            "setContext",
-            "databricks.context.isCursor",
-            value
-        );
-    }
-
     setAiToolsInstalled(value: boolean) {
         commands.executeCommand(
             "setContext",

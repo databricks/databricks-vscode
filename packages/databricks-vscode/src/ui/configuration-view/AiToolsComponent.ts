@@ -43,10 +43,12 @@ export class AiToolsComponent extends BaseComponent {
         const {installLocation, updateStatus, version, detectError} =
             this.aiToolsModel.state;
 
-        // Detection failed with an unexpected error and we have no cached
-        // location to fall back on -> show a reload affordance rather than
-        // implying the tools simply aren't installed.
-        if (installLocation === undefined && detectError) {
+        // Detection failed with an unexpected error -> show a reload affordance
+        // rather than implying the tools simply aren't installed. We ignore any
+        // cached installLocation here: otherwise we'd render a collapsible
+        // "installed" row that expands to nothing (getChildren returns [] on
+        // detectError), which is more confusing than surfacing the error.
+        if (detectError) {
             return [
                 {
                     label: "AI tools",
@@ -153,7 +155,7 @@ export class AiToolsComponent extends BaseComponent {
                     description: version,
                     collapsibleState: TreeItemCollapsibleState.None,
                 },
-                agents !== undefined && {
+                agents.length > 0 && {
                     label: "Agents",
                     id: getTreeIconId("agents"),
                     description: `${installedAgents} installed`,

@@ -209,13 +209,13 @@ export class ProcessError extends Error {
      * to the bundle logs (`databricks.bundle.showLogs`), since most CLI commands
      * are bundle operations, but callers whose command logs elsewhere (e.g. the
      * AI tools commands, which log to the "Databricks Logs" channel) can pass
-     * `databricks.logs.show` so "Show Logs" lands on the right channel.
+     * `databricks.internal.showOutput` so "Show Logs" lands on the right channel.
      */
     showErrorMessage(
         prefix?: string,
         logsCommand:
             | "databricks.bundle.showLogs"
-            | "databricks.logs.show" = "databricks.bundle.showLogs"
+            | "databricks.internal.showOutput" = "databricks.bundle.showLogs"
     ) {
         if (this.message.includes("no value assigned to required variable")) {
             window

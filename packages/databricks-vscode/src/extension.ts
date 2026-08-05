@@ -29,7 +29,6 @@ import {logging} from "@databricks/sdk-experimental";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {
     FileUtils,
-    HostUtils,
     PackageJsonUtils,
     TerraformUtils,
     UrlUtils,
@@ -265,7 +264,6 @@ export async function activate(
 ): Promise<PublicApi | undefined> {
     customWhenContext.setActivated(false);
     customWhenContext.setDeploymentState("idle");
-    customWhenContext.setIsCursor(HostUtils.isCursor());
 
     const stateStorage = new StateStorage(context);
     const packageMetadata = await PackageJsonUtils.getMetadata(context);
@@ -306,11 +304,12 @@ export async function activate(
             () => loggerManager.showOutputChannel("Databricks Bundle Logs"),
             loggerManager
         ),
-        telemetry.registerCommand(
-            "databricks.logs.show",
-            () => loggerManager.showOutputChannel("Databricks Logs"),
-            loggerManager
-        )
+        // Opens the "Databricks Logs" output channel. Registered here (before
+        // the no-folder / remote-mode early returns below) so the AI tools
+        // "Show Logs" error affordance works even without an open folder.
+        commands.registerCommand("databricks.internal.showOutput", () => {
+            loggerManager.showOutputChannel("Databricks Logs");
+        })
     );
 
     // Quickstart
@@ -381,8 +380,15 @@ export async function activate(
     );
     // Detect install state on activation and, if installed, auto-apply any
     // available update; otherwise prompt the user (once) to install the tools.
-    // Non-blocking so it doesn't delay activation.
-    aiToolsCommands.initializeCommand()();
+    // Non-blocking so it doesn't delay activation. Skipped in Remote SSH mode,
+    // where the AI tools commands are gated off (see the remote-mode branch
+    // below) so there is nothing to initialize.
+    const isRemoteSshMode =
+        process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
+        Boolean(process.env["DATABRICKS_VIRTUAL_ENV"]);
+    if (!isRemoteSshMode) {
+        aiToolsCommands.initializeCommand()();
+    }
 
     if (
         workspace.workspaceFolders === undefined ||
@@ -416,8 +422,7 @@ export async function activate(
         // We show a welcome view when there's no workspace folders, prompting users
         // to either open a new folder or to initialize a new databricks project.
         // In both cases we expect the workspace to be reloaded and the extension will
-        // be activated again. The AI tools setup affordance is added as a
-        // viewsWelcome entry (see package.json) since it works without a folder.
+        // be activated again.
         return undefined;
     }
 
@@ -520,7 +525,7 @@ export async function activate(
             databricksVirtualEnv: venvPath ?? "(not set)",
         }
     );
-    if (process.env["DATABRICKS_REMOTE_ENV"] === "1" && venvPath) {
+    if (isRemoteSshMode && venvPath) {
         logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
             "Entering remote mode",
             {venvPath}
@@ -705,9 +710,6 @@ export async function activate(
         bundleRemoteStateModel,
         configModel,
         connectionManager,
-        commands.registerCommand("databricks.internal.showOutput", () => {
-            loggerManager.showOutputChannel("Databricks Logs");
-        }),
         connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
                 Metadata.USER,

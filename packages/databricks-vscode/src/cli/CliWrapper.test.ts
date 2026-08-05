@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import {commands, Uri, window} from "vscode";
+import {CancellationTokenSource, commands, Uri, window} from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
@@ -400,13 +400,35 @@ describe("cancellableExecFile closeStdin", () => {
     });
 
     it("hangs on a stdin-reading process without closeStdin", async () => {
-        const raced = await Promise.race([
-            cancellableExecFile("cat", []).then(() => "completed"),
-            new Promise((resolve) =>
-                setTimeout(() => resolve("timed-out"), 500)
-            ),
-        ]);
-        assert.strictEqual(raced, "timed-out");
+        // Drive the process through a cancellation token so we can kill the
+        // lingering `cat` (which would otherwise read stdin forever) once
+        // we've confirmed it hasn't completed on its own.
+        const tokenSource = new CancellationTokenSource();
+        const execPromise = cancellableExecFile(
+            "cat",
+            [],
+            {},
+            tokenSource.token
+        );
+        // Swallow the abort rejection so it doesn't surface as an unhandled
+        // rejection after the test finishes.
+        const settled = execPromise.then(
+            () => "completed",
+            () => "aborted"
+        );
+        try {
+            const raced = await Promise.race([
+                settled,
+                new Promise((resolve) =>
+                    setTimeout(() => resolve("timed-out"), 500)
+                ),
+            ]);
+            assert.strictEqual(raced, "timed-out");
+        } finally {
+            tokenSource.cancel();
+            tokenSource.dispose();
+            await settled;
+        }
     });
 });
 
@@ -475,10 +497,10 @@ describe("ProcessError.showErrorMessage", () => {
     it("opens the given logs channel when one is passed", async () => {
         new ProcessError("boom", 1).showErrorMessage(
             "Prefix.",
-            "databricks.logs.show"
+            "databricks.internal.showOutput"
         );
         await flush();
-        assert.deepStrictEqual(executed, ["databricks.logs.show"]);
+        assert.deepStrictEqual(executed, ["databricks.internal.showOutput"]);
     });
 
     it("ignores the logsCommand for the missing-variable path", async () => {
@@ -487,9 +509,9 @@ describe("ProcessError.showErrorMessage", () => {
         new ProcessError(
             "no value assigned to required variable foo",
             1
-        ).showErrorMessage("Prefix.", "databricks.logs.show");
+        ).showErrorMessage("Prefix.", "databricks.internal.showOutput");
         await flush();
-        assert.ok(!executed.includes("databricks.logs.show"));
+        assert.ok(!executed.includes("databricks.internal.showOutput"));
         assert.ok(executed.includes("databricks.bundle.showLogs"));
     });
 });

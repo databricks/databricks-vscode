@@ -91,8 +91,6 @@ function computeAgentsStatuses(
  * for available updates, and caching the resolved install location.
  */
 export class AiToolsManager implements Disposable {
-    private disposables: Disposable[] = [];
-
     public readonly model: AiToolsModel;
 
     constructor(
@@ -165,7 +163,6 @@ export class AiToolsManager implements Disposable {
     }
 
     dispose() {
-        this.disposables.forEach((d) => d.dispose());
         this.model.dispose();
     }
 

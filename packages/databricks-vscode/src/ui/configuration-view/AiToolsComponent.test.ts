@@ -81,14 +81,21 @@ describe(__filename, () => {
         assert.strictEqual((row.iconPath as ThemeIcon).id, "warning");
     });
 
-    it("shows the installed row (not the retry row) when a cached location survives an error", async () => {
-        // detectError is true but a cached location is preserved -> normal row.
+    it("shows the retry row on error even when a cached location survives", async () => {
+        // detectError takes precedence over any cached installLocation:
+        // otherwise we'd render a collapsible "installed" row that expands to
+        // nothing (getChildren returns [] on detectError).
         const items = await getRoot(
             createModel("project", "upToDate", "0.2.9", true)
         );
+        assert.strictEqual(items.length, 1);
         const [row] = items;
-        assert.strictEqual(row.label, "AI tools");
-        assert.ok(String(row.tooltip).includes("project"));
+        assert.strictEqual(
+            row.contextValue,
+            "databricks.configuration.aitools.error"
+        );
+        assert.ok(String(row.description).includes("Failed to check"));
+        assert.strictEqual(row.command?.command, "databricks.aitools.reload");
     });
 
     it("renders the installed version in the subtext for a project install", async () => {
@@ -238,7 +245,7 @@ describe(__filename, () => {
             assert.strictEqual(agentsNode?.description, "0 installed");
         });
 
-        it("still renders the Agents node when there are no agents", async () => {
+        it("omits the Agents node when there are no agents", async () => {
             const model = createModel(
                 "project",
                 "upToDate",
@@ -251,8 +258,11 @@ describe(__filename, () => {
                 id: "AITOOLS",
             });
             const agentsNode = children.find((c) => c.id === "AITOOLS.agents");
-            assert.ok(agentsNode, "expected an Agents node");
-            assert.strictEqual(agentsNode.description, "0 installed");
+            assert.strictEqual(
+                agentsNode,
+                undefined,
+                "expected no Agents node when there are no agents"
+            );
         });
 
         it("lists each agent with its version under the Agents node", async () => {

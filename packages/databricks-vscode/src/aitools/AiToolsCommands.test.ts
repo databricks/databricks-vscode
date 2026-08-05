@@ -133,6 +133,26 @@ class FakePrompter implements AiToolsPrompter {
         return Promise.resolve(this.messageResponses.shift());
     }
 
+    showErrorMessage(
+        message: string,
+        ...items: string[]
+    ): Thenable<string | undefined>;
+    showErrorMessage(
+        message: string,
+        options: MessageOptions,
+        ...items: string[]
+    ): Thenable<string | undefined>;
+    showErrorMessage(
+        message: string,
+        optionsOrItem?: MessageOptions | string,
+        ...rest: string[]
+    ): Thenable<string | undefined> {
+        const items =
+            typeof optionsOrItem === "string" ? [optionsOrItem, ...rest] : rest;
+        this.shownMessages.push({message, items});
+        return Promise.resolve(this.messageResponses.shift());
+    }
+
     createQuickPick<T extends QuickPickItem>(): QuickPick<T> {
         const behavior =
             this.quickPickBehaviors.shift() ?? (() => "dismiss" as const);
@@ -456,6 +476,22 @@ describe(__filename, () => {
             verify(
                 mockManager.install(anything(), anything(), anything())
             ).never();
+        });
+
+        it("surfaces an error toast instead of throwing on unexpected failure", async () => {
+            // Called fire-and-forget on activation, so an unexpected throw must
+            // not escape as an unhandled rejection.
+            const {commands, mockManager, prompter} = setup();
+            when(mockManager.initialize()).thenReject(new Error("unexpected"));
+
+            await assert.doesNotReject(() => commands.initializeCommand()());
+
+            assert.deepStrictEqual(prompter.shownMessages, [
+                {
+                    message: "Failed to initialize Databricks AI tools.",
+                    items: [],
+                },
+            ]);
         });
     });
 
