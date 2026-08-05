@@ -9,7 +9,6 @@ describe("buildSetupLocalArgs", () => {
     it("builds a default serverless invocation with JSON output", () => {
         const inv: SetupLocalInvocation = {
             mode: "default",
-            profile: "dev",
             compute: {kind: "serverless", version: "5"},
         };
         expect(buildSetupLocalArgs(inv)).to.deep.equal([
@@ -17,8 +16,6 @@ describe("buildSetupLocalArgs", () => {
             "setup-local",
             "--serverless-version",
             "5",
-            "--profile",
-            "dev",
             "--output",
             "json",
         ]);
@@ -51,7 +48,7 @@ describe("buildSetupLocalArgs", () => {
         expect(args).to.not.include("--constraints-only");
     });
 
-    it("omits --profile when none is given", () => {
+    it("never passes --profile (auth is forwarded via the environment)", () => {
         const args = buildSetupLocalArgs({
             mode: "default",
             compute: {kind: "serverless", version: "5"},
@@ -73,7 +70,6 @@ describe("buildSetupLocalArgs", () => {
     it("always ends with --output json", () => {
         const args = buildSetupLocalArgs({
             mode: "constraints-only",
-            profile: "p",
             compute: {kind: "cluster", clusterId: "c"},
             constraintSourceUrl: "u",
         });
