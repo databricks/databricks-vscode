@@ -1,7 +1,7 @@
 import assert from "assert";
 import {execFile} from "child_process";
 import {promisify} from "util";
-import {runWindowsScript} from "../test/windowsShellHarness";
+import {createArgvPrinter, runWindowsScript} from "../test/windowsShellHarness";
 import {
     buildBundleInitCommand,
     unsafeOutputDirReason,
@@ -223,21 +223,25 @@ describe(__filename, () => {
         // enforces its own per-spawn deadline, so this only has to not fire first.
         this.timeout(120_000);
 
+        let argvPrinter: ReturnType<typeof createArgvPrinter>;
+
         before(function () {
             if (process.platform !== "win32") {
                 this.skip();
             }
+            argvPrinter = createArgvPrinter();
         });
 
+        after(() => argvPrinter?.dispose());
+
         it("runs the CLI with the output dir as one argument", async () => {
-            // Invoking Node and printing its own argv stands in for the real
-            // command line, which invokes databricks.exe with a quoted path: it
-            // proves the directory survives cmd's parsing *and* the Windows argv
-            // round-trip as a single argument. The directory need not exist.
+            // A script that prints its argv stands in for the CLI, which cmd
+            // invokes with a quoted path: it proves the directory survives cmd's
+            // parsing *and* the Windows argv round-trip as a single argument.
+            // The directory need not exist.
             const outputDir = "C:\\tmp\\My Dir (odd) & co";
             const command = buildBundleInitCommand(
-                `${escapeExecutableForTerminal(process.execPath, "cmd")} -e ` +
-                    '"console.log(process.argv.slice(1).join(String.fromCharCode(10)))"',
+                argvPrinter.invocation("cmd"),
                 outputDir,
                 "cmd"
             );

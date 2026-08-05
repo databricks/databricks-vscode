@@ -2,7 +2,7 @@ import assert from "assert";
 import {execFile} from "child_process";
 import {existsSync} from "fs";
 import {promisify} from "util";
-import {runWindowsCases} from "../test/windowsShellHarness";
+import {createArgvPrinter, runWindowsCases} from "../test/windowsShellHarness";
 import {
     clearCmd,
     commandSeparator,
@@ -843,12 +843,6 @@ describe(__filename, () => {
         // enforces its own per-spawn deadline, so this only has to not fire first.
         this.timeout(120_000);
 
-        before(function () {
-            if (process.platform !== "win32") {
-                this.skip();
-            }
-        });
-
         // `%` and `!` are excluded deliberately: cmd expands them even inside
         // quotes and has no interactive escape, which is a documented limit of
         // this module rather than something echoCmd promises — see
@@ -880,19 +874,20 @@ describe(__filename, () => {
             "C:\\tmp\\with[bracket]",
         ];
 
-        // Invoking Node and printing its own argv is the closest stand-in for the
-        // real command line, which invokes databricks.exe or python.exe with a
-        // quoted path: it proves the path survives the shell *and* the Windows
-        // argv round-trip as one argument. The path need not exist.
-        function printArgvCommand(p: string, kind: "cmd" | "powershell") {
-            const script = "console.log(process.argv[1])";
-            return [
-                escapeExecutableForTerminal(process.execPath, kind),
-                "-e",
-                kind === "cmd" ? `"${script}"` : `'${script}'`,
-                escapePathArgument(p, kind),
-            ].join(" ");
-        }
+        // Stands in for the real command line, which invokes databricks.exe or
+        // python.exe with a quoted path: it proves the path survives the shell
+        // *and* the Windows argv round-trip as one argument. The path under test
+        // need not exist — only its spelling matters.
+        let argvPrinter: ReturnType<typeof createArgvPrinter>;
+
+        before(function () {
+            if (process.platform !== "win32") {
+                this.skip();
+            }
+            argvPrinter = createArgvPrinter();
+        });
+
+        after(() => argvPrinter?.dispose());
 
         (["cmd", "powershell"] as const).forEach((kind) => {
             describe(kind, () => {
@@ -908,7 +903,12 @@ describe(__filename, () => {
                     );
                     argv = await runWindowsCases(
                         kind,
-                        paths.map((p) => printArgvCommand(p, kind))
+                        paths.map(
+                            (p) =>
+                                `${argvPrinter.invocation(
+                                    kind
+                                )} ${escapePathArgument(p, kind)}`
+                        )
                     );
                 });
 

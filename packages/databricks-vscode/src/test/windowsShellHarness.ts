@@ -2,6 +2,10 @@ import {mkdtempSync, rmSync, writeFileSync} from "fs";
 import {spawn} from "child_process";
 import {tmpdir} from "os";
 import path from "path";
+import {
+    escapeExecutableForTerminal,
+    escapePathArgument,
+} from "../utils/shellUtils";
 
 /**
  * Runs generated command lines through a real cmd.exe or PowerShell, so tests
@@ -43,16 +47,22 @@ function echoMarker(marker: string, shell: WindowsShell): string {
 /** Shells are slow to start, and slower under CI endpoint scanning. */
 const SPAWN_TIMEOUT_MS = 60_000;
 
-function spawnCollectingStdout(
+function spawnCollectingOutput(
     exe: string,
     args: string[],
     stdin: string
 ): Promise<string> {
     return new Promise((resolve, reject) => {
         const child = spawn(exe, args, {stdio: ["pipe", "pipe", "pipe"]});
-        let stdout = "";
+        let output = "";
+        // stderr is interleaved into the same buffer rather than dropped. A
+        // command that fails prints only to stderr, so discarding it makes the
+        // capture look simply empty and the assertion failure unreadable: the
+        // reason is precisely what we need to see.
         child.stdout.setEncoding("utf8");
-        child.stdout.on("data", (chunk) => (stdout += chunk));
+        child.stderr.setEncoding("utf8");
+        child.stdout.on("data", (chunk) => (output += chunk));
+        child.stderr.on("data", (chunk) => (output += chunk));
         // Killed on a deadline rather than left to Mocha: a shell still waiting
         // for input would otherwise leak a process and report a bare timeout
         // instead of the output collected so far.
@@ -63,7 +73,7 @@ function spawnCollectingStdout(
         });
         child.on("close", () => {
             clearTimeout(deadline);
-            resolve(stdout);
+            resolve(output);
         });
         // Closing stdin lets `pause`/`read` return at EOF instead of blocking.
         child.stdin.end(stdin);
@@ -76,7 +86,7 @@ export async function runWindowsScript(
     lines: string[]
 ): Promise<string> {
     if (shell === "powershell") {
-        return spawnCollectingStdout(
+        return spawnCollectingOutput(
             "powershell.exe",
             ["-NoProfile", "-NonInteractive", "-Command", "-"],
             `${lines.join("\n")}\n`
@@ -87,7 +97,7 @@ export async function runWindowsScript(
     try {
         // cmd requires CRLF, and `@echo off` must be the first line.
         writeFileSync(script, ["@echo off", ...lines, ""].join("\r\n"));
-        return await spawnCollectingStdout(
+        return await spawnCollectingOutput(
             process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe",
             ["/c", script],
             ""
@@ -95,6 +105,45 @@ export async function runWindowsScript(
     } finally {
         rmSync(dir, {recursive: true, force: true});
     }
+}
+
+/**
+ * A stand-in for the CLI: a script that prints each argument it receives on its
+ * own line, so a path that got split or expanded is visible as more or fewer
+ * lines than expected.
+ *
+ * The script lives in a file rather than being passed to `node -e`. An inline
+ * one-liner has to survive the shell's *own* quoting on the way in — and in
+ * Windows PowerShell 5.1 native-command argument passing re-parses and re-quotes
+ * what it forwards, so a bracketed one-liner is a second, unrelated variable in
+ * a test whose subject is `escapePathArgument`. A file removes it: the only
+ * awkward token left on the line is the path under test.
+ *
+ * Quoting the interpreter and the script path uses the module under test, which
+ * is a deliberate trade: duplicating quoting rules in a test helper would let
+ * the two drift. Both have their own direct unit tests, so a break there fails
+ * those too rather than only showing up here.
+ */
+export function createArgvPrinter() {
+    const dir = mkdtempSync(path.join(tmpdir(), "dbx-argv-printer-"));
+    const script = path.join(dir, "printArgv.js");
+    // argv[0] is node, argv[1] this script, so the arguments start at 2.
+    writeFileSync(
+        script,
+        "process.argv.slice(2).forEach((a) => console.log(a));\n"
+    );
+    return {
+        /** The `node printArgv.js` prefix; append the escaped argument(s). */
+        invocation(kind: WindowsShell): string {
+            return [
+                escapeExecutableForTerminal(process.execPath, kind),
+                escapePathArgument(script, kind),
+            ].join(" ");
+        },
+        dispose() {
+            rmSync(dir, {recursive: true, force: true});
+        },
+    };
 }
 
 /**
