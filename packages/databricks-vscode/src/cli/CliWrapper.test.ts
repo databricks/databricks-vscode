@@ -77,8 +77,14 @@ describe(__filename, function () {
             assert.ok(result.skills.length > 0, "expected non-empty skills");
             const skill = result.skills[0];
             assert.ok(typeof skill.name === "string", "expected skill name");
-            assert.ok(typeof skill.latest_version === "string", "expected skill latest version");
-            assert.ok(typeof skill.installed === "object", "expected skill installed object");
+            assert.ok(
+                typeof skill.latest_version === "string",
+                "expected skill latest version"
+            );
+            assert.ok(
+                typeof skill.installed === "object",
+                "expected skill installed object"
+            );
 
             // It also reports the coding agents it knows about, each with a
             // display name and detection/management flags; the agent picker
