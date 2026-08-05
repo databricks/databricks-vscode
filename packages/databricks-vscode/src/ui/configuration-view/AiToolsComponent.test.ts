@@ -296,9 +296,13 @@ describe(__filename, () => {
         });
 
         it("annotates a managed agent delivered as skills only", async () => {
-            const model = createModel("project", "upToDate", "0.2.9", undefined, [
-                agent("claude", "Claude Code", "1.2.0", true),
-            ]);
+            const model = createModel(
+                "project",
+                "upToDate",
+                "0.2.9",
+                undefined,
+                [agent("claude", "Claude Code", "1.2.0", true)]
+            );
             const rows = await getChildrenOf(model, {
                 label: "Agents",
                 id: "AITOOLS.agents",
