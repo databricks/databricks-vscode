@@ -55,7 +55,7 @@
         "commands": [
             {
                 "command": "databricks.ssh.startTunnel",
-                "title": "Start SSH Tunnel",
+                "title": "Start SSH tunnel",
                 "category": "Databricks",
                 "icon": "$(remote)",
                 "enablement": "!databricks.context.remoteMode"
@@ -772,7 +772,7 @@
             },
             {
                 "view": "sshTunnelView",
-                "contents": "Connect your IDE to a Databricks SSH Tunnel so you can run all Python and SQL workloads using Databricks compute.\n[Start SSH Tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
+                "contents": "Connect your IDE to a Databricks SSH tunnel so you can run all Python and SQL workloads using Databricks compute.\n[Start SSH tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
             }
         ],
         "menus": {
@@ -1622,7 +1622,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.9.0"
+        "version": "1.10.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",

@@ -949,6 +949,7 @@ export async function activate(
                 append: (chunk) => getPythonSetupLogChannel().append(chunk),
                 show: () => getPythonSetupLogChannel().show(true),
             },
+            telemetry,
         })
     );
     context.subscriptions.push(
