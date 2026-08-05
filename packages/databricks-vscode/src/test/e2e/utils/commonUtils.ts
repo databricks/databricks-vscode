@@ -12,6 +12,7 @@ import {
 const ViewSectionTypes = [
     "CLUSTERS",
     "CONFIGURATION",
+    "SSH TUNNEL",
     "WORKSPACE FILE SYSTEM",
     "BUNDLE RESOURCE EXPLORER",
     "BUNDLE VARIABLES",

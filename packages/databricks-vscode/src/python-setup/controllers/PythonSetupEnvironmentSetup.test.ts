@@ -76,6 +76,7 @@ function makeDeps(
         resolveCompute: async () => ({kind: "serverless", version: "5"}),
         adoptInterpreter: async () => {},
         saveState: () => {},
+        notify: async () => {},
         showError: async () => {},
         showSuccess: async () => {},
         // Mirror the production wrapper: hand the task a log sink and a
@@ -88,14 +89,14 @@ function makeDeps(
 describe("PythonSetupEnvironmentSetup.setup", () => {
     it("runs the CLI and marks ready on a successful real run", async () => {
         const cli = makeCli({resolve: SUCCESS_REAL_RUN});
-        const adopted: string[] = [];
+        const adopted: Array<{venvPath: string; root: string}> = [];
         const saved: Array<{envKey: string; pythonVersion: string}> = [];
         const succeeded: PythonSetupResult[] = [];
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 cli,
-                adoptInterpreter: async (p) => {
-                    adopted.push(p);
+                adoptInterpreter: async (venvPath, root) => {
+                    adopted.push({venvPath, root});
                 },
                 saveState: (s) => {
                     saved.push(s);
@@ -118,15 +119,68 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         // cwd (the project root) and an onLog sink are threaded into the run.
         expect(cli.options[0].cwd).to.equal("/proj");
         expect(cli.options[0].onLog).to.be.a("function");
-        expect(adopted).to.deep.equal([SUCCESS_REAL_RUN.venvPath]);
+        expect(adopted).to.deep.equal([
+            {venvPath: SUCCESS_REAL_RUN.venvPath, root: "/proj"},
+        ]);
         expect(saved).to.deep.equal([
             {
-                envKey: SUCCESS_REAL_RUN.target!.envKey,
+                envKey: SUCCESS_REAL_RUN.compute!.envKey,
                 pythonVersion: SUCCESS_REAL_RUN.resolved!.pythonVersion,
             },
         ]);
         // The success is announced, with the parsed result.
         expect(succeeded).to.deep.equal([SUCCESS_REAL_RUN]);
+    });
+
+    it("adopts for the project captured at start, not the live one (mid-run switch)", async () => {
+        // Model the active project switching from A to B while the CLI runs.
+        let activeRoot = "/projA";
+        const adopted: Array<{venvPath: string; root: string}> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                projectRoot: () => activeRoot,
+                // The user switches the active project mid-run.
+                withProgress: async (_title, task) => {
+                    const result = await task(() => {}, makeToken());
+                    activeRoot = "/projB";
+                    return result;
+                },
+                adoptInterpreter: async (venvPath, root) => {
+                    adopted.push({venvPath, root});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        // Adoption targets /projA (the run's cwd), never the switched-to /projB:
+        // otherwise B's interpreter setting would point at A's venv.
+        expect(adopted).to.deep.equal([
+            {venvPath: SUCCESS_REAL_RUN.venvPath, root: "/projA"},
+        ]);
+    });
+
+    it("reports ready only for the project it was set up for, not another active project", async () => {
+        // Set up /projA, then model the active project switching to /projB
+        // (never provisioned). readiness must track the run's project, not leak
+        // across a project switch — otherwise the config view shows a green
+        // "ready" line for a project that has no venv.
+        let activeRoot = "/projA";
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({projectRoot: () => activeRoot})
+        );
+
+        await setup.setup();
+        // Still on /projA (the project just provisioned): ready.
+        expect(setup.ready).to.equal(true);
+
+        // Switch the active project to one that was never set up.
+        activeRoot = "/projB";
+        expect(setup.ready).to.equal(false);
+
+        // Switch back: /projA's readiness is remembered, not discarded.
+        activeRoot = "/projA";
+        expect(setup.ready).to.equal(true);
     });
 
     it("does nothing when there is no open project", async () => {
@@ -153,16 +207,36 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(setup.ready).to.equal(false);
     });
 
-    it("does not run when no compute could be resolved", async () => {
+    it("guides the user (without running the CLI) when no compute could be resolved", async () => {
         const cli = makeCli();
+        const notified: string[] = [];
+        const shownErrors: string[] = [];
         const setup = new PythonSetupEnvironmentSetup(
-            makeDeps({cli, resolveCompute: async () => undefined})
+            makeDeps({
+                cli,
+                resolveCompute: async () => undefined,
+                notify: async (m) => {
+                    notified.push(m);
+                },
+                showError: async (m) => {
+                    shownErrors.push(m);
+                },
+            })
         );
 
         await setup.setup();
 
+        // No project mutation, but the visible CTA must not be a dead button:
+        // tell the user to attach compute rather than silently no-op'ing.
         expect(cli.calls).to.have.length(0);
         expect(setup.ready).to.equal(false);
+        // Pre-flight guidance goes through notify (plain toast), not showError
+        // (which would reveal an empty output channel — no CLI ran).
+        expect(notified).to.have.length(1);
+        expect(notified[0]).to.contain(
+            "Select a cluster or serverless compute"
+        );
+        expect(shownErrors).to.have.length(0);
     });
 
     it("surfaces a mapped error message on CLI failure and stays not-ready", async () => {
@@ -248,12 +322,12 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         const shownErrors: string[] = [];
         const adopted: string[] = [];
         const saved: unknown[] = [];
-        // ok:true with a venvPath but no target/resolved: we could adopt an
+        // ok:true with a venvPath but no compute/resolved: we could adopt an
         // interpreter, but drift detection would have no baseline to persist —
         // so this is treated as a failure rather than a hollow "ready".
         const withoutBaseline: PythonSetupResult = {
             ...SUCCESS_REAL_RUN,
-            target: undefined,
+            compute: undefined,
             resolved: undefined,
         };
         const setup = new PythonSetupEnvironmentSetup(

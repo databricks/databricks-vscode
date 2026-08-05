@@ -4,6 +4,7 @@ import {
     env,
     ExtensionContext,
     extensions,
+    OutputChannel,
     window,
     workspace,
 } from "vscode";
@@ -44,6 +45,13 @@ import {
     FeatureManager,
     PYTHON_SETUP_FEATURE_ID,
 } from "./feature-manager/FeatureManager";
+import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
+import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
+import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
+import {makePythonSetupDeps} from "./python-setup/controllers/pythonSetupDeps";
+import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
+import {isPythonSetupEnabled} from "./python-setup/utils/serverlessVersionResolver";
+import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
 import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager";
@@ -53,6 +61,7 @@ import {Events, Metadata} from "./telemetry/constants";
 import {EnvironmentDependenciesInstaller} from "./language/EnvironmentDependenciesInstaller";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
+import {SshCommands} from "./ssh/SshCommands";
 import {NotebookInitScriptManager} from "./language/notebooks/NotebookInitScriptManager";
 import {showRestartNotebookDialogue} from "./language/notebooks/restartNotebookDialogue";
 import {
@@ -95,6 +104,157 @@ import {registerDetailPanel} from "./ui/unity-catalog/registerDetailPanel";
 const packageJson = require("../package.json");
 
 const customWhenContext = new CustomWhenContext();
+
+/**
+ * Register the Unity Catalog tree view, its commands and the detail panel.
+ * Shared between the normal activation flow and the remote (Databricks Remote
+ * SSH) flow, where Unity Catalog is the only view we surface.
+ */
+function registerUnityCatalog(
+    context: ExtensionContext,
+    connectionManager: ConnectionManager,
+    stateStorage: StateStorage,
+    telemetry: Telemetry,
+    // In remote mode there is no automatic reconnection, so wire the refresh
+    // command to re-establish the connection before refreshing the tree.
+    reconnect?: () => Promise<void>
+): void {
+    const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
+        connectionManager,
+        stateStorage,
+        context.extensionPath
+    );
+
+    const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
+        treeDataProvider: unityCatalogTreeDataProvider,
+    });
+    context.subscriptions.push(
+        unityCatalogTreeDataProvider,
+        unityCatalogTreeView,
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refresh",
+            async () => {
+                if (reconnect) {
+                    await reconnect();
+                }
+                unityCatalogTreeDataProvider.refresh();
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.refreshNode",
+            (node: UnityCatalogTreeNode) =>
+                unityCatalogTreeDataProvider.refreshNode(node)
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyStorageLocation",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    (node.kind === "table" || node.kind === "volume") &&
+                    node.storageLocation
+                ) {
+                    await env.clipboard.writeText(node.storageLocation);
+                    window.showInformationMessage("Copied to clipboard");
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyViewSql",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "table" && node.viewDefinition) {
+                    await env.clipboard.writeText(node.viewDefinition);
+                    window.showInformationMessage("Copied to clipboard");
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.copyName",
+            async (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "error" ||
+                    node.kind === "empty" ||
+                    node.kind === "favorites" ||
+                    node.kind === "group"
+                ) {
+                    return;
+                }
+                const text = node.kind === "column" ? node.name : node.fullName;
+                await env.clipboard.writeText(text);
+                window.showInformationMessage("Copied to clipboard");
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.openExternal",
+            async (node: UnityCatalogTreeNode) => {
+                if (node.kind === "error" || node.kind === "column") {
+                    return;
+                }
+                const url =
+                    unityCatalogTreeDataProvider.getNodeExploreUrl(node);
+                if (!url) {
+                    window.showErrorMessage(
+                        "Databricks: Can't open external link. No URL found."
+                    );
+                    return;
+                }
+                await UrlUtils.openExternal(url);
+            }
+        ),
+        commands.registerCommand("databricks.unityCatalog.filter", async () => {
+            await commands.executeCommand("unityCatalogView.focus");
+            await commands.executeCommand("list.find");
+        }),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.pin",
+            (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.pin(node);
+                }
+            }
+        ),
+        telemetry.registerCommand(
+            "databricks.unityCatalog.unpin",
+            (node: UnityCatalogTreeNode) => {
+                if (
+                    node.kind === "catalog" ||
+                    node.kind === "schema" ||
+                    node.kind === "table" ||
+                    node.kind === "volume" ||
+                    node.kind === "function" ||
+                    node.kind === "registeredModel" ||
+                    node.kind === "modelVersion"
+                ) {
+                    return unityCatalogTreeDataProvider.unpin(node);
+                }
+            }
+        ),
+        ...registerDetailPanel(
+            context.extensionUri,
+            connectionManager,
+            unityCatalogTreeView,
+            unityCatalogTreeDataProvider,
+            telemetry
+        )
+    );
+}
+
+function registerDocsView(context: ExtensionContext): void {
+    const docsViewTreeDataProvider = new DocsViewTreeDataProvider();
+    context.subscriptions.push(
+        window.registerTreeDataProvider(
+            "databricksDocsView",
+            docsViewTreeDataProvider
+        ),
+        docsViewTreeDataProvider
+    );
+}
 
 export async function activate(
     context: ExtensionContext
@@ -169,6 +329,18 @@ export async function activate(
                 }
             )
         );
+        // The SSH Tunnel panel is always visible, including on the start screen
+        // with no folder open. There is no ConnectionManager/ClusterModel here,
+        // so wire the command to the standalone (login-then-tunnel) flow.
+        const sshCommands = new SshCommands(cli);
+        context.subscriptions.push(
+            sshCommands,
+            telemetry.registerCommand(
+                "databricks.ssh.startTunnel",
+                sshCommands.startTunnelCommand,
+                sshCommands
+            )
+        );
         // We show a welcome view when there's no workspace folders, prompting users
         // to either open a new folder or to initialize a new databricks project.
         // In both cases we expect the workspace to be reloaded and the extension will
@@ -179,6 +351,33 @@ export async function activate(
     const workspaceFolderManager = new WorkspaceFolderManager(
         customWhenContext,
         stateStorage
+    );
+
+    // Utils. Registered before the remote-mode branch below returns so that
+    // views shared between the normal and remote flows - such as the docs view,
+    // which invokes "databricks.utils.openExternal" - work in both.
+    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
+    context.subscriptions.push(
+        telemetry.registerCommand(
+            "databricks.utils.openExternal",
+            utilCommands.openExternalCommand(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.utils.goToDefinition",
+            utilCommands.goToDefinition(),
+            utilCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.utils.copy",
+            utilCommands.copyToClipboardCommand(),
+            utilCommands
+        ),
+        telemetry.registerCommand("databricks.call", (fn) => {
+            if (fn) {
+                fn();
+            }
+        })
     );
 
     // Add the databricks binary to the PATH environment variable in terminals
@@ -270,6 +469,78 @@ export async function activate(
                 e
             );
         }
+
+        // Surface only the Unity Catalog view and connect it using the ambient
+        // environment credentials (no bundle/config project required). The
+        // ConfigModel is only needed to satisfy the ConnectionManager
+        // constructor; connectFromEnvironment() never reads from it.
+        const remoteBundleFileSet = new BundleFileSet(workspaceFolderManager);
+        const remoteBundleFileWatcher = new BundleWatcher(
+            remoteBundleFileSet,
+            workspaceFolderManager
+        );
+        const remoteBundleValidateModel = new BundleValidateModel(
+            remoteBundleFileWatcher,
+            cli,
+            workspaceFolderManager
+        );
+        const remoteOverrideableConfigModel = new OverrideableConfigModel(
+            workspaceFolderManager
+        );
+        const remoteBundlePreValidateModel = new BundlePreValidateModel(
+            remoteBundleFileSet,
+            remoteBundleFileWatcher
+        );
+        const remoteBundleRemoteStateModel = new BundleRemoteStateModel(
+            cli,
+            workspaceFolderManager,
+            workspaceConfigs
+        );
+        const remoteConfigModel = new ConfigModel(
+            remoteBundleValidateModel,
+            remoteOverrideableConfigModel,
+            remoteBundlePreValidateModel,
+            remoteBundleRemoteStateModel,
+            customWhenContext,
+            stateStorage
+        );
+        const remoteConnectionManager = new ConnectionManager(
+            cli,
+            remoteConfigModel,
+            workspaceFolderManager,
+            customWhenContext,
+            telemetry
+        );
+        // ConfigModel.dispose() only disposes its own listeners, not its child
+        // models, so push each one individually (mirroring the normal flow).
+        context.subscriptions.push(
+            remoteBundleFileWatcher,
+            remoteBundleValidateModel,
+            remoteOverrideableConfigModel,
+            remoteBundlePreValidateModel,
+            remoteBundleRemoteStateModel,
+            remoteConfigModel,
+            remoteConnectionManager
+        );
+
+        const connectRemote = () =>
+            remoteConnectionManager.connectFromEnvironment().catch((e) => {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    "Remote mode: failed to connect Unity Catalog",
+                    e
+                );
+            });
+
+        registerUnityCatalog(
+            context,
+            remoteConnectionManager,
+            stateStorage,
+            telemetry,
+            connectRemote
+        );
+        registerDocsView(context);
+
+        connectRemote();
 
         customWhenContext.setActivated(true);
         return;
@@ -494,126 +765,7 @@ export async function activate(
         )
     );
 
-    const unityCatalogTreeDataProvider = new UnityCatalogTreeDataProvider(
-        connectionManager,
-        stateStorage,
-        context.extensionPath
-    );
-
-    const unityCatalogTreeView = window.createTreeView("unityCatalogView", {
-        treeDataProvider: unityCatalogTreeDataProvider,
-    });
-    context.subscriptions.push(
-        unityCatalogTreeDataProvider,
-        unityCatalogTreeView,
-        telemetry.registerCommand(
-            "databricks.unityCatalog.refresh",
-            unityCatalogTreeDataProvider.refresh,
-            unityCatalogTreeDataProvider
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.refreshNode",
-            (node: UnityCatalogTreeNode) =>
-                unityCatalogTreeDataProvider.refreshNode(node)
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.copyStorageLocation",
-            async (node: UnityCatalogTreeNode) => {
-                if (
-                    (node.kind === "table" || node.kind === "volume") &&
-                    node.storageLocation
-                ) {
-                    await env.clipboard.writeText(node.storageLocation);
-                    window.showInformationMessage("Copied to clipboard");
-                }
-            }
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.copyViewSql",
-            async (node: UnityCatalogTreeNode) => {
-                if (node.kind === "table" && node.viewDefinition) {
-                    await env.clipboard.writeText(node.viewDefinition);
-                    window.showInformationMessage("Copied to clipboard");
-                }
-            }
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.copyName",
-            async (node: UnityCatalogTreeNode) => {
-                if (
-                    node.kind === "error" ||
-                    node.kind === "empty" ||
-                    node.kind === "favorites" ||
-                    node.kind === "group"
-                ) {
-                    return;
-                }
-                const text = node.kind === "column" ? node.name : node.fullName;
-                await env.clipboard.writeText(text);
-                window.showInformationMessage("Copied to clipboard");
-            }
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.openExternal",
-            async (node: UnityCatalogTreeNode) => {
-                if (node.kind === "error" || node.kind === "column") {
-                    return;
-                }
-                const url =
-                    unityCatalogTreeDataProvider.getNodeExploreUrl(node);
-                if (!url) {
-                    window.showErrorMessage(
-                        "Databricks: Can't open external link. No URL found."
-                    );
-                    return;
-                }
-                await UrlUtils.openExternal(url);
-            }
-        ),
-        commands.registerCommand("databricks.unityCatalog.filter", async () => {
-            await commands.executeCommand("unityCatalogView.focus");
-            await commands.executeCommand("list.find");
-        }),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.pin",
-            (node: UnityCatalogTreeNode) => {
-                if (
-                    node.kind === "catalog" ||
-                    node.kind === "schema" ||
-                    node.kind === "table" ||
-                    node.kind === "volume" ||
-                    node.kind === "function" ||
-                    node.kind === "registeredModel" ||
-                    node.kind === "modelVersion"
-                ) {
-                    return unityCatalogTreeDataProvider.pin(node);
-                }
-            }
-        ),
-        telemetry.registerCommand(
-            "databricks.unityCatalog.unpin",
-            (node: UnityCatalogTreeNode) => {
-                if (
-                    node.kind === "catalog" ||
-                    node.kind === "schema" ||
-                    node.kind === "table" ||
-                    node.kind === "volume" ||
-                    node.kind === "function" ||
-                    node.kind === "registeredModel" ||
-                    node.kind === "modelVersion"
-                ) {
-                    return unityCatalogTreeDataProvider.unpin(node);
-                }
-            }
-        ),
-        ...registerDetailPanel(
-            context.extensionUri,
-            connectionManager,
-            unityCatalogTreeView,
-            unityCatalogTreeDataProvider,
-            telemetry
-        )
-    );
+    registerUnityCatalog(context, connectionManager, stateStorage, telemetry);
 
     const configureAutocomplete = new ConfigureAutocomplete(
         context,
@@ -652,6 +804,91 @@ export async function activate(
                 packageManagerTelemetry
             )
     );
+    // uv-native Python environment setup (python-setup). Constructed always,
+    // but inert unless the user opts in: the detector/gate keep the entry hidden
+    // otherwise, so this changes nothing for existing users.
+    const pythonSetupDetector = new PythonSetupManagerDetector(
+        async (projectRoot) =>
+            collectPackageManagerSignals(
+                projectRoot,
+                await pythonExtensionWrapper.pythonEnvironment
+            )
+    );
+    const pythonSetupClient = new PythonSetupCliClient(() =>
+        resolveCliPath({
+            override: workspaceConfigs.pythonSetupCliPathOverride,
+            bundled: cli.cliPath,
+        })
+    );
+    // Created lazily on first setup output so a non-opted-in user never gets an
+    // empty "Databricks Python Environment Setup" entry in the Output dropdown
+    // (the feature is otherwise fully inert for them).
+    let pythonSetupLogChannel: OutputChannel | undefined;
+    const getPythonSetupLogChannel = () => {
+        if (pythonSetupLogChannel === undefined) {
+            pythonSetupLogChannel = window.createOutputChannel(
+                "Databricks Python Environment Setup"
+            );
+            context.subscriptions.push(pythonSetupLogChannel);
+        }
+        return pythonSetupLogChannel;
+    };
+    const pythonSetupEnvironment = new PythonSetupEnvironmentSetup(
+        makePythonSetupDeps({
+            cli: pythonSetupClient,
+            // activeProjectUri throws when no project is active, so the optional
+            // chaining never applies; honour the string|undefined contract the
+            // orchestrator guards on rather than letting it throw into the flow.
+            projectRoot: () => {
+                try {
+                    return workspaceFolderManager.activeProjectUri.fsPath;
+                } catch {
+                    return undefined;
+                }
+            },
+            isEnabled: isPythonSetupEnabled,
+            detect: (projectRoot) => pythonSetupDetector.detect(projectRoot),
+            attachedCompute: () => ({
+                serverless: connectionManager.serverless,
+                cluster: connectionManager.cluster
+                    ? {id: connectionManager.cluster.id}
+                    : undefined,
+                serverlessVersion: connectionManager.serverlessVersion,
+            }),
+            setActiveInterpreter: async (interpreterPath, root) => {
+                await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
+                    interpreterPath,
+                    root
+                );
+            },
+            persistSetupState: (state) => {
+                // Fire-and-forget by design (the setup flow does not block on
+                // the write), but a rejected workspaceState update must not
+                // surface as an unhandled rejection -- a lost state write only
+                // weakens future drift detection, so log and move on.
+                void stateStorage
+                    .set("databricks.pythonSetup.setupState", state)
+                    .catch((e) =>
+                        logging.NamedLogger.getOrCreate(
+                            Loggers.Extension
+                        ).error("Failed to persist python-setup state", e)
+                    );
+            },
+            log: {
+                append: (chunk) => getPythonSetupLogChannel().append(chunk),
+                show: () => getPythonSetupLogChannel().show(true),
+            },
+        })
+    );
+    context.subscriptions.push(
+        pythonSetupEnvironment,
+        telemetry.registerCommand(
+            "databricks.environment.setupPythonEnv",
+            pythonSetupEnvironment.setup,
+            pythonSetupEnvironment
+        )
+    );
+
     const environmentCommands = new EnvironmentCommands(
         featureManager,
         pythonExtensionWrapper,
@@ -769,7 +1006,8 @@ export async function activate(
         configModel,
         cli,
         featureManager,
-        workspaceFolderManager
+        workspaceFolderManager,
+        pythonSetupEnvironment
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,
@@ -833,6 +1071,17 @@ export async function activate(
             "databricks.connection.saveNewProfile",
             connectionCommands.saveNewProfileCommand,
             connectionCommands
+        )
+    );
+
+    // SSH tunnel (remote development) group
+    const sshCommands = new SshCommands(cli, connectionManager, clusterModel);
+    context.subscriptions.push(
+        sshCommands,
+        telemetry.registerCommand(
+            "databricks.ssh.startTunnel",
+            sshCommands.startTunnelCommand,
+            sshCommands
         )
     );
 
@@ -1090,14 +1339,7 @@ export async function activate(
         debugWorkflowFactory
     );
 
-    const docsViewTreeDataProvider = new DocsViewTreeDataProvider();
-    context.subscriptions.push(
-        window.registerTreeDataProvider(
-            "databricksDocsView",
-            docsViewTreeDataProvider
-        ),
-        docsViewTreeDataProvider
-    );
+    registerDocsView(context);
 
     showQuickStartOnFirstUse(context).catch((e) => {
         logging.NamedLogger.getOrCreate("Extension").error(
@@ -1105,31 +1347,6 @@ export async function activate(
             e
         );
     });
-
-    // Utils
-    const utilCommands = new UtilsCommands.UtilsCommands(telemetry);
-    context.subscriptions.push(
-        telemetry.registerCommand(
-            "databricks.utils.openExternal",
-            utilCommands.openExternalCommand(),
-            utilCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.utils.goToDefinition",
-            utilCommands.goToDefinition(),
-            utilCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.utils.copy",
-            utilCommands.copyToClipboardCommand(),
-            utilCommands
-        ),
-        telemetry.registerCommand("databricks.call", (fn) => {
-            if (fn) {
-                fn();
-            }
-        })
-    );
 
     // generate a json schema for bundle root and load a custom provider into
     // redhat.vscode-yaml extension to validate bundle config files with this schema
