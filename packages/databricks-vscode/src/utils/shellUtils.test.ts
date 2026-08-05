@@ -901,15 +901,14 @@ describe(__filename, () => {
                         kind,
                         messages.map((m) => echoCmd(m, kind))
                     );
-                    argv = await runWindowsCases(
-                        kind,
-                        paths.map(
-                            (p) =>
-                                `${argvPrinter.invocation(
-                                    kind
-                                )} ${escapePathArgument(p, kind)}`
-                        )
-                    );
+                    // Arguments are collected via a file rather than from the
+                    // shell's stdout. A native process writes to the pipe
+                    // directly, with its own buffering, so its output is not
+                    // ordered against the `echo`/`Write-Host` markers around it:
+                    // under `powershell -Command -` it landed outside them
+                    // entirely and every case read back empty. Buffering cannot
+                    // reorder a file the process wrote before it exited.
+                    argv = await argvPrinter.collect(kind, paths);
                 });
 
                 messages.forEach((message, i) => {

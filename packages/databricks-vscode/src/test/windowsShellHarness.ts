@@ -1,4 +1,4 @@
-import {mkdtempSync, rmSync, writeFileSync} from "fs";
+import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from "fs";
 import {spawn} from "child_process";
 import {tmpdir} from "os";
 import path from "path";
@@ -28,6 +28,10 @@ import {
  *
  * PowerShell has neither problem and is fed on stdin, exactly as `sendText`
  * would.
+ *
+ * What the shell itself prints is ordered against the markers and can be read
+ * from this stdout. What a *native command* prints is not — see
+ * {@link createArgvPrinter}, which collects arguments through a file instead.
  */
 export type WindowsShell = "cmd" | "powershell";
 
@@ -108,7 +112,7 @@ export async function runWindowsScript(
 }
 
 /**
- * A stand-in for the CLI: a script that prints each argument it receives on its
+ * A stand-in for the CLI: a script that records each argument it receives on its
  * own line, so a path that got split or expanded is visible as more or fewer
  * lines than expected.
  *
@@ -123,23 +127,74 @@ export async function runWindowsScript(
  * is a deliberate trade: duplicating quoting rules in a test helper would let
  * the two drift. Both have their own direct unit tests, so a break there fails
  * those too rather than only showing up here.
+ *
+ * Arguments come back through a *file*, not the shell's stdout. A native process
+ * writes to the inherited pipe itself, with its own buffering, so its output is
+ * not ordered against the marker lines the shell prints around it: under
+ * `powershell -Command -` it landed outside the markers altogether and every
+ * case read back empty, with nothing on stderr to explain it. A file the process
+ * finishes writing before it exits cannot be reordered that way.
  */
 export function createArgvPrinter() {
     const dir = mkdtempSync(path.join(tmpdir(), "dbx-argv-printer-"));
     const script = path.join(dir, "printArgv.js");
-    // argv[0] is node, argv[1] this script, so the arguments start at 2.
+    // Writes to the path given as the first argument; the arguments under test
+    // follow it. argv[0] is node and argv[1] this script, so they start at 3.
     writeFileSync(
         script,
-        "process.argv.slice(2).forEach((a) => console.log(a));\n"
+        [
+            "const fs = require('fs');",
+            "fs.writeFileSync(process.argv[2], process.argv.slice(3).join('\\n'));",
+            "",
+        ].join("\n")
     );
+
+    function invocation(kind: WindowsShell, outFile: string): string {
+        return [
+            escapeExecutableForTerminal(process.execPath, kind),
+            escapePathArgument(script, kind),
+            escapePathArgument(outFile, kind),
+        ].join(" ");
+    }
+
     return {
-        /** The `node printArgv.js` prefix; append the escaped argument(s). */
-        invocation(kind: WindowsShell): string {
-            return [
-                escapeExecutableForTerminal(process.execPath, kind),
-                escapePathArgument(script, kind),
-            ].join(" ");
+        /**
+         * The `node printArgv.js <outFile>` prefix for a caller assembling its
+         * own command line; append the escaped argument(s) under test.
+         */
+        invocation(kind: WindowsShell, outFile: string): string {
+            return invocation(kind, outFile);
         },
+
+        /** Where {@link invocation}'s callee will write, for reading back. */
+        outFileFor(name: string): string {
+            return path.join(dir, `${name}.txt`);
+        },
+
+        /**
+         * Run one case per argument in a single shell and return the arguments
+         * each invocation actually received.
+         */
+        async collect(kind: WindowsShell, args: string[]): Promise<string[][]> {
+            const outFiles = args.map((_, i) => path.join(dir, `out${i}.txt`));
+            await runWindowsScript(
+                kind,
+                args.map(
+                    (arg, i) =>
+                        `${invocation(kind, outFiles[i])} ${escapePathArgument(
+                            arg,
+                            kind
+                        )}`
+                )
+            );
+            return outFiles.map((f) =>
+                // A missing file means the command never ran at all, which is a
+                // different failure from receiving the wrong arguments; keep them
+                // distinguishable rather than reporting both as [].
+                existsSync(f) ? readFileSync(f, "utf8").split("\n") : []
+            );
+        },
+
         dispose() {
             rmSync(dir, {recursive: true, force: true});
         },

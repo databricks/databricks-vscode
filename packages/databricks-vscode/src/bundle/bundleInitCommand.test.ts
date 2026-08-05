@@ -1,5 +1,6 @@
 import assert from "assert";
 import {execFile} from "child_process";
+import {existsSync, readFileSync} from "fs";
 import {promisify} from "util";
 import {createArgvPrinter, runWindowsScript} from "../test/windowsShellHarness";
 import {
@@ -235,13 +236,14 @@ describe(__filename, () => {
         after(() => argvPrinter?.dispose());
 
         it("runs the CLI with the output dir as one argument", async () => {
-            // A script that prints its argv stands in for the CLI, which cmd
+            // A script recording its argv stands in for the CLI, which cmd
             // invokes with a quoted path: it proves the directory survives cmd's
             // parsing *and* the Windows argv round-trip as a single argument.
             // The directory need not exist.
             const outputDir = "C:\\tmp\\My Dir (odd) & co";
+            const argvFile = argvPrinter.outFileFor("bundleInit");
             const command = buildBundleInitCommand(
-                argvPrinter.invocation("cmd"),
+                argvPrinter.invocation("cmd", argvFile),
                 outputDir,
                 "cmd"
             );
@@ -249,10 +251,17 @@ describe(__filename, () => {
             const stdout = (
                 await runWindowsScript("cmd", [command])
             ).replaceAll("\r\n", "\n");
-            // The CLI stand-in prints one argument per line, so a directory that
-            // got split or expanded does not appear on a line of its own.
+
+            // The banner and the absence of a rejection come from the shell's own
+            // output, which is ordered; the arguments are read from the file the
+            // stand-in wrote, because a native process's stdout is not.
             assert.ok(
-                stdout.includes(`\n${outputDir}\n`),
+                existsSync(argvFile),
+                `the CLI stand-in never ran:\n${stdout}`
+            );
+            assert.deepStrictEqual(
+                readFileSync(argvFile, "utf8").split("\n"),
+                ["bundle", "init", "--output-dir", outputDir],
                 `output dir did not survive cmd.exe:\n${stdout}`
             );
             // Every step of the chain must have run: a parse error anywhere would
