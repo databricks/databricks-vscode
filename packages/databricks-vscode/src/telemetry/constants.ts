@@ -25,6 +25,8 @@ export enum Events {
     DBCONNECT_RUN = "dbconnectRun",
     OPEN_RESOURCE_EXTERNALLY = "openResourceExternally",
     PYTHON_ENV_SETUP_DETECTED = "python_env.setup.detected",
+    PYTHON_ENV_SETUP_ATTEMPT = "python_env.setup.attempt",
+    PYTHON_ENV_SETUP_RESULT = "python_env.setup.result",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -59,6 +61,55 @@ export type {PackageManager, PrimaryManager, InterpreterSource};
 export type TargetCompute = ComputeType | "none";
 /** What triggered a package-manager detection emission. */
 export type SetupTrigger = "auto_open" | "explicit_command" | "run" | "debug";
+
+// The uv-native ("VPEX") python-setup flow mirrors the CLI's `environments
+// setup-local --output json` contract, so the setup event unions are owned by
+// the result model (the TypeScript view of that contract) and re-exported here.
+// Type-only, so the event schema can never drift from the wire shape it
+// describes.
+import type {
+    PythonSetupMode,
+    PythonSetupPhaseName,
+    PythonSetupErrorCode,
+} from "../python-setup/models/PythonSetupResult";
+export type {PythonSetupMode, PythonSetupErrorCode};
+
+/**
+ * How a setup run ended.
+ *
+ * `not_started` is distinct from `failed`: the CLI never produced a result
+ * (spawn/parse error), so no phase or error code exists to attribute. And
+ * `cancelled` is distinct from both — a user abandoning a slow setup is the
+ * signal that the provisioning time is unacceptable, not that it broke.
+ *
+ * `no_compute` is the pre-flight dead end: the user pressed the CTA with no
+ * cluster attached (or a serverless session with no chosen version), so nothing
+ * could run. It is reported without a preceding attempt — see
+ * {@link Telemetry.recordPythonSetupNoCompute} — because measuring how often the
+ * button is a dead end is the whole point of tracking it.
+ */
+export type PythonSetupOutcome =
+    | "ok"
+    | "failed"
+    | "cancelled"
+    | "not_started"
+    | "no_compute";
+
+/**
+ * Where a failed setup broke: the CLI's six canonical phases, plus the two
+ * extension-side steps that run after the CLI has already exited ok (so its own
+ * `phases` array cannot describe them).
+ *
+ * - `adopt` — pointing the MS Python extension at the provisioned venv.
+ *   Adoption is the point of the flow: an unselected venv is unusable from the
+ *   editor, so failing here is a setup failure.
+ * - `persist` — recording the drift-detection baseline and readiness. The
+ *   environment works, but the extension's own state did not stick.
+ */
+export type PythonSetupFailurePhase =
+    | PythonSetupPhaseName
+    | "adopt"
+    | "persist";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -269,6 +320,90 @@ export class EventTypes {
         setupTrigger: {
             comment: "Which setup touchpoint triggered detection",
         },
+    };
+    [Events.PYTHON_ENV_SETUP_ATTEMPT]: EventType<{
+        packageManager: PrimaryManager;
+        targetType: ComputeType;
+        serverlessVersion?: string;
+        mode: PythonSetupMode;
+        isGreenfield?: boolean;
+    }> = {
+        comment:
+            "A uv-native Python environment setup run is starting: emitted once the compute " +
+            "target is known and immediately before the CLI is spawned, so every attempt has " +
+            "exactly one matching python_env.setup.result. Categorical data only — no cluster " +
+            "IDs/names, paths, or package names.",
+        packageManager: {
+            comment:
+                "The package manager detected for the project (uv > poetry > conda > pip), or unknown",
+        },
+        targetType: {
+            comment: "Whether the environment targets a cluster or serverless",
+        },
+        serverlessVersion: {
+            comment:
+                'The chosen serverless environment version (e.g. "5"); omitted for clusters',
+        },
+        mode: {
+            comment:
+                "Whether databricks-connect is included (default) or only the runtime constraints (constraints-only)",
+        },
+        isGreenfield: {
+            comment:
+                "Whether the project has no pyproject.toml yet. Omitted unless packageManager " +
+                "is uv or unknown: for a pip/conda project the absence of a pyproject.toml says " +
+                "nothing about greenfield-ness, so the signal would be misleading",
+        },
+    };
+    [Events.PYTHON_ENV_SETUP_RESULT]: EventType<{
+        outcome: PythonSetupOutcome;
+        failurePhase?: PythonSetupFailurePhase;
+        errorCode?: PythonSetupErrorCode;
+        envKey?: string;
+        diskMutated?: boolean;
+        // Optional rather than the usual required DurationMeasurement: the
+        // `no_compute` outcome is reported without a run having started, so
+        // there is no elapsed time. Emitting 0 there would drag the
+        // setup-time percentiles toward zero.
+        duration?: number;
+    }> = {
+        comment:
+            "The outcome of a uv-native Python environment setup run. Pairs 1:1 with a preceding " +
+            "python_env.setup.attempt, except for outcome=no_compute, which is reported on its own " +
+            "when the user pressed the CTA with nothing attached to set up for. The failure phase " +
+            "localises where the funnel breaks without requiring funnel tracking. Categorical data only.",
+        outcome: {
+            comment:
+                "ok | failed | cancelled (user aborted) | not_started (the CLI produced no " +
+                "result) | no_compute (the CTA was a dead end: nothing was attached to set up for)",
+        },
+        failurePhase: {
+            comment:
+                "Which phase broke: the CLI's preflight/resolve/fetch/merge/provision/validate, " +
+                'or the extension-side "adopt" (venv provisioned but not selectable as the ' +
+                'interpreter) / "persist" (state bookkeeping failed). Omitted unless the ' +
+                "outcome is failed",
+        },
+        errorCode: {
+            comment:
+                "The CLI's stable failure-class code (E_*). Omitted when the CLI reported no error object",
+        },
+        envKey: {
+            comment:
+                'The resolved environment key (e.g. "dbr/15.4.x-scala2.12", ' +
+                '"serverless/serverless-v5") — a runtime coordinate, never a cluster ID or name. ' +
+                'Constrained to those two shapes before emission; anything else becomes "other". ' +
+                "Omitted when the run failed before resolving one",
+        },
+        diskMutated: {
+            comment:
+                "Whether the failed run had already modified project files. Omitted when the CLI reported no error object",
+        },
+        // Measured by the extension around the whole run, not read from the
+        // CLI's own durationMs (documented as reserved and always 0). This is
+        // also the latency the user actually experiences: it includes process
+        // spawn and interpreter adoption.
+        ...getDurationProperty(),
     };
 }
 

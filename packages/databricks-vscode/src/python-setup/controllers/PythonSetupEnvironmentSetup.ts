@@ -13,6 +13,11 @@ import {
     NO_COMPUTE_TARGET_MESSAGE,
 } from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
+import {
+    PythonSetupAttempt,
+    PythonSetupResultReporter,
+} from "../../telemetry/pythonSetupExtensions";
+import {PrimaryManager} from "../../language/packageManagerDetection";
 
 /**
  * The one method the orchestrator needs from {@link PythonSetupCliClient}, typed
@@ -108,6 +113,63 @@ export interface PythonSetupSetupDeps {
     showSuccess: (result: PythonSetupResult) => Promise<void>;
 
     withProgress: <T>(title: string, task: ProgressTask<T>) => Promise<T>;
+
+    /**
+     * Record that a setup run is starting, returning the reporter for its
+     * outcome. Injected (rather than taking a `Telemetry`) so the flow's tests
+     * assert on plain recorded values with no telemetry client in sight.
+     *
+     * Called only once a run is actually about to spawn the CLI, so every
+     * attempt has exactly one outcome. Clicks that stop earlier (no compute
+     * attached, gate closed) are already covered by the
+     * `python_env.setup.detected` event's `explicit_command` trigger.
+     */
+    recordSetupAttempt: (
+        attempt: PythonSetupAttempt
+    ) => PythonSetupResultReporter;
+
+    /**
+     * Record that the CTA was pressed with nothing to set up for, so no run
+     * started. Reported without an attempt (the one exception to the pairing),
+     * because a visible button that dead-ends is worth measuring and no other
+     * event covers it: `python_env.setup.detected`'s `explicit_command` trigger
+     * fires only from the legacy setup command, which the config view shows
+     * mutually exclusively with this entry.
+     */
+    recordNoCompute: () => void;
+
+    /**
+     * The project's detected package manager, for the attempt event. Reads the
+     * same detection the visibility gate runs; `undefined` when detection was
+     * unavailable, in which case the attempt reports `unknown`.
+     */
+    getPackageManager: () => Promise<PrimaryManager | undefined>;
+
+    /**
+     * Whether the project has no `pyproject.toml` yet. Consulted only when the
+     * detected manager is uv/unknown — see {@link greenfieldSignal}.
+     */
+    hasPyprojectToml: (projectRoot: string) => Promise<boolean>;
+}
+
+/**
+ * The greenfield flag for the attempt event, or `undefined` to omit it.
+ *
+ * A missing `pyproject.toml` only means "greenfield" for a project that has no
+ * competing manager: pip and conda users may never have one, so for them the
+ * absence says nothing and reporting it would inflate the greenfield rate. The
+ * signal is therefore emitted only for uv/unknown projects — which is exactly
+ * the population the visibility gate admits.
+ */
+async function greenfieldSignal(
+    manager: PrimaryManager,
+    projectRoot: string,
+    hasPyprojectToml: (projectRoot: string) => Promise<boolean>
+): Promise<boolean | undefined> {
+    if (manager !== "uv" && manager !== "unknown") {
+        return undefined;
+    }
+    return !(await hasPyprojectToml(projectRoot));
 }
 
 /**
@@ -192,6 +254,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // Tell them what to do instead of silently no-op'ing the button.
             // Plain notify (not showError): no CLI ran, so there is no log to
             // reveal.
+            try {
+                this.deps.recordNoCompute();
+            } catch {
+                // Measurement must never break the flow it measures.
+            }
             await this.deps.notify(NO_COMPUTE_TARGET_MESSAGE);
             return;
         }
@@ -200,6 +267,12 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             mode: "default",
             compute,
         };
+
+        // From here a run really happens, so the attempt is recorded and every
+        // exit below reports an outcome. The reporter also starts the clock:
+        // the duration we publish is the whole user-visible wait, including CLI
+        // spawn and interpreter adoption.
+        const reportResult = await this.recordAttempt(invocation, cwd);
 
         let result: PythonSetupResult;
         try {
@@ -210,15 +283,26 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         } catch (e) {
             // A cancelled run is a user action, not a failure: stay quiet.
             if (e instanceof PythonSetupCancelledError) {
+                reportResult({outcome: "cancelled"});
                 return;
             }
             // Spawn/parse errors reject with a real Error carrying CLI stderr;
-            // there is no result to map, so surface the message directly.
+            // there is no result to map, so surface the message directly. No
+            // result object exists, hence `not_started` rather than `failed`:
+            // there is no phase or error code to attribute the break to.
+            reportResult({outcome: "not_started"});
             await this.deps.showError((e as Error).message);
             return;
         }
 
         if (!isLocalEnvironmentReady(result)) {
+            reportResult({
+                outcome: "failed",
+                failurePhase: result.error?.failurePhase,
+                errorCode: result.error?.code,
+                envKey: result.compute?.envKey,
+                diskMutated: result.error?.diskMutated,
+            });
             await this.deps.showError(getPythonSetupErrorMessage(result));
             return;
         }
@@ -232,21 +316,102 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // project's interpreter setting at this run's venv.
             await this.deps.adoptInterpreter(result.venvPath, cwd);
         } catch (e) {
+            // The CLI succeeded, so there is no CLI error to report — but the
+            // flow failed. `adopt` is the extension's own phase, appended to the
+            // CLI's six so the funnel shows breaks that happen after it exits.
+            reportResult({
+                outcome: "failed",
+                failurePhase: "adopt",
+                envKey: result.compute.envKey,
+            });
             await this.deps.showError((e as Error).message);
             return;
         }
 
-        this.deps.saveState({
-            envKey: result.compute.envKey,
-            pythonVersion: result.resolved.pythonVersion,
-        });
+        // Do the state bookkeeping *before* reporting success, so a throw here
+        // is never recorded as `ok`.
+        try {
+            this.deps.saveState({
+                envKey: result.compute.envKey,
+                pythonVersion: result.resolved.pythonVersion,
+            });
+            // Record readiness for the project this run provisioned (the
+            // captured cwd), not the live active project — a mid-run switch must
+            // not mark a different project ready.
+            this.readyRoots.add(cwd);
+            this.stateEmitter.fire();
+        } catch (e) {
+            reportResult({
+                outcome: "failed",
+                failurePhase: "persist",
+                envKey: result.compute.envKey,
+            });
+            throw e;
+        }
 
-        // Record readiness for the project this run provisioned (the captured
-        // cwd), not the live active project — a mid-run switch must not mark a
-        // different project ready.
-        this.readyRoots.add(cwd);
-        this.stateEmitter.fire();
+        // Reported before `showSuccess` on purpose: that awaits the user
+        // dismissing a toast, and folding think-time into `duration` would wreck
+        // the setup-time metric this event exists to measure.
+        reportResult({outcome: "ok", envKey: result.compute.envKey});
+
         await this.deps.showSuccess(result);
+    }
+
+    /**
+     * Emit the attempt event for a run that is about to start and return its
+     * outcome reporter.
+     *
+     * Measurement must never break the flow it measures, so everything here is
+     * best-effort: a failure gathering the attempt's context degrades to
+     * `unknown`/omitted, and a failure in the emit itself is swallowed — the
+     * returned reporter then becomes a no-op rather than throwing mid-run.
+     */
+    private async recordAttempt(
+        invocation: SetupLocalInvocation,
+        projectRoot: string
+    ): Promise<PythonSetupResultReporter> {
+        const {compute} = invocation;
+        let packageManager: PrimaryManager = "unknown";
+        let isGreenfield: boolean | undefined;
+        // Two independent probes, so they get independent try blocks: a failing
+        // pyproject.toml probe must not discard a package manager that was
+        // detected successfully (that would bias the manager distribution toward
+        // `unknown`). Either failing just narrows the attempt, never breaks the
+        // user's setup run.
+        try {
+            packageManager = (await this.deps.getPackageManager()) ?? "unknown";
+        } catch {
+            // Keep `unknown`.
+        }
+        try {
+            isGreenfield = await greenfieldSignal(
+                packageManager,
+                projectRoot,
+                this.deps.hasPyprojectToml
+            );
+        } catch {
+            // Leave isGreenfield undefined, i.e. omitted from the event.
+        }
+        try {
+            const reportResult = this.deps.recordSetupAttempt({
+                packageManager,
+                targetType: compute.kind,
+                serverlessVersion:
+                    compute.kind === "serverless" ? compute.version : undefined,
+                mode: invocation.mode,
+                isGreenfield,
+            });
+            return (report) => {
+                try {
+                    reportResult(report);
+                } catch {
+                    // Swallow: the run's outcome has already been decided and
+                    // surfaced to the user by the time this is called.
+                }
+            };
+        } catch {
+            return () => {};
+        }
     }
 
     dispose(): void {
