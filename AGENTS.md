@@ -1,5 +1,12 @@
 # AGENTS.md
 
+## This repo is public
+
+Never reference the internal issue tracker — `DECO-*` keys, `databricks.atlassian.net`
+links — in code, comments, commit messages, PR titles, or PR descriptions. The
+direction is one-way: link the PR from the internal ticket, never the ticket from the
+PR. A handful of `DECO-*` mentions predate this rule and are not precedent.
+
 ## Code conventions
 
 Read [CODE_CONVENTIONS.md](CODE_CONVENTIONS.md) before you:
