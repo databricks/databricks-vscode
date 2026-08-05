@@ -504,7 +504,12 @@ describe(__filename, () => {
                 Events.AITOOLS_INSTALL
             );
             assert.ok(installEvent, "expected an install event");
-            assert.strictEqual(installEvent.props.success, true);
+            // The plugin install isn't observable by the extension, so the
+            // outcome is a possible success, not a confirmed one.
+            assert.strictEqual(
+                installEvent.props.result,
+                "possible-success"
+            );
             assert.deepStrictEqual(installEvent.props.agents, []);
             assert.strictEqual(installEvent.props.cursorPlugin, true);
         });
@@ -614,7 +619,7 @@ describe(__filename, () => {
         const [installEvent] = stubTelemetry.eventsOfType(
             Events.AITOOLS_INSTALL
         );
-        assert.strictEqual(installEvent.props.success, true);
+        assert.strictEqual(installEvent.props.result, "success");
         assert.strictEqual(installEvent.props.source, "sidePane");
         assert.deepStrictEqual(installEvent.props.agents, ["codex"]);
     });
@@ -669,7 +674,7 @@ describe(__filename, () => {
 
     it("still refreshes the panel when the install command fails", async () => {
         const loaders: ScopeLoaders = {};
-        const {manager, mockCli} = setup(loaders);
+        const {manager, mockCli, stubTelemetry} = setup(loaders);
         when(
             mockCli.aitoolsInstall("global", anything(), anything(), anything())
         ).thenCall(async () => {
@@ -696,6 +701,12 @@ describe(__filename, () => {
         // reflects the tools that actually installed.
         assert.strictEqual(manager.model.state.installLocation, "global");
         assert.strictEqual(manager.model.state.updateStatus, "upToDate");
+
+        // The failed install is recorded as an error outcome.
+        const [installEvent] = stubTelemetry.eventsOfType(
+            Events.AITOOLS_INSTALL
+        );
+        assert.strictEqual(installEvent.props.result, "error");
     });
 
     it("refreshes update status to upToDate after a successful update", async () => {

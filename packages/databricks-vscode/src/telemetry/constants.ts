@@ -63,6 +63,19 @@ export type AiToolsInstallSource = "initModal" | "sidePane";
  */
 export type AiToolsCursorPluginSource = AiToolsInstallSource | "pluginButton";
 
+/**
+ * Outcome of an AI tools install:
+ *  - `'success'` — the install ran and completed without error.
+ *  - `'error'` — the install ran and failed.
+ *  - `'possible-success'` — the user completed the flow but the actual install
+ *    is not observable by the extension, so we can't confirm it landed. Today
+ *    this is the Cursor-plugin-only case: the plugin is added via Cursor's
+ *    marketplace modal (see {@link AiToolsManager.addCursorPlugin}), which we
+ *    can open but can't verify the user acted on. Tracked separately so it
+ *    doesn't inflate the confirmed `'success'` count.
+ */
+export type AiToolsInstallResult = "success" | "error" | "possible-success";
+
 // Package-manager / interpreter unions are owned by the pure detection module
 // (the single source of truth) and re-exported here so the event schema and the
 // classifier can never drift apart. The detection module has no runtime imports,
@@ -252,7 +265,7 @@ export class EventTypes {
     };
     [Events.AITOOLS_INSTALL]: EventType<
         {
-            success: boolean;
+            result: AiToolsInstallResult;
             scope: AiToolsScope;
             source?: AiToolsInstallSource;
             agents?: string[];
@@ -260,8 +273,9 @@ export class EventTypes {
         } & DurationMeasurement
     > = {
         comment: "Install Databricks AI tools",
-        success: {
-            comment: "true if the install succeeded, false otherwise",
+        result: {
+            comment:
+                "The install outcome: 'success' (ran and completed), 'error' (ran and failed), or 'possible-success' (the user completed the flow but the install is not observable by the extension, e.g. the Cursor-plugin-only case). Kept separate so 'possible-success' doesn't inflate the confirmed 'success' count.",
         },
         scope: {
             comment: "The install scope (project or global)",

@@ -412,7 +412,10 @@ export class AiToolsManager implements Disposable {
             if (agents.length > 0 && cliAgents.length === 0) {
                 this.telemetry.recordEvent(Events.AITOOLS_INSTALL, {
                     duration: 0,
-                    success: true,
+                    // The plugin is installed via Cursor's marketplace modal,
+                    // which we open but can't confirm the user acted on, so the
+                    // outcome is only a possible success.
+                    result: "possible-success",
                     scope,
                     source,
                     agents: cliAgents,
@@ -431,7 +434,7 @@ export class AiToolsManager implements Disposable {
                 cliAgents
             );
             recordEvent({
-                success: true,
+                result: "success",
                 scope,
                 source,
                 agents: cliAgents,
@@ -439,7 +442,7 @@ export class AiToolsManager implements Disposable {
             });
         } catch (e) {
             recordEvent({
-                success: false,
+                result: "error",
                 scope,
                 source,
                 agents: cliAgents,
@@ -479,14 +482,14 @@ export class AiToolsManager implements Disposable {
                 [agentId]
             );
             recordEvent({
-                success: true,
+                result: "success",
                 scope,
                 source: "sidePane",
                 agents: [agentId],
             });
         } catch (e) {
             recordEvent({
-                success: false,
+                result: "error",
                 scope,
                 source: "sidePane",
                 agents: [agentId],
