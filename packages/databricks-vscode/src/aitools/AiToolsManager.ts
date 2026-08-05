@@ -82,6 +82,8 @@ function computeAgentsStatuses(
         type: agent.managed ? "plugin" : "skills-only",
         detected: agent.detected,
         version: agent.installed[scope]?.version,
+        skillsOnly:
+            agent.managed && agent.installed[scope]?.delivery === "skills",
     }));
 }
 

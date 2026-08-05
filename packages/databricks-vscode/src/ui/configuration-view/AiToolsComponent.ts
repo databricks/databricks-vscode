@@ -169,10 +169,17 @@ export class AiToolsComponent extends BaseComponent {
                 .map((agent) => {
                     const id = getTreeIconId(`agent.${agent.id}`);
                     const installed = agent.version !== undefined;
+                    // A managed agent that only received the raw skills (not the
+                    // managed plugin) is annotated so the distinction is visible.
+                    const description = installed
+                        ? agent.skillsOnly
+                            ? `${agent.version} (skills only)`
+                            : agent.version
+                        : "Not installed";
                     return {
                         label: agent.displayName,
                         id,
-                        description: agent.version ?? "Not installed",
+                        description,
                         // A green check marks installed agents; uninstalled ones
                         // get an inline install button (see package.json
                         // view/item/context) keyed on this context value, and

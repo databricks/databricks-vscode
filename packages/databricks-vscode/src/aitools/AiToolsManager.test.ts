@@ -763,6 +763,72 @@ describe(__filename, () => {
         assert.strictEqual(manager.model.state.version, "0.3.1");
     });
 
+    it("flags a managed agent delivered as skills only", async () => {
+        const {manager, mockCli} = setup({project: loadSuccess});
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult(
+                [
+                    {
+                        name: "databricks-core",
+                        latest_version: "0.1.0",
+                        installed: {project: "0.1.0"},
+                    },
+                ],
+                [
+                    {
+                        name: "claude-code",
+                        display_name: "Claude Code",
+                        managed: true,
+                        detected: true,
+                        installed: {
+                            project: {
+                                version: "1.2.0",
+                                native_scope: "project",
+                                delivery: "skills",
+                            },
+                        },
+                    },
+                    {
+                        name: "codex",
+                        display_name: "Codex",
+                        managed: true,
+                        detected: true,
+                        installed: {
+                            project: {
+                                version: "1.2.0",
+                                native_scope: "project",
+                                delivery: "plugin",
+                            },
+                        },
+                    },
+                    {
+                        name: "windsurf",
+                        display_name: "Windsurf",
+                        managed: false,
+                        detected: true,
+                        installed: {
+                            project: {
+                                version: "1.2.0",
+                                native_scope: "project",
+                                delivery: "skills",
+                            },
+                        },
+                    },
+                ]
+            )
+        );
+        await manager.detectInstall();
+        await manager.resolveInstalled();
+
+        const {agents} = manager.model.state;
+        // Managed + delivered as skills -> flagged.
+        assert.strictEqual(agents[0].skillsOnly, true);
+        // Managed but delivered as the plugin -> not flagged.
+        assert.strictEqual(agents[1].skillsOnly, false);
+        // Unmanaged agents are never flagged, even when delivered as skills.
+        assert.strictEqual(agents[2].skillsOnly, false);
+    });
+
     it("clears the version when nothing is installed", async () => {
         const loaders: ScopeLoaders = {project: loadSuccess};
         const {manager, mockCli} = setup(loaders);

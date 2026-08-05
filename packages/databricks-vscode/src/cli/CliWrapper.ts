@@ -175,6 +175,12 @@ export interface AiToolsAgentInstallation {
     version: string;
     // eslint-disable-next-line @typescript-eslint/naming-convention
     native_scope: string;
+    /**
+     * How the agent's AI tools were delivered: as raw `skills` or as a
+     * managed `plugin`. A managed agent can be delivered either way; when it
+     * only received skills the UI annotates the row as "skills only".
+     */
+    delivery?: "skills" | "plugin";
 }
 
 /** A single agent entry from `databricks aitools list --output json`. */

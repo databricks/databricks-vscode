@@ -43,7 +43,8 @@ async function getChildrenOf(
 function agent(
     id: string,
     displayName: string,
-    version?: string
+    version?: string,
+    skillsOnly?: boolean
 ): AiToolsAgentStatus {
     return {
         id,
@@ -51,6 +52,7 @@ function agent(
         type: version !== undefined ? "plugin" : "skills-only",
         detected: version !== undefined,
         version,
+        skillsOnly,
     };
 }
 
@@ -291,6 +293,19 @@ describe(__filename, () => {
             assert.strictEqual(cursor.label, "Cursor");
             assert.strictEqual(cursor.id, "AITOOLS.agent.cursor");
             assert.strictEqual(cursor.description, "Not installed");
+        });
+
+        it("annotates a managed agent delivered as skills only", async () => {
+            const model = createModel("project", "upToDate", "0.2.9", undefined, [
+                agent("claude", "Claude Code", "1.2.0", true),
+            ]);
+            const rows = await getChildrenOf(model, {
+                label: "Agents",
+                id: "AITOOLS.agents",
+            });
+
+            const [claude] = rows;
+            assert.strictEqual(claude.description, "1.2.0 (skills only)");
         });
 
         it("returns no agent rows when the agents list is empty", async () => {

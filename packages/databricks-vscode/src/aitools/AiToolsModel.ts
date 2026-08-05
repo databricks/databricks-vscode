@@ -19,6 +19,12 @@ export interface AiToolsAgentStatus {
     type: "plugin" | "skills-only";
     detected: boolean;
     version?: string;
+    /**
+     * True when a managed agent received only the raw skills rather than the
+     * managed plugin (`managed === true && installed.delivery === "skills"`).
+     * The row annotates its version with "skills only" in this case.
+     */
+    skillsOnly?: boolean;
 }
 
 export interface AiToolsState {
