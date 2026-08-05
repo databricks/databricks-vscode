@@ -30,11 +30,12 @@ function shellBasename(shellPath: string): string {
  * Matches on the basename, not a substring of the whole path: a path such as
  * `C:\cmder\vendor\git\bin\bash.exe` contains "cmd" but is a POSIX shell.
  *
- * An *empty* shell falls back to the platform default rather than to POSIX:
- * callers cannot pin `shellPath` to `""`, so VS Code launches
- * `terminal.integrated.defaultProfile`, which on Windows is PowerShell. A shell
- * that is named but unrecognised still resolves to POSIX — `bash.exe` on Windows
- * is a POSIX shell, and it is what actually gets launched.
+ * An *empty* shell falls back to the platform default rather than to POSIX,
+ * since VS Code then launches `terminal.integrated.defaultProfile`, which on
+ * Windows is PowerShell. This is the last resort: prefer
+ * {@link resolveTerminalShell}, which consults the configured profile first. A
+ * shell that is named but unrecognised still resolves to POSIX — `bash.exe` on
+ * Windows is a POSIX shell, and it is what actually gets launched.
  */
 export function detectShellKind(
     shell: string,
@@ -62,56 +63,139 @@ export function detectShellKind(
 }
 
 /**
- * The shell path a pinned-`shellPath`-less terminal will actually be launched
- * with: `env.shell` when VS Code reports one, otherwise the configured default
- * profile's path, otherwise `ComSpec`.
+ * Shell family implied by a profile's `source`. VS Code's own default Windows
+ * profiles are written this way — `{"PowerShell": {"source": "PowerShell"}}`,
+ * `{"Git Bash": {"source": "Git Bash"}}` — so a resolver that only looks at
+ * `path` sees nothing at all for the most common configurations.
  *
- * When `env.shell` is empty the callers pass `shellPath: undefined`, so VS Code
- * launches `terminal.integrated.defaultProfile` — which may well be cmd.exe or
- * Git Bash, not the PowerShell that a bare platform-default guess assumes. When
- * the guess and the launched shell disagree it is #1822 with the shells swapped:
- * the line fails to parse, so nothing runs — not even the trailing `exit` — and
- * a caller awaiting the terminal-close event hangs until the user closes the tab
- * by hand. Reading the configured profile makes the two agree by construction.
- *
- * Pure so the precedence can be tested without VS Code.
+ * A `source` names a *detector*, not an executable: there is no path to
+ * classify, and no way to know the args VS Code will launch it with. It is
+ * therefore enough to pick the kind, and never enough to pin the shell.
  */
-export function effectiveShellPath(
-    envShell: string,
-    defaultProfileName: string | undefined,
-    profiles: Record<string, TerminalProfileConfig | null> | undefined,
-    comSpec: string | undefined
-): string {
-    if (envShell !== "") {
-        return envShell;
+function shellKindFromSource(source: string): ShellKind | undefined {
+    switch (source.toLowerCase()) {
+        case "powershell":
+        case "pwsh":
+            return "powershell";
+        case "git bash":
+            return "posix";
+        default:
+            return undefined;
     }
-    const profile = defaultProfileName
-        ? profiles?.[defaultProfileName]
-        : undefined;
-    const profilePath = Array.isArray(profile?.path)
-        ? profile?.path[0]
-        : profile?.path;
-    return profilePath ?? comSpec ?? "";
+}
+
+/** Every path a profile may launch, in the order VS Code tries them. */
+function profilePaths(profile: TerminalProfileConfig | null | undefined) {
+    if (!profile?.path) {
+        return [];
+    }
+    return Array.isArray(profile.path) ? profile.path : [profile.path];
+}
+
+function sameShellPath(a: string, b: string): boolean {
+    return a.toLowerCase() === b.toLowerCase() || sameBasename(a, b);
 }
 
 /**
- * The shell kind of the integrated terminal. This is the only seam that reads
- * VS Code state; everything else takes a {@link ShellKind}, so callers should
- * resolve this once and thread the result through.
+ * How to launch a terminal, and the shell family whose syntax its command line
+ * must be written in.
  *
- * `env.shell` is the empty string in environments that do not support a shell;
- * see {@link effectiveShellPath} for what is consulted instead.
+ * The two are returned together because they are one decision: a command
+ * generated for a different shell than the terminal runs is #1822, and keeping
+ * the kind beside the launch options makes it impossible for a caller to take
+ * one without the other.
  */
-export function currentShellKind(): ShellKind {
-    return detectShellKind(
-        effectiveShellPath(
-            env.shell ?? "",
-            workspaceConfigs.terminalDefaultProfileName,
-            workspaceConfigs.terminalProfiles,
-            process.env.ComSpec
-        ),
+export type TerminalShell = {
+    /** Shell family to generate the command string for. */
+    kind: ShellKind;
+    /**
+     * `shellPath` for `createTerminal`, or undefined to let VS Code launch the
+     * configured default profile itself.
+     */
+    shellPath?: string;
+    /** `shellArgs` for `createTerminal`; only ever set alongside `shellPath`. */
+    shellArgs?: string[] | string;
+};
+
+/**
+ * Resolve which shell a terminal we create will run, and how to launch it.
+ *
+ * Pinning `shellPath` keeps the shell that parses the command line identical to
+ * the one it was generated for, but VS Code only accepts a path — so pinning a
+ * profile we cannot fully describe *drops its args*. A profile of
+ * `{path: "wsl.exe", args: ["-d", "Ubuntu-22.04"]}` would land in the default
+ * distro, and Git Bash — configured by `source`, whose args we cannot see —
+ * would launch non-login, with a different `PATH` than every other terminal the
+ * user opens. So the shell is pinned only when the configured profile
+ * demonstrably describes the same executable `env.shell` reports, which is the
+ * one case where its args are known to belong to it. Otherwise the launch is
+ * left to VS Code, which already knows how to start its own profiles.
+ *
+ * Not pinning costs nothing in correctness: `env.shell` *is* the resolved path
+ * of the default profile, so it still classifies the shell VS Code will launch.
+ *
+ * `ComSpec` is deliberately not consulted. On Windows it is always
+ * `cmd.exe` — it describes what the OS would run, never what VS Code will — so
+ * using it as a fallback would classify every shell-less Windows environment as
+ * cmd while PowerShell actually starts. That mismatch is #1822 with the shells
+ * swapped: a cmd-shaped line (` & ` separators) does not parse in PowerShell, so
+ * nothing runs, not even the trailing `exit`, and a caller awaiting the
+ * terminal-close event hangs until the user closes the tab by hand.
+ *
+ * Pure, so the precedence can be tested without VS Code.
+ */
+export function resolveTerminalShell(
+    envShell: string,
+    defaultProfileName: string | undefined,
+    profiles: Record<string, TerminalProfileConfig | null> | undefined,
+    platform: NodeJS.Platform
+): TerminalShell {
+    const profile = defaultProfileName
+        ? profiles?.[defaultProfileName]
+        : undefined;
+    const paths = profilePaths(profile);
+
+    if (envShell !== "") {
+        const kind = detectShellKind(envShell, platform);
+        return paths.some((p) => sameShellPath(p, envShell))
+            ? {kind, shellPath: envShell, shellArgs: profile?.args}
+            : {kind};
+    }
+
+    // `env.shell` is empty in environments that do not support a shell. The
+    // configured default profile is then the only record of what VS Code will
+    // launch, and it may well be cmd.exe or Git Bash rather than the PowerShell
+    // a bare platform-default guess assumes.
+    if (paths[0] !== undefined) {
+        return {kind: detectShellKind(paths[0], platform)};
+    }
+    const fromSource = profile?.source
+        ? shellKindFromSource(profile.source)
+        : undefined;
+    return {kind: fromSource ?? detectShellKind("", platform)};
+}
+
+/**
+ * {@link resolveTerminalShell} for the running window. This and
+ * {@link terminalShellKind} are the only seams that read VS Code state;
+ * everything else takes a {@link ShellKind}, so callers should resolve this once
+ * and thread the result through.
+ */
+export function currentTerminalShell(): TerminalShell {
+    return resolveTerminalShell(
+        env.shell ?? "",
+        workspaceConfigs.terminalDefaultProfileName,
+        workspaceConfigs.terminalProfiles,
         process.platform
     );
+}
+
+/**
+ * The shell kind of the integrated terminal, for callers that only generate a
+ * command string and do not create the terminal themselves.
+ */
+export function currentShellKind(): ShellKind {
+    return currentTerminalShell().kind;
 }
 
 /**
@@ -144,62 +228,8 @@ export function terminalShellKind(
         : detectShellKind(shellPath, platform);
 }
 
-/**
- * The `args` of the configured default terminal profile whose path matches
- * `shell`, or undefined when there are none to forward.
- *
- * `env.shell` reports the default profile's *path* only, so pinning just the
- * path silently drops its args. VS Code does not fill them back in: passing an
- * explicit `executable` makes it build a fresh profile from
- * `{path, args: shellLaunchConfig.args}`, and `args` being undefined stays
- * undefined. A profile of `{path: "wsl.exe", args: ["-d", "Ubuntu-22.04"]}`
- * would therefore launch the *default* distro.
- *
- * Kept pure so the lookup can be tested without VS Code; the settings read
- * lives in {@link defaultProfileShellArgs}.
- */
-export function resolveProfileShellArgs(
-    shell: string,
-    defaultProfileName: string | undefined,
-    profiles: Record<string, TerminalProfileConfig | null> | undefined
-): string[] | string | undefined {
-    if (!defaultProfileName || !profiles) {
-        return undefined;
-    }
-    const profile = profiles[defaultProfileName];
-    if (!profile || profile.args === undefined) {
-        return undefined;
-    }
-    // Only forward args we are sure belong to the shell we are pinning. A
-    // renamed or `source`-based profile can point at a different executable
-    // than env.shell reports, and passing another shell's args is worse than
-    // passing none.
-    const paths = Array.isArray(profile.path)
-        ? profile.path
-        : profile.path === undefined
-          ? []
-          : [profile.path];
-    const matches = paths.some(
-        (p) => p.toLowerCase() === shell.toLowerCase() || sameBasename(p, shell)
-    );
-    return matches ? profile.args : undefined;
-}
-
 function sameBasename(a: string, b: string): boolean {
     return shellBasename(a) !== "" && shellBasename(a) === shellBasename(b);
-}
-
-/**
- * The args of the user's configured default terminal profile, to pass alongside
- * `shellPath` when pinning a terminal's shell. See
- * {@link resolveProfileShellArgs} for why forwarding these matters.
- */
-export function defaultProfileShellArgs(): string[] | string | undefined {
-    return resolveProfileShellArgs(
-        env.shell ?? "",
-        workspaceConfigs.terminalDefaultProfileName,
-        workspaceConfigs.terminalProfiles
-    );
 }
 
 /** Command that clears the terminal scrollback. */

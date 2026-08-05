@@ -4,14 +4,7 @@ import {
     WorkspaceClient,
     logging,
 } from "@databricks/sdk-experimental";
-import {
-    CancellationToken,
-    commands,
-    Disposable,
-    env,
-    Uri,
-    window,
-} from "vscode";
+import {CancellationToken, commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
@@ -371,25 +364,20 @@ export class AzureCliCheck implements Disposable {
 
         if (choice === "Run command") {
             // Pin the shell so the command we generate is parsed by the shell we
-            // detected, rather than by whatever the user's default profile is.
-            const shell = env.shell;
+            // generated it for, rather than by whatever the user's default
+            // profile is. See resolveTerminalShell for when pinning is skipped.
+            const {kind, shellPath, shellArgs} =
+                ShellUtils.currentTerminalShell();
             const terminal = window.createTerminal({
                 name: "az login",
-                shellPath: shell === "" ? undefined : shell,
-                // env.shell is the default profile's path only; without its args
-                // a profile such as `wsl.exe -d Ubuntu-22.04` would launch the
-                // wrong distro. See resolveProfileShellArgs.
-                shellArgs:
-                    shell === ""
-                        ? undefined
-                        : ShellUtils.defaultProfileShellArgs(),
+                shellPath,
+                shellArgs,
             });
             this.disposables.push(terminal);
             terminal.show();
 
             const useDeviceCode = this.isCodeSpaces ? "--use-device-code" : "";
 
-            const kind = ShellUtils.currentShellKind();
             const separator = ShellUtils.commandSeparator(kind);
             const azLogin = [
                 ShellUtils.escapeExecutableForTerminal(this.azBinPath, kind),

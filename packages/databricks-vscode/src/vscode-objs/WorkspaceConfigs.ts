@@ -157,9 +157,9 @@ export const workspaceConfigs = {
     /**
      * Name of the default integrated terminal profile for this platform, and the
      * configured profiles it can name. Needed because `env.shell` reports only
-     * the profile's *path*: pinning a terminal's `shellPath` without its `args`
-     * would drop them, and when `env.shell` is empty the profile is the only
-     * record of which shell VS Code will actually launch. See `shellUtils`.
+     * a *path*: the profile says whether that path carries `args` we would drop
+     * by pinning it, and when `env.shell` is empty it is the only record of
+     * which shell VS Code will actually launch. See `shellUtils`.
      */
     get terminalDefaultProfileName(): string | undefined {
         return (
@@ -183,8 +183,14 @@ export const workspaceConfigs = {
 
 /** The subset of a `terminal.integrated.profiles.*` entry we consume. */
 export type TerminalProfileConfig = {
+    /** Candidate executables, tried in order. Absent for `source` profiles. */
     path?: string | string[];
     args?: string[] | string;
+    /**
+     * A VS Code shell *detector* ("PowerShell", "Git Bash") rather than an
+     * executable — how VS Code's own default Windows profiles are written. It
+     * implies a shell family but no path and no knowable args.
+     */
     source?: string;
 };
 

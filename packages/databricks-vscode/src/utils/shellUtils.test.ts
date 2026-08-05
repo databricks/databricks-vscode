@@ -1,5 +1,5 @@
 import assert from "assert";
-import {execFile} from "child_process";
+import {execFile, spawn} from "child_process";
 import {existsSync} from "fs";
 import {promisify} from "util";
 import {
@@ -7,12 +7,11 @@ import {
     commandSeparator,
     detectShellKind,
     echoCmd,
-    effectiveShellPath,
     escapeExecutableForTerminal,
     escapePathArgument,
     hasCmdUnsafeChars,
     readCmd,
-    resolveProfileShellArgs,
+    resolveTerminalShell,
     ShellKind,
     terminalShellKind,
 } from "./shellUtils";
@@ -165,10 +164,11 @@ describe(__filename, () => {
     // ("Ubuntu-22.04", "Git Bash", "Command Prompt"), so they cannot be
     // camelCased without ceasing to match real settings.
     /* eslint-disable @typescript-eslint/naming-convention */
-    describe("resolveProfileShellArgs", () => {
-        // env.shell reports the default profile's *path* only. VS Code builds a
-        // fresh profile from an explicit executable and never fills args back
-        // in, so pinning shellPath alone drops them.
+    describe("resolveTerminalShell", () => {
+        // env.shell reports a *path* only. VS Code builds a fresh profile from
+        // an explicit executable and never fills args back in, so pinning
+        // shellPath alone drops them — hence the rule that the shell is pinned
+        // only when the configured profile proves the args belong to it.
         const wslProfiles = {
             "Ubuntu-22.04": {
                 path: "wsl.exe",
@@ -176,30 +176,44 @@ describe(__filename, () => {
             },
         };
 
-        it("forwards the configured args for the default profile", () => {
-            // Without this the terminal lands in the *default* distro, so
+        it("pins the shell and forwards its args when the profile matches", () => {
+            // Without the args the terminal lands in the *default* distro, so
             // bundle init scaffolds into a different filesystem than the user
             // configured and getSubProjects then reports no projects found.
             assert.deepStrictEqual(
-                resolveProfileShellArgs("wsl.exe", "Ubuntu-22.04", wslProfiles),
-                ["-d", "Ubuntu-22.04"]
+                resolveTerminalShell(
+                    "wsl.exe",
+                    "Ubuntu-22.04",
+                    wslProfiles,
+                    "win32"
+                ),
+                {
+                    kind: "posix",
+                    shellPath: "wsl.exe",
+                    shellArgs: wslProfiles["Ubuntu-22.04"].args,
+                }
             );
         });
 
         it("matches the profile path case-insensitively and by basename", () => {
             assert.deepStrictEqual(
-                resolveProfileShellArgs(
+                resolveTerminalShell(
                     "C:\\Windows\\System32\\wsl.exe",
                     "Ubuntu-22.04",
-                    wslProfiles
+                    wslProfiles,
+                    "win32"
                 ),
-                ["-d", "Ubuntu-22.04"]
+                {
+                    kind: "posix",
+                    shellPath: "C:\\Windows\\System32\\wsl.exe",
+                    shellArgs: ["-d", "Ubuntu-22.04"],
+                }
             );
         });
 
-        it("forwards Git Bash's --login", () => {
+        it("forwards Git Bash's --login when the profile names a path", () => {
             assert.deepStrictEqual(
-                resolveProfileShellArgs(
+                resolveTerminalShell(
                     "C:\\Program Files\\Git\\bin\\bash.exe",
                     "Git Bash",
                     {
@@ -207,87 +221,141 @@ describe(__filename, () => {
                             path: "C:\\Program Files\\Git\\bin\\bash.exe",
                             args: ["--login"],
                         },
-                    }
+                    },
+                    "win32"
                 ),
-                ["--login"]
+                {
+                    kind: "posix",
+                    shellPath: "C:\\Program Files\\Git\\bin\\bash.exe",
+                    shellArgs: ["--login"],
+                }
             );
         });
 
-        it("returns undefined when the profile is for a different shell", () => {
+        it("does not pin a source-based profile, whose args it cannot see", () => {
+            // Regression: VS Code's own default Windows profiles are written
+            // `{"Git Bash": {"source": "Git Bash"}}` — no path, and the args it
+            // launches with (`--login`) are not in settings at all. Pinning
+            // bash.exe with no args gives a *non-login* shell: a different PATH
+            // and no profile scripts, unlike every other terminal the user
+            // opens. Classify the shell, but let VS Code launch it.
+            assert.deepStrictEqual(
+                resolveTerminalShell(
+                    "C:\\Program Files\\Git\\bin\\bash.exe",
+                    "Git Bash",
+                    {"Git Bash": {source: "Git Bash"}},
+                    "win32"
+                ),
+                {kind: "posix"}
+            );
+            assert.deepStrictEqual(
+                resolveTerminalShell(
+                    "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+                    "PowerShell",
+                    {PowerShell: {source: "PowerShell"}},
+                    "win32"
+                ),
+                {kind: "powershell"}
+            );
+        });
+
+        it("does not pin when the profile is for a different shell", () => {
             // Passing another shell's args is worse than passing none: a
             // renamed or source-based profile can point at a different
             // executable than env.shell reports.
-            assert.strictEqual(
-                resolveProfileShellArgs(
+            assert.deepStrictEqual(
+                resolveTerminalShell(
                     "pwsh.exe",
                     "Ubuntu-22.04",
-                    wslProfiles
+                    wslProfiles,
+                    "win32"
                 ),
-                undefined
+                {kind: "powershell"}
             );
         });
 
-        it("returns undefined when there is nothing to forward", () => {
-            assert.strictEqual(
-                resolveProfileShellArgs("wsl.exe", undefined, wslProfiles),
-                undefined
+        it("still classifies env.shell when there is no profile to consult", () => {
+            // Not pinning costs nothing: env.shell *is* the resolved path of the
+            // default profile, so it describes the shell VS Code will launch.
+            assert.deepStrictEqual(
+                resolveTerminalShell(
+                    "/bin/zsh",
+                    undefined,
+                    undefined,
+                    "darwin"
+                ),
+                {kind: "posix"}
             );
-            assert.strictEqual(
-                resolveProfileShellArgs("wsl.exe", "Ubuntu-22.04", undefined),
-                undefined
-            );
-            assert.strictEqual(
-                resolveProfileShellArgs("pwsh.exe", "PowerShell", {
-                    PowerShell: {path: "pwsh.exe"},
-                }),
-                undefined
+            assert.deepStrictEqual(
+                resolveTerminalShell(
+                    "C:\\Windows\\System32\\cmd.exe",
+                    undefined,
+                    undefined,
+                    "win32"
+                ),
+                {kind: "cmd"}
             );
             // A null entry is how VS Code settings mark a profile as removed.
-            assert.strictEqual(
-                resolveProfileShellArgs("pwsh.exe", "PowerShell", {
-                    PowerShell: null,
-                }),
-                undefined
+            assert.deepStrictEqual(
+                resolveTerminalShell(
+                    "pwsh.exe",
+                    "PowerShell",
+                    {PowerShell: null},
+                    "win32"
+                ),
+                {kind: "powershell"}
             );
         });
-    });
 
-    describe("effectiveShellPath", () => {
-        // When env.shell is empty the callers pass shellPath: undefined, so VS
-        // Code launches the configured default profile. Guessing the platform
-        // default instead can disagree with what actually starts, and a
-        // mis-shaped line means nothing runs — not even the trailing `exit` —
-        // leaving the wizard awaiting a terminal-close event forever.
-        it("prefers env.shell when VS Code reports one", () => {
-            assert.strictEqual(
-                effectiveShellPath(
+        it("pins with no args when the matching profile has none", () => {
+            assert.deepStrictEqual(
+                resolveTerminalShell(
+                    "pwsh.exe",
+                    "PowerShell",
+                    {PowerShell: {path: "pwsh.exe"}},
+                    "win32"
+                ),
+                {
+                    kind: "powershell",
+                    shellPath: "pwsh.exe",
+                    shellArgs: undefined,
+                }
+            );
+        });
+
+        it("prefers env.shell over the configured profile's path", () => {
+            // env.shell is what VS Code resolved; the profile is only consulted
+            // for the args that go with it.
+            assert.deepStrictEqual(
+                resolveTerminalShell(
                     "/bin/zsh",
                     "Command Prompt",
                     {"Command Prompt": {path: "cmd.exe"}},
-                    "C:\\Windows\\System32\\cmd.exe"
+                    "win32"
                 ),
-                "/bin/zsh"
+                {kind: "posix"}
             );
         });
 
-        it("uses the configured default profile when env.shell is empty", () => {
-            assert.strictEqual(
-                detectShellKind(
-                    effectiveShellPath(
+        describe("when env.shell is empty", () => {
+            // Shell-less environments report "". Callers then pass
+            // shellPath: undefined, so VS Code launches the configured default
+            // profile — which may well be cmd.exe or Git Bash, not the
+            // PowerShell a bare platform-default guess assumes. A mis-shaped
+            // line means nothing runs (not even the trailing `exit`), leaving
+            // the wizard awaiting a terminal-close event forever.
+            it("classifies from the configured default profile", () => {
+                assert.deepStrictEqual(
+                    resolveTerminalShell(
                         "",
                         "Command Prompt",
                         {"Command Prompt": {path: "cmd.exe"}},
-                        undefined
+                        "win32"
                     ),
-                    "win32"
-                ),
-                "cmd"
-            );
-            // Git Bash as the default profile must resolve to posix, not to the
-            // PowerShell a bare platform-default guess would assume.
-            assert.strictEqual(
-                detectShellKind(
-                    effectiveShellPath(
+                    {kind: "cmd"}
+                );
+                assert.deepStrictEqual(
+                    resolveTerminalShell(
                         "",
                         "Git Bash",
                         {
@@ -295,43 +363,98 @@ describe(__filename, () => {
                                 path: "C:\\Program Files\\Git\\bin\\bash.exe",
                             },
                         },
-                        undefined
+                        "win32"
                     ),
-                    "win32"
-                ),
-                "posix"
-            );
-        });
+                    {kind: "posix"}
+                );
+            });
 
-        it("takes the first candidate when a profile lists several paths", () => {
-            assert.strictEqual(
-                effectiveShellPath(
-                    "",
-                    "PowerShell",
-                    {PowerShell: {path: ["pwsh.exe", "powershell.exe"]}},
-                    undefined
-                ),
-                "pwsh.exe"
-            );
-        });
+            it("takes the first candidate when a profile lists several paths", () => {
+                assert.deepStrictEqual(
+                    resolveTerminalShell(
+                        "",
+                        "PowerShell",
+                        {PowerShell: {path: ["pwsh.exe", "powershell.exe"]}},
+                        "win32"
+                    ),
+                    {kind: "powershell"}
+                );
+            });
 
-        it("falls back to ComSpec, then to the platform default", () => {
-            assert.strictEqual(
-                effectiveShellPath("", undefined, undefined, "C:\\W\\cmd.exe"),
-                "C:\\W\\cmd.exe"
-            );
-            // Nothing known at all: detectShellKind's platform default applies.
-            assert.strictEqual(
-                effectiveShellPath("", undefined, undefined, undefined),
-                ""
-            );
-            assert.strictEqual(
-                detectShellKind(
-                    effectiveShellPath("", undefined, undefined, undefined),
-                    "win32"
-                ),
-                "powershell"
-            );
+            it("classifies a source-only default profile", () => {
+                assert.deepStrictEqual(
+                    resolveTerminalShell(
+                        "",
+                        "Command Prompt",
+                        {"Command Prompt": {source: "PowerShell"}},
+                        "win32"
+                    ),
+                    {kind: "powershell"}
+                );
+                assert.deepStrictEqual(
+                    resolveTerminalShell(
+                        "",
+                        "Git Bash",
+                        {"Git Bash": {source: "Git Bash"}},
+                        "win32"
+                    ),
+                    {kind: "posix"}
+                );
+            });
+
+            it("falls back to the platform default, never to cmd", () => {
+                // Regression: ComSpec was consulted here, and on Windows it is
+                // *always* cmd.exe — it describes what the OS would run, never
+                // what VS Code will. Every shell-less Windows environment was
+                // classified cmd while PowerShell actually started, so the
+                // ` & `-separated line failed to parse and nothing ran. This
+                // also made detectShellKind's win32 default unreachable.
+                assert.deepStrictEqual(
+                    resolveTerminalShell("", undefined, undefined, "win32"),
+                    {kind: "powershell"}
+                );
+                // An unrecognised source must not defeat the fallback either.
+                assert.deepStrictEqual(
+                    resolveTerminalShell(
+                        "",
+                        "Custom",
+                        {Custom: {source: "Something Else"}},
+                        "win32"
+                    ),
+                    {kind: "powershell"}
+                );
+                assert.deepStrictEqual(
+                    resolveTerminalShell("", undefined, undefined, "darwin"),
+                    {kind: "posix"}
+                );
+                assert.deepStrictEqual(
+                    resolveTerminalShell("", undefined, undefined, "linux"),
+                    {kind: "posix"}
+                );
+            });
+
+            it("never pins a shell it cannot name", () => {
+                // shellPath: "" is not a launchable path, so every empty-shell
+                // result must leave the launch to VS Code.
+                const profiles = {
+                    "Command Prompt": {path: "cmd.exe", args: ["/K"]},
+                };
+                (
+                    [
+                        ["Command Prompt", profiles],
+                        [undefined, undefined],
+                    ] as const
+                ).forEach(([name, ps]) => {
+                    const resolved = resolveTerminalShell(
+                        "",
+                        name,
+                        ps,
+                        "win32"
+                    );
+                    assert.strictEqual(resolved.shellPath, undefined);
+                    assert.strictEqual(resolved.shellArgs, undefined);
+                });
+            });
         });
     });
     /* eslint-enable @typescript-eslint/naming-convention */
@@ -592,15 +715,34 @@ describe(__filename, () => {
 
     // The assertions above only prove we produce the string we intended. These
     // run the generated command through a real shell to prove the shell agrees.
-    // Gated on platform: /bin/sh is only guaranteed on POSIX hosts, and CI runs
-    // Linux and macOS.
-    describe("round-trip against a real shell", () => {
-        const canRunPosix = process.platform !== "win32";
+    // CI runs Linux, macOS and Windows, so both suites below execute somewhere;
+    // each skips itself on the platforms whose shells do not exist.
+    describe("round-trip against a real posix shell", () => {
+        // /bin/sh is guaranteed on every POSIX host, so its absence is a broken
+        // environment rather than a reason to skip: silently passing would hide
+        // this entire suite. zsh, bash and dash are probed individually.
+        const requiredShell = "/bin/sh";
+
+        before(function () {
+            if (process.platform === "win32") {
+                this.skip();
+            }
+            assert.ok(
+                existsSync(requiredShell),
+                `${requiredShell} is missing on a POSIX host; the round-trip suite cannot run`
+            );
+        });
 
         // sh is usually dash, zsh is the macOS default, and bash is what most
         // Linux users get. Their builtin `echo` and `read` differ, so each shell
         // has to be checked rather than assumed equivalent.
-        const shells = ["/bin/sh", "/bin/zsh", "/bin/bash"];
+        const shells = [requiredShell, "/bin/zsh", "/bin/bash"];
+
+        function skipUnlessPresent(ctx: Mocha.Context, shell: string) {
+            if (shell !== requiredShell && !existsSync(shell)) {
+                ctx.skip();
+            }
+        }
 
         async function run(shell: string, command: string): Promise<string> {
             const {stdout} = await execFileAsync(shell, ["-c", command]);
@@ -627,9 +769,7 @@ describe(__filename, () => {
                 it(`prints ${JSON.stringify(
                     message
                 )} verbatim in ${shell}`, async function () {
-                    if (!canRunPosix || !existsSync(shell)) {
-                        this.skip();
-                    }
+                    skipUnlessPresent(this, shell);
                     const stdout = await run(shell, echoCmd(message, "posix"));
                     assert.strictEqual(stdout, `${message}\n`);
                 });
@@ -652,9 +792,7 @@ describe(__filename, () => {
                 it(`passes ${JSON.stringify(
                     p
                 )} as one argument in ${shell}`, async function () {
-                    if (!canRunPosix || !existsSync(shell)) {
-                        this.skip();
-                    }
+                    skipUnlessPresent(this, shell);
                     // printf %s\n prints each argument on its own line, so a path
                     // that got split shows up as more than one line.
                     const stdout = await run(
@@ -671,9 +809,7 @@ describe(__filename, () => {
         // installed on macOS, so it is probed separately from `shells`.
         [...shells, "/bin/dash"].forEach((shell) => {
             it(`readCmd is accepted by ${shell}`, async function () {
-                if (!canRunPosix || !existsSync(shell)) {
-                    this.skip();
-                }
+                skipUnlessPresent(this, shell);
                 // Regression: bare `read` is a usage error in dash ("arg count",
                 // exit 2), so the hold-open step failed and the following `exit`
                 // closed the terminal, hiding the CLI error it exists to keep
@@ -691,6 +827,271 @@ describe(__filename, () => {
                     `${shell} rejected ${readCmd("posix")}`
                 );
             });
+        });
+    });
+
+    // The cmd.exe and PowerShell branches are the ones #1822 was actually about,
+    // and string equality alone is what let the original bug ship. The unit-test
+    // matrix includes a windows-server runner, so they can be executed for real
+    // rather than only asserted as strings.
+    describe("round-trip against a real windows shell", () => {
+        before(function () {
+            if (process.platform !== "win32") {
+                this.skip();
+            }
+        });
+
+        // Commands are piped to the shell's *stdin* rather than passed as argv.
+        // This is what `terminal.sendText` does, and it keeps Node's own
+        // Windows argv quoting out of the measurement — passing the command as
+        // an argument would test that quoting instead of ours.
+        //
+        // Killed after a deadline rather than left to Mocha's timeout: a shell
+        // that sits waiting for input would otherwise leak a process and report
+        // a bare timeout instead of the output collected so far.
+        function runViaStdin(
+            exe: string,
+            args: string[],
+            script: string
+        ): Promise<string> {
+            return new Promise((resolve, reject) => {
+                const child = spawn(exe, args, {
+                    stdio: ["pipe", "pipe", "pipe"],
+                });
+                let stdout = "";
+                child.stdout.setEncoding("utf8");
+                child.stdout.on("data", (chunk) => (stdout += chunk));
+                const deadline = setTimeout(() => child.kill(), 10_000);
+                child.on("error", (e) => {
+                    clearTimeout(deadline);
+                    reject(e);
+                });
+                child.on("close", () => {
+                    clearTimeout(deadline);
+                    resolve(stdout);
+                });
+                child.stdin.end(script);
+            });
+        }
+
+        // Both shells print a banner and (for cmd) a prompt, so the output under
+        // test is delimited rather than compared against the whole stream.
+        const start = "---BEGIN---";
+        const end = "---END---";
+
+        function captured(stdout: string): string[] {
+            const lines = stdout.replaceAll("\r\n", "\n").split("\n");
+            const from = lines.lastIndexOf(start);
+            const to = lines.indexOf(end, from + 1);
+            assert.ok(
+                from !== -1 && to !== -1,
+                `markers missing from output:\n${stdout}`
+            );
+            return lines.slice(from + 1, to);
+        }
+
+        const comSpec = process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe";
+        const powershell = "powershell.exe";
+
+        async function runCmd(command: string): Promise<string[]> {
+            // `@echo off` suppresses the prompt as well as command echoing, so
+            // only the markers and the command's own output land in between.
+            const stdout = await runViaStdin(
+                comSpec,
+                [],
+                [
+                    "@echo off",
+                    `echo ${start}`,
+                    command,
+                    `echo ${end}`,
+                    "exit",
+                    "",
+                ].join("\r\n")
+            );
+            // cmd's `echo` treats everything up to the ` & ` separator as part
+            // of the message, including the space before it, so chained lines
+            // arrive with one trailing space. That is cosmetic (it only affects
+            // the wizard's banner) and orthogonal to what these tests measure,
+            // so trailing blanks are normalised away rather than asserted.
+            return captured(stdout).map((line) => line.replace(/ +$/, ""));
+        }
+
+        async function runPowershell(command: string): Promise<string[]> {
+            const stdout = await runViaStdin(
+                powershell,
+                ["-NoProfile", "-NonInteractive", "-Command", "-"],
+                [
+                    `Write-Host '${start}'`,
+                    command,
+                    `Write-Host '${end}'`,
+                    "exit",
+                    "",
+                ].join("\n")
+            );
+            return captured(stdout);
+        }
+
+        // `%` and `!` are excluded deliberately: cmd expands them even inside
+        // quotes and has no interactive escape, which is a documented limit of
+        // this module rather than something echoCmd promises — see
+        // hasCmdUnsafeChars, and unsafeOutputDirReason for how callers refuse.
+        const messages = [
+            "plain message",
+            'has "double quotes"',
+            "has 'single quotes'",
+            "has $HOME and `backticks`",
+            "has & ampersand | pipe > gt < lt",
+            "has ^ caret and (parens)",
+            "has \\ backslash",
+            "multi\nline\nmessage",
+        ];
+
+        messages.forEach((message) => {
+            it(`prints ${JSON.stringify(
+                message
+            )} verbatim in cmd.exe`, async () => {
+                assert.deepStrictEqual(
+                    await runCmd(echoCmd(message, "cmd")),
+                    message.split("\n")
+                );
+            });
+
+            it(`prints ${JSON.stringify(
+                message
+            )} verbatim in powershell`, async () => {
+                assert.deepStrictEqual(
+                    await runPowershell(echoCmd(message, "powershell")),
+                    message.split("\n")
+                );
+            });
+        });
+
+        it("emits a blank line rather than the echo state in cmd.exe", async () => {
+            // Regression: bare `echo` prints "ECHO is off." and `echo .` prints
+            // a dot; only `echo.` prints an empty line.
+            assert.deepStrictEqual(await runCmd(echoCmd("", "cmd")), [""]);
+        });
+
+        // Windows paths cannot contain " < > | * ? :, so the awkward cases here
+        // are the ones a real user can actually produce.
+        const paths = [
+            "C:\\tmp\\plain",
+            "C:\\tmp\\with space",
+            "C:\\tmp\\with'quote",
+            "C:\\tmp\\with$var",
+            "C:\\tmp\\with`tick",
+            "C:\\tmp\\with&amp",
+            "C:\\tmp\\with(paren)",
+            "C:\\tmp\\with^caret",
+            "C:\\tmp\\with;semi,comma=eq",
+            "C:\\tmp\\with#hash@at+plus",
+            "C:\\tmp\\with[bracket]",
+        ];
+
+        // Invoking Node and printing its own argv is the closest stand-in for
+        // the real command line, which invokes databricks.exe or python.exe with
+        // a quoted path: it proves the path survives the shell *and* the
+        // Windows argv round-trip as a single argument. The path need not exist.
+        const printArgv = "console.log(process.argv[1])";
+
+        paths.forEach((p) => {
+            it(`passes ${JSON.stringify(
+                p
+            )} as one argument in cmd.exe`, async () => {
+                const command = [
+                    escapeExecutableForTerminal(process.execPath, "cmd"),
+                    "-e",
+                    `"${printArgv}"`,
+                    escapePathArgument(p, "cmd"),
+                ].join(" ");
+                assert.deepStrictEqual(await runCmd(command), [p]);
+            });
+
+            it(`passes ${JSON.stringify(
+                p
+            )} as one argument in powershell`, async () => {
+                const command = [
+                    escapeExecutableForTerminal(process.execPath, "powershell"),
+                    "-e",
+                    `'${printArgv}'`,
+                    escapePathArgument(p, "powershell"),
+                ].join(" ");
+                assert.deepStrictEqual(await runPowershell(command), [p]);
+            });
+        });
+
+        it("runs the whole chain in cmd.exe, hold-open step included", async () => {
+            // `pause` returns at EOF on a piped stdin. What matters is that cmd
+            // accepts every link: if any were unrecognised the chain would stop
+            // there, and in the wizard the trailing `exit` would close the tab
+            // and discard the CLI error the hold-open step exists to preserve.
+            const command = [
+                echoCmd("before", "cmd"),
+                readCmd("cmd"),
+                echoCmd("after", "cmd"),
+            ].join(commandSeparator("cmd"));
+            const output = (await runCmd(command)).join("\n");
+            assert.ok(
+                !output.includes("not recognized"),
+                `cmd rejected part of ${command}: ${output}`
+            );
+            // "after" only prints if `pause` ran and returned.
+            assert.ok(
+                output.includes("before") && output.includes("after"),
+                `chain did not run to completion: ${output}`
+            );
+        });
+
+        it("parses the generated powershell command without executing it", async () => {
+            // The failure mode #1822 describes for PowerShell is a *parse*
+            // error: nothing runs at all, not even the trailing `exit`, so the
+            // wizard hangs awaiting a terminal-close event. PowerShell's own
+            // parser answers that directly, and unlike executing the line it
+            // does not require Read-Host to have a console to read from.
+            async function parseErrorCount(command: string): Promise<number> {
+                const quoted = escapePathArgument(command, "powershell");
+                // @() forces a collection, so .Count is 0 rather than $null when
+                // the parser reports no errors.
+                const lines = await runPowershell(
+                    [
+                        "$errs = $null",
+                        `$null = [System.Management.Automation.Language.Parser]::ParseInput(${quoted}, [ref]$null, [ref]$errs)`,
+                        "Write-Host @($errs).Count",
+                    ].join("; ")
+                );
+                const count = Number(lines.join("").trim());
+                assert.ok(
+                    Number.isInteger(count),
+                    `could not read a parse-error count from: ${lines.join(
+                        "|"
+                    )}`
+                );
+                return count;
+            }
+
+            const powershellLine = [
+                echoCmd("Press any key to close ...", "powershell"),
+                readCmd("powershell"),
+                "exit",
+            ].join(commandSeparator("powershell"));
+            assert.strictEqual(await parseErrorCount(powershellLine), 0);
+
+            // The same line shaped for cmd does not parse, which is why the
+            // shell kind and the terminal's shell must be resolved together.
+            // Windows PowerShell (`powershell.exe`, 5.1 — what this suite runs)
+            // rejects a bare `&` outright: "The ampersand (&) character is not
+            // allowed. The & operator is reserved for future use." PowerShell 7
+            // repurposed a trailing `&` as the background operator, so if this
+            // is ever pointed at pwsh, expect this half to need revisiting.
+            const cmdLine = [
+                echoCmd("Press any key to close ...", "cmd"),
+                readCmd("cmd"),
+                "exit",
+            ].join(commandSeparator("cmd"));
+            assert.ok(
+                (await parseErrorCount(cmdLine)) > 0,
+                `a cmd-shaped line unexpectedly parsed in PowerShell: ${cmdLine}`
+            );
         });
     });
 });

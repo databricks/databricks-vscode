@@ -1,5 +1,5 @@
 import assert from "assert";
-import {execFile} from "child_process";
+import {execFile, spawn} from "child_process";
 import {promisify} from "util";
 import {
     buildBundleInitCommand,
@@ -151,54 +151,128 @@ describe(__filename, () => {
                 buildBundleInitCommand("db", "C:\\p%TEMP%q", "powershell")
             );
         });
+    });
 
-        it("keeps % literal in the banner for shells that support it", async function () {
-            // The "Executing:" banner must show the path the CLI actually
-            // receives; a banner that expands differently would mislead anyone
-            // debugging a wrong-directory report.
+    // String equality only proves the builder produced what its author
+    // intended. These run the assembled line through a real shell, exactly as
+    // shipped, to prove the shell agrees. CI covers Linux, macOS and Windows;
+    // each suite skips itself off its own platform.
+    describe("executed by a real posix shell", () => {
+        before(function () {
             if (process.platform === "win32") {
                 this.skip();
             }
-            const outputDir = "/tmp/p%TEMP%q";
-            const command = buildBundleInitCommand("true", outputDir, "posix");
+        });
+
+        // Run the command as shipped, with stdin closed for the whole shell so
+        // the hold-open read returns at once. Rewriting the command to strip
+        // that read would silently stop matching whenever the command changes,
+        // and the test would hang instead of failing. `read` at EOF exits
+        // non-zero, so the exit code is ignored; only the output matters.
+        async function runSh(command: string): Promise<string> {
             const {stdout} = await execFileAsync("/bin/sh", [
                 "-c",
                 `{ ${command} ; } < /dev/null`,
-            ]).catch((e: {stdout: string}) => e);
+            ]).catch((e: {stdout?: string}) => {
+                assert.ok(
+                    typeof e.stdout === "string",
+                    `/bin/sh produced no output: ${String(e)}`
+                );
+                return e as {stdout: string};
+            });
+            return stdout;
+        }
+
+        it("keeps % literal in the banner", async () => {
+            // The "Executing:" banner must show the path the CLI actually
+            // receives; a banner that expands differently would mislead anyone
+            // debugging a wrong-directory report.
+            const outputDir = "/tmp/p%TEMP%q";
+            const stdout = await runSh(
+                buildBundleInitCommand("true", outputDir, "posix")
+            );
             assert.ok(
                 stdout.includes(`--output-dir '${outputDir}'`),
                 `banner did not show the literal path:\n${stdout}`
             );
         });
 
-        it("passes an awkward output dir through a real shell intact", async function () {
-            // String equality only proves we built what we meant to. Run the
-            // command for real and check the CLI receives the directory as one
-            // unexpanded argument. /bin/sh is POSIX-only, so skip on Windows.
-            if (process.platform === "win32") {
-                this.skip();
-            }
+        it("passes an awkward output dir through intact", async () => {
             const outputDir = `/tmp/My Dir's "odd" $HOME`;
-            const command = buildBundleInitCommand(
-                // Stand in for the CLI: print the arguments one per line.
-                `printf '%s\\n'`,
-                outputDir,
-                "posix"
+            const stdout = await runSh(
+                buildBundleInitCommand(
+                    // Stand in for the CLI: print the arguments one per line.
+                    `printf '%s\\n'`,
+                    outputDir,
+                    "posix"
+                )
             );
-
-            // Run the command exactly as shipped, with stdin closed for the whole
-            // shell so the hold-open read returns at once. Rewriting the command
-            // to strip that read would silently stop matching whenever the
-            // command changes, and the test would hang instead of failing.
-            // `read` at EOF exits non-zero, so the exit code is ignored; only the
-            // output matters here.
-            const {stdout} = await execFileAsync("/bin/sh", [
-                "-c",
-                `{ ${command} ; } < /dev/null`,
-            ]).catch((e: {stdout: string}) => e);
             assert.ok(
                 stdout.includes(`\n${outputDir}\n`),
                 `output dir did not survive the shell:\n${stdout}`
+            );
+        });
+    });
+
+    // cmd.exe is the shell #1822 was reported against, so the assembled line is
+    // executed there rather than only compared as a string. The unit-test matrix
+    // includes a windows-server runner.
+    describe("executed by real cmd.exe", () => {
+        before(function () {
+            if (process.platform !== "win32") {
+                this.skip();
+            }
+        });
+
+        // Piped to stdin, which is what terminal.sendText does, and which keeps
+        // Node's own Windows argv quoting out of the measurement. `pause` reads
+        // from the same stdin and returns at EOF, so the script drives itself to
+        // completion without a console.
+        function runCmd(script: string): Promise<string> {
+            return new Promise((resolve, reject) => {
+                const child = spawn(
+                    process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe",
+                    [],
+                    {stdio: ["pipe", "pipe", "pipe"]}
+                );
+                let stdout = "";
+                child.stdout.setEncoding("utf8");
+                child.stdout.on("data", (chunk) => (stdout += chunk));
+                child.on("error", reject);
+                child.on("close", () => resolve(stdout));
+                child.stdin.end(`@echo off\r\n${script}\r\n`);
+            });
+        }
+
+        it("runs the CLI with the output dir as one argument", async () => {
+            // Invoking Node and printing its own argv stands in for the real
+            // command line, which invokes databricks.exe with a quoted path: it
+            // proves the directory survives cmd's parsing *and* the Windows argv
+            // round-trip as a single argument. The directory need not exist.
+            const outputDir = "C:\\tmp\\My Dir (odd) & co";
+            const command = buildBundleInitCommand(
+                `${escapeExecutableForTerminal(process.execPath, "cmd")} -e ` +
+                    '"console.log(process.argv.slice(1).join(String.fromCharCode(10)))"',
+                outputDir,
+                "cmd"
+            );
+
+            const stdout = (await runCmd(command)).replaceAll("\r\n", "\n");
+            // The CLI stand-in prints one argument per line, so a directory that
+            // got split or expanded does not appear on a line of its own.
+            assert.ok(
+                stdout.includes(`\n${outputDir}\n`),
+                `output dir did not survive cmd.exe:\n${stdout}`
+            );
+            // Every step of the chain must have run: a parse error anywhere would
+            // stop the line, which is the #1822 failure mode.
+            assert.ok(
+                stdout.includes("Follow the steps below"),
+                `banner is missing, so the chain did not run:\n${stdout}`
+            );
+            assert.ok(
+                !stdout.includes("not recognized"),
+                `cmd rejected part of the command:\n${stdout}`
             );
         });
     });
