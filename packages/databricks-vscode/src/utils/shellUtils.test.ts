@@ -1,7 +1,8 @@
 import assert from "assert";
-import {execFile, spawn} from "child_process";
+import {execFile} from "child_process";
 import {existsSync} from "fs";
 import {promisify} from "util";
+import {runWindowsCases} from "../test/windowsShellHarness";
 import {
     clearCmd,
     commandSeparator,
@@ -832,104 +833,21 @@ describe(__filename, () => {
 
     // The cmd.exe and PowerShell branches are the ones #1822 was actually about,
     // and string equality alone is what let the original bug ship. The unit-test
-    // matrix includes a windows-server runner, so they can be executed for real
-    // rather than only asserted as strings.
-    describe("round-trip against a real windows shell", () => {
+    // matrix includes a windows-server runner, so they run for real here.
+    //
+    // Cases are batched into one shell invocation per assertion group: starting
+    // a shell costs about a second, and more under CI endpoint scanning. See
+    // windowsShellHarness for why cmd runs from a batch file rather than stdin.
+    describe("round-trip against a real windows shell", function () {
+        // Well past a cold shell start on a scanned CI runner; the harness
+        // enforces its own per-spawn deadline, so this only has to not fire first.
+        this.timeout(120_000);
+
         before(function () {
             if (process.platform !== "win32") {
                 this.skip();
             }
         });
-
-        // Commands are piped to the shell's *stdin* rather than passed as argv.
-        // This is what `terminal.sendText` does, and it keeps Node's own
-        // Windows argv quoting out of the measurement — passing the command as
-        // an argument would test that quoting instead of ours.
-        //
-        // Killed after a deadline rather than left to Mocha's timeout: a shell
-        // that sits waiting for input would otherwise leak a process and report
-        // a bare timeout instead of the output collected so far.
-        function runViaStdin(
-            exe: string,
-            args: string[],
-            script: string
-        ): Promise<string> {
-            return new Promise((resolve, reject) => {
-                const child = spawn(exe, args, {
-                    stdio: ["pipe", "pipe", "pipe"],
-                });
-                let stdout = "";
-                child.stdout.setEncoding("utf8");
-                child.stdout.on("data", (chunk) => (stdout += chunk));
-                const deadline = setTimeout(() => child.kill(), 10_000);
-                child.on("error", (e) => {
-                    clearTimeout(deadline);
-                    reject(e);
-                });
-                child.on("close", () => {
-                    clearTimeout(deadline);
-                    resolve(stdout);
-                });
-                child.stdin.end(script);
-            });
-        }
-
-        // Both shells print a banner and (for cmd) a prompt, so the output under
-        // test is delimited rather than compared against the whole stream.
-        const start = "---BEGIN---";
-        const end = "---END---";
-
-        function captured(stdout: string): string[] {
-            const lines = stdout.replaceAll("\r\n", "\n").split("\n");
-            const from = lines.lastIndexOf(start);
-            const to = lines.indexOf(end, from + 1);
-            assert.ok(
-                from !== -1 && to !== -1,
-                `markers missing from output:\n${stdout}`
-            );
-            return lines.slice(from + 1, to);
-        }
-
-        const comSpec = process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe";
-        const powershell = "powershell.exe";
-
-        async function runCmd(command: string): Promise<string[]> {
-            // `@echo off` suppresses the prompt as well as command echoing, so
-            // only the markers and the command's own output land in between.
-            const stdout = await runViaStdin(
-                comSpec,
-                [],
-                [
-                    "@echo off",
-                    `echo ${start}`,
-                    command,
-                    `echo ${end}`,
-                    "exit",
-                    "",
-                ].join("\r\n")
-            );
-            // cmd's `echo` treats everything up to the ` & ` separator as part
-            // of the message, including the space before it, so chained lines
-            // arrive with one trailing space. That is cosmetic (it only affects
-            // the wizard's banner) and orthogonal to what these tests measure,
-            // so trailing blanks are normalised away rather than asserted.
-            return captured(stdout).map((line) => line.replace(/ +$/, ""));
-        }
-
-        async function runPowershell(command: string): Promise<string[]> {
-            const stdout = await runViaStdin(
-                powershell,
-                ["-NoProfile", "-NonInteractive", "-Command", "-"],
-                [
-                    `Write-Host '${start}'`,
-                    command,
-                    `Write-Host '${end}'`,
-                    "exit",
-                    "",
-                ].join("\n")
-            );
-            return captured(stdout);
-        }
 
         // `%` and `!` are excluded deliberately: cmd expands them even inside
         // quotes and has no interactive escape, which is a documented limit of
@@ -945,32 +863,6 @@ describe(__filename, () => {
             "has \\ backslash",
             "multi\nline\nmessage",
         ];
-
-        messages.forEach((message) => {
-            it(`prints ${JSON.stringify(
-                message
-            )} verbatim in cmd.exe`, async () => {
-                assert.deepStrictEqual(
-                    await runCmd(echoCmd(message, "cmd")),
-                    message.split("\n")
-                );
-            });
-
-            it(`prints ${JSON.stringify(
-                message
-            )} verbatim in powershell`, async () => {
-                assert.deepStrictEqual(
-                    await runPowershell(echoCmd(message, "powershell")),
-                    message.split("\n")
-                );
-            });
-        });
-
-        it("emits a blank line rather than the echo state in cmd.exe", async () => {
-            // Regression: bare `echo` prints "ECHO is off." and `echo .` prints
-            // a dot; only `echo.` prints an empty line.
-            assert.deepStrictEqual(await runCmd(echoCmd("", "cmd")), [""]);
-        });
 
         // Windows paths cannot contain " < > | * ? :, so the awkward cases here
         // are the ones a real user can actually produce.
@@ -988,40 +880,61 @@ describe(__filename, () => {
             "C:\\tmp\\with[bracket]",
         ];
 
-        // Invoking Node and printing its own argv is the closest stand-in for
-        // the real command line, which invokes databricks.exe or python.exe with
-        // a quoted path: it proves the path survives the shell *and* the
-        // Windows argv round-trip as a single argument. The path need not exist.
-        const printArgv = "console.log(process.argv[1])";
+        // Invoking Node and printing its own argv is the closest stand-in for the
+        // real command line, which invokes databricks.exe or python.exe with a
+        // quoted path: it proves the path survives the shell *and* the Windows
+        // argv round-trip as one argument. The path need not exist.
+        function printArgvCommand(p: string, kind: "cmd" | "powershell") {
+            const script = "console.log(process.argv[1])";
+            return [
+                escapeExecutableForTerminal(process.execPath, kind),
+                "-e",
+                kind === "cmd" ? `"${script}"` : `'${script}'`,
+                escapePathArgument(p, kind),
+            ].join(" ");
+        }
 
-        paths.forEach((p) => {
-            it(`passes ${JSON.stringify(
-                p
-            )} as one argument in cmd.exe`, async () => {
-                const command = [
-                    escapeExecutableForTerminal(process.execPath, "cmd"),
-                    "-e",
-                    `"${printArgv}"`,
-                    escapePathArgument(p, "cmd"),
-                ].join(" ");
-                assert.deepStrictEqual(await runCmd(command), [p]);
-            });
+        (["cmd", "powershell"] as const).forEach((kind) => {
+            describe(kind, () => {
+                // Each group runs once in `before`, then the `it`s assert over
+                // the collected output.
+                let printed: string[][];
+                let argv: string[][];
 
-            it(`passes ${JSON.stringify(
-                p
-            )} as one argument in powershell`, async () => {
-                const command = [
-                    escapeExecutableForTerminal(process.execPath, "powershell"),
-                    "-e",
-                    `'${printArgv}'`,
-                    escapePathArgument(p, "powershell"),
-                ].join(" ");
-                assert.deepStrictEqual(await runPowershell(command), [p]);
+                before(async () => {
+                    printed = await runWindowsCases(
+                        kind,
+                        messages.map((m) => echoCmd(m, kind))
+                    );
+                    argv = await runWindowsCases(
+                        kind,
+                        paths.map((p) => printArgvCommand(p, kind))
+                    );
+                });
+
+                messages.forEach((message, i) => {
+                    it(`prints ${JSON.stringify(message)} verbatim`, () => {
+                        assert.deepStrictEqual(printed[i], message.split("\n"));
+                    });
+                });
+
+                paths.forEach((p, i) => {
+                    it(`passes ${JSON.stringify(p)} as one argument`, () => {
+                        assert.deepStrictEqual(argv[i], [p]);
+                    });
+                });
             });
         });
 
+        it("emits a blank line rather than the echo state in cmd.exe", async () => {
+            // Regression: bare `echo` prints "ECHO is off." and `echo .` prints
+            // a dot; only `echo.` prints an empty line.
+            const [blank] = await runWindowsCases("cmd", [echoCmd("", "cmd")]);
+            assert.deepStrictEqual(blank, [""]);
+        });
+
         it("runs the whole chain in cmd.exe, hold-open step included", async () => {
-            // `pause` returns at EOF on a piped stdin. What matters is that cmd
+            // `pause` returns at EOF on a closed stdin. What matters is that cmd
             // accepts every link: if any were unrecognised the chain would stop
             // there, and in the wizard the trailing `exit` would close the tab
             // and discard the CLI error the hold-open step exists to preserve.
@@ -1030,14 +943,15 @@ describe(__filename, () => {
                 readCmd("cmd"),
                 echoCmd("after", "cmd"),
             ].join(commandSeparator("cmd"));
-            const output = (await runCmd(command)).join("\n");
+            const [lines] = await runWindowsCases("cmd", [command]);
+            const output = lines.join("\n");
             assert.ok(
                 !output.includes("not recognized"),
                 `cmd rejected part of ${command}: ${output}`
             );
             // "after" only prints if `pause` ran and returned.
             assert.ok(
-                output.includes("before") && output.includes("after"),
+                lines.includes("before") && lines.includes("after"),
                 `chain did not run to completion: ${output}`
             );
         });
@@ -1048,25 +962,26 @@ describe(__filename, () => {
             // wizard hangs awaiting a terminal-close event. PowerShell's own
             // parser answers that directly, and unlike executing the line it
             // does not require Read-Host to have a console to read from.
-            async function parseErrorCount(command: string): Promise<number> {
+            function parseErrorProbe(command: string): string {
                 const quoted = escapePathArgument(command, "powershell");
                 // @() forces a collection, so .Count is 0 rather than $null when
                 // the parser reports no errors.
-                const lines = await runPowershell(
-                    [
-                        "$errs = $null",
-                        `$null = [System.Management.Automation.Language.Parser]::ParseInput(${quoted}, [ref]$null, [ref]$errs)`,
-                        "Write-Host @($errs).Count",
-                    ].join("; ")
-                );
-                const count = Number(lines.join("").trim());
+                return [
+                    "$errs = $null",
+                    `$null = [System.Management.Automation.Language.Parser]::ParseInput(${quoted}, [ref]$null, [ref]$errs)`,
+                    "Write-Host @($errs).Count",
+                ].join("; ");
+            }
+
+            function count(lines: string[]): number {
+                const parsed = Number(lines.join("").trim());
                 assert.ok(
-                    Number.isInteger(count),
+                    Number.isInteger(parsed),
                     `could not read a parse-error count from: ${lines.join(
                         "|"
                     )}`
                 );
-                return count;
+                return parsed;
             }
 
             const powershellLine = [
@@ -1074,22 +989,26 @@ describe(__filename, () => {
                 readCmd("powershell"),
                 "exit",
             ].join(commandSeparator("powershell"));
-            assert.strictEqual(await parseErrorCount(powershellLine), 0);
-
-            // The same line shaped for cmd does not parse, which is why the
-            // shell kind and the terminal's shell must be resolved together.
+            // The same line shaped for cmd must *not* parse, which is why the
+            // shell kind and the terminal's shell are resolved together.
             // Windows PowerShell (`powershell.exe`, 5.1 — what this suite runs)
-            // rejects a bare `&` outright: "The ampersand (&) character is not
-            // allowed. The & operator is reserved for future use." PowerShell 7
-            // repurposed a trailing `&` as the background operator, so if this
-            // is ever pointed at pwsh, expect this half to need revisiting.
+            // rejects a bare `&`: "The ampersand (&) character is not allowed."
+            // PowerShell 7 repurposed a trailing `&` as the background operator,
+            // so if this is ever pointed at pwsh, expect to revisit the second
+            // half of this assertion.
             const cmdLine = [
                 echoCmd("Press any key to close ...", "cmd"),
                 readCmd("cmd"),
                 "exit",
             ].join(commandSeparator("cmd"));
+
+            const [ok, bad] = await runWindowsCases("powershell", [
+                parseErrorProbe(powershellLine),
+                parseErrorProbe(cmdLine),
+            ]);
+            assert.strictEqual(count(ok), 0);
             assert.ok(
-                (await parseErrorCount(cmdLine)) > 0,
+                count(bad) > 0,
                 `a cmd-shaped line unexpectedly parsed in PowerShell: ${cmdLine}`
             );
         });

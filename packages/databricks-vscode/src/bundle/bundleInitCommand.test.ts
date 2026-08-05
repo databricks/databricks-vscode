@@ -1,6 +1,7 @@
 import assert from "assert";
-import {execFile, spawn} from "child_process";
+import {execFile} from "child_process";
 import {promisify} from "util";
+import {runWindowsScript} from "../test/windowsShellHarness";
 import {
     buildBundleInitCommand,
     unsafeOutputDirReason,
@@ -217,32 +218,16 @@ describe(__filename, () => {
     // cmd.exe is the shell #1822 was reported against, so the assembled line is
     // executed there rather than only compared as a string. The unit-test matrix
     // includes a windows-server runner.
-    describe("executed by real cmd.exe", () => {
+    describe("executed by real cmd.exe", function () {
+        // Well past a cold shell start on a scanned CI runner; the harness
+        // enforces its own per-spawn deadline, so this only has to not fire first.
+        this.timeout(120_000);
+
         before(function () {
             if (process.platform !== "win32") {
                 this.skip();
             }
         });
-
-        // Piped to stdin, which is what terminal.sendText does, and which keeps
-        // Node's own Windows argv quoting out of the measurement. `pause` reads
-        // from the same stdin and returns at EOF, so the script drives itself to
-        // completion without a console.
-        function runCmd(script: string): Promise<string> {
-            return new Promise((resolve, reject) => {
-                const child = spawn(
-                    process.env.ComSpec ?? "C:\\Windows\\System32\\cmd.exe",
-                    [],
-                    {stdio: ["pipe", "pipe", "pipe"]}
-                );
-                let stdout = "";
-                child.stdout.setEncoding("utf8");
-                child.stdout.on("data", (chunk) => (stdout += chunk));
-                child.on("error", reject);
-                child.on("close", () => resolve(stdout));
-                child.stdin.end(`@echo off\r\n${script}\r\n`);
-            });
-        }
 
         it("runs the CLI with the output dir as one argument", async () => {
             // Invoking Node and printing its own argv stands in for the real
@@ -257,7 +242,9 @@ describe(__filename, () => {
                 "cmd"
             );
 
-            const stdout = (await runCmd(command)).replaceAll("\r\n", "\n");
+            const stdout = (
+                await runWindowsScript("cmd", [command])
+            ).replaceAll("\r\n", "\n");
             // The CLI stand-in prints one argument per line, so a directory that
             // got split or expanded does not appear on a line of its own.
             assert.ok(
