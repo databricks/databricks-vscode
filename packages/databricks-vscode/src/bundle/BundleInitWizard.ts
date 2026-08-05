@@ -15,8 +15,11 @@ import {CliWrapper} from "../cli/CliWrapper";
 import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
 import {Events, Telemetry} from "../telemetry";
-import {detectShellKind} from "../utils/shellUtils";
-import {buildBundleInitCommand} from "./bundleInitCommand";
+import {currentShellKind, defaultProfileShellArgs} from "../utils/shellUtils";
+import {
+    buildBundleInitCommand,
+    unsafeOutputDirReason,
+} from "./bundleInitCommand";
 import {promptToSelectActiveProjectFolder} from "./activeBundleUtils";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
@@ -135,6 +138,23 @@ export class BundleInitWizard {
         parentFolder: Uri,
         authProvider: AuthProvider
     ) {
+        const shell = env.shell;
+        // currentShellKind falls back to the configured default profile when
+        // env.shell is empty, which is the shell VS Code will actually launch
+        // when shellPath is left undefined below.
+        const kind = currentShellKind();
+        // Refuse a directory the target shell would rewrite, rather than
+        // scaffolding somewhere the user never chose and then reporting "no
+        // projects detected".
+        const unsafeReason = unsafeOutputDirReason(parentFolder.fsPath, kind);
+        if (unsafeReason !== undefined) {
+            this.logger.error(
+                `Refusing to run bundle init: ${unsafeReason}`,
+                new Error(unsafeReason)
+            );
+            window.showErrorMessage(unsafeReason);
+            return;
+        }
         const terminalDidClosePromise = new Promise<void>((resolve) => {
             const closeEvent = window.onDidCloseTerminal((t) => {
                 if (t === terminal) {
@@ -160,12 +180,18 @@ export class BundleInitWizard {
         // this, a cmd.exe-shaped command (` & ` separators) sent to a PowerShell
         // profile fails to parse, nothing executes — not even the trailing
         // `exit` — and the await below would hang until the user closes the tab.
-        const shell = env.shell;
+        //
+        // `env.shell` is the default profile's *path* only, so pinning it would
+        // drop the profile's args: a default profile of
+        // `{path: "wsl.exe", args: ["-d", "Ubuntu-22.04"]}` would land in the
+        // default distro and scaffold into the wrong filesystem. Forward the
+        // configured args alongside the path to keep the two consistent.
         const terminal = window.createTerminal({
             name: "Databricks Project Init",
             isTransient: true,
             location: TerminalLocation.Editor,
             shellPath: shell === "" ? undefined : shell,
+            shellArgs: shell === "" ? undefined : defaultProfileShellArgs(),
             env: {
                 // Without supplying full environment and with `strictEnv: true` PowerShell will fail to start.
                 // On unix-like systems we don't require full environment, but it doesn't hurt.
@@ -180,7 +206,6 @@ export class BundleInitWizard {
             cwd: tmpdir(),
         });
         await terminalDidOpenPromise;
-        const kind = detectShellKind(shell, process.platform);
         terminal.sendText(
             buildBundleInitCommand(
                 this.cli.escapedCliPathFor(kind),

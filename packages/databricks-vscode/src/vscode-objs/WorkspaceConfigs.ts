@@ -153,6 +153,51 @@ export const workspaceConfigs = {
 
         return new Time(config, TimeUnits.minutes).toMillSeconds().value;
     },
+
+    /**
+     * Name of the default integrated terminal profile for this platform, and the
+     * configured profiles it can name. Needed because `env.shell` reports only
+     * the profile's *path*: pinning a terminal's `shellPath` without its `args`
+     * would drop them, and when `env.shell` is empty the profile is the only
+     * record of which shell VS Code will actually launch. See `shellUtils`.
+     */
+    get terminalDefaultProfileName(): string | undefined {
+        return (
+            workspace
+                .getConfiguration("terminal.integrated")
+                .get<string>(`defaultProfile.${terminalSettingsPlatform()}`) ??
+            undefined
+        );
+    },
+
+    get terminalProfiles():
+        | Record<string, TerminalProfileConfig | null>
+        | undefined {
+        return workspace
+            .getConfiguration("terminal.integrated")
+            .get<Record<string, TerminalProfileConfig | null>>(
+                `profiles.${terminalSettingsPlatform()}`
+            );
+    },
 };
+
+/** The subset of a `terminal.integrated.profiles.*` entry we consume. */
+export type TerminalProfileConfig = {
+    path?: string | string[];
+    args?: string[] | string;
+    source?: string;
+};
+
+/** Platform suffix used by the `terminal.integrated.*` settings. */
+function terminalSettingsPlatform(): string {
+    switch (process.platform) {
+        case "win32":
+            return "windows";
+        case "darwin":
+            return "osx";
+        default:
+            return "linux";
+    }
+}
 
 export type WorkspaceConfigs = typeof workspaceConfigs;

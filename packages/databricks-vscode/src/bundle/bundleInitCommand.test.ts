@@ -1,7 +1,10 @@
 import assert from "assert";
 import {execFile} from "child_process";
 import {promisify} from "util";
-import {buildBundleInitCommand} from "./bundleInitCommand";
+import {
+    buildBundleInitCommand,
+    unsafeOutputDirReason,
+} from "./bundleInitCommand";
 import {escapeExecutableForTerminal} from "../utils/shellUtils";
 
 const execFileAsync = promisify(execFile);
@@ -99,6 +102,72 @@ describe(__filename, () => {
                     "db bundle init --output-dir '/home/me/My Projects'"
                 ),
                 command
+            );
+        });
+
+        it("refuses a cmd.exe output dir containing % or !", () => {
+            // cmd expands %TEMP% (and !TEMP! under delayed expansion) even
+            // inside double quotes, so the CLI would scaffold into a directory
+            // the user never chose and getSubProjects would then report "we
+            // haven't detected any Databricks projects in ...". The reason is
+            // surfaced to the user rather than silently sending the command.
+            const reason = unsafeOutputDirReason("C:\\p%TEMP%q\\proj", "cmd");
+            assert.ok(reason !== undefined);
+            assert.ok(
+                reason.includes("C:\\p%TEMP%q\\proj"),
+                `reason should name the path: ${reason}`
+            );
+            assert.ok(
+                unsafeOutputDirReason("C:\\p!TEMP!q\\proj", "cmd") !== undefined
+            );
+        });
+
+        it("allows a % or ! output dir in shells that do not expand it", () => {
+            // PowerShell and POSIX single quotes are literal, so refusing there
+            // would block directories that work fine.
+            assert.strictEqual(
+                unsafeOutputDirReason("/tmp/p%TEMP%q", "posix"),
+                undefined
+            );
+            assert.strictEqual(
+                unsafeOutputDirReason("C:\\p%TEMP%q", "powershell"),
+                undefined
+            );
+            assert.strictEqual(
+                unsafeOutputDirReason("C:\\Users\\me\\proj", "cmd"),
+                undefined
+            );
+        });
+
+        it("throws rather than emitting a command cmd.exe would rewrite", () => {
+            // The guard is enforced in the builder too, so no caller can send a
+            // silently-corrupted path even if it skips the check above.
+            assert.throws(
+                () => buildBundleInitCommand("db", "C:\\p%TEMP%q", "cmd"),
+                /%/
+            );
+            // The same path is fine for the shells that quote it literally.
+            assert.ok(
+                buildBundleInitCommand("db", "C:\\p%TEMP%q", "powershell")
+            );
+        });
+
+        it("keeps % literal in the banner for shells that support it", async function () {
+            // The "Executing:" banner must show the path the CLI actually
+            // receives; a banner that expands differently would mislead anyone
+            // debugging a wrong-directory report.
+            if (process.platform === "win32") {
+                this.skip();
+            }
+            const outputDir = "/tmp/p%TEMP%q";
+            const command = buildBundleInitCommand("true", outputDir, "posix");
+            const {stdout} = await execFileAsync("/bin/sh", [
+                "-c",
+                `{ ${command} ; } < /dev/null`,
+            ]).catch((e: {stdout: string}) => e);
+            assert.ok(
+                stdout.includes(`--output-dir '${outputDir}'`),
+                `banner did not show the literal path:\n${stdout}`
             );
         });
 

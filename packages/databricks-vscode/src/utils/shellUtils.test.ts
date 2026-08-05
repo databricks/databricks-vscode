@@ -7,11 +7,14 @@ import {
     commandSeparator,
     detectShellKind,
     echoCmd,
+    effectiveShellPath,
     escapeExecutableForTerminal,
     escapePathArgument,
     hasCmdUnsafeChars,
     readCmd,
+    resolveProfileShellArgs,
     ShellKind,
+    terminalShellKind,
 } from "./shellUtils";
 
 const execFileAsync = promisify(execFile);
@@ -93,6 +96,245 @@ describe(__filename, () => {
             );
         });
     });
+
+    describe("terminalShellKind", () => {
+        // A reused terminal is whatever profile the user had focused, so the
+        // kind must come from the terminal's own shellPath. Deriving it from
+        // env.shell (the *default* profile) is #1822 with the shells swapped.
+        function terminal(shellPath?: string) {
+            return {creationOptions: {shellPath}};
+        }
+
+        it("classifies a reused terminal from its own shellPath", () => {
+            assert.strictEqual(
+                terminalShellKind(
+                    terminal("C:\\Program Files\\PowerShell\\7\\pwsh.exe"),
+                    "win32"
+                ),
+                "powershell"
+            );
+            assert.strictEqual(
+                terminalShellKind(terminal("/bin/zsh"), "darwin"),
+                "posix"
+            );
+        });
+
+        it("classifies a cmd.exe tab as cmd, not as the default profile", () => {
+            // The regression this guards: a Windows user whose default profile
+            // is Git Bash (env.shell = bash.exe -> posix) with a cmd tab
+            // focused got POSIX single quotes, which cmd does not treat as
+            // quoting at all — it looks for a program named literally
+            // "'C:\Python\python.exe'", quotes included, and fails. main
+            // survived the mismatch by accident because it double-quoted, which
+            // parses in both shells.
+            assert.strictEqual(
+                terminalShellKind(
+                    terminal("C:\\Windows\\System32\\cmd.exe"),
+                    "win32"
+                ),
+                "cmd"
+            );
+        });
+
+        it("does not emit a powershell call operator into a cmd tab", () => {
+            // The reverse mismatch: `& 'C:\...\python.exe'` is what PowerShell
+            // needs and what cmd chokes on. Deriving the kind from the terminal
+            // keeps the two in step.
+            const cmdTab = terminal("C:\\Windows\\System32\\cmd.exe");
+            const kind = terminalShellKind(cmdTab, "win32");
+            const line = escapeExecutableForTerminal(
+                "C:\\Python\\python.exe",
+                kind
+            );
+            assert.strictEqual(line, '"C:\\Python\\python.exe"');
+            assert.ok(!line.startsWith("&"), line);
+            assert.ok(!line.startsWith("'"), line);
+        });
+
+        it("falls back to the ambient shell when shellPath is unset", () => {
+            // An inherited-profile terminal reports no shellPath, and that is
+            // exactly the case env.shell does describe. Must not throw or
+            // misclassify for extension pseudoterminals either.
+            const expected = terminalShellKind(terminal(undefined));
+            assert.ok(ALL_KINDS.includes(expected));
+            assert.strictEqual(terminalShellKind(terminal("")), expected);
+        });
+    });
+
+    // The profile keys below are VS Code's own display names
+    // ("Ubuntu-22.04", "Git Bash", "Command Prompt"), so they cannot be
+    // camelCased without ceasing to match real settings.
+    /* eslint-disable @typescript-eslint/naming-convention */
+    describe("resolveProfileShellArgs", () => {
+        // env.shell reports the default profile's *path* only. VS Code builds a
+        // fresh profile from an explicit executable and never fills args back
+        // in, so pinning shellPath alone drops them.
+        const wslProfiles = {
+            "Ubuntu-22.04": {
+                path: "wsl.exe",
+                args: ["-d", "Ubuntu-22.04"],
+            },
+        };
+
+        it("forwards the configured args for the default profile", () => {
+            // Without this the terminal lands in the *default* distro, so
+            // bundle init scaffolds into a different filesystem than the user
+            // configured and getSubProjects then reports no projects found.
+            assert.deepStrictEqual(
+                resolveProfileShellArgs("wsl.exe", "Ubuntu-22.04", wslProfiles),
+                ["-d", "Ubuntu-22.04"]
+            );
+        });
+
+        it("matches the profile path case-insensitively and by basename", () => {
+            assert.deepStrictEqual(
+                resolveProfileShellArgs(
+                    "C:\\Windows\\System32\\wsl.exe",
+                    "Ubuntu-22.04",
+                    wslProfiles
+                ),
+                ["-d", "Ubuntu-22.04"]
+            );
+        });
+
+        it("forwards Git Bash's --login", () => {
+            assert.deepStrictEqual(
+                resolveProfileShellArgs(
+                    "C:\\Program Files\\Git\\bin\\bash.exe",
+                    "Git Bash",
+                    {
+                        "Git Bash": {
+                            path: "C:\\Program Files\\Git\\bin\\bash.exe",
+                            args: ["--login"],
+                        },
+                    }
+                ),
+                ["--login"]
+            );
+        });
+
+        it("returns undefined when the profile is for a different shell", () => {
+            // Passing another shell's args is worse than passing none: a
+            // renamed or source-based profile can point at a different
+            // executable than env.shell reports.
+            assert.strictEqual(
+                resolveProfileShellArgs(
+                    "pwsh.exe",
+                    "Ubuntu-22.04",
+                    wslProfiles
+                ),
+                undefined
+            );
+        });
+
+        it("returns undefined when there is nothing to forward", () => {
+            assert.strictEqual(
+                resolveProfileShellArgs("wsl.exe", undefined, wslProfiles),
+                undefined
+            );
+            assert.strictEqual(
+                resolveProfileShellArgs("wsl.exe", "Ubuntu-22.04", undefined),
+                undefined
+            );
+            assert.strictEqual(
+                resolveProfileShellArgs("pwsh.exe", "PowerShell", {
+                    PowerShell: {path: "pwsh.exe"},
+                }),
+                undefined
+            );
+            // A null entry is how VS Code settings mark a profile as removed.
+            assert.strictEqual(
+                resolveProfileShellArgs("pwsh.exe", "PowerShell", {
+                    PowerShell: null,
+                }),
+                undefined
+            );
+        });
+    });
+
+    describe("effectiveShellPath", () => {
+        // When env.shell is empty the callers pass shellPath: undefined, so VS
+        // Code launches the configured default profile. Guessing the platform
+        // default instead can disagree with what actually starts, and a
+        // mis-shaped line means nothing runs — not even the trailing `exit` —
+        // leaving the wizard awaiting a terminal-close event forever.
+        it("prefers env.shell when VS Code reports one", () => {
+            assert.strictEqual(
+                effectiveShellPath(
+                    "/bin/zsh",
+                    "Command Prompt",
+                    {"Command Prompt": {path: "cmd.exe"}},
+                    "C:\\Windows\\System32\\cmd.exe"
+                ),
+                "/bin/zsh"
+            );
+        });
+
+        it("uses the configured default profile when env.shell is empty", () => {
+            assert.strictEqual(
+                detectShellKind(
+                    effectiveShellPath(
+                        "",
+                        "Command Prompt",
+                        {"Command Prompt": {path: "cmd.exe"}},
+                        undefined
+                    ),
+                    "win32"
+                ),
+                "cmd"
+            );
+            // Git Bash as the default profile must resolve to posix, not to the
+            // PowerShell a bare platform-default guess would assume.
+            assert.strictEqual(
+                detectShellKind(
+                    effectiveShellPath(
+                        "",
+                        "Git Bash",
+                        {
+                            "Git Bash": {
+                                path: "C:\\Program Files\\Git\\bin\\bash.exe",
+                            },
+                        },
+                        undefined
+                    ),
+                    "win32"
+                ),
+                "posix"
+            );
+        });
+
+        it("takes the first candidate when a profile lists several paths", () => {
+            assert.strictEqual(
+                effectiveShellPath(
+                    "",
+                    "PowerShell",
+                    {PowerShell: {path: ["pwsh.exe", "powershell.exe"]}},
+                    undefined
+                ),
+                "pwsh.exe"
+            );
+        });
+
+        it("falls back to ComSpec, then to the platform default", () => {
+            assert.strictEqual(
+                effectiveShellPath("", undefined, undefined, "C:\\W\\cmd.exe"),
+                "C:\\W\\cmd.exe"
+            );
+            // Nothing known at all: detectShellKind's platform default applies.
+            assert.strictEqual(
+                effectiveShellPath("", undefined, undefined, undefined),
+                ""
+            );
+            assert.strictEqual(
+                detectShellKind(
+                    effectiveShellPath("", undefined, undefined, undefined),
+                    "win32"
+                ),
+                "powershell"
+            );
+        });
+    });
+    /* eslint-enable @typescript-eslint/naming-convention */
 
     describe("clearCmd", () => {
         it("returns the clear command for each shell", () => {
@@ -204,6 +446,12 @@ describe(__filename, () => {
             // the wrong directory to the CLI.
             assert.ok(hasCmdUnsafeChars("C:\\p%TEMP%q"));
             assert.ok(!hasCmdUnsafeChars("C:\\Users\\me\\project"));
+        });
+
+        it("also flags !, which expands under delayed expansion", () => {
+            // `cmd /V:ON` (or DelayedExpansion in the registry, which some
+            // corporate images enable) expands !VAR! inside double quotes too.
+            assert.ok(hasCmdUnsafeChars("C:\\p!TEMP!q"));
         });
 
         it("escapes every embedded quote, not just the first", () => {

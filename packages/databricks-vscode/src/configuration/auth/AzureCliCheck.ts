@@ -376,13 +376,20 @@ export class AzureCliCheck implements Disposable {
             const terminal = window.createTerminal({
                 name: "az login",
                 shellPath: shell === "" ? undefined : shell,
+                // env.shell is the default profile's path only; without its args
+                // a profile such as `wsl.exe -d Ubuntu-22.04` would launch the
+                // wrong distro. See resolveProfileShellArgs.
+                shellArgs:
+                    shell === ""
+                        ? undefined
+                        : ShellUtils.defaultProfileShellArgs(),
             });
             this.disposables.push(terminal);
             terminal.show();
 
             const useDeviceCode = this.isCodeSpaces ? "--use-device-code" : "";
 
-            const kind = ShellUtils.detectShellKind(shell, process.platform);
+            const kind = ShellUtils.currentShellKind();
             const separator = ShellUtils.commandSeparator(kind);
             const azLogin = [
                 ShellUtils.escapeExecutableForTerminal(this.azBinPath, kind),

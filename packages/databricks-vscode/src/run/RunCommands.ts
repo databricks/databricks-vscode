@@ -7,9 +7,9 @@ import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
 import {FeatureManager, FeatureState} from "../feature-manager/FeatureManager";
 import {
-    currentShellKind,
     escapeExecutableForTerminal,
     escapePathArgument,
+    terminalShellKind,
 } from "../utils/shellUtils";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
@@ -245,7 +245,10 @@ export class RunCommands {
             path.join("resources", "python", "dbconnect-bootstrap.py")
         );
         terminal.show();
-        const kind = currentShellKind();
+        // Classify the terminal we are actually sending to. This may be a
+        // pre-existing tab running any profile, so `env.shell` (the *default*
+        // profile) is not necessarily the shell that parses this line.
+        const kind = terminalShellKind(terminal);
         terminal.sendText(
             [
                 escapeExecutableForTerminal(executable, kind),
