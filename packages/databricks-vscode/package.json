@@ -37,7 +37,6 @@
         "url": "https://github.com/databricks/databricks-vscode.git"
     },
     "activationEvents": [
-        "onStartupFinished",
         "onLanguage:python",
         "onCommand:databricks.*",
         "onTaskType:databricks",
