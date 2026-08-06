@@ -89,6 +89,21 @@ function setup(loaders: ScopeLoaders = {}) {
     when(mockWorkspaceFolderManager.activeProjectUri).thenReturn(
         Uri.file(projectDir)
     );
+    // Capture the listener the manager registers for active-project changes so
+    // tests can fire it and await the resulting refresh. Returns a disposable to
+    // match the vscode Event contract.
+    const activeFolderListeners: Array<(uri: Uri | undefined) => unknown> = [];
+    when(
+        mockWorkspaceFolderManager.onDidChangeActiveProjectFolder(anything())
+    ).thenCall((listener) => {
+        activeFolderListeners.push(listener);
+        return {dispose() {}};
+    });
+    // Invoke every registered listener and await any promises they return, so a
+    // test can deterministically drive the manager's async refresh.
+    const fireActiveFolderChange = async (uri?: Uri) => {
+        await Promise.all(activeFolderListeners.map((l) => l(uri)));
+    };
 
     const stubStateStorage = {
         state: {} as Record<string, any>,
@@ -120,6 +135,7 @@ function setup(loaders: ScopeLoaders = {}) {
         mockWorkspaceFolderManager,
         stubStateStorage,
         stubTelemetry,
+        fireActiveFolderChange,
         manager: new AiToolsManager(
             instance(mockCli),
             stubStateStorage as unknown as StateStorage,
@@ -228,6 +244,31 @@ describe(__filename, () => {
         await manager.detectInstall();
         assert.strictEqual(manager.model.state.detectError, false);
         assert.strictEqual(manager.model.state.installLocation, "project");
+    });
+
+    it("re-detects and refreshes update status when the active project folder changes", async () => {
+        // Nothing installed yet when the manager is constructed.
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli, fireActiveFolderChange} = setup(loaders);
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult([
+                {
+                    name: "databricks-core",
+                    latest_version: "0.1.0",
+                    installed: {project: "0.0.1"},
+                },
+            ])
+        );
+        assert.strictEqual(manager.isInstalled, false);
+
+        // Switching to a project that has AI tools installed should re-detect
+        // and resolve the update status off the back of the folder change.
+        loaders.project = loadSuccess;
+        await fireActiveFolderChange(Uri.file(projectDir));
+
+        assert.strictEqual(manager.model.state.installLocation, "project");
+        assert.strictEqual(manager.isInstalled, true);
+        assert.strictEqual(manager.model.state.updateStatus, "updateAvailable");
     });
 
     it("reports upToDate when all installed skills match latest", async () => {
