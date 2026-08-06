@@ -26,7 +26,11 @@ import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
-import {isPowershell} from "../utils/shellUtils";
+import {
+    currentShellKind,
+    escapeExecutableForTerminal,
+    ShellKind,
+} from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
 function getEscapedCommandAndAgrs(
@@ -446,10 +450,26 @@ export class CliWrapper {
         };
     }
 
+    /**
+     * The CLI path, quoted for a shell we send it to as a command.
+     *
+     * Takes the shell kind explicitly so the escaping matches the shell that
+     * will parse the command line, rather than assuming the default profile's.
+     */
+    escapedCliPathFor(kind: ShellKind): string {
+        return escapeExecutableForTerminal(this.cliPath, kind);
+    }
+
+    /**
+     * The CLI path quoted for the *default* shell.
+     *
+     * Only correct when sending to a terminal created without `shellPath`,
+     * which is what makes the default profile the shell that parses the line.
+     * Don't use it with a reused terminal (`window.activeTerminal`): that can be
+     * running any profile, so prefer `escapedCliPathFor` with a known kind.
+     */
     get escapedCliPath(): string {
-        return isPowershell()
-            ? `& "${this.cliPath.replace('"', '\\"')}"`
-            : `'${this.cliPath.replaceAll("'", "\\'")}'`;
+        return this.escapedCliPathFor(currentShellKind());
     }
 
     /**
