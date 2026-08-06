@@ -461,7 +461,42 @@ describe("shellUtils", () => {
             "paren (grouped) and `backtick`",
         ];
 
-        describe("cmd", () => {
+        /** The ASCII escape character that starts an ANSI sequence. */
+        const ESC = String.fromCharCode(27);
+
+        /** Strip ANSI escape sequences, e.g. the ones `Clear-Host` emits. */
+        function stripAnsi(text: string): string {
+            return text
+                .split(ESC)
+                .join("")
+                .replace(/\[[0-9;]*[A-Za-z]/g, "");
+        }
+
+        /**
+         * Drop stderr output that says nothing about whether our command line
+         * was correct.
+         *
+         * `Clear-Host` on Linux shells out to `clear`, which needs `$TERM`;
+         * under CI there is no TTY, so it warns. The command still parses and
+         * still exits 0 — asserting raw-empty stderr would fail on the
+         * environment rather than on the code under test.
+         */
+        function stripBenignStderr(stderr: string): string {
+            return stderr
+                .split(/\r?\n/)
+                .filter(
+                    (line) =>
+                        line.trim() !== "" &&
+                        !/TERM environment variable not set/i.test(line)
+                )
+                .join("\n");
+        }
+
+        describe("cmd", function () {
+            // Each case spawns cmd.exe and writes a temp file, so the 2s default
+            // is too tight on a loaded Windows runner.
+            this.timeout(60_000);
+
             const cmdIt = onWindows ? it : it.skip;
 
             // Run a generated line through cmd via a temp .cmd file rather than
@@ -481,7 +516,7 @@ describe("shellUtils", () => {
                         stdio: ["pipe", "pipe", "pipe"],
                         input: "",
                     });
-                    expect(result.stderr).to.equal("");
+                    expect(stripBenignStderr(result.stderr)).to.equal("");
                     expect(result.status).to.equal(0);
                     return result.stdout;
                 } finally {
@@ -538,11 +573,16 @@ describe("shellUtils", () => {
             });
         });
 
-        describe("powershell", () => {
+        describe("powershell", function () {
+            // A PowerShell cold start is ~0.5-1s, an order of magnitude slower
+            // than the POSIX shells above, so the 2s default is not enough even
+            // for a couple of spawns on a loaded CI runner.
+            this.timeout(60_000);
+
             // Prefer pwsh (6+, cross-platform) wherever it's on PATH, and fall
             // back to the built-in Windows PowerShell. Probing rather than
             // checking the platform means a machine with pwsh installed runs
-            // these for real instead of skipping.
+            // these for real instead of skipping — the Linux CI runner has it.
             const psExe = ((): string | undefined => {
                 for (const candidate of ["pwsh", "powershell.exe"]) {
                     const probe = spawnSync(
@@ -560,71 +600,71 @@ describe("shellUtils", () => {
             })();
             const psIt = psExe ? it : it.skip;
 
+            /**
+             * Run one PowerShell script and return its stdout lines.
+             *
+             * Batching every case into a single invocation keeps these tests
+             * off the per-spawn startup cost, and joining with our own
+             * `commandSeparator` means the separator is exercised too.
+             */
+            function runPs(commands: string[]): string[] {
+                const result = spawnSync(
+                    psExe!,
+                    [
+                        "-NoProfile",
+                        "-Command",
+                        commands.join(commandSeparator("powershell")),
+                    ],
+                    {encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]}
+                );
+                expect(stripBenignStderr(result.stderr)).to.equal("");
+                expect(result.status).to.equal(0);
+                return result.stdout.replace(/\r?\n$/, "").split(/\r?\n/);
+            }
+
             psIt("echoLine prints each message verbatim", () => {
-                awkwardMessages.forEach((message) => {
-                    const out = execFileSync(
-                        psExe!,
-                        [
-                            "-NoProfile",
-                            "-Command",
-                            echoLine(message, "powershell"),
-                        ],
-                        {encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]}
-                    );
-                    expect(out.replace(/\r?\n$/, "")).to.equal(message);
-                });
+                expect(
+                    runPs(awkwardMessages.map((m) => echoLine(m, "powershell")))
+                ).to.deep.equal(awkwardMessages);
             });
 
             psIt("escapePathArgument does not interpolate", () => {
-                awkwardWinPaths.forEach((p) => {
-                    // Single quotes are literal in PowerShell; with double
-                    // quotes `$VAR` would vanish and `$(cmd)` would execute.
-                    const out = execFileSync(
-                        psExe!,
-                        [
-                            "-NoProfile",
-                            "-Command",
-                            `Write-Host -NoNewline ${escapePathArgument(
-                                p,
-                                "powershell"
-                            )}`,
-                        ],
-                        {encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]}
-                    );
-                    expect(out).to.equal(p);
-                });
+                // Single quotes are literal in PowerShell; with double quotes
+                // `$VAR` would vanish and `$(cmd)` would execute.
+                expect(
+                    runPs(
+                        awkwardWinPaths.map(
+                            (p) =>
+                                `Write-Host ${escapePathArgument(
+                                    p,
+                                    "powershell"
+                                )}`
+                        )
+                    )
+                ).to.deep.equal(awkwardWinPaths);
             });
 
             psIt("escapeExecutableForTerminal invokes the executable", () => {
                 // The `&` call operator is what makes a quoted path run rather
                 // than just echo back as a string.
-                const out = execFileSync(
-                    psExe!,
-                    [
-                        "-NoProfile",
-                        "-Command",
+                expect(
+                    runPs([
                         `${escapeExecutableForTerminal(
                             process.execPath,
                             "powershell"
                         )} -e "process.stdout.write('ran')"`,
-                    ],
-                    {encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]}
-                );
-                expect(out).to.equal("ran");
+                    ])
+                ).to.deep.equal(["ran"]);
             });
 
-            psIt("clearCmd and the separator parse", () => {
-                const line = [clearCmd("powershell"), "Write-Host ok"].join(
-                    commandSeparator("powershell")
-                );
-                const result = spawnSync(
-                    psExe!,
-                    ["-NoProfile", "-Command", line],
-                    {encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]}
-                );
-                expect(result.stderr).to.equal("");
-                expect(result.status).to.equal(0);
-                expect(result.stdout).to.contain("ok");
+            psIt("clearCmd clears and does not swallow what follows", () => {
+                // Clear-Host writes the clear sequences to stdout rather than
+                // driving a TTY, so assert on them: their presence is the proof
+                // it actually cleared, and "ok" after them is the proof the
+                // separator didn't swallow the next command.
+                const [line] = runPs([clearCmd("powershell"), "Write-Host ok"]);
+                expect(line).to.contain(ESC);
+                expect(stripAnsi(line)).to.equal("ok");
             });
         });
     });
