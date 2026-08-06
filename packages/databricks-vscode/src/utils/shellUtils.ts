@@ -93,9 +93,14 @@ export function readCmd(kind: ShellKind = currentShellKind()): string {
     }
 }
 
-/** Separator for running commands in sequence. cmd has no `;`. */
+/**
+ * Separator for running commands in sequence. cmd has no `;`.
+ *
+ * No space before cmd's `&`: its `echo` prints the rest of the line raw, so
+ * `echo one & echo two` would print "one" with a trailing space.
+ */
 export function commandSeparator(kind: ShellKind = currentShellKind()): string {
-    return kind === "cmd" ? " & " : "; ";
+    return kind === "cmd" ? "& " : "; ";
 }
 
 /**
@@ -194,11 +199,35 @@ export function echoLine(
     switch (kind) {
         case "cmd":
             // `echo.` prints an empty line; plain `echo` would print the ECHO
-            // state instead. cmd can't quote `%`, so callers must pre-check.
-            return line === "" ? "echo." : `echo ${line}`;
+            // state instead.
+            //
+            // cmd's `echo` prints the rest of the line raw, so quoting it would
+            // show the quotes. Escape the shell operators individually with `^`
+            // instead — without this, a message containing `&`, `|` or `>` (our
+            // banner embeds the user's output directory) is parsed as an
+            // operator and cmd tries to run the following word as a command.
+            // `%` cannot be escaped at all; callers pre-check with
+            // {@link hasCmdUnsafeChars}.
+            return line === "" ? "echo." : `echo ${escapeCmdEchoText(line)}`;
         case "powershell":
             return `Write-Host ${escapePathArgument(line, kind)}`;
         case "posix":
             return `printf '%s\\n' ${escapePathArgument(line, kind)}`;
     }
+}
+
+/**
+ * Escape cmd's shell operators for use in `echo` text, so they print as
+ * themselves instead of being parsed.
+ *
+ * Only operators *outside* double quotes are escaped. Inside quotes cmd already
+ * treats them as text, and a `^` there would print literally — so escaping
+ * blindly would corrupt the quoted path our banner embeds. A single regex pass
+ * with an alternation keeps quoted runs intact: they match the first branch and
+ * are emitted unchanged.
+ */
+function escapeCmdEchoText(text: string): string {
+    return text.replace(/"[^"]*"?|[\^&|<>()]/g, (match) =>
+        match.startsWith('"') ? match : `^${match}`
+    );
 }

@@ -88,7 +88,9 @@ describe("shellUtils", () => {
         });
 
         it("separates commands", () => {
-            expect(commandSeparator("cmd")).to.equal(" & ");
+            // No leading space: cmd's `echo` prints the rest of the line raw,
+            // so `echo one & ...` would print "one" with a trailing space.
+            expect(commandSeparator("cmd")).to.equal("& ");
             expect(commandSeparator("powershell")).to.equal("; ");
             expect(commandSeparator("posix")).to.equal("; ");
         });
@@ -200,6 +202,40 @@ describe("shellUtils", () => {
             );
         });
 
+        it("escapes cmd's operators outside quotes with a caret", () => {
+            // Unescaped, cmd parses these as operators rather than text, so it
+            // tries to run the following word as a command.
+            expect(
+                echoLine("amp & pipe | gt > lt < paren ( )", "cmd")
+            ).to.equal("echo amp ^& pipe ^| gt ^> lt ^< paren ^( ^)");
+            // `^` is the escape character, so it escapes itself.
+            expect(echoLine("caret ^ here", "cmd")).to.equal(
+                "echo caret ^^ here"
+            );
+            // The other shells quote instead, so they need no caret.
+            expect(echoLine("amp & pipe |", "posix")).to.equal(
+                "printf '%s\\n' 'amp & pipe |'"
+            );
+        });
+
+        it("leaves cmd's operators alone inside quotes", () => {
+            // This is the shape the bundle-init banner actually has: an already
+            // double-quoted path. cmd treats operators inside quotes as text, and
+            // a `^` there would *print*, so the quoted run must pass through
+            // untouched while operators outside it are still escaped.
+            expect(
+                echoLine(
+                    'Executing: databricks bundle init --output-dir "C:\\a&b\\proj"',
+                    "cmd"
+                )
+            ).to.equal(
+                'echo Executing: databricks bundle init --output-dir "C:\\a&b\\proj"'
+            );
+            expect(echoLine('before & "in&side" after & x', "cmd")).to.equal(
+                'echo before ^& "in&side" after ^& x'
+            );
+        });
+
         it("prints a blank line", () => {
             expect(echoLine("", "cmd")).to.equal("echo.");
             expect(echoLine("", "posix")).to.equal("printf '%s\\n' ''");
@@ -247,10 +283,10 @@ describe("shellUtils", () => {
                     "cmd"
                 )
             ).to.equal(
-                'cls & echo Executing: databricks bundle init --output-dir "C:\\Users\\me\\proj" & ' +
-                    "echo Follow the steps below to create your new Databricks project. & echo. & " +
-                    '"C:\\ext\\bin\\databricks.exe" bundle init --output-dir "C:\\Users\\me\\proj" & ' +
-                    "echo. & echo Press any key to close the terminal and continue ... & pause & exit"
+                'cls& echo Executing: databricks bundle init --output-dir "C:\\Users\\me\\proj"& ' +
+                    "echo Follow the steps below to create your new Databricks project.& echo.& " +
+                    '"C:\\ext\\bin\\databricks.exe" bundle init --output-dir "C:\\Users\\me\\proj"& ' +
+                    "echo.& echo Press any key to close the terminal and continue ...& pause& exit"
             );
         });
 
@@ -312,8 +348,8 @@ describe("shellUtils", () => {
 
         it("is valid cmd", () => {
             expect(azLoginCommand("az", tenant, false, "cmd")).to.equal(
-                `"az" login --allow-no-subscriptions -t "${tenant}" & ` +
-                    "echo Press any key to close the terminal and continue ... & pause & exit"
+                `"az" login --allow-no-subscriptions -t "${tenant}"& ` +
+                    "echo Press any key to close the terminal and continue ...& pause& exit"
             );
         });
 
@@ -460,17 +496,6 @@ describe("shellUtils", () => {
             "amp & pipe | redirect > caret ^",
             "paren (grouped) and `backtick`",
         ];
-
-        /** The ASCII escape character that starts an ANSI sequence. */
-        const ESC = String.fromCharCode(27);
-
-        /** Strip ANSI escape sequences, e.g. the ones `Clear-Host` emits. */
-        function stripAnsi(text: string): string {
-            return text
-                .split(ESC)
-                .join("")
-                .replace(/\[[0-9;]*[A-Za-z]/g, "");
-        }
 
         /**
          * Drop stderr output that says nothing about whether our command line
@@ -657,14 +682,35 @@ describe("shellUtils", () => {
                 ).to.deep.equal(["ran"]);
             });
 
-            psIt("clearCmd clears and does not swallow what follows", () => {
-                // Clear-Host writes the clear sequences to stdout rather than
-                // driving a TTY, so assert on them: their presence is the proof
-                // it actually cleared, and "ok" after them is the proof the
-                // separator didn't swallow the next command.
-                const [line] = runPs([clearCmd("powershell"), "Write-Host ok"]);
-                expect(line).to.contain(ESC);
-                expect(stripAnsi(line)).to.equal("ok");
+            psIt("clearCmd resolves as a PowerShell command", () => {
+                // Ask PowerShell to resolve the verb rather than run it. Running
+                // it proves little: `clear` is also a valid command on Linux
+                // pwsh, so a POSIX verb leaking into the PowerShell branch would
+                // still exit 0 here, and whether Clear-Host emits its escape
+                // sequences depends on the detected terminal capabilities (they
+                // appear with $TERM set, and not on a TTY-less CI runner).
+                // Assert on the resolved name only. The command *type* varies
+                // (Clear-Host is a Function in pwsh 7 but a Cmdlet in Windows
+                // PowerShell 5), whereas a POSIX `clear` leaking into this
+                // branch resolves to an Application named `clear` on Linux and
+                // fails to resolve at all on Windows.
+                expect(
+                    runPs([
+                        `(Get-Command ${clearCmd(
+                            "powershell"
+                        )}).Name.ToString()`,
+                    ])
+                ).to.deep.equal([clearCmd("powershell")]);
+            });
+
+            psIt("the separator does not swallow what follows", () => {
+                // Deliberately not `Clear-Host` here: with no console attached
+                // it throws "The handle is invalid" on Windows, which is about
+                // the runner's environment rather than our command line. Its
+                // resolution is covered by the test above.
+                expect(
+                    runPs(["Write-Host first", "Write-Host ok"])
+                ).to.deep.equal(["first", "ok"]);
             });
         });
     });
