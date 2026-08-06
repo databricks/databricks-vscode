@@ -1,5 +1,6 @@
 import {expect} from "chai";
 import {
+    makeServerlessVersionPrompt,
     resolveServerlessVersion,
     ServerlessVersionResolverDeps,
 } from "./serverlessVersionResolver";
@@ -92,5 +93,42 @@ describe("resolveServerlessVersion", () => {
         const version = await resolveServerlessVersion(deps);
 
         expect(version).to.equal(undefined);
+    });
+});
+
+describe("makeServerlessVersionPrompt", () => {
+    it("offers the bundle-declared version ahead of the bare fallback", async () => {
+        // End-to-end through the real collector and scorer: bundle evidence
+        // (weight 100) must outrank the always-present fallback (weight 1), so
+        // the version the project declares is the recommendation.
+        const ranked: string[][] = [];
+        const prompt = makeServerlessVersionPrompt({
+            getValidateConfig: async () => ({
+                resources: {
+                    jobs: {
+                        /* eslint-disable-next-line @typescript-eslint/naming-convention */
+                        j: {environments: [{spec: {environment_version: "4"}}]},
+                    },
+                },
+            }),
+            projectRoot: () => undefined,
+            pick: async (candidates) => {
+                ranked.push(candidates.map((c) => c.version));
+                return candidates[0].version;
+            },
+        });
+
+        expect(await prompt()).to.equal("4");
+        expect(ranked).to.deep.equal([["4", "5"]]);
+    });
+
+    it("returns undefined when the user dismisses the picker", async () => {
+        const prompt = makeServerlessVersionPrompt({
+            getValidateConfig: async () => undefined,
+            projectRoot: () => undefined,
+            pick: async () => undefined,
+        });
+
+        expect(await prompt()).to.equal(undefined);
     });
 });
