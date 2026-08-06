@@ -281,6 +281,89 @@ describe("shellUtils", () => {
         });
     });
 
+    describe("the az login command line", () => {
+        // Mirrors what AzureCliCheck assembles. Same hardcoded-POSIX defect as
+        // the bundle init line: `;` and `echo` are not cmd syntax, so `az login`
+        // was broken on cmd.exe too.
+        function azLoginCommand(
+            azBinPath: string,
+            tenant: string,
+            useDeviceCode: boolean,
+            kind: ShellKind
+        ): string {
+            const args = [
+                "login",
+                "--allow-no-subscriptions",
+                ...(useDeviceCode ? ["--use-device-code"] : []),
+                ...(tenant ? ["-t", escapePathArgument(tenant, kind)] : []),
+            ].join(" ");
+            return [
+                `${escapeExecutableForTerminal(azBinPath, kind)} ${args}`,
+                echoLine(
+                    "Press any key to close the terminal and continue ...",
+                    kind
+                ),
+                readCmd(kind),
+                "exit",
+            ].join(commandSeparator(kind));
+        }
+
+        const tenant = "72f988bf-86f1-41af-91ab-2d7cd011db47";
+
+        it("is valid cmd", () => {
+            expect(azLoginCommand("az", tenant, false, "cmd")).to.equal(
+                `"az" login --allow-no-subscriptions -t "${tenant}" & ` +
+                    "echo Press any key to close the terminal and continue ... & pause & exit"
+            );
+        });
+
+        it("is valid powershell", () => {
+            expect(azLoginCommand("az", tenant, false, "powershell")).to.equal(
+                `& 'az' login --allow-no-subscriptions -t '${tenant}'; ` +
+                    "Write-Host 'Press any key to close the terminal and continue ...'; Read-Host; exit"
+            );
+        });
+
+        it("is valid posix", () => {
+            expect(azLoginCommand("az", tenant, false, "posix")).to.equal(
+                `'az' login --allow-no-subscriptions -t '${tenant}'; ` +
+                    "printf '%s\\n' 'Press any key to close the terminal and continue ...'; read _; exit"
+            );
+        });
+
+        it("omits the tenant flag when there is no tenant", () => {
+            expect(azLoginCommand("az", "", false, "posix")).to.equal(
+                "'az' login --allow-no-subscriptions; " +
+                    "printf '%s\\n' 'Press any key to close the terminal and continue ...'; read _; exit"
+            );
+        });
+
+        it("adds --use-device-code in codespaces", () => {
+            expect(azLoginCommand("az", "", true, "posix")).to.contain(
+                "login --allow-no-subscriptions --use-device-code;"
+            );
+        });
+
+        it("quotes an absolute az path with spaces", () => {
+            expect(
+                azLoginCommand(
+                    "C:\\Program Files\\Azure CLI\\az.cmd",
+                    "",
+                    false,
+                    "cmd"
+                )
+            ).to.contain('"C:\\Program Files\\Azure CLI\\az.cmd" login');
+        });
+
+        it("quotes the tenant, which comes from a token claim", () => {
+            // Not attacker-controlled in practice, but it is external data
+            // reaching a command line, so it must not be able to inject.
+            expect(
+                azLoginCommand("az", "a'b$(id)c", false, "posix")
+            ).to.contain("-t 'a'\\''b$(id)c'");
+        });
+    });
+
     // String equality only proves we built what we intended, not that a shell
     // agrees. Run the generated POSIX fragments through real shells and check
     // the output byte for byte.
