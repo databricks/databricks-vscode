@@ -10,7 +10,11 @@ import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {Telemetry} from "../../telemetry";
 
 describe("makePythonSetupVisibility", () => {
-    const uvDetection = {primary: "uv" as const, managers: ["uv" as const]};
+    const uvDetection = {
+        primary: "uv" as const,
+        managers: ["uv" as const],
+        signals: [],
+    };
 
     it("is hidden when the feature flag is off, regardless of project", async () => {
         const isVisible = makePythonSetupVisibility({
@@ -42,7 +46,11 @@ describe("makePythonSetupVisibility", () => {
     it("is hidden for a project with a competing manager", async () => {
         const isVisible = makePythonSetupVisibility({
             isEnabled: () => true,
-            detect: async () => ({primary: "uv", managers: ["uv", "pip"]}),
+            detect: async () => ({
+                primary: "uv" as const,
+                managers: ["uv" as const, "pip" as const],
+                signals: ["requirements.txt" as const],
+            }),
             projectRoot: () => "/proj",
         });
         expect(await isVisible()).to.equal(false);
@@ -124,7 +132,11 @@ describe("makePythonSetupDeps saveState", () => {
             cli: {run: async () => ({}) as any},
             projectRoot: () => "/proj",
             isEnabled: () => true,
-            detect: async () => ({primary: "uv", managers: ["uv"]}),
+            detect: async () => ({
+                primary: "uv" as const,
+                managers: ["uv" as const],
+                signals: [],
+            }),
             attachedCompute: () => ({
                 serverless: false,
                 cluster: undefined,
@@ -188,7 +200,11 @@ describe("makePythonSetupDeps saveState", () => {
 });
 
 describe("makePythonSetupVisibility error handling", () => {
-    const uvDetection = {primary: "uv" as const, managers: ["uv" as const]};
+    const uvDetection = {
+        primary: "uv" as const,
+        managers: ["uv" as const],
+        signals: [],
+    };
 
     it("degrades to not-visible when detection rejects (never throws)", async () => {
         const isVisible = makePythonSetupVisibility({
@@ -223,7 +239,11 @@ describe("makePythonSetupDeps withProgress", () => {
             cli: {run: async () => ({}) as any},
             projectRoot: () => "/proj",
             isEnabled: () => true,
-            detect: async () => ({primary: "uv", managers: ["uv"]}),
+            detect: async () => ({
+                primary: "uv" as const,
+                managers: ["uv" as const],
+                signals: [],
+            }),
             attachedCompute: () => ({
                 serverless: false,
                 cluster: undefined,

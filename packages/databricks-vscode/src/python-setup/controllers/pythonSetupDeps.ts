@@ -14,7 +14,10 @@ import {
     SetupCompute,
 } from "./PythonSetupEnvironmentSetup";
 
-type Detection = Pick<PackageManagerDetection, "primary" | "managers">;
+type Detection = Pick<
+    PackageManagerDetection,
+    "primary" | "managers" | "signals"
+>;
 
 /**
  * The compute currently attached in the connection, reduced to what compute
