@@ -2,14 +2,17 @@ import {PythonSetupMode} from "../models/PythonSetupResult";
 
 /**
  * A resolved `environments setup-local` invocation: the mode, the compute
- * target (cluster or serverless), and optional profile / dev-only
- * constraint-source override. This is the pure input to
- * {@link buildSetupLocalArgs}; the gateway turns the argv into a spawned
- * process.
+ * target (cluster or serverless), and an optional dev-only constraint-source
+ * override. This is the pure input to {@link buildSetupLocalArgs}; the gateway
+ * turns the argv into a spawned process.
+ *
+ * There is deliberately no profile here: authentication reaches the CLI through
+ * the spawned process's environment (see `CliWrapper.getSetupLocalEnvVars`),
+ * matching how the bundle and ssh-connect flows forward it, so a `--profile`
+ * flag would be a redundant second source of truth.
  */
 export interface SetupLocalInvocation {
     mode: PythonSetupMode;
-    profile?: string;
     compute:
         | {kind: "cluster"; clusterId: string}
         | {kind: "serverless"; version: string};
@@ -24,7 +27,7 @@ export interface SetupLocalInvocation {
 /**
  * Build the argv for `databricks environments setup-local --output json`.
  * Deterministic and side-effect-free so it is trivially unit-testable; the
- * order is fixed (compute → mode → profile → source → output) for stable tests.
+ * order is fixed (compute → mode → source → output) for stable tests.
  */
 export function buildSetupLocalArgs(inv: SetupLocalInvocation): string[] {
     const args = ["environments", "setup-local"];
@@ -37,9 +40,6 @@ export function buildSetupLocalArgs(inv: SetupLocalInvocation): string[] {
 
     if (inv.mode === "constraints-only") {
         args.push("--constraints-only");
-    }
-    if (inv.profile) {
-        args.push("--profile", inv.profile);
     }
     if (inv.constraintSourceUrl) {
         args.push("--constraint-source-url", inv.constraintSourceUrl);
