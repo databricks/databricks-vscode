@@ -14,7 +14,10 @@ import {
     SetupCompute,
 } from "./PythonSetupEnvironmentSetup";
 
-type Detection = Pick<PackageManagerDetection, "primary" | "managers">;
+type Detection = Pick<
+    PackageManagerDetection,
+    "primary" | "managers" | "signals"
+>;
 
 /**
  * The compute currently attached in the connection, reduced to what compute
@@ -162,7 +165,7 @@ export function makePythonSetupDeps(
         recordSetupAttempt: (attempt) =>
             wiring.telemetry.recordPythonSetupAttempt(attempt),
         recordNoCompute: () => wiring.telemetry.recordPythonSetupNoCompute(),
-        getPackageManager: async () => {
+        getDetection: async () => {
             const root = wiring.projectRoot();
             if (root === undefined) {
                 return undefined;
@@ -170,7 +173,7 @@ export function makePythonSetupDeps(
             // Same detection the gate ran for this click. It is re-run rather
             // than cached because a project's markers can change between the
             // config view rendering the entry and the user pressing it.
-            return (await wiring.detect(root)).primary;
+            return wiring.detect(root);
         },
         hasPyprojectToml: async (projectRoot: string) =>
             existsSync(path.join(projectRoot, "pyproject.toml")),

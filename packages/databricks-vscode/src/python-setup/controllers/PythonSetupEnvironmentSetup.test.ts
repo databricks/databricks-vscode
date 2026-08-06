@@ -18,6 +18,20 @@ import {
     PythonSetupAttempt,
     PythonSetupOutcomeReport,
 } from "../../telemetry/pythonSetupExtensions";
+import {
+    DetectionSignal,
+    PackageManager,
+    PrimaryManager,
+} from "../../language/packageManagerDetection";
+
+/** A detection result for the `getDetection` seam. */
+function detection(
+    primary: PrimaryManager,
+    managers: PackageManager[],
+    signals: DetectionSignal[] = []
+) {
+    return {primary, managers, signals};
+}
 
 /**
  * Records the attempt/result telemetry the orchestrator emits. Stands in for
@@ -113,7 +127,7 @@ function makeDeps(
         // a recorder instead.
         recordSetupAttempt: () => () => {},
         recordNoCompute: () => {},
-        getPackageManager: async () => "uv",
+        getDetection: async () => detection("uv", ["uv"]),
         hasPyprojectToml: async () => true,
         ...overrides,
     };
@@ -557,7 +571,10 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
     it("records an attempt and an ok result on a successful run", async () => {
         const telemetry = makeTelemetryRecorder();
         const setup = new PythonSetupEnvironmentSetup(
-            makeDeps({...telemetry, getPackageManager: async () => "uv"})
+            makeDeps({
+                ...telemetry,
+                getDetection: async () => detection("uv", ["uv"]),
+            })
         );
 
         await setup.setup();
@@ -603,7 +620,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 ...telemetry,
-                getPackageManager: async () => "unknown",
+                getDetection: async () => detection("unknown", []),
                 hasPyprojectToml: async () => false,
             })
         );
@@ -613,7 +630,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         expect(telemetry.attempts[0].isGreenfield).to.equal(true);
     });
 
-    it("omits isGreenfield for a non-uv project (the signal is unreliable there)", async () => {
+    it("omits isGreenfield for a real pip project (the signal is unreliable there)", async () => {
         const telemetry = makeTelemetryRecorder();
         let probed = 0;
         const setup = new PythonSetupEnvironmentSetup(
@@ -621,7 +638,8 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 ...telemetry,
                 // pip/conda users may never have a pyproject.toml, so its
                 // absence says nothing about greenfield-ness.
-                getPackageManager: async () => "pip",
+                getDetection: async () =>
+                    detection("pip", ["pip"], ["requirements.txt"]),
                 hasPyprojectToml: async () => {
                     probed += 1;
                     return false;
@@ -635,6 +653,48 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         expect(telemetry.attempts[0].isGreenfield).to.equal(undefined);
         // Not even probed: the answer could not be reported either way.
         expect(probed).to.equal(0);
+    });
+
+    // The population reported on is the one the gate admits, not the one whose
+    // `primary` is uv/unknown. A packaging-shaped pyproject.toml (what `bundle
+    // init` generates) is attributed to pip yet is a project we set up, so the
+    // flag must still be reported for it -- keying off `primary` would blank the
+    // field for exactly the cohort worth measuring.
+    it("reports isGreenfield when pip was attributed only by the pyproject's shape", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                getDetection: async () =>
+                    detection("pip", ["pip"], ["pyproject.pipOnly"]),
+                hasPyprojectToml: async () => true,
+            })
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts[0].packageManager).to.equal("pip");
+        // Has a pyproject.toml, so not greenfield -- but reported, not omitted.
+        expect(telemetry.attempts[0].isGreenfield).to.equal(false);
+    });
+
+    // An unavailable detection (no project root) must not silently drop the
+    // signal: it degrades to "no manager fired", which the visibility gate also
+    // reads as suitable, so both sides agree on the failure path.
+    it("still reports isGreenfield when detection is unavailable", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                getDetection: async () => undefined,
+                hasPyprojectToml: async () => false,
+            })
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts[0].packageManager).to.equal("unknown");
+        expect(telemetry.attempts[0].isGreenfield).to.equal(true);
     });
 
     it("reports the failure phase, error code and disk state on CLI failure", async () => {
@@ -861,7 +921,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 ...telemetry,
-                getPackageManager: async () => "uv",
+                getDetection: async () => detection("uv", ["uv"]),
                 hasPyprojectToml: async () => {
                     throw new Error("stat failed");
                 },
@@ -882,7 +942,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 ...telemetry,
-                getPackageManager: async () => {
+                getDetection: async () => {
                     throw new Error("detection blew up");
                 },
             })
@@ -895,9 +955,9 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         expect(setup.ready).to.equal(true);
         expect(telemetry.attempts).to.have.length(1);
         expect(telemetry.attempts[0].packageManager).to.equal("unknown");
-        // The greenfield probe is independent and still runs: `unknown` is one
-        // of the two managers for which the signal is meaningful, and this
-        // project has a pyproject.toml.
+        // The greenfield probe is independent and still runs: a failed detection
+        // degrades to "no manager fired", which is suitable (the gate reads it
+        // the same way), and this project has a pyproject.toml.
         expect(telemetry.attempts[0].isGreenfield).to.equal(false);
         expect(telemetry.results).to.deep.equal([
             {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},

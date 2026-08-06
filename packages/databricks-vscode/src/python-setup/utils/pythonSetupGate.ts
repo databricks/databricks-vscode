@@ -1,4 +1,5 @@
 import {
+    DetectionSignal,
     PackageManager,
     PackageManagerDetection,
 } from "../../language/packageManagerDetection";
@@ -9,33 +10,101 @@ import {
  * it would fight the tool the project already uses (pip/poetry/conda). The
  * legacy pip checklist covers those projects instead; the two entry points are
  * mutually exclusive and never shown together.
+ *
+ * `pip` here means a *real* pip workflow: an attribution rooted only in the
+ * pyproject's shape is discounted first — see {@link SUBSTANTIVE_PIP_SIGNALS}.
  */
 const COMPETING_MANAGERS: PackageManager[] = ["pip", "poetry", "conda"];
+
+/**
+ * The pip signals that reflect a real pip workflow, as opposed to merely a
+ * packaging-shaped `pyproject.toml`.
+ *
+ * `pyproject.pipOnly` is deliberately absent: it fires on any `pyproject.toml`
+ * that declares `[project]`/`[build-system]` without a `[tool.uv]` or
+ * `[tool.poetry]` section, which is exactly the shape `databricks bundle init`
+ * generates and which uv itself works with natively. Treating it as a pip
+ * workflow would hide setup from the template our own onboarding produces. A
+ * `requirements.txt`, a `constraints.txt`, or a plain (non-uv) virtualenv are
+ * different: they are positive evidence that someone is driving pip directly.
+ */
+const SUBSTANTIVE_PIP_SIGNALS: DetectionSignal[] = [
+    "requirements.txt",
+    "constraints.txt",
+    "interpreter.venv",
+];
+
+/**
+ * Whether pip was attributed only because the project has a packaging-shaped
+ * `pyproject.toml`, with no other pip evidence.
+ */
+function pipIsPyprojectShapeOnly(
+    managers: readonly PackageManager[],
+    signals: readonly DetectionSignal[]
+): boolean {
+    return (
+        managers.includes("pip") &&
+        signals.includes("pyproject.pipOnly") &&
+        !signals.some((s) => SUBSTANTIVE_PIP_SIGNALS.includes(s))
+    );
+}
+
+/** The detection fields every uv-suitability decision reads. */
+export type SuitabilityDetection = Pick<
+    PackageManagerDetection,
+    "managers" | "signals"
+>;
+
+/**
+ * Whether uv-native setup fits this project at all — i.e. no competing manager
+ * is driving it.
+ *
+ * The single source of truth for "is this one of our projects", shared by the
+ * visibility gate and by the attempt telemetry's greenfield signal so the two
+ * cannot drift. Judging a project by its `managers` alone is not enough: a real
+ * pip workflow and a merely packaging-shaped `pyproject.toml` both read as
+ * `"pip"`, which is why this takes `signals` too.
+ *
+ * The one deliberate exception is a `pyproject.toml` that merely *looks* like a
+ * packaging project (`[project]`/`[build-system]`, no `[tool.uv]`, no
+ * `uv.lock`). The classifier attributes that to pip — a documented skew, since
+ * uv needs neither of those to manage such a project — and that covers every
+ * freshly-initialised bundle project until someone runs `uv lock`, as well as
+ * any other PEP 621 project whose build backend is not uv or poetry (pdm,
+ * hatch, flit). Those are precisely the projects this feature exists to set up,
+ * so pip attributed from that signal alone is not treated as competing. Poetry
+ * and conda are never discounted.
+ */
+export function isUvSetupSuitable(detection: SuitabilityDetection): boolean {
+    const {managers, signals} = detection;
+
+    // Discount a pip attribution that rests only on the pyproject's shape, then
+    // judge the project on what is left.
+    const effective = pipIsPyprojectShapeOnly(managers, signals)
+        ? managers.filter((m) => m !== "pip")
+        : managers;
+
+    return !effective.some((m) => COMPETING_MANAGERS.includes(m));
+}
 
 /**
  * Whether to surface the uv-native python-setup entry for the current project.
  *
  * Pure predicate over the feature flag and the live detection result. Shows
- * only when all hold:
+ * only when both hold:
  *  - the feature flag is on (the whole feature is opt-in while the CLI command
  *    ships only in custom builds), AND
- *  - the primary manager is `uv` or `unknown` (a clean uv project, or a
- *    greenfield project with no manager yet — the two cases uv-native setup
- *    fits), AND
- *  - no competing manager (pip/poetry/conda) fired at all. Even a uv-primary
- *    project is excluded if it also shows pip/conda/poetry signals, so setup
- *    never fights an environment the project already depends on.
+ *  - the project is uv-suitable — see {@link isUvSetupSuitable}. Even a
+ *    uv-primary project is excluded if it also shows poetry/conda signals, or
+ *    real pip signals, so setup never fights an environment the project already
+ *    depends on.
  */
 export function shouldShowPythonSetup(args: {
     flagOn: boolean;
-    detection: Pick<PackageManagerDetection, "primary" | "managers">;
+    detection: SuitabilityDetection;
 }): boolean {
     if (!args.flagOn) {
         return false;
     }
-    const {primary, managers} = args.detection;
-    if (primary !== "uv" && primary !== "unknown") {
-        return false;
-    }
-    return !managers.some((m) => COMPETING_MANAGERS.includes(m));
+    return isUvSetupSuitable(args.detection);
 }
