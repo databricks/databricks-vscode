@@ -89,7 +89,6 @@ describe(__filename, function () {
             // It also reports the coding agents it knows about, each with a
             // display name and detection/management flags; the agent picker
             // relies on these fields.
-            /* TODO enable after CLI bump
             assert.ok(Array.isArray(result.agents));
             assert.ok(result.agents.length > 0);
             const agent = result.agents[0];
@@ -98,7 +97,6 @@ describe(__filename, function () {
             assert.ok(typeof agent.managed === "boolean");
             assert.ok(typeof agent.detected === "boolean");
             assert.ok(typeof agent.installed === "object");
-            */
         } finally {
             await rm(tmpDir, {recursive: true, force: true});
         }
