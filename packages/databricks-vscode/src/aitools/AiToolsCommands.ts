@@ -46,7 +46,7 @@ export class AiToolsCommands implements Disposable {
     }
 
     /**
-     * Run a cancellable operation inside a progress notification, surfacing any
+     * Run an operation inside a progress notification, surfacing any
      * {@link ProcessError} as an error toast whose "Show Logs" button opens the
      * "Databricks Logs" channel. Non-`ProcessError` failures propagate. This is
      * the single place the AI tools UI wraps the manager's (logic-only)
@@ -62,7 +62,6 @@ export class AiToolsCommands implements Disposable {
                 {
                     location: ProgressLocation.Notification,
                     title,
-                    cancellable: true,
                 },
                 (_progress, token) => run(token)
             );

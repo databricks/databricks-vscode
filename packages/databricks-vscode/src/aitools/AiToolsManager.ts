@@ -94,6 +94,8 @@ function computeAgentsStatuses(
  * for available updates, and caching the resolved install location.
  */
 export class AiToolsManager implements Disposable {
+    private disposables: Disposable[] = [];
+
     public readonly model: AiToolsModel;
 
     /**
@@ -115,6 +117,13 @@ export class AiToolsManager implements Disposable {
         );
         this.refreshCursorPluginContext();
         this.refreshInstalledContext();
+        this.disposables.push(
+            // refresh model when the active project changes
+            workspaceFolderManager.onDidChangeActiveProjectFolder(async () => {
+                await this.detectInstall();
+                await this.resolveInstalled();
+            })
+        );
     }
 
     get isInstalled(): boolean {
@@ -172,6 +181,7 @@ export class AiToolsManager implements Disposable {
     }
 
     dispose() {
+        this.disposables.forEach((d) => d.dispose());
         this.model.dispose();
     }
 
