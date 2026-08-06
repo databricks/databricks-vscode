@@ -122,6 +122,17 @@ export interface PythonSetupWiringDeps {
     isEnabled: () => boolean;
     detect: (projectRoot: string) => Promise<Detection>;
     attachedCompute: () => AttachedCompute;
+    /**
+     * Ask the user which serverless version to provision, for a serverless
+     * session that has none recorded. Returns the bare version, or undefined
+     * when the user dismisses the prompt.
+     */
+    promptServerlessVersion: () => Promise<string | undefined>;
+    /**
+     * Persist a confirmed serverless version alongside the current serverless
+     * selection, so the next run does not ask again.
+     */
+    persistServerlessVersion: (version: string) => Promise<void>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -155,12 +166,25 @@ export function makePythonSetupDeps(
         isVisible,
         resolveCompute: async () => {
             const resolution = resolveComputeFrom(wiring.attachedCompute());
-            // The prompt for a missing serverless version is wired in a later
-            // change; until then this state is handled like nothing-attached.
-            if (resolution.status === "needsServerlessVersion") {
-                return {status: "none"};
+            if (resolution.status !== "needsServerlessVersion") {
+                return resolution;
             }
-            return resolution;
+            // Serverless is selected and only the version is missing, so ask for
+            // that rather than telling the user to select compute they have
+            // already selected.
+            const version = await wiring.promptServerlessVersion();
+            if (version === undefined) {
+                return {status: "cancelled"};
+            }
+            try {
+                await wiring.persistServerlessVersion(version);
+            } catch {
+                // Persistence only buys "don't ask again": if the config write
+                // fails the user has already told us the version, so run with it
+                // rather than discarding a confirmed answer. (The production
+                // wiring surfaces the failure itself.)
+            }
+            return {status: "ok", compute: {kind: "serverless", version}};
         },
         adoptInterpreter: async (venvPath: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
