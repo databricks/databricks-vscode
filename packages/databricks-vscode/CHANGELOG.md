@@ -1,3 +1,21 @@
+# Release: v2.13.0
+
+## packages/databricks-vscode
+
+## (2026-08-06)
+
+-   [10/?] feat(python-setup): setup attempt/result telemetry (#2074) ([534f309](https://github.com/databricks/databricks-vscode/commit/534f309)), closes [#2074](https://github.com/databricks/databricks-vscode/issues/2074)
+-   [9/?] feat(python-setup): extension wiring & config-view dispatch (#2054) ([673e216](https://github.com/databricks/databricks-vscode/commit/673e216)), closes [#2054](https://github.com/databricks/databricks-vscode/issues/2054) [#2039](https://github.com/databricks/databricks-vscode/issues/2039) [#2046](https://github.com/databricks/databricks-vscode/issues/2046) [#2063](https://github.com/databricks/databricks-vscode/issues/2063) [#2052](https://github.com/databricks/databricks-vscode/issues/2052) [#2053](https://github.com/databricks/databricks-vscode/issues/2053) [#2055](https://github.com/databricks/databricks-vscode/issues/2055)
+-   Add AI tools integration (#2025) ([845c435](https://github.com/databricks/databricks-vscode/commit/845c435)), closes [#2025](https://github.com/databricks/databricks-vscode/issues/2025)
+-   Enable Unity Catalog (and Docs) in Databricks Remote SSH mode (#2016) ([b5e1754](https://github.com/databricks/databricks-vscode/commit/b5e1754)), closes [#2016](https://github.com/databricks/databricks-vscode/issues/2016)
+-   Start ssh tunnel (#1989) ([2c7c896](https://github.com/databricks/databricks-vscode/commit/2c7c896)), closes [#1989](https://github.com/databricks/databricks-vscode/issues/1989)
+-   Update Databricks CLI to v1.10.0 (#2064) ([3f639a1](https://github.com/databricks/databricks-vscode/commit/3f639a1)), closes [#2064](https://github.com/databricks/databricks-vscode/issues/2064)
+-   Update Databricks CLI to v1.11.0 (#2085) ([cdd5b8c](https://github.com/databricks/databricks-vscode/commit/cdd5b8c)), closes [#2085](https://github.com/databricks/databricks-vscode/issues/2085)
+-   docs(python-setup): replace an internal tracker key with the actual reason (#2082) ([f8857c6](https://github.com/databricks/databricks-vscode/commit/f8857c6)), closes [#2082](https://github.com/databricks/databricks-vscode/issues/2082) [#2081](https://github.com/databricks/databricks-vscode/issues/2081)
+-   fix(python-setup): pass workspace auth to the setup-local CLI (#2080) ([f895575](https://github.com/databricks/databricks-vscode/commit/f895575)), closes [#2080](https://github.com/databricks/databricks-vscode/issues/2080)
+-   fix(ui): use sentence case for "SSH tunnel" in user-facing strings (#2078) ([8a3b685](https://github.com/databricks/databricks-vscode/commit/8a3b685)), closes [#2078](https://github.com/databricks/databricks-vscode/issues/2078)
+-   feat(python-setup): rename result `target` field to `compute` (ext side) (#2066) ([f3d19b9](https://github.com/databricks/databricks-vscode/commit/f3d19b9)), closes [#2066](https://github.com/databricks/databricks-vscode/issues/2066) [databricks/cli#6100](https://github.com/databricks/cli/issues/6100) [#6100](https://github.com/databricks/databricks-vscode/issues/6100) [#6100](https://github.com/databricks/databricks-vscode/issues/6100) [databricks/cli#6100](https://github.com/databricks/cli/issues/6100)
+
 # Release: v2.12.4
 
 ## packages/databricks-vscode
