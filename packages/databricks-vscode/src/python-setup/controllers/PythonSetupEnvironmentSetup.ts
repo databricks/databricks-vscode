@@ -18,6 +18,10 @@ import {
     PythonSetupResultReporter,
 } from "../../telemetry/pythonSetupExtensions";
 import {PrimaryManager} from "../../language/packageManagerDetection";
+import {
+    isUvSetupSuitable,
+    SuitabilityDetection,
+} from "../utils/pythonSetupGate";
 
 /**
  * The one method the orchestrator needs from {@link PythonSetupCliClient}, typed
@@ -139,15 +143,20 @@ export interface PythonSetupSetupDeps {
     recordNoCompute: () => void;
 
     /**
-     * The project's detected package manager, for the attempt event. Reads the
-     * same detection the visibility gate runs; `undefined` when detection was
-     * unavailable, in which case the attempt reports `unknown`.
+     * The project's package-manager detection, for the attempt event. Reads the
+     * same detection the visibility gate runs — the whole result rather than
+     * just `primary`, because the greenfield signal needs the manager list and
+     * the fired signals to reuse the gate's own suitability predicate.
+     * `undefined` when detection was unavailable, in which case the attempt
+     * reports `unknown` and omits the greenfield flag.
      */
-    getPackageManager: () => Promise<PrimaryManager | undefined>;
+    getDetection: () => Promise<
+        (SuitabilityDetection & {primary: PrimaryManager}) | undefined
+    >;
 
     /**
-     * Whether the project has no `pyproject.toml` yet. Consulted only when the
-     * detected manager is uv/unknown — see {@link greenfieldSignal}.
+     * Whether the project has no `pyproject.toml` yet. Consulted only for a
+     * uv-suitable project — see {@link greenfieldSignal}.
      */
     hasPyprojectToml: (projectRoot: string) => Promise<boolean>;
 }
@@ -157,16 +166,21 @@ export interface PythonSetupSetupDeps {
  *
  * A missing `pyproject.toml` only means "greenfield" for a project that has no
  * competing manager: pip and conda users may never have one, so for them the
- * absence says nothing and reporting it would inflate the greenfield rate. The
- * signal is therefore emitted only for uv/unknown projects — which is exactly
- * the population the visibility gate admits.
+ * absence says nothing and reporting it would inflate the greenfield rate.
+ *
+ * The population is therefore exactly the one the visibility gate admits, by
+ * construction: both ask {@link isUvSetupSuitable}. Reusing the gate's predicate
+ * rather than re-deriving it from `primary` matters, because a packaging-shaped
+ * `pyproject.toml` is attributed to pip while still being a project we set up —
+ * keying off `primary` alone would blank this field for every freshly-initialised
+ * bundle project, i.e. the exact cohort worth measuring.
  */
 async function greenfieldSignal(
-    manager: PrimaryManager,
+    detection: SuitabilityDetection,
     projectRoot: string,
     hasPyprojectToml: (projectRoot: string) => Promise<boolean>
 ): Promise<boolean | undefined> {
-    if (manager !== "uv" && manager !== "unknown") {
+    if (!isUvSetupSuitable(detection)) {
         return undefined;
     }
     return !(await hasPyprojectToml(projectRoot));
@@ -371,6 +385,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         projectRoot: string
     ): Promise<PythonSetupResultReporter> {
         const {compute} = invocation;
+        // An unavailable detection degrades to "no manager fired", which reads as
+        // a greenfield-suitable project -- the same reading the visibility gate
+        // gives it, so the two stay consistent even on the failure path.
+        let detection: SuitabilityDetection = {managers: [], signals: []};
         let packageManager: PrimaryManager = "unknown";
         let isGreenfield: boolean | undefined;
         // Two independent probes, so they get independent try blocks: a failing
@@ -379,13 +397,17 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // `unknown`). Either failing just narrows the attempt, never breaks the
         // user's setup run.
         try {
-            packageManager = (await this.deps.getPackageManager()) ?? "unknown";
+            const detected = await this.deps.getDetection();
+            if (detected !== undefined) {
+                detection = detected;
+                packageManager = detected.primary;
+            }
         } catch {
-            // Keep `unknown`.
+            // Keep `unknown` and the greenfield-suitable default.
         }
         try {
             isGreenfield = await greenfieldSignal(
-                packageManager,
+                detection,
                 projectRoot,
                 this.deps.hasPyprojectToml
             );

@@ -4,7 +4,7 @@ import {
     PackageManager,
     PrimaryManager,
 } from "../../language/packageManagerDetection";
-import {shouldShowPythonSetup} from "./pythonSetupGate";
+import {isUvSetupSuitable, shouldShowPythonSetup} from "./pythonSetupGate";
 
 const det = (
     primary: PrimaryManager,
@@ -175,5 +175,74 @@ describe("shouldShowPythonSetup", () => {
                 ),
             })
         ).to.equal(false);
+    });
+});
+
+// The shared predicate behind both the visibility gate and the attempt
+// telemetry's greenfield signal. Covered directly so the contract the two
+// consumers rely on is pinned independently of the flag handling above.
+describe("isUvSetupSuitable", () => {
+    it("accepts a clean uv project and a greenfield one", () => {
+        expect(isUvSetupSuitable(det("uv", ["uv"]))).to.equal(true);
+        expect(isUvSetupSuitable(det("unknown", []))).to.equal(true);
+    });
+
+    it("accepts a pip attribution resting only on the pyproject's shape", () => {
+        expect(
+            isUvSetupSuitable(det("pip", ["pip"], ["pyproject.pipOnly"]))
+        ).to.equal(true);
+    });
+
+    it("rejects a real pip workflow", () => {
+        for (const signal of [
+            "requirements.txt",
+            "constraints.txt",
+            "interpreter.venv",
+        ] as DetectionSignal[]) {
+            expect(
+                isUvSetupSuitable(
+                    det("pip", ["pip"], ["pyproject.pipOnly", signal])
+                ),
+                signal
+            ).to.equal(false);
+        }
+    });
+
+    it("rejects poetry and conda even alongside a shape-only pip", () => {
+        expect(
+            isUvSetupSuitable(
+                det(
+                    "poetry",
+                    ["poetry", "pip"],
+                    ["poetry.lock", "pyproject.pipOnly"]
+                )
+            )
+        ).to.equal(false);
+        expect(
+            isUvSetupSuitable(
+                det(
+                    "conda",
+                    ["conda", "pip"],
+                    ["conda.prefix", "pyproject.pipOnly"]
+                )
+            )
+        ).to.equal(false);
+    });
+
+    it("agrees with the gate whenever the flag is on", () => {
+        const cases = [
+            det("uv", ["uv"]),
+            det("unknown", []),
+            det("pip", ["pip"], ["pyproject.pipOnly"]),
+            det("pip", ["pip"], ["requirements.txt"]),
+            det("poetry", ["poetry"], ["poetry.lock"]),
+            det("conda", ["conda"], ["conda.prefix"]),
+        ];
+        for (const detection of cases) {
+            expect(
+                shouldShowPythonSetup({flagOn: true, detection}),
+                JSON.stringify(detection.signals)
+            ).to.equal(isUvSetupSuitable(detection));
+        }
     });
 });

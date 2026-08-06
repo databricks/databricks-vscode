@@ -350,9 +350,12 @@ export class EventTypes {
         },
         isGreenfield: {
             comment:
-                "Whether the project has no pyproject.toml yet. Omitted unless packageManager " +
-                "is uv or unknown: for a pip/conda project the absence of a pyproject.toml says " +
-                "nothing about greenfield-ness, so the signal would be misleading",
+                "Whether the project has no pyproject.toml yet. Omitted unless the project is " +
+                "uv-suitable (the same predicate that gates the setup entry): for a project " +
+                "driven by poetry/conda or a real pip workflow the absence of a pyproject.toml " +
+                "says nothing about greenfield-ness, so the signal would be misleading. Note a " +
+                "packaging-shaped pyproject.toml is attributed to pip yet is still reported on, " +
+                "so this is NOT equivalent to packageManager being uv or unknown",
         },
     };
     [Events.PYTHON_ENV_SETUP_RESULT]: EventType<{
