@@ -31,25 +31,49 @@ export interface AttachedCompute {
 }
 
 /**
+ * The outcome of classifying the attached compute. `needsServerlessVersion` is
+ * deliberately distinct from `none`: serverless IS selected in that state, only
+ * the version is missing, so the caller resolves one rather than telling the
+ * user to select compute they already selected.
+ */
+export type ComputeResolution =
+    | {status: "ok"; compute: SetupCompute}
+    | {status: "needsServerlessVersion"}
+    | {status: "none"};
+
+/**
  * Map the attached compute to a setup-local compute target. Pure so the
  * cluster/serverless/none branching is unit-testable.
  *
  * A cluster attachment wins outright (its DBR fully determines the
- * environment). A serverless session resolves to its persisted version -- the
- * one the compute picker recorded (see the serverlessVersion field); without a
- * chosen version there is nothing to provision yet, so this returns undefined
- * and the orchestrator aborts silently rather than guessing.
+ * environment), so it is checked first and a missing serverless version never
+ * matters on that path. A serverless session resolves to its persisted version
+ * when one was recorded; without it this reports `needsServerlessVersion` so the
+ * caller can resolve one, because a version-less serverless selection is
+ * reachable in normal use -- a `serverlessComputeId: auto` config enables
+ * serverless without ever opening the picker, a selection made while the feature
+ * was disabled records no version, and a persisted version outside the supported
+ * range is dropped to undefined on load.
  */
 export function resolveComputeFrom(
     compute: AttachedCompute
-): SetupCompute | undefined {
+): ComputeResolution {
     if (compute.cluster) {
-        return {kind: "cluster", clusterId: compute.cluster.id};
+        return {
+            status: "ok",
+            compute: {kind: "cluster", clusterId: compute.cluster.id},
+        };
     }
-    if (compute.serverless && compute.serverlessVersion !== undefined) {
-        return {kind: "serverless", version: compute.serverlessVersion};
+    if (compute.serverless) {
+        if (compute.serverlessVersion === undefined) {
+            return {status: "needsServerlessVersion"};
+        }
+        return {
+            status: "ok",
+            compute: {kind: "serverless", version: compute.serverlessVersion},
+        };
     }
-    return undefined;
+    return {status: "none"};
 }
 
 /**
@@ -129,8 +153,15 @@ export function makePythonSetupDeps(
         cli: wiring.cli,
         projectRoot: wiring.projectRoot,
         isVisible,
-        resolveCompute: async () =>
-            resolveComputeFrom(wiring.attachedCompute()),
+        resolveCompute: async () => {
+            const resolution = resolveComputeFrom(wiring.attachedCompute());
+            // The prompt for a missing serverless version is wired in a later
+            // change; until then this state is handled like nothing-attached.
+            if (resolution.status === "needsServerlessVersion") {
+                return {status: "none"};
+            }
+            return resolution;
+        },
         adoptInterpreter: async (venvPath: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
                 venvInterpreterPath(venvPath),

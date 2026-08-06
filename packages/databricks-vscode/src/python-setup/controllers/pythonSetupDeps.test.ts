@@ -65,7 +65,10 @@ describe("resolveComputeFrom", () => {
                 cluster: {id: "0101-clusterid"},
                 serverlessVersion: undefined,
             })
-        ).to.deep.equal({kind: "cluster", clusterId: "0101-clusterid"});
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "0101-clusterid"},
+        });
     });
 
     it("returns a serverless target with the persisted version", () => {
@@ -75,29 +78,33 @@ describe("resolveComputeFrom", () => {
                 cluster: undefined,
                 serverlessVersion: "5",
             })
-        ).to.deep.equal({kind: "serverless", version: "5"});
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "5"},
+        });
     });
 
-    it("returns undefined for serverless without a chosen version", () => {
-        // A version-less serverless selection cannot be provisioned yet -- the
-        // compute picker sub-step (or a fallback) supplies the version.
+    it("asks for a version when serverless is attached without one", () => {
+        // The distinguishing state: compute IS selected, only the version is
+        // missing -- so the caller must resolve one rather than claim nothing
+        // is attached.
         expect(
             resolveComputeFrom({
                 serverless: true,
                 cluster: undefined,
                 serverlessVersion: undefined,
             })
-        ).to.equal(undefined);
+        ).to.deep.equal({status: "needsServerlessVersion"});
     });
 
-    it("returns undefined when no compute is selected", () => {
+    it("returns none when no compute is selected", () => {
         expect(
             resolveComputeFrom({
                 serverless: false,
                 cluster: undefined,
                 serverlessVersion: undefined,
             })
-        ).to.equal(undefined);
+        ).to.deep.equal({status: "none"});
     });
 
     it("prefers a cluster over a stale serverless version", () => {
@@ -108,7 +115,10 @@ describe("resolveComputeFrom", () => {
                 cluster: {id: "c1"},
                 serverlessVersion: "5",
             })
-        ).to.deep.equal({kind: "cluster", clusterId: "c1"});
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
     });
 
     it("prefers a cluster even when serverless is also set", () => {
@@ -120,7 +130,25 @@ describe("resolveComputeFrom", () => {
                 cluster: {id: "c1"},
                 serverlessVersion: "5",
             })
-        ).to.deep.equal({kind: "cluster", clusterId: "c1"});
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+    });
+
+    it("never asks for a version when a cluster is attached without one", () => {
+        // Guards the cluster path against the version prompt leaking into it:
+        // a cluster's DBR fully determines the environment.
+        expect(
+            resolveComputeFrom({
+                serverless: true,
+                cluster: {id: "c1"},
+                serverlessVersion: undefined,
+            })
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
     });
 });
 

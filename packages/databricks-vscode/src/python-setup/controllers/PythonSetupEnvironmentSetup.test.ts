@@ -114,7 +114,10 @@ function makeDeps(
         projectRoot: () => "/proj",
         // Default seams model a connected serverless session that opted in.
         isVisible: async () => true,
-        resolveCompute: async () => ({kind: "serverless", version: "5"}),
+        resolveCompute: async () => ({
+            status: "ok",
+            compute: {kind: "serverless", version: "5"},
+        }),
         adoptInterpreter: async () => {},
         saveState: () => {},
         notify: async () => {},
@@ -261,7 +264,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 cli,
-                resolveCompute: async () => undefined,
+                resolveCompute: async () => ({status: "none"}),
                 notify: async (m) => {
                     notified.push(m);
                 },
@@ -600,8 +603,8 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
             makeDeps({
                 ...telemetry,
                 resolveCompute: async () => ({
-                    kind: "cluster",
-                    clusterId: "0710-abc",
+                    status: "ok",
+                    compute: {kind: "cluster", clusterId: "0710-abc"},
                 }),
             })
         );
@@ -794,7 +797,10 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
     it("reports no_compute (without an attempt) when the CTA is a dead end", async () => {
         const telemetry = makeTelemetryRecorder();
         const setup = new PythonSetupEnvironmentSetup(
-            makeDeps({...telemetry, resolveCompute: async () => undefined})
+            makeDeps({
+                ...telemetry,
+                resolveCompute: async () => ({status: "none"}),
+            })
         );
 
         await setup.setup();
@@ -806,11 +812,44 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         expect(telemetry.results).to.deep.equal([{outcome: "no_compute"}]);
     });
 
+    it("stops silently when the user dismisses the version prompt", async () => {
+        const cli = makeCli();
+        const telemetry = makeTelemetryRecorder();
+        const notified: string[] = [];
+        const shownErrors: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                cli,
+                resolveCompute: async () => ({status: "cancelled"}),
+                notify: async (m) => {
+                    notified.push(m);
+                },
+                showError: async (m) => {
+                    shownErrors.push(m);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        // A dismissal is a user action, not a failure and not a dead end: no
+        // run, no toast of either kind, and nothing recorded — reporting
+        // no_compute here would conflate deliberate bail-outs with a CTA that
+        // had nothing to do.
+        expect(cli.calls).to.have.length(0);
+        expect(notified).to.have.length(0);
+        expect(shownErrors).to.have.length(0);
+        expect(telemetry.attempts).to.have.length(0);
+        expect(telemetry.results).to.have.length(0);
+        expect(setup.ready).to.equal(false);
+    });
+
     it("still guides the user when the no_compute emit throws", async () => {
         const notified: string[] = [];
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
-                resolveCompute: async () => undefined,
+                resolveCompute: async () => ({status: "none"}),
                 recordNoCompute: () => {
                     throw new Error("telemetry blew up");
                 },

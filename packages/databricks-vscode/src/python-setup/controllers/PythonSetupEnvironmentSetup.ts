@@ -36,6 +36,17 @@ export interface CliRunner {
 
 export type SetupCompute = SetupLocalInvocation["compute"];
 
+/**
+ * What the compute seam resolved to. `cancelled` means the user was asked for a
+ * missing piece (a serverless version) and dismissed the prompt -- a user
+ * action, not a dead end, so it must stay silent and must not be counted as a
+ * no-compute click.
+ */
+export type ResolvedCompute =
+    | {status: "ok"; compute: SetupCompute}
+    | {status: "none"}
+    | {status: "cancelled"};
+
 /** Persisted after a successful setup, for later drift detection. */
 export interface PythonSetupPersistedState {
     envKey: string;
@@ -86,13 +97,15 @@ export interface PythonSetupSetupDeps {
     isVisible: () => Promise<boolean>;
 
     /**
-     * The compute target to provision for, or `undefined` to abort silently
-     * (nothing selected). The extension resolves this from the attached
-     * compute: a cluster maps directly; a serverless session uses the version
-     * the compute picker persisted (`serverlessVersion`), so a serverless
-     * session with no chosen version yields `undefined`.
+     * The compute target to provision for. `none` means nothing is attached
+     * (the CTA is a dead end -- guide the user); `cancelled` means the user
+     * dismissed a prompt for a missing detail and the flow should stop quietly.
+     * The extension resolves this from the attached compute: a cluster maps
+     * directly, a serverless session uses the version the compute picker
+     * persisted (`serverlessVersion`), and a serverless session with no chosen
+     * version prompts for one.
      */
-    resolveCompute: () => Promise<SetupCompute | undefined>;
+    resolveCompute: () => Promise<ResolvedCompute>;
 
     /**
      * Point the MS Python extension at the provisioned venv interpreter for
@@ -260,14 +273,20 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             return;
         }
 
-        const compute = await resolveCompute();
-        if (compute === undefined) {
+        const resolved = await resolveCompute();
+        if (resolved.status === "cancelled") {
+            // The user was asked for the missing serverless version and
+            // dismissed the prompt. That is a deliberate bail-out, not a dead
+            // end: stay silent (as with a cancelled run) and record nothing, so
+            // the no-compute metric keeps meaning "the CTA had nothing to do".
+            return;
+        }
+        if (resolved.status === "none") {
             // The entry is visible whenever the project fits (flag + uv shape),
             // independent of compute — so a user can click the CTA with no
-            // cluster attached or a serverless session without a chosen version.
-            // Tell them what to do instead of silently no-op'ing the button.
-            // Plain notify (not showError): no CLI ran, so there is no log to
-            // reveal.
+            // compute attached at all. Tell them what to do instead of silently
+            // no-op'ing the button. Plain notify (not showError): no CLI ran, so
+            // there is no log to reveal.
             try {
                 this.deps.recordNoCompute();
             } catch {
@@ -276,6 +295,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             await this.deps.notify(NO_COMPUTE_TARGET_MESSAGE);
             return;
         }
+        const compute = resolved.compute;
 
         const invocation: SetupLocalInvocation = {
             mode: "default",
