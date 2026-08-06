@@ -65,7 +65,10 @@ describe("resolveComputeFrom", () => {
                 cluster: {id: "0101-clusterid"},
                 serverlessVersion: undefined,
             })
-        ).to.deep.equal({kind: "cluster", clusterId: "0101-clusterid"});
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "0101-clusterid"},
+        });
     });
 
     it("returns a serverless target with the persisted version", () => {
@@ -75,29 +78,33 @@ describe("resolveComputeFrom", () => {
                 cluster: undefined,
                 serverlessVersion: "5",
             })
-        ).to.deep.equal({kind: "serverless", version: "5"});
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "5"},
+        });
     });
 
-    it("returns undefined for serverless without a chosen version", () => {
-        // A version-less serverless selection cannot be provisioned yet -- the
-        // compute picker sub-step (or a fallback) supplies the version.
+    it("asks for a version when serverless is attached without one", () => {
+        // The distinguishing state: compute IS selected, only the version is
+        // missing -- so the caller must resolve one rather than claim nothing
+        // is attached.
         expect(
             resolveComputeFrom({
                 serverless: true,
                 cluster: undefined,
                 serverlessVersion: undefined,
             })
-        ).to.equal(undefined);
+        ).to.deep.equal({status: "needsServerlessVersion"});
     });
 
-    it("returns undefined when no compute is selected", () => {
+    it("returns none when no compute is selected", () => {
         expect(
             resolveComputeFrom({
                 serverless: false,
                 cluster: undefined,
                 serverlessVersion: undefined,
             })
-        ).to.equal(undefined);
+        ).to.deep.equal({status: "none"});
     });
 
     it("prefers a cluster over a stale serverless version", () => {
@@ -108,7 +115,10 @@ describe("resolveComputeFrom", () => {
                 cluster: {id: "c1"},
                 serverlessVersion: "5",
             })
-        ).to.deep.equal({kind: "cluster", clusterId: "c1"});
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
     });
 
     it("prefers a cluster even when serverless is also set", () => {
@@ -120,38 +130,187 @@ describe("resolveComputeFrom", () => {
                 cluster: {id: "c1"},
                 serverlessVersion: "5",
             })
-        ).to.deep.equal({kind: "cluster", clusterId: "c1"});
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+    });
+
+    it("never asks for a version when a cluster is attached without one", () => {
+        // Guards the cluster path against the version prompt leaking into it:
+        // a cluster's DBR fully determines the environment.
+        expect(
+            resolveComputeFrom({
+                serverless: true,
+                cluster: {id: "c1"},
+                serverlessVersion: undefined,
+            })
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+    });
+});
+
+function makeWiring(
+    overrides: Partial<PythonSetupWiringDeps> = {}
+): PythonSetupWiringDeps {
+    return {
+        cli: {run: async () => ({}) as any},
+        projectRoot: () => "/proj",
+        isEnabled: () => true,
+        detect: async () => ({
+            primary: "uv" as const,
+            managers: ["uv" as const],
+            signals: [],
+        }),
+        attachedCompute: () => ({
+            serverless: false,
+            cluster: undefined,
+            serverlessVersion: undefined,
+        }),
+        promptServerlessVersion: async () => "4",
+        persistServerlessVersion: async () => {},
+        setActiveInterpreter: async () => {},
+        persistSetupState: () => {},
+        log: {append: () => {}, show: () => {}},
+        // A reporter-less client: recordEvent short-circuits, so the setup
+        // events are inert here (they have their own tests).
+        telemetry: new Telemetry(undefined),
+        ...overrides,
+    };
+}
+
+describe("makePythonSetupDeps resolveCompute", () => {
+    /** A serverless session with no version recorded -- the prompt's reason to exist. */
+    const versionlessServerless = () => ({
+        serverless: true,
+        cluster: undefined,
+        serverlessVersion: undefined,
+    });
+
+    it("prompts for a missing serverless version and persists the answer", async () => {
+        const persisted: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: versionlessServerless,
+                promptServerlessVersion: async () => "4",
+                persistServerlessVersion: async (v) => {
+                    persisted.push(v);
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "4"},
+        });
+        // Persisted so the next run does not ask again.
+        expect(persisted).to.deep.equal(["4"]);
+    });
+
+    it("reports cancelled and persists nothing when the prompt is dismissed", async () => {
+        const persisted: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: versionlessServerless,
+                promptServerlessVersion: async () => undefined,
+                persistServerlessVersion: async (v) => {
+                    persisted.push(v);
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "cancelled",
+        });
+        expect(persisted).to.have.length(0);
+    });
+
+    it("never prompts when a cluster is attached", async () => {
+        let prompted = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => ({
+                    serverless: false,
+                    cluster: {id: "c1"},
+                    serverlessVersion: undefined,
+                }),
+                promptServerlessVersion: async () => {
+                    prompted++;
+                    return "4";
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+        expect(prompted).to.equal(0);
+    });
+
+    it("never prompts when nothing is attached", async () => {
+        // Nothing selected is a real dead end, not a missing detail: the flow
+        // must guide the user, not open a version picker.
+        let prompted = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                promptServerlessVersion: async () => {
+                    prompted++;
+                    return "4";
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({status: "none"});
+        expect(prompted).to.equal(0);
+    });
+
+    it("never prompts when serverless already has a version", async () => {
+        let prompted = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => ({
+                    serverless: true,
+                    cluster: undefined,
+                    serverlessVersion: "5",
+                }),
+                promptServerlessVersion: async () => {
+                    prompted++;
+                    return "4";
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "5"},
+        });
+        expect(prompted).to.equal(0);
+    });
+
+    it("still runs when persisting the version fails", async () => {
+        // Persistence only buys "don't ask again"; losing it must not cost the
+        // user the run they asked for.
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: versionlessServerless,
+                promptServerlessVersion: async () => "4",
+                persistServerlessVersion: async () => {
+                    throw new Error("config write failed");
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "4"},
+        });
     });
 });
 
 describe("makePythonSetupDeps saveState", () => {
-    function makeWiring(
-        overrides: Partial<PythonSetupWiringDeps> = {}
-    ): PythonSetupWiringDeps {
-        return {
-            cli: {run: async () => ({}) as any},
-            projectRoot: () => "/proj",
-            isEnabled: () => true,
-            detect: async () => ({
-                primary: "uv" as const,
-                managers: ["uv" as const],
-                signals: [],
-            }),
-            attachedCompute: () => ({
-                serverless: false,
-                cluster: undefined,
-                serverlessVersion: undefined,
-            }),
-            setActiveInterpreter: async () => {},
-            persistSetupState: () => {},
-            log: {append: () => {}, show: () => {}},
-            // A reporter-less client: recordEvent short-circuits, so the setup
-            // events are inert here (they have their own tests).
-            telemetry: new Telemetry(undefined),
-            ...overrides,
-        };
-    }
-
     it("stamps a timestamp and forwards the persisted state", () => {
         const persisted: PythonSetupState[] = [];
         const deps = makePythonSetupDeps(
@@ -232,33 +391,6 @@ describe("makePythonSetupVisibility error handling", () => {
 });
 
 describe("makePythonSetupDeps withProgress", () => {
-    function makeWiring(
-        overrides: Partial<PythonSetupWiringDeps> = {}
-    ): PythonSetupWiringDeps {
-        return {
-            cli: {run: async () => ({}) as any},
-            projectRoot: () => "/proj",
-            isEnabled: () => true,
-            detect: async () => ({
-                primary: "uv" as const,
-                managers: ["uv" as const],
-                signals: [],
-            }),
-            attachedCompute: () => ({
-                serverless: false,
-                cluster: undefined,
-                serverlessVersion: undefined,
-            }),
-            setActiveInterpreter: async () => {},
-            persistSetupState: () => {},
-            log: {append: () => {}, show: () => {}},
-            // A reporter-less client: recordEvent short-circuits, so the setup
-            // events are inert here (they have their own tests).
-            telemetry: new Telemetry(undefined),
-            ...overrides,
-        };
-    }
-
     it("forwards streamed log chunks to the injected channel", async () => {
         const appended: string[] = [];
         const deps = makePythonSetupDeps(

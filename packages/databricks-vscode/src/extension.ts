@@ -53,7 +53,10 @@ import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {makePythonSetupDeps} from "./python-setup/controllers/pythonSetupDeps";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
-import {isPythonSetupEnabled} from "./python-setup/utils/serverlessVersionResolver";
+import {
+    isPythonSetupEnabled,
+    makeServerlessVersionPrompt,
+} from "./python-setup/utils/serverlessVersionResolver";
 import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
@@ -947,6 +950,26 @@ export async function activate(
                     : undefined,
                 serverlessVersion: connectionManager.serverlessVersion,
             }),
+            promptServerlessVersion: makeServerlessVersionPrompt({
+                getValidateConfig: () => configModel.get("validateConfig"),
+                // activeProjectUri throws when no project is active; the
+                // collector's contract is string | undefined.
+                projectRoot: () => {
+                    try {
+                        return workspaceFolderManager.activeProjectUri.fsPath;
+                    } catch {
+                        return undefined;
+                    }
+                },
+            }),
+            // Reuses the compute picker's own persistence path: with serverless
+            // already enabled this only records the version -- it does not
+            // re-attach compute, fire a compute-change event, or re-report
+            // COMPUTE_SELECTED. It is decorated @onError, so a failed config
+            // write surfaces a popup to the user instead of rejecting into the
+            // setup flow.
+            persistServerlessVersion: (version) =>
+                connectionManager.enableServerless(version),
             setActiveInterpreter: async (interpreterPath, root) => {
                 await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
                     interpreterPath,
