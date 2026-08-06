@@ -8,6 +8,7 @@ import {
     window,
     workspace,
 } from "vscode";
+import {readFile} from "fs/promises";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
@@ -15,6 +16,8 @@ import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
+import {AiToolsManager} from "./aitools/AiToolsManager";
+import {AiToolsCommands} from "./aitools/AiToolsCommands";
 import {RunCommands} from "./run/RunCommands";
 import {DatabricksDebugAdapterFactory} from "./run/DatabricksDebugAdapter";
 import {DatabricksWorkflowDebugAdapterFactory} from "./run/DatabricksWorkflowDebugAdapter";
@@ -50,7 +53,10 @@ import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {makePythonSetupDeps} from "./python-setup/controllers/pythonSetupDeps";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
-import {isPythonSetupEnabled} from "./python-setup/utils/serverlessVersionResolver";
+import {
+    isPythonSetupEnabled,
+    makeServerlessVersionPrompt,
+} from "./python-setup/utils/serverlessVersionResolver";
 import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
@@ -300,7 +306,13 @@ export async function activate(
             "databricks.bundle.showLogs",
             () => loggerManager.showOutputChannel("Databricks Bundle Logs"),
             loggerManager
-        )
+        ),
+        // Opens the "Databricks Logs" output channel. Registered here (before
+        // the no-folder / remote-mode early returns below) so the AI tools
+        // "Show Logs" error affordance works even without an open folder.
+        commands.registerCommand("databricks.internal.showOutput", () => {
+            loggerManager.showOutputChannel("Databricks Logs");
+        })
     );
 
     // Quickstart
@@ -313,6 +325,74 @@ export async function activate(
         )
     );
 
+    const workspaceFolderManager = new WorkspaceFolderManager(
+        customWhenContext,
+        stateStorage
+    );
+
+    // AI tools: register before the no-folder early return below, since global
+    // installs/updates work without an open workspace folder. Project scope is
+    // gated on a folder being open (see AiToolsCommands / AiToolsManager).
+    const aiToolsManager = new AiToolsManager(
+        cli,
+        stateStorage,
+        workspaceFolderManager,
+        customWhenContext,
+        telemetry,
+        (path) => readFile(path)
+    );
+    const aiToolsCommands = new AiToolsCommands(aiToolsManager, window);
+    context.subscriptions.push(
+        aiToolsManager,
+        aiToolsCommands,
+        telemetry.registerCommand(
+            "databricks.aitools.install",
+            aiToolsCommands.installCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.checkForUpdates",
+            aiToolsCommands.checkForUpdatesCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.reload",
+            aiToolsCommands.reloadCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.update",
+            aiToolsCommands.updateCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.uninstall",
+            aiToolsCommands.uninstallCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.addCursorPlugin",
+            aiToolsCommands.addCursorPluginCommand(),
+            aiToolsCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.aitools.installAgent",
+            aiToolsCommands.installAgentCommand(),
+            aiToolsCommands
+        )
+    );
+    // Detect install state on activation and, if installed, auto-apply any
+    // available update; otherwise prompt the user (once) to install the tools.
+    // Non-blocking so it doesn't delay activation. Skipped in Remote SSH mode,
+    // where the AI tools commands are gated off (see the remote-mode branch
+    // below) so there is nothing to initialize.
+    const isRemoteSshMode =
+        process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
+        Boolean(process.env["DATABRICKS_VIRTUAL_ENV"]);
+    if (!isRemoteSshMode) {
+        aiToolsCommands.initializeCommand()();
+    }
+
     if (
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
@@ -323,7 +403,8 @@ export async function activate(
                 async () => {
                     const bundleInitWizard = new BundleInitWizard(
                         cli,
-                        telemetry
+                        telemetry,
+                        aiToolsManager
                     );
                     await bundleInitWizard.initNewProject();
                 }
@@ -347,11 +428,6 @@ export async function activate(
         // be activated again.
         return undefined;
     }
-
-    const workspaceFolderManager = new WorkspaceFolderManager(
-        customWhenContext,
-        stateStorage
-    );
 
     // Utils. Registered before the remote-mode branch below returns so that
     // views shared between the normal and remote flows - such as the docs view,
@@ -452,7 +528,7 @@ export async function activate(
             databricksVirtualEnv: venvPath ?? "(not set)",
         }
     );
-    if (process.env["DATABRICKS_REMOTE_ENV"] === "1" && venvPath) {
+    if (isRemoteSshMode && venvPath) {
         logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
             "Entering remote mode",
             {venvPath}
@@ -637,9 +713,6 @@ export async function activate(
         bundleRemoteStateModel,
         configModel,
         connectionManager,
-        commands.registerCommand("databricks.internal.showOutput", () =>
-            loggerManager.showOutputChannel("Databricks Logs")
-        ),
         connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
                 Metadata.USER,
@@ -662,7 +735,8 @@ export async function activate(
         configModel,
         bundleFileSet,
         workspaceFolderManager,
-        telemetry
+        telemetry,
+        aiToolsManager
     );
     context.subscriptions.push(
         bundleProjectManager,
@@ -876,6 +950,26 @@ export async function activate(
                     : undefined,
                 serverlessVersion: connectionManager.serverlessVersion,
             }),
+            promptServerlessVersion: makeServerlessVersionPrompt({
+                getValidateConfig: () => configModel.get("validateConfig"),
+                // activeProjectUri throws when no project is active; the
+                // collector's contract is string | undefined.
+                projectRoot: () => {
+                    try {
+                        return workspaceFolderManager.activeProjectUri.fsPath;
+                    } catch {
+                        return undefined;
+                    }
+                },
+            }),
+            // Reuses the compute picker's own persistence path: with serverless
+            // already enabled this only records the version -- it does not
+            // re-attach compute, fire a compute-change event, or re-report
+            // COMPUTE_SELECTED. It is decorated @onError, so a failed config
+            // write surfaces a popup to the user instead of rejecting into the
+            // setup flow.
+            persistServerlessVersion: (version) =>
+                connectionManager.enableServerless(version),
             setActiveInterpreter: async (interpreterPath, root) => {
                 await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
                     interpreterPath,
@@ -1029,6 +1123,7 @@ export async function activate(
         cli,
         featureManager,
         workspaceFolderManager,
+        aiToolsManager,
         pythonSetupEnvironment
     );
     const configurationView = window.createTreeView("configurationView", {
