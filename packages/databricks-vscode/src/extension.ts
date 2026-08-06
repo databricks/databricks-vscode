@@ -885,11 +885,32 @@ export async function activate(
                 await pythonExtensionWrapper.pythonEnvironment
             )
     );
-    const pythonSetupClient = new PythonSetupCliClient(() =>
-        resolveCliPath({
-            override: workspaceConfigs.pythonSetupCliPathOverride,
-            bundled: cli.cliPath,
-        })
+    const pythonSetupClient = new PythonSetupCliClient(
+        () =>
+            resolveCliPath({
+                override: workspaceConfigs.pythonSetupCliPathOverride,
+                bundled: cli.cliPath,
+            }),
+        () => {
+            // Overlay the extension's workspace auth onto the ambient
+            // environment, so the CLI provisions against the workspace we are
+            // connected to instead of resolving its own default profile. The
+            // ambient env is the base because `setup-local` shells out to `uv`,
+            // which needs the real OS environment; the Databricks vars are
+            // applied last so a stale ambient DATABRICKS_CONFIG_PROFILE cannot
+            // redirect the run.
+            const authProvider = configModel.authProvider;
+            if (authProvider === undefined) {
+                // Not connected: the setup command is unreachable in this state
+                // (the config view only renders it once logged in), but fall
+                // back to the ambient env rather than throwing out of a spawn.
+                return process.env;
+            }
+            return {
+                ...process.env,
+                ...cli.getSetupLocalEnvVars(authProvider, configModel.target),
+            };
+        }
     );
     // Created lazily on first setup output so a non-opted-in user never gets an
     // empty "Databricks Python Environment Setup" entry in the Output dropdown

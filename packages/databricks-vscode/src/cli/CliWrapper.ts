@@ -834,6 +834,50 @@ export class CliWrapper {
         });
     }
 
+    /**
+     * Env vars for `environments setup-local` (the uv-native Python environment
+     * setup).
+     *
+     * Auth is forwarded the same way as the bundle-init and ssh-connect flows,
+     * so the command provisions against the workspace the extension is actually
+     * connected to: `authProvider.toEnv()` carries the host and profile, and
+     * `getEnvVarsForCli` carries `DATABRICKS_CONFIG_FILE` for users who have
+     * relocated their `.databrickscfg`. Without them the CLI's
+     * `MustWorkspaceClient` falls back to its own default-profile resolution.
+     *
+     * Like the sibling methods this returns only the Databricks vars; the caller
+     * overlays them onto the ambient environment, because `setup-local` shells
+     * out to `uv` and needs the real OS environment (platform paths, `UV_*`
+     * vars) as its base.
+     *
+     * Unlike those two this keeps `getEnvVarsForCli`'s `DATABRICKS_OUTPUT_FORMAT
+     * = json` rather than overriding it to "text": they render CLI output into a
+     * terminal for a human, whereas this run's stdout is parsed as the single
+     * JSON result object (the argv also passes `--output json` explicitly).
+     *
+     * `DATABRICKS_BUNDLE_TARGET` must accompany the profile. `setup-local` runs
+     * `MustWorkspaceClient` without a `--profile` flag, so the CLI does not skip
+     * loading the bundle and selects its *default* target; the profile we inject
+     * then reaches `Workspace.Client`, which rejects the run outright when that
+     * target's host disagrees with the profile's host ("the host in the profile
+     * doesn't match the host configured in the bundle"). Naming the target we
+     * are actually connected to keeps the two in agreement. `dbconnect` forwards
+     * this var for the same reason (see `getCommonDatabricksEnvVars`).
+     */
+    getSetupLocalEnvVars(authProvider: AuthProvider, target?: string) {
+        return removeUndefinedKeys({
+            ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
+                workspaceConfigs.databrickscfgLocation
+            ),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...this.getLogginEnvVars(),
+            ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_BUNDLE_TARGET: target,
+        });
+    }
+
     async bundleInit(
         templateDirPath: string,
         outputDirPath: string,

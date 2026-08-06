@@ -277,8 +277,13 @@ export class ConnectionCommands implements Disposable {
      * Gather serverless-version evidence from the project's local sources
      * (bundle config + notebooks). Each source is collected independently and
      * guarded, so one failing source never blocks the other or compute
-     * selection; the scorer merges and de-dupes across sources. (The
-     * workspace-default API source is not yet available — see DECO-27782.)
+     * selection; the scorer merges and de-dupes across sources.
+     *
+     * The scorer also defines a `workspaceDefault` source, which is not
+     * collected here: it would come from the workspace's default base
+     * environment, and the SDK we depend on exposes no base-environment API yet.
+     * Until it does, that weight simply never contributes and the ranking falls
+     * back to the local sources.
      */
     private async collectServerlessObservations(): Promise<
         VersionObservation[]
