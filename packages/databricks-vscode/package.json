@@ -99,6 +99,48 @@
                 "icon": "$(debug-disconnect)"
             },
             {
+                "command": "databricks.aitools.install",
+                "title": "Install AI tools",
+                "category": "Databricks",
+                "icon": "$(cloud-download)"
+            },
+            {
+                "command": "databricks.aitools.checkForUpdates",
+                "title": "Check for AI tools updates",
+                "category": "Databricks",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.aitools.reload",
+                "title": "Reload AI tools",
+                "category": "Databricks",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.aitools.update",
+                "title": "Update AI tools",
+                "category": "Databricks",
+                "icon": "$(arrow-circle-up)"
+            },
+            {
+                "command": "databricks.aitools.uninstall",
+                "title": "Uninstall AI tools",
+                "category": "Databricks",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "databricks.aitools.addCursorPlugin",
+                "title": "Add Databricks plugin to Cursor",
+                "category": "Databricks",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.aitools.installAgent",
+                "title": "Install AI tools for this agent",
+                "category": "Databricks",
+                "icon": "$(cloud-download)"
+            },
+            {
                 "command": "databricks.cluster.filterByAll",
                 "title": "All",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
@@ -1010,6 +1052,21 @@
                     "group": "navigation@0"
                 },
                 {
+                    "command": "databricks.aitools.addCursorPlugin",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.aitools.(installed|upToDate|updateAvailable|checking|updating|error)$/ && databricks.context.aitools.showCursorPlugin",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.aitools.uninstall",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.aitools.(installed|upToDate|updateAvailable|checking|updating|error)$/",
+                    "group": "navigation@9"
+                },
+                {
+                    "command": "databricks.aitools.installAgent",
+                    "when": "view == configurationView && viewItem == databricks.configuration.aitools.agent.notInstalled",
+                    "group": "inline@0"
+                },
+                {
                     "command": "databricks.bundle.deployAndRunJob",
                     "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=jobs.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
@@ -1161,6 +1218,34 @@
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "databricks.aitools.addCursorPlugin",
+                    "when": "databricks.context.aitools.showCursorPlugin && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.install",
+                    "when": "!databricks.context.aitools.installed && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.uninstall",
+                    "when": "databricks.context.aitools.installed && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.update",
+                    "when": "databricks.context.aitools.installed && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.checkForUpdates",
+                    "when": "databricks.context.aitools.installed && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.reload",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.aitools.installAgent",
+                    "when": "false"
+                },
                 {
                     "command": "databricks.environment.setupPythonEnv",
                     "when": "false"

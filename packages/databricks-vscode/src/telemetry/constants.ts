@@ -27,6 +27,10 @@ export enum Events {
     PYTHON_ENV_SETUP_DETECTED = "python_env.setup.detected",
     PYTHON_ENV_SETUP_ATTEMPT = "python_env.setup.attempt",
     PYTHON_ENV_SETUP_RESULT = "python_env.setup.result",
+    AITOOLS_INSTALL = "aitoolsInstall",
+    AITOOLS_UPDATE = "aitoolsUpdate",
+    AITOOLS_UNINSTALL = "aitoolsUninstall",
+    AITOOLS_CURSOR_PLUGIN_PROMPT = "aitoolsCursorPluginPrompt",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -45,6 +49,34 @@ export type BundleRunType =
 export type WorkflowTaskType = "python" | "notebook" | "unknown";
 export type LaunchType = "run" | "debug";
 export type ComputeType = "cluster" | "serverless";
+export type AiToolsScope = "project" | "global";
+
+/**
+ * Where an AI tools install was triggered from: the first-load init modal prompt
+ * or the manual affordance in the configuration side pane.
+ */
+export type AiToolsInstallSource = "initModal" | "sidePane";
+
+/**
+ * Where the Cursor plugin prompt was triggered from: as part of an install flow
+ * ('initModal' / 'sidePane', matching {@link AiToolsInstallSource}), or the
+ * standalone "add Databricks plugin to Cursor" button on the AI tools row
+ * ('pluginButton').
+ */
+export type AiToolsCursorPluginSource = AiToolsInstallSource | "pluginButton";
+
+/**
+ * Outcome of an AI tools install:
+ *  - `'success'` — the install ran and completed without error.
+ *  - `'error'` — the install ran and failed.
+ *  - `'possible-success'` — the user completed the flow but the actual install
+ *    is not observable by the extension, so we can't confirm it landed. Today
+ *    this is the Cursor-plugin-only case: the plugin is added via Cursor's
+ *    marketplace modal (see {@link AiToolsManager.addCursorPlugin}), which we
+ *    can open but can't verify the user acted on. Tracked separately so it
+ *    doesn't inflate the confirmed `'success'` count.
+ */
+export type AiToolsInstallResult = "success" | "error" | "possible-success";
 
 // Package-manager / interpreter unions are owned by the pure detection module
 // (the single source of truth) and re-exported here so the event schema and the
@@ -217,9 +249,14 @@ export class EventTypes {
     [Events.BUNDLE_INIT]: EventType<
         {
             success: boolean;
+            hasAiTools?: boolean;
         } & DurationMeasurement
     > = {
         comment: "Initialize a new bundle project",
+        hasAiTools: {
+            comment:
+                "Whether Databricks AI tools are already installed when the project is initialized",
+        },
     };
     [Events.BUNDLE_SUB_PROJECTS]: EventType<{
         count: number;
@@ -275,6 +312,79 @@ export class EventTypes {
         comment: "An external resource URL was opened",
         type: {
             comment: "The resource type",
+        },
+    };
+    [Events.AITOOLS_INSTALL]: EventType<
+        {
+            result: AiToolsInstallResult;
+            scope: AiToolsScope;
+            source?: AiToolsInstallSource;
+            agents?: string[];
+            cursorPlugin?: boolean;
+        } & DurationMeasurement
+    > = {
+        comment: "Install Databricks AI tools",
+        result: {
+            comment:
+                "The install outcome: 'success' (ran and completed), 'error' (ran and failed), or 'possible-success' (the user completed the flow but the install is not observable by the extension, e.g. the Cursor-plugin-only case). Kept separate so 'possible-success' doesn't inflate the confirmed 'success' count.",
+        },
+        scope: {
+            comment: "The install scope (project or global)",
+        },
+        source: {
+            comment:
+                "Where the install was triggered from: 'initModal' (first-load prompt) or 'sidePane' (manual click in the configuration view)",
+        },
+        agents: {
+            comment:
+                'The coding agents whose skills were installed via the CLI (the closed set of agent ids, e.g. ["claude-code","cursor"]). Excludes the Cursor plugin, which is tracked separately by cursorPlugin. Undefined when no explicit selection was made (the CLI acts on every detected agent).',
+        },
+        cursorPlugin: {
+            comment:
+                "In Cursor, whether the Databricks marketplace plugin (a superset of the Cursor skills) was installed as part of this flow, rather than the cursor skills via the CLI",
+        },
+    };
+    [Events.AITOOLS_UPDATE]: EventType<
+        {
+            success: boolean;
+            scope: AiToolsScope;
+        } & DurationMeasurement
+    > = {
+        comment: "Update Databricks AI tools",
+        success: {
+            comment: "true if the update succeeded, false otherwise",
+        },
+        scope: {
+            comment: "The update scope (project or global)",
+        },
+    };
+    [Events.AITOOLS_UNINSTALL]: EventType<
+        {
+            success: boolean;
+            scope: AiToolsScope;
+        } & DurationMeasurement
+    > = {
+        comment: "Uninstall Databricks AI tools",
+        success: {
+            comment: "true if the uninstall succeeded, false otherwise",
+        },
+        scope: {
+            comment: "The uninstall scope (project or global)",
+        },
+    };
+    [Events.AITOOLS_CURSOR_PLUGIN_PROMPT]: EventType<{
+        success: boolean;
+        source?: AiToolsCursorPluginSource;
+    }> = {
+        comment:
+            "Prompted the user to install the Databricks plugin from the Cursor marketplace (opened the install modal). We can only observe that we opened the modal, not whether the user actually added the plugin.",
+        success: {
+            comment:
+                "true if the marketplace modal was opened, false if opening it failed",
+        },
+        source: {
+            comment:
+                "Where the plugin prompt was triggered from: 'initModal' (first-load install prompt) or 'sidePane' (install triggered from the configuration view), both via the install flow, or 'pluginButton' (the standalone add-plugin button on the AI tools row)",
         },
     };
     [Events.PYTHON_ENV_SETUP_DETECTED]: EventType<{
