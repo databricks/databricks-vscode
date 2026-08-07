@@ -99,6 +99,24 @@ const StorageConfigurations = {
     "databricks.pythonSetup.setupState": withType<PythonSetupState>()({
         location: "workspace",
     }),
+
+    // Caches where Databricks AI tools were installed ("project" or "global")
+    // so update/list commands know which scope and cwd to use. The presence of
+    // `.databricks/aitools/skills/.state.json` remains the source of truth for
+    // "are they installed?"; this only caches the resolved location.
+    "databricks.aitools.installLocation": withType<"project" | "global">()({
+        location: "global",
+    }),
+
+    // Tracks whether the user has opted out of the prompt offering to install
+    // Databricks AI tools. Only set when the user declines the install *and*
+    // asks not to be shown it again (the "Don't show again" affordance); a plain
+    // dismissal leaves this false so the prompt can reappear on a later
+    // activation.
+    "databricks.aitools.hideInstallPrompt": withType<boolean>()({
+        location: "global",
+        defaultValue: false,
+    }),
 };
 
 type Keys = keyof typeof StorageConfigurations;
