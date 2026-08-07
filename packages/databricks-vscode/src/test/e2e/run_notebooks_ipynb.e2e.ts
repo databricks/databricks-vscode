@@ -17,7 +17,10 @@ import {
 // likely because the tests open webviews which are heavy on resources.
 describe("Run ipynb notebooks", async function () {
     let projectDir: string;
-    this.timeout(3 * 60 * 1000);
+    // Waiting for the command to register, the webview to open and the job to
+    // succeed can each take up to a minute or more on the Windows shard, so the
+    // per-test budget has to be larger than the sum of those waits.
+    this.timeout(6 * 60 * 1000);
 
     before(async () => {
         assert(process.env.WORKSPACE_PATH);
