@@ -121,6 +121,14 @@ export function commandSeparator(kind: ShellKind = currentShellKind()): string {
  * cmd has no literal quoting at all, so it keeps double quotes — and `%VAR%`
  * still expands inside them. Callers handing cmd a user-chosen path must reject
  * it first; see {@link hasCmdUnsafeChars}.
+ *
+ * Known gap: the `"posix"` branch is wrong for **fish**, which treats `\` as an
+ * escape inside single quotes where every other POSIX-ish shell does not. A
+ * directory named `two\\slashes` arrives as `two\slashes`, and a trailing `\`
+ * makes fish report unbalanced quotes. Both are legal directory names, so this
+ * is reachable, but fixing it properly needs fish to become its own
+ * {@link ShellKind} — it is only the quoting that differs, not `clear`/`;`/
+ * `printf`/`read`. Tracked separately rather than widened into the #1822 fix.
  */
 export function escapePathArgument(
     arg: string,
