@@ -16,6 +16,25 @@ import {
     ShellKind,
 } from "./shellUtils";
 
+/**
+ * Locate `fish` on `PATH`, or return `[]` when it isn't installed.
+ *
+ * fish is neither in the CI images nor preinstalled on macOS, so the round-trips
+ * that use it must degrade to a skip rather than fail. Probing `PATH` (instead of
+ * hardcoding a path) covers Homebrew's differing Intel and Apple Silicon
+ * prefixes as well as Linux packages.
+ */
+function fishPath(): string[] {
+    const probe = spawnSync(process.platform === "win32" ? "where" : "which", [
+        "fish",
+    ]);
+    if (probe.status !== 0) {
+        return [];
+    }
+    const found = probe.stdout.toString().split("\n")[0].trim();
+    return found === "" ? [] : [found];
+}
+
 describe("shellUtils", () => {
     describe("detectShellKind", () => {
         const cases: [string, NodeJS.Platform, ShellKind][] = [
@@ -83,8 +102,11 @@ describe("shellUtils", () => {
         it("waits for a key press", () => {
             expect(readCmd("cmd")).to.equal("pause");
             expect(readCmd("powershell")).to.equal("Read-Host");
-            // Bare `read` is a usage error in dash; `read _` works everywhere.
-            expect(readCmd("posix")).to.equal("read _");
+            // An ordinary variable name is the only spelling every POSIX-ish
+            // shell accepts: bare `read` is a usage error in dash, `read _` is
+            // one in fish (`_` is read-only), and `-r` is not a fish flag. See
+            // the round-trips below, which run this in each shell.
+            expect(readCmd("posix")).to.equal("read discard");
         });
 
         it("separates commands", () => {
@@ -312,7 +334,7 @@ describe("shellUtils", () => {
                 "clear; printf '%s\\n' 'Executing: databricks bundle init --output-dir '\\''/home/me/proj'\\'''; " +
                     "printf '%s\\n' 'Follow the steps below to create your new Databricks project.'; printf '%s\\n' ''; " +
                     "'/opt/databricks' bundle init --output-dir '/home/me/proj'; " +
-                    "printf '%s\\n' ''; printf '%s\\n' 'Press any key to close the terminal and continue ...'; read _; exit"
+                    "printf '%s\\n' ''; printf '%s\\n' 'Press any key to close the terminal and continue ...'; read discard; exit"
             );
         });
     });
@@ -363,14 +385,14 @@ describe("shellUtils", () => {
         it("is valid posix", () => {
             expect(azLoginCommand("az", tenant, false, "posix")).to.equal(
                 `'az' login --allow-no-subscriptions -t '${tenant}'; ` +
-                    "printf '%s\\n' 'Press any key to close the terminal and continue ...'; read _; exit"
+                    "printf '%s\\n' 'Press any key to close the terminal and continue ...'; read discard; exit"
             );
         });
 
         it("omits the tenant flag when there is no tenant", () => {
             expect(azLoginCommand("az", "", false, "posix")).to.equal(
                 "'az' login --allow-no-subscriptions; " +
-                    "printf '%s\\n' 'Press any key to close the terminal and continue ...'; read _; exit"
+                    "printf '%s\\n' 'Press any key to close the terminal and continue ...'; read discard; exit"
             );
         });
 
@@ -404,9 +426,17 @@ describe("shellUtils", () => {
     // agrees. Run the generated POSIX fragments through real shells and check
     // the output byte for byte.
     describe("posix round-trip through real shells", () => {
-        const shells = ["/bin/sh", "/bin/bash", "/bin/zsh", "/bin/dash"].filter(
-            (s) => existsSync(s)
-        );
+        // fish is included because it is *not* strictly POSIX: it rejects
+        // `read _` (`_` is read-only) and treats `\` inside single quotes as an
+        // escape. It ships in neither CI image nor macOS, so it is probed for on
+        // `PATH` rather than at a fixed location.
+        const shells = [
+            "/bin/sh",
+            "/bin/bash",
+            "/bin/zsh",
+            "/bin/dash",
+            ...fishPath(),
+        ].filter((s) => existsSync(s));
 
         const awkward = [
             "plain",
@@ -452,15 +482,30 @@ describe("shellUtils", () => {
             it(`readCmd is not a usage error in ${shell}`, () => {
                 // With stdin at EOF, `read` legitimately fails (exit 1). What
                 // must not happen is a *usage* error: bare `read` in dash is
-                // "read: arg count", exit 2, printed to stderr. That fails the
-                // hold-open step, so the following `exit` closes the terminal
-                // and discards the CLI error we were keeping on screen.
+                // "read: arg count", exit 2, and `read _` in fish is
+                // "cannot overwrite read-only variable", also exit 2. That fails
+                // the hold-open step, so the following `exit` closes the
+                // terminal and discards the CLI error we were keeping on screen.
                 const result = spawnSync(shell, ["-c", readCmd("posix")], {
                     encoding: "utf8",
                     stdio: ["ignore", "pipe", "pipe"],
                 });
                 expect(result.stderr).to.equal("");
                 expect(result.status).to.not.equal(2);
+            });
+
+            it(`readCmd consumes a line silently in ${shell}`, () => {
+                // The pause must swallow the keypress, not print it. Bare `read`
+                // in fish exits 0 with empty stderr — so the usage-error check
+                // above passes — yet echoes the line back, corrupting the
+                // terminal with a stray copy of whatever the user typed.
+                const result = spawnSync(shell, ["-c", readCmd("posix")], {
+                    encoding: "utf8",
+                    input: "keypress\n",
+                });
+                expect(result.stdout).to.equal("");
+                expect(result.stderr).to.equal("");
+                expect(result.status).to.equal(0);
             });
         });
     });

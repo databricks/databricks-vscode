@@ -79,8 +79,16 @@ export function clearCmd(kind: ShellKind = currentShellKind()): string {
  * Wait for the user to press a key, so a failed command stays readable instead
  * of the terminal closing on the following `exit`.
  *
- * POSIX uses `read _`: bare `read` is a usage error in dash (`read: arg count`),
- * which would fail the pause and let `exit` discard the error we're preserving.
+ * POSIX needs an explicit, ordinary variable name — every shorter spelling
+ * breaks somewhere:
+ * - bare `read` is a usage error in dash (`read: arg count`, exit 2), and fish
+ *   echoes the input back instead of consuming it silently.
+ * - `read _` is an error in fish, where `_` is a read-only variable
+ *   (`cannot overwrite read-only variable`).
+ * - `read -r name` is an error in fish, which has no `-r` flag.
+ *
+ * A failed pause is not cosmetic: the following `exit` closes the terminal and
+ * discards exactly the CLI error this step exists to keep readable.
  */
 export function readCmd(kind: ShellKind = currentShellKind()): string {
     switch (kind) {
@@ -89,7 +97,7 @@ export function readCmd(kind: ShellKind = currentShellKind()): string {
         case "powershell":
             return "Read-Host";
         case "posix":
-            return "read _";
+            return "read discard";
     }
 }
 
