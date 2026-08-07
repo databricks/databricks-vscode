@@ -181,6 +181,24 @@ export class DatabricksRuntime implements Disposable {
             );
 
             this.state = "EXECUTING";
+            let outputPosition = 0;
+
+            const onStatusUpdate = (result: any) => {
+                if (result.results?.resultType === "text") {
+                    const output = (result.results as any).data;
+                    if (output && output.length > outputPosition) {
+                        this._onDidSendOutputEmitter.fire({
+                            type: "out",
+                            text: output.substring(outputPosition),
+                            filePath: program,
+                            line: 0,
+                            column: 0,
+                        });
+                        outputPosition = output.length;
+                    }
+                }
+            };
+
             const response = await executionContext.execute(
                 await this.compileCommandString(
                     program,
@@ -188,21 +206,13 @@ export class DatabricksRuntime implements Disposable {
                     syncDestinationMapper,
                     envVars
                 ),
-                undefined,
+                onStatusUpdate,
                 this.token,
                 new Time(240, TimeUnits.hours)
             );
             const result = response.result;
 
-            if (result.results!.resultType === "text") {
-                this._onDidSendOutputEmitter.fire({
-                    type: "out",
-                    text: (result.results as any).data,
-                    filePath: program,
-                    line: 0,
-                    column: 0,
-                });
-            } else if (result.results!.resultType === "error") {
+            if (result.results!.resultType === "error") {
                 const frames = parseErrorResult(result.results!);
                 for (const frame of frames) {
                     let localFile = "";
