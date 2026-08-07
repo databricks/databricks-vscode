@@ -17,6 +17,17 @@ describe(__filename, function () {
         tempDir = await mkdtemp(path.join(tmpdir(), "testdir-"));
     });
 
+    it("should reveal an output channel without throwing", async () => {
+        const mockContext = mock<ExtensionContext>();
+        when(mockContext.logUri).thenReturn(Uri.file(tempDir));
+        when(mockContext.extension).thenReturn({
+            id: "databricks.databricks",
+        } as any);
+
+        const manager = new LoggerManager(instance(mockContext));
+        await manager.showOutputChannel("Databricks Logs");
+    });
+
     it("should create log file and log data", async () => {
         const mockContext = mock<ExtensionContext>();
         when(mockContext.logUri).thenReturn(Uri.file(tempDir));

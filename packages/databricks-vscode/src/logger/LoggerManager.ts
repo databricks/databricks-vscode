@@ -1,5 +1,11 @@
 import {logging} from "@databricks/sdk-experimental";
-import {env, ExtensionContext, window, LogOutputChannel} from "vscode";
+import {
+    commands,
+    env,
+    ExtensionContext,
+    window,
+    LogOutputChannel,
+} from "vscode";
 import {loggers, format, transports} from "winston";
 
 import {getJsonFormat} from "./truncatedJsonFormat";
@@ -9,12 +15,23 @@ import {
     LOG_OUTPUT_CHANNEL_LEVELS,
     LogOutputChannelStream,
 } from "./OutputConsoleStream";
+import {findRevealCommand} from "./outputChannelReveal";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger, ExposedLoggers} = logging;
 
+export type LogChannelName = "Databricks Logs" | "Databricks Bundle Logs";
+
+/**
+ * How long to wait before re-looking for a channel's reveal command when the
+ * channel was only just created. `createOutputChannel` registers with the
+ * workbench asynchronously, so the command may not exist yet on the first try.
+ */
+const REVEAL_COMMAND_RETRY_DELAY_MS = 200;
+
 export class LoggerManager {
-    private outputChannels: Map<string, LogOutputChannel> = new Map();
+    private outputChannels: Map<LogChannelName, LogOutputChannel> = new Map();
+    private readonly revealCommands: Map<LogChannelName, string> = new Map();
 
     constructor(readonly context: ExtensionContext) {}
 
@@ -32,9 +49,7 @@ export class LoggerManager {
         return logFile;
     }
 
-    private getLogOutputChannel(
-        name: "Databricks Logs" | "Databricks Bundle Logs"
-    ) {
+    private getLogOutputChannel(name: LogChannelName) {
         if (!this.outputChannels.has(name)) {
             const outputChannel = window.createOutputChannel(name, {log: true});
             outputChannel.clear();
@@ -157,8 +172,57 @@ export class LoggerManager {
         env.openExternal(this.context.logUri);
     }
 
-    showOutputChannel(name: "Databricks Logs" | "Databricks Bundle Logs") {
-        this.getLogOutputChannel(name).show();
+    /**
+     * Reveals a log output channel. Never rejects: any failure to resolve the
+     * host's reveal command falls back to `LogOutputChannel.show()`, which is
+     * correct everywhere the channel ids agree.
+     */
+    async showOutputChannel(name: LogChannelName): Promise<void> {
+        const justCreated = !this.outputChannels.has(name);
+        const channel = this.getLogOutputChannel(name);
+        try {
+            const command = await this.resolveRevealCommand(name, justCreated);
+            if (command !== undefined) {
+                await commands.executeCommand(command);
+                return;
+            }
+        } catch (e) {
+            // A cached command id can go stale, so drop it and let the next
+            // call re-resolve instead of failing for the rest of the session.
+            this.revealCommands.delete(name);
+            NamedLogger.getOrCreate(Loggers.Extension).debug(
+                `Could not reveal the "${name}" output channel by command, falling back to show()`,
+                e
+            );
+        }
+        channel.show();
+    }
+
+    private async resolveRevealCommand(
+        name: LogChannelName,
+        justCreated: boolean
+    ): Promise<string | undefined> {
+        const cached = this.revealCommands.get(name);
+        if (cached !== undefined) {
+            return cached;
+        }
+
+        const extensionId = this.context.extension.id;
+        let command = await findRevealCommand(extensionId, name);
+        if (command === undefined && justCreated) {
+            await new Promise((resolve) =>
+                setTimeout(resolve, REVEAL_COMMAND_RETRY_DELAY_MS)
+            );
+            command = await findRevealCommand(extensionId, name);
+        }
+
+        if (command !== undefined) {
+            this.revealCommands.set(name, command);
+            NamedLogger.getOrCreate(Loggers.Extension).debug(
+                `Revealing the "${name}" output channel via ${command}, as the host registered it under a scoped id`
+            );
+        }
+        return command;
     }
 }
 
