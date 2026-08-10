@@ -1,5 +1,6 @@
 import assert from "assert";
-import {chmod, writeFile} from "fs/promises";
+import {writeFile} from "fs/promises";
+import path from "node:path";
 import * as tmp from "tmp";
 import {anything, instance, mock, when} from "ts-mockito";
 import {ExtensionContext} from "vscode";
@@ -16,16 +17,16 @@ import {
 } from "./packageJsonUtils";
 import {EXTENSION_DEVELOPMENT} from "./developmentUtils";
 
-/**
- * Writes an executable stub that answers `version --output json` like the CLI.
- * Skipped on Windows, where a shell-script stub isn't executable.
- */
-async function fakeCli(version: string) {
-    const {name: path} = tmp.fileSync();
-    await writeFile(path, `#!/bin/sh\necho '{"Version": "${version}"}'\n`);
-    await chmod(path, 0o755);
-    return path;
-}
+// The real bundled CLI, which CI fetches at the pinned version before running
+// the suite. Mirrors CliWrapper.cliPath — `databricks.exe` on Windows.
+const cliPath = path.join(
+    __dirname,
+    "../../bin/" +
+        (process.platform === "win32" ? "databricks.exe" : "databricks")
+);
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pinnedCliVersion = require("../../package.json").cli.version;
 
 describe(__filename, () => {
     it("should correctly check compatibility", () => {
@@ -130,50 +131,46 @@ describe(__filename, () => {
             }
         });
 
-        if (process.platform !== "win32") {
-            it("should read the version the CLI reports", async () => {
-                const cliPath = await fakeCli("1.11.0");
-                assert.equal(await getBundledCliVersion(cliPath), "1.11.0");
-            });
+        it("should read the version the bundled CLI reports", async () => {
+            assert.equal(await getBundledCliVersion(cliPath), pinnedCliVersion);
+        });
 
-            it("should detect a stale CLI", async () => {
-                const cliPath = await fakeCli("0.297.2");
-                assert.ok(
-                    !(await checkBundledCliVersion(cliPath, {
-                        packageName: "databricks",
-                        version: "2.13.0",
-                        cliVersion: "1.11.0",
-                    }))
-                );
-            });
+        it("should accept a CLI matching the pinned version", async () => {
+            assert.ok(
+                await checkBundledCliVersion(cliPath, {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                    cliVersion: pinnedCliVersion,
+                })
+            );
+        });
 
-            it("should accept a matching CLI", async () => {
-                const cliPath = await fakeCli("1.11.0");
-                assert.ok(
-                    await checkBundledCliVersion(cliPath, {
-                        packageName: "databricks",
-                        version: "2.13.0",
-                        cliVersion: "1.11.0",
-                    })
-                );
-            });
+        it("should detect a stale CLI", async () => {
+            assert.ok(
+                !(await checkBundledCliVersion(cliPath, {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                    cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
+                }))
+            );
+        });
 
-            it("should not warn outside a dev checkout", async () => {
-                delete process.env[EXTENSION_DEVELOPMENT];
-                const cliPath = await fakeCli("0.297.2");
-                assert.ok(
-                    await checkBundledCliVersion(cliPath, {
-                        packageName: "databricks",
-                        version: "2.13.0",
-                        cliVersion: "1.11.0",
-                    })
-                );
-            });
-        }
+        it("should not warn outside a dev checkout", async () => {
+            delete process.env[EXTENSION_DEVELOPMENT];
+            assert.ok(
+                await checkBundledCliVersion(cliPath, {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                    cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
+                })
+            );
+        });
 
         it("should return undefined for a missing binary", async () => {
             assert.equal(
-                await getBundledCliVersion("/nonexistent/databricks"),
+                await getBundledCliVersion(
+                    path.join(__dirname, "nonexistent-databricks")
+                ),
                 undefined
             );
         });
