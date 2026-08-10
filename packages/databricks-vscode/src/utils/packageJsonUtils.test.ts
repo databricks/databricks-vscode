@@ -1,9 +1,11 @@
 import assert from "assert";
-import {writeFile} from "fs/promises";
+import {chmod, writeFile} from "fs/promises";
 import * as tmp from "tmp";
 import {anything, instance, mock, when} from "ts-mockito";
 import {ExtensionContext} from "vscode";
 import {
+    checkBundledCliVersion,
+    getBundledCliVersion,
     getCorrectVsixInstallString,
     getMetadata,
     isCompatibleArchitecture,
@@ -12,6 +14,18 @@ import {
     nodeOsMap,
     vsixArchMap,
 } from "./packageJsonUtils";
+import {EXTENSION_DEVELOPMENT} from "./developmentUtils";
+
+/**
+ * Writes an executable stub that answers `version --output json` like the CLI.
+ * Skipped on Windows, where a shell-script stub isn't executable.
+ */
+async function fakeCli(version: string) {
+    const {name: path} = tmp.fileSync();
+    await writeFile(path, `#!/bin/sh\necho '{"Version": "${version}"}'\n`);
+    await chmod(path, 0o755);
+    return path;
+}
 
 describe(__filename, () => {
     it("should correctly check compatibility", () => {
@@ -54,6 +68,9 @@ describe(__filename, () => {
                 vsixArch: "vsixArch",
             },
             commitSha: "commitSha",
+            cli: {
+                version: "1.11.0",
+            },
         };
         await writeFile(path, JSON.stringify(metaData));
 
@@ -68,6 +85,7 @@ describe(__filename, () => {
             cliArch: "cliArch",
             vsixArch: "vsixArch",
             commitSha: "commitSha",
+            cliVersion: "1.11.0",
         });
     });
 
@@ -94,6 +112,79 @@ describe(__filename, () => {
                           "Current system architecture is not supported."
                       );
             });
+        });
+    });
+
+    describe("bundled CLI version", () => {
+        const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
+
+        beforeEach(() => {
+            process.env[EXTENSION_DEVELOPMENT] = "true";
+        });
+
+        afterEach(() => {
+            if (originalDevFlag === undefined) {
+                delete process.env[EXTENSION_DEVELOPMENT];
+            } else {
+                process.env[EXTENSION_DEVELOPMENT] = originalDevFlag;
+            }
+        });
+
+        if (process.platform !== "win32") {
+            it("should read the version the CLI reports", async () => {
+                const cliPath = await fakeCli("1.11.0");
+                assert.equal(await getBundledCliVersion(cliPath), "1.11.0");
+            });
+
+            it("should detect a stale CLI", async () => {
+                const cliPath = await fakeCli("0.297.2");
+                assert.ok(
+                    !(await checkBundledCliVersion(cliPath, {
+                        packageName: "databricks",
+                        version: "2.13.0",
+                        cliVersion: "1.11.0",
+                    }))
+                );
+            });
+
+            it("should accept a matching CLI", async () => {
+                const cliPath = await fakeCli("1.11.0");
+                assert.ok(
+                    await checkBundledCliVersion(cliPath, {
+                        packageName: "databricks",
+                        version: "2.13.0",
+                        cliVersion: "1.11.0",
+                    })
+                );
+            });
+
+            it("should not warn outside a dev checkout", async () => {
+                delete process.env[EXTENSION_DEVELOPMENT];
+                const cliPath = await fakeCli("0.297.2");
+                assert.ok(
+                    await checkBundledCliVersion(cliPath, {
+                        packageName: "databricks",
+                        version: "2.13.0",
+                        cliVersion: "1.11.0",
+                    })
+                );
+            });
+        }
+
+        it("should return undefined for a missing binary", async () => {
+            assert.equal(
+                await getBundledCliVersion("/nonexistent/databricks"),
+                undefined
+            );
+        });
+
+        it("should not warn when the pinned version is unknown", async () => {
+            assert.ok(
+                await checkBundledCliVersion("/nonexistent/databricks", {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                })
+            );
         });
     });
 });

@@ -36,6 +36,12 @@ Fetch the Databricks CLI that the extension bundles:
 yarn workspace databricks run package:cli:fetch
 ```
 
+Re-run this whenever `cli.version` in `packages/databricks-vscode/package.json`
+changes: `bin/` is gitignored, so a `git pull` never updates the binary, and a
+stale CLI rejects subcommands the extension expects — which surfaces as a
+configuration view stuck on "Initializing..." rather than as an error. The
+extension warns about a version mismatch on startup in a dev checkout.
+
 After that you're ready to build, run, and test the extension.
 
 ## Building and running

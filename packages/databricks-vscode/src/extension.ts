@@ -295,6 +295,10 @@ export async function activate(
 
     const cli = new CliWrapper(context, loggerManager, cliLogFilePath);
 
+    // Surfaces a stale bundled CLI in dev checkouts. Not awaited: it only warns,
+    // and activation shouldn't wait on spawning the CLI to find out.
+    void PackageJsonUtils.checkBundledCliVersion(cli.cliPath, packageMetadata);
+
     // Loggers
     context.subscriptions.push(
         telemetry.registerCommand(
