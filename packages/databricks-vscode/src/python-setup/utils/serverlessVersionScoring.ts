@@ -90,9 +90,17 @@ function versionNumber(v: string): number {
 
 /**
  * Rank candidate versions by total weight (desc), breaking ties by higher
- * numeric version. The {@link FALLBACK_VERSION} is always included as a
- * candidate; if it coincides with an observed version the two are merged into a
- * single, better-corroborated row rather than duplicated.
+ * numeric version.
+ *
+ * Every version in the supported range [{@link MIN_SUPPORTED_VERSION},
+ * {@link MAX_SUPPORTED_VERSION}] is always offered as a candidate, so lower
+ * versions the project never used stay reachable in the picker rather than
+ * being silently unavailable. Versions with no backing observation keep a score
+ * of 0 (and no sources), so they sort below any observed candidate. The
+ * {@link FALLBACK_VERSION} additionally carries the `fallback` source, so it
+ * wins when nothing else was observed; if it coincides with an observed version
+ * the two are merged into a single, better-corroborated row rather than
+ * duplicated.
  */
 export function scoreServerlessVersions(
     observations: VersionObservation[]
@@ -106,6 +114,12 @@ export function scoreServerlessVersions(
     ];
 
     const byVersion = new Map<string, ScoredVersion>();
+    // Seed the whole supported range at score 0 so every version the CLI
+    // accepts is offered, even ones this project has never observed.
+    for (let n = MIN_SUPPORTED_VERSION; n <= MAX_SUPPORTED_VERSION; n++) {
+        const version = String(n);
+        byVersion.set(version, {version, score: 0, sources: []});
+    }
     for (const {version, source} of all) {
         const entry = byVersion.get(version) ?? {
             version,
