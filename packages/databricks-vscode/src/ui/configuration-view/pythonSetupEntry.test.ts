@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {ThemeIcon} from "vscode";
+import {ThemeColor, ThemeIcon} from "vscode";
 import {buildPythonSetupEntry} from "./pythonSetupEntry";
 
 describe("buildPythonSetupEntry", () => {
@@ -10,6 +10,11 @@ describe("buildPythonSetupEntry", () => {
 
         expect(item.command?.command).to.equal(COMMAND);
         expect((item.iconPath as ThemeIcon).id).to.equal("rocket");
+        // Not-done reads as an error (red), consistent with the sibling
+        // checklist entries, rather than the green debug-start color.
+        expect((item.iconPath as ThemeIcon).color).to.deep.equal(
+            new ThemeColor("errorForeground")
+        );
         // The label invites the user to run setup.
         expect(String(item.label)).to.match(/set up/i);
     });
