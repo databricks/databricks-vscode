@@ -14,7 +14,10 @@ import {
     SetupCompute,
 } from "./PythonSetupEnvironmentSetup";
 
-type Detection = Pick<PackageManagerDetection, "primary" | "managers">;
+type Detection = Pick<
+    PackageManagerDetection,
+    "primary" | "managers" | "signals"
+>;
 
 /**
  * The compute currently attached in the connection, reduced to what compute
@@ -28,25 +31,49 @@ export interface AttachedCompute {
 }
 
 /**
+ * The outcome of classifying the attached compute. `needsServerlessVersion` is
+ * deliberately distinct from `none`: serverless IS selected in that state, only
+ * the version is missing, so the caller resolves one rather than telling the
+ * user to select compute they already selected.
+ */
+export type ComputeResolution =
+    | {status: "ok"; compute: SetupCompute}
+    | {status: "needsServerlessVersion"}
+    | {status: "none"};
+
+/**
  * Map the attached compute to a setup-local compute target. Pure so the
  * cluster/serverless/none branching is unit-testable.
  *
  * A cluster attachment wins outright (its DBR fully determines the
- * environment). A serverless session resolves to its persisted version -- the
- * one the compute picker recorded (see the serverlessVersion field); without a
- * chosen version there is nothing to provision yet, so this returns undefined
- * and the orchestrator aborts silently rather than guessing.
+ * environment), so it is checked first and a missing serverless version never
+ * matters on that path. A serverless session resolves to its persisted version
+ * when one was recorded; without it this reports `needsServerlessVersion` so the
+ * caller can resolve one, because a version-less serverless selection is
+ * reachable in normal use -- a `serverlessComputeId: auto` config enables
+ * serverless without ever opening the picker, a selection made while the feature
+ * was disabled records no version, and a persisted version outside the supported
+ * range is dropped to undefined on load.
  */
 export function resolveComputeFrom(
     compute: AttachedCompute
-): SetupCompute | undefined {
+): ComputeResolution {
     if (compute.cluster) {
-        return {kind: "cluster", clusterId: compute.cluster.id};
+        return {
+            status: "ok",
+            compute: {kind: "cluster", clusterId: compute.cluster.id},
+        };
     }
-    if (compute.serverless && compute.serverlessVersion !== undefined) {
-        return {kind: "serverless", version: compute.serverlessVersion};
+    if (compute.serverless) {
+        if (compute.serverlessVersion === undefined) {
+            return {status: "needsServerlessVersion"};
+        }
+        return {
+            status: "ok",
+            compute: {kind: "serverless", version: compute.serverlessVersion},
+        };
     }
-    return undefined;
+    return {status: "none"};
 }
 
 /**
@@ -95,6 +122,17 @@ export interface PythonSetupWiringDeps {
     isEnabled: () => boolean;
     detect: (projectRoot: string) => Promise<Detection>;
     attachedCompute: () => AttachedCompute;
+    /**
+     * Ask the user which serverless version to provision, for a serverless
+     * session that has none recorded. Returns the bare version, or undefined
+     * when the user dismisses the prompt.
+     */
+    promptServerlessVersion: () => Promise<string | undefined>;
+    /**
+     * Persist a confirmed serverless version alongside the current serverless
+     * selection, so the next run does not ask again.
+     */
+    persistServerlessVersion: (version: string) => Promise<void>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -126,8 +164,28 @@ export function makePythonSetupDeps(
         cli: wiring.cli,
         projectRoot: wiring.projectRoot,
         isVisible,
-        resolveCompute: async () =>
-            resolveComputeFrom(wiring.attachedCompute()),
+        resolveCompute: async () => {
+            const resolution = resolveComputeFrom(wiring.attachedCompute());
+            if (resolution.status !== "needsServerlessVersion") {
+                return resolution;
+            }
+            // Serverless is selected and only the version is missing, so ask for
+            // that rather than telling the user to select compute they have
+            // already selected.
+            const version = await wiring.promptServerlessVersion();
+            if (version === undefined) {
+                return {status: "cancelled"};
+            }
+            try {
+                await wiring.persistServerlessVersion(version);
+            } catch {
+                // Persistence only buys "don't ask again": if the config write
+                // fails the user has already told us the version, so run with it
+                // rather than discarding a confirmed answer. (The production
+                // wiring surfaces the failure itself.)
+            }
+            return {status: "ok", compute: {kind: "serverless", version}};
+        },
         adoptInterpreter: async (venvPath: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
                 venvInterpreterPath(venvPath),
@@ -162,7 +220,7 @@ export function makePythonSetupDeps(
         recordSetupAttempt: (attempt) =>
             wiring.telemetry.recordPythonSetupAttempt(attempt),
         recordNoCompute: () => wiring.telemetry.recordPythonSetupNoCompute(),
-        getPackageManager: async () => {
+        getDetection: async () => {
             const root = wiring.projectRoot();
             if (root === undefined) {
                 return undefined;
@@ -170,7 +228,7 @@ export function makePythonSetupDeps(
             // Same detection the gate ran for this click. It is re-run rather
             // than cached because a project's markers can change between the
             // config view rendering the entry and the user pressing it.
-            return (await wiring.detect(root)).primary;
+            return wiring.detect(root);
         },
         hasPyprojectToml: async (projectRoot: string) =>
             existsSync(path.join(projectRoot, "pyproject.toml")),

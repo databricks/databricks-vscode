@@ -15,16 +15,17 @@ import {getSubProjects} from "./BundleFileSet";
 import {tmpdir} from "os";
 import {ShellUtils} from "../utils";
 import {Events, Telemetry} from "../telemetry";
-import {escapePathArgument} from "../utils/shellUtils";
 import {promptToSelectActiveProjectFolder} from "./activeBundleUtils";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {AiToolsManager} from "../aitools/AiToolsManager";
 
 export class BundleInitWizard {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
 
     constructor(
         private cli: CliWrapper,
-        private telemetry: Telemetry
+        private telemetry: Telemetry,
+        private aiToolsManager?: AiToolsManager
     ) {}
 
     public async initNewProject(
@@ -33,6 +34,8 @@ export class BundleInitWizard {
         workspaceFolderManager?: WorkspaceFolderManager
     ) {
         const recordEvent = this.telemetry.start(Events.BUNDLE_INIT);
+        // Whether AI tools are already installed when the project is created.
+        const hasAiTools = this.aiToolsManager?.isInstalled ?? false;
         try {
             const authProvider =
                 await this.configureAuthForBundleInit(existingAuthProvider);
@@ -40,13 +43,13 @@ export class BundleInitWizard {
                 this.logger.debug(
                     "No valid auth providers, can't proceed with bundle init wizard"
                 );
-                recordEvent({success: false});
+                recordEvent({success: false, hasAiTools});
                 return;
             }
             const parentFolder = await this.promptForParentFolder(workspaceUri);
             if (!parentFolder) {
                 this.logger.debug("No parent folder provided");
-                recordEvent({success: false});
+                recordEvent({success: false, hasAiTools});
                 return;
             }
             await this.bundleInitInTerminal(parentFolder, authProvider);
@@ -54,7 +57,7 @@ export class BundleInitWizard {
                 "Finished bundle init wizard, detecting projects to initialize or open"
             );
             const projects = await getSubProjects(parentFolder);
-            recordEvent({success: projects.length > 0});
+            recordEvent({success: projects.length > 0, hasAiTools});
             if (projects.length > 0) {
                 this.logger.debug(
                     `Detected ${projects.length} sub projects after the init wizard, prompting to open one`
@@ -78,7 +81,7 @@ export class BundleInitWizard {
             }
             return parentFolder;
         } catch (e) {
-            recordEvent({success: false});
+            recordEvent({success: false, hasAiTools});
             throw e;
         }
     }
@@ -134,6 +137,27 @@ export class BundleInitWizard {
         parentFolder: Uri,
         authProvider: AuthProvider
     ) {
+        // The command line has to be written in the dialect of the shell that
+        // will parse it. We don't pin `shellPath` to force a known shell:
+        // supplying an executable makes VS Code drop the resolved profile's
+        // args, which is what makes macOS shells login shells.
+        const kind = ShellUtils.currentShellKind();
+
+        // cmd expands %VAR% (and !VAR! under delayed expansion) even inside
+        // double quotes, and offers no way to escape it. Rather than scaffold
+        // the project into a directory the user didn't choose, refuse.
+        if (
+            kind === "cmd" &&
+            ShellUtils.hasCmdUnsafeChars(parentFolder.fsPath)
+        ) {
+            window.showErrorMessage(
+                `Can't create a project in "${parentFolder.fsPath}": the Command Prompt shell ` +
+                    `expands "%" and "!" in paths. Choose a folder without those characters, or ` +
+                    `set "terminal.integrated.defaultProfile.windows" to PowerShell.`
+            );
+            return;
+        }
+
         const terminalDidClosePromise = new Promise<void>((resolve) => {
             const closeEvent = window.onDidCloseTerminal((t) => {
                 if (t === terminal) {
@@ -176,12 +200,26 @@ export class BundleInitWizard {
             "bundle",
             "init",
             "--output-dir",
-            escapePathArgument(parentFolder.fsPath),
+            ShellUtils.escapePathArgument(parentFolder.fsPath, kind),
         ].join(" ");
-        const initialPrompt = `clear; echo "Executing: databricks ${args}\nFollow the steps below to create your new Databricks project.\n"`;
-        const finalPrompt = `echo "\nPress any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`;
         terminal.sendText(
-            `${initialPrompt}; ${this.cli.escapedCliPath} ${args}; ${finalPrompt}`
+            [
+                ShellUtils.clearCmd(kind),
+                ShellUtils.echoLine(`Executing: databricks ${args}`, kind),
+                ShellUtils.echoLine(
+                    "Follow the steps below to create your new Databricks project.",
+                    kind
+                ),
+                ShellUtils.echoLine("", kind),
+                `${this.cli.escapedCliPathFor(kind)} ${args}`,
+                ShellUtils.echoLine("", kind),
+                ShellUtils.echoLine(
+                    "Press any key to close the terminal and continue ...",
+                    kind
+                ),
+                ShellUtils.readCmd(kind),
+                "exit",
+            ].join(ShellUtils.commandSeparator(kind))
         );
         return terminalDidClosePromise;
     }

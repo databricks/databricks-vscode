@@ -4,6 +4,11 @@ import {
     scoreServerlessVersions,
     VersionObservation,
 } from "./serverlessVersionScoring";
+import {
+    collectServerlessVersionObservations,
+    ServerlessVersionObservationDeps,
+} from "./serverlessVersionObservations";
+import {pickServerlessVersion} from "./serverlessVersionPicker";
 
 /**
  * Whether the user has opted into the uv-native Python environment setup.
@@ -61,4 +66,28 @@ export async function resolveServerlessVersion(
     const observations = await deps.collectObservations();
     const ranked = scoreServerlessVersions(observations);
     return deps.pick(ranked);
+}
+
+/**
+ * Build the "which serverless version should we provision?" prompt: gather the
+ * project's evidence, score it, and present the ranked candidates. Returns the
+ * confirmed bare version, or undefined when the user dismisses the picker.
+ *
+ * Exists so the callers that need the whole pipeline as one thunk (the compute
+ * picker's serverless branch, and the setup flow resolving a version that was
+ * never recorded) share a single composition rather than re-wiring the three
+ * pieces each time. `pick` is injectable, defaulting to the real QuickPick, so
+ * the composition is testable without a VS Code host.
+ */
+export function makeServerlessVersionPrompt(
+    deps: ServerlessVersionObservationDeps & {
+        pick?: ServerlessVersionResolverDeps["pick"];
+    }
+): () => Promise<string | undefined> {
+    return () =>
+        resolveServerlessVersion({
+            collectObservations: () =>
+                collectServerlessVersionObservations(deps),
+            pick: deps.pick ?? pickServerlessVersion,
+        });
 }

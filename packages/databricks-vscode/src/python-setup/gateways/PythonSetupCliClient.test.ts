@@ -30,6 +30,7 @@ function fakeSpawn(script: {
         cwd: string,
         detached: boolean
     ) => void;
+    captureEnv?: (env: NodeJS.ProcessEnv) => void;
 }): SpawnFn {
     const toChunks = (v?: string | Buffer[]): Buffer[] => {
         if (v === undefined) {
@@ -39,6 +40,7 @@ function fakeSpawn(script: {
     };
     return (cmd, args, opts) => {
         script.captureArgs?.(cmd, args, opts.cwd, opts.detached);
+        script.captureEnv?.(opts.env);
         const child: any = new EventEmitter();
         child.stdout = new EventEmitter();
         child.stderr = new EventEmitter();
@@ -69,6 +71,7 @@ describe("PythonSetupCliClient", () => {
     it("parses the JSON result from stdout on success", async () => {
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             fakeSpawn({stdout: JSON.stringify(SUCCESS_DEFAULT), code: 0})
         );
         const result = await client.run(inv, {cwd: "/proj"});
@@ -79,6 +82,7 @@ describe("PythonSetupCliClient", () => {
     it("returns the parsed failure result on a non-zero exit with JSON", async () => {
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             fakeSpawn({stdout: JSON.stringify(ERROR_NO_TARGET), code: 1})
         );
         const result = await client.run(inv, {cwd: "/proj"});
@@ -92,6 +96,7 @@ describe("PythonSetupCliClient", () => {
         let seenCwd = "";
         const client = new PythonSetupCliClient(
             () => "/custom/databricks",
+            () => ({}),
             fakeSpawn({
                 stdout: JSON.stringify(SUCCESS_DEFAULT),
                 captureArgs: (c, a, cwd) => {
@@ -113,10 +118,62 @@ describe("PythonSetupCliClient", () => {
         expect(seenCwd).to.equal("/my/project");
     });
 
+    it("spawns the CLI with the env from the injected env function", async () => {
+        // The CLI resolves auth itself, so the workspace's host/profile (and the
+        // config-file location) have to arrive as environment variables or the
+        // run silently targets whatever profile the CLI resolves on its own.
+        let seenEnv: NodeJS.ProcessEnv | undefined;
+        const client = new PythonSetupCliClient(
+            () => "/fake/databricks",
+            () => ({
+                /* eslint-disable @typescript-eslint/naming-convention */
+                DATABRICKS_HOST: "https://example.cloud.databricks.com",
+                DATABRICKS_CONFIG_PROFILE: "my-profile",
+                DATABRICKS_CONFIG_FILE: "/custom/.databrickscfg",
+                /* eslint-enable @typescript-eslint/naming-convention */
+            }),
+            fakeSpawn({
+                stdout: JSON.stringify(SUCCESS_DEFAULT),
+                captureEnv: (env) => {
+                    seenEnv = env;
+                },
+            })
+        );
+        await client.run(inv, {cwd: "/proj"});
+        expect(seenEnv).to.deep.equal({
+            /* eslint-disable @typescript-eslint/naming-convention */
+            DATABRICKS_HOST: "https://example.cloud.databricks.com",
+            DATABRICKS_CONFIG_PROFILE: "my-profile",
+            DATABRICKS_CONFIG_FILE: "/custom/.databrickscfg",
+            /* eslint-enable @typescript-eslint/naming-convention */
+        });
+    });
+
+    it("re-reads the env for every run so a reconnect is picked up", async () => {
+        // The env function is called per run, not once at construction: the user
+        // can switch workspace/profile between setups without a reload.
+        const profiles = ["first", "second"];
+        let call = 0;
+        const seen: (string | undefined)[] = [];
+        const client = new PythonSetupCliClient(
+            () => "/fake/databricks",
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            () => ({DATABRICKS_CONFIG_PROFILE: profiles[call++]}),
+            fakeSpawn({
+                stdout: JSON.stringify(SUCCESS_DEFAULT),
+                captureEnv: (env) => seen.push(env.DATABRICKS_CONFIG_PROFILE),
+            })
+        );
+        await client.run(inv, {cwd: "/proj"});
+        await client.run(inv, {cwd: "/proj"});
+        expect(seen).to.deep.equal(["first", "second"]);
+    });
+
     it("spawns detached on POSIX so the process group can be killed", async () => {
         let seenDetached: boolean | undefined;
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             fakeSpawn({
                 stdout: JSON.stringify(SUCCESS_DEFAULT),
                 captureArgs: (_c, _a, _cwd, detached) => {
@@ -134,6 +191,7 @@ describe("PythonSetupCliClient", () => {
         const logs: string[] = [];
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             fakeSpawn({
                 stdout: JSON.stringify(SUCCESS_DEFAULT),
                 stderr: "uv: resolving dependencies…\n",
@@ -152,6 +210,7 @@ describe("PythonSetupCliClient", () => {
         const logs: string[] = [];
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             fakeSpawn({
                 stdout: JSON.stringify(SUCCESS_DEFAULT),
                 stderr: [truncated],
@@ -168,6 +227,7 @@ describe("PythonSetupCliClient", () => {
     it("rejects with PythonSetupParseError, appending stderr, when stdout is not valid JSON", async () => {
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             fakeSpawn({stdout: "not json", stderr: "boom", code: 1})
         );
         let threw = false;
@@ -192,6 +252,7 @@ describe("PythonSetupCliClient", () => {
         const cut = bytes.indexOf(0xe2) + 1; // mid-ellipsis
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             fakeSpawn({stdout: [bytes.subarray(0, cut), bytes.subarray(cut)]})
         );
         const result = await client.run(inv, {cwd: "/proj"});
@@ -202,6 +263,7 @@ describe("PythonSetupCliClient", () => {
     it("rejects when the process fails to spawn", async () => {
         const client = new PythonSetupCliClient(
             () => "/missing/databricks",
+            () => ({}),
             fakeSpawn({spawnError: new Error("ENOENT")})
         );
         let threw = false;
@@ -256,6 +318,7 @@ describe("PythonSetupCliClient", () => {
         const {token} = nextTickToken();
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             hangingSpawn,
             (child) => {
                 terminatedChild = child;
@@ -270,6 +333,7 @@ describe("PythonSetupCliClient", () => {
         const {token} = nextTickToken();
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             hangingSpawn,
             (child) => child.kill()
         );
@@ -290,6 +354,7 @@ describe("PythonSetupCliClient", () => {
         };
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             spySpawn
         );
         let caught: unknown;
@@ -315,6 +380,7 @@ describe("PythonSetupCliClient", () => {
         };
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             fakeSpawn({stdout: JSON.stringify(SUCCESS_DEFAULT)})
         );
         const result = await client.run(inv, {cwd: "/proj", token});
@@ -326,6 +392,7 @@ describe("PythonSetupCliClient", () => {
         const {token} = nextTickToken();
         const client = new PythonSetupCliClient(
             () => "/fake/databricks",
+            () => ({}),
             hangingSpawn,
             (child) => {
                 // Emit close so the promise still settles, then throw.
