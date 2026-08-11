@@ -4,15 +4,39 @@ import {
     PythonSetupResult,
 } from "../models/PythonSetupResult";
 
+export interface PythonSetupNotification {
+    message: string;
+    /** True when the run had warnings — the caller shows a warning toast. */
+    isWarning: boolean;
+}
+
 /**
  * The one-line message shown in the success notification. Deliberately terse
  * and use-case-neutral (a local environment for a Databricks project, not tied
  * to Databricks Connect specifically) — the full breakdown lives behind the
- * notification's "View Details" button via {@link formatSetupLog}.
+ * notification's "View Details" button via {@link formatSetupLog}. When the run
+ * completed with warnings the message says so and `isWarning` flips, so the
+ * caller can raise a warning toast rather than a plain info one; the warnings
+ * themselves are listed in the details.
  */
-export const SETUP_READY_MESSAGE =
-    "Python environment ready — .venv created and selected for your " +
-    "Databricks project.";
+export function formatSetupNotification(
+    result: PythonSetupResult
+): PythonSetupNotification {
+    const tail = ".venv created and selected for your Databricks project.";
+    const n = result.warnings.length;
+    if (n === 0) {
+        return {
+            message: `Python environment ready — ${tail}`,
+            isWarning: false,
+        };
+    }
+    return {
+        message:
+            `Python environment ready, with ${n} ` +
+            `warning${n === 1 ? "" : "s"} — ${tail}`,
+        isWarning: true,
+    };
+}
 
 /**
  * The full, verbose breakdown written to the "Databricks Python Environment

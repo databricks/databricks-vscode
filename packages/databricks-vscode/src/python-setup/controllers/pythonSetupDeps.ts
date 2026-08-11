@@ -6,7 +6,7 @@ import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
-import {SETUP_READY_MESSAGE, formatSetupLog} from "../utils/setupSummary";
+import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {
     CliRunner,
@@ -230,14 +230,15 @@ export function makePythonSetupDeps(
             // be empty. This is where the details the one-line message omits
             // (versions, compute, venv path, backup, full warnings) live.
             wiring.log.append(formatSetupLog(result));
-            // A standard (non-modal) information notification, not a modal
-            // dialog: the outcome is informational, not something to interrupt
-            // the user for.
+            // A standard (non-modal) notification, not a modal dialog: the
+            // outcome is informational, not something to interrupt the user
+            // for. A run with warnings raises a warning toast so it doesn't
+            // read as an unqualified success; the warnings are in the details.
+            const {message, isWarning} = formatSetupNotification(result);
             const viewDetails = "View Details";
-            const choice = await window.showInformationMessage(
-                SETUP_READY_MESSAGE,
-                viewDetails
-            );
+            const choice = isWarning
+                ? await window.showWarningMessage(message, viewDetails)
+                : await window.showInformationMessage(message, viewDetails);
             if (choice === viewDetails) {
                 wiring.log.show();
             }

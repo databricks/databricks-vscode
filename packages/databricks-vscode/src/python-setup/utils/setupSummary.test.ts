@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {SETUP_READY_MESSAGE, formatSetupLog} from "./setupSummary";
+import {formatSetupLog, formatSetupNotification} from "./setupSummary";
 import {PythonSetupResult} from "../models/PythonSetupResult";
 import {
     SUCCESS_DEFAULT,
@@ -7,12 +7,41 @@ import {
     SUCCESS_REAL_RUN,
 } from "../models/fixtures/setupLocalResults";
 
-describe("SETUP_READY_MESSAGE", () => {
-    it("is a concise, use-case-neutral one-liner", () => {
-        expect(SETUP_READY_MESSAGE).to.equal(
+describe("formatSetupNotification", () => {
+    it("is a concise, use-case-neutral one-liner with no warnings", () => {
+        const {message, isWarning} = formatSetupNotification(SUCCESS_DEFAULT);
+        expect(message).to.equal(
             "Python environment ready — .venv created and selected for your " +
                 "Databricks project."
         );
+        expect(isWarning).to.equal(false);
+    });
+
+    it("flags the count and marks a warning when warnings are present", () => {
+        const warned: PythonSetupResult = {
+            ...SUCCESS_DEFAULT,
+            warnings: [
+                {code: "W_X", message: "pinned an older wheel"},
+                {code: "W_Y", message: "used a fallback mirror"},
+            ],
+        };
+        const {message, isWarning} = formatSetupNotification(warned);
+        expect(message).to.equal(
+            "Python environment ready, with 2 warnings — .venv created and " +
+                "selected for your Databricks project."
+        );
+        expect(isWarning).to.equal(true);
+    });
+
+    it("singularizes the count for one warning", () => {
+        const warned: PythonSetupResult = {
+            ...SUCCESS_DEFAULT,
+            warnings: [{code: "W_X", message: "pinned an older wheel"}],
+        };
+        const {message, isWarning} = formatSetupNotification(warned);
+        expect(message).to.contain("with 1 warning —");
+        expect(message).to.not.contain("1 warnings");
+        expect(isWarning).to.equal(true);
     });
 });
 
