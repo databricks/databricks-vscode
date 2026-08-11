@@ -94,6 +94,20 @@ describe("formatSetupSummary", () => {
         expect(detail).to.contain("Compute: cluster 0717-abc");
     });
 
+    it("renders the full default-mode detail body verbatim", () => {
+        const {detail} = formatSetupSummary(SUCCESS_DEFAULT);
+        expect(detail).to.equal(
+            "Python 3.12 · databricks-connect 17.2.0\n" +
+                "Compute: serverless v4\n" +
+                "\n" +
+                "What was done\n" +
+                "✓ Downloaded Databricks packages\n" +
+                "✓ Added matching Databricks constraints to pyproject.toml\n" +
+                "✓ Built the virtual environment with uv sync\n" +
+                "✓ Selected .venv as the workspace interpreter"
+        );
+    });
+
     it("appends a warnings section when warnings are present", () => {
         const warned: PythonSetupResult = {
             ...SUCCESS_DEFAULT,
