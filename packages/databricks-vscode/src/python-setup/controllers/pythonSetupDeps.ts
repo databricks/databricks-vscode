@@ -6,7 +6,7 @@ import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
-import {formatSetupLog, formatSetupSummary} from "../utils/setupSummary";
+import {SETUP_READY_MESSAGE, formatSetupLog} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {
     CliRunner,
@@ -224,25 +224,21 @@ export function makePythonSetupDeps(
             }
         },
         showSuccess: async (result) => {
-            const {title, detail} = formatSetupSummary(result);
-            // Write the full breakdown to the log channel so "View logs" always
-            // has content: in --output json mode the CLI streams little or
-            // nothing to stderr on success, so the channel would otherwise be
-            // empty. This is also where the details the TL;DR notification omits
-            // (compute, venv path, backup, full warnings) live.
+            // Write the full breakdown to the log channel so "View Details"
+            // always has content: in --output json mode the CLI streams little
+            // or nothing to stderr on success, so the channel would otherwise
+            // be empty. This is where the details the one-line message omits
+            // (versions, compute, venv path, backup, full warnings) live.
             wiring.log.append(formatSetupLog(result));
             // A standard (non-modal) information notification, not a modal
-            // dialog: the summary is informational, not something to interrupt
-            // the user for. The notification message renders the title and the
-            // itemized outcomes on their own lines, so what was done stays
-            // visible inline without opening anything.
+            // dialog: the outcome is informational, not something to interrupt
+            // the user for.
+            const viewDetails = "View Details";
             const choice = await window.showInformationMessage(
-                `${title}\n${detail}`,
-                "View logs"
+                SETUP_READY_MESSAGE,
+                viewDetails
             );
-            if (choice === "View logs") {
-                // Reveal the streamed CLI log for users who want the full
-                // provisioning detail behind the summarized outcomes.
+            if (choice === viewDetails) {
                 wiring.log.show();
             }
         },

@@ -5,58 +5,22 @@ import {
 } from "../models/PythonSetupResult";
 
 /**
- * Short, TL;DR summary of a successful `environments setup-local` run, shown in
- * a standard (non-modal) information notification. `title` is the headline;
- * `detail` is a tight ✓-checklist of what was done, one item per line (VS Code
- * preserves the newlines). Deliberately terse — the full provisioning log is a
- * click away via "View logs". Pure (no vscode import) so it is unit tested
- * against the golden fixtures.
+ * The one-line message shown in the success notification. Deliberately terse
+ * and use-case-neutral (a local environment for a Databricks project, not tied
+ * to Databricks Connect specifically) — the full breakdown lives behind the
+ * notification's "View Details" button via {@link formatSetupLog}.
  */
-export interface PythonSetupSummary {
-    title: string;
-    detail: string;
-}
-
-export function formatSetupSummary(
-    result: PythonSetupResult
-): PythonSetupSummary {
-    const isDefault = result.mode === "default";
-    const title = isDefault
-        ? "Python environment ready for Databricks Connect"
-        : "Python environment ready — constraints applied";
-
-    const lines: string[] = [];
-
-    // Versions line: databricks-connect only exists in default mode.
-    const pythonVersion = result.resolved?.pythonVersion ?? "";
-    const dbconnect = result.resolved?.dbconnectVersion;
-    lines.push(
-        isDefault && dbconnect
-            ? `✓ Python ${pythonVersion} + databricks-connect ${dbconnect}`
-            : `✓ Python ${pythonVersion}`
-    );
-    lines.push("✓ Added matching constraints, built .venv (uv sync)");
-    lines.push("✓ Selected .venv as the interpreter");
-
-    // Warnings are safety-relevant, so a one-line flag survives the TL;DR even
-    // though the details themselves stay in the log.
-    if (result.warnings.length > 0) {
-        const n = result.warnings.length;
-        lines.push(
-            `⚠ Completed with ${n} warning${n === 1 ? "" : "s"} — see logs`
-        );
-    }
-
-    return {title, detail: lines.join("\n")};
-}
+export const SETUP_READY_MESSAGE =
+    "Python environment ready — .venv created and selected for your " +
+    "Databricks project.";
 
 /**
  * The full, verbose breakdown written to the "Databricks Python Environment
- * Setup" output channel on success, revealed by the notification's "View logs"
- * button. This is the home for everything the TL;DR notification omits
- * (compute, artifact source, backup path, venv path, full warning messages) —
- * necessary because in `--output json` mode the CLI streams little or nothing
- * to stderr on success, so without this the channel would be empty.
+ * Setup" output channel on success, revealed by the notification's "View
+ * Details" button. This is the home for everything the one-line message omits
+ * (versions, compute, artifact source, backup path, venv path, full warning
+ * messages) — necessary because in `--output json` mode the CLI streams little
+ * or nothing to stderr on success, so without this the channel would be empty.
  *
  * Returned with a leading and trailing newline so it reads as its own block
  * beneath any CLI output already streamed to the channel.
