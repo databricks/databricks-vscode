@@ -6,6 +6,7 @@ import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
+import {formatSetupSummary} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {
     CliRunner,
@@ -222,10 +223,18 @@ export function makePythonSetupDeps(
                 wiring.log.show();
             }
         },
-        showSuccess: async () => {
-            await window.showInformationMessage(
-                "Python environment is set up for Databricks Connect."
+        showSuccess: async (result) => {
+            const {title, detail} = formatSetupSummary(result);
+            const choice = await window.showInformationMessage(
+                title,
+                {modal: true, detail},
+                "View logs"
             );
+            if (choice === "View logs") {
+                // Reveal the streamed CLI log for users who want the full
+                // provisioning detail behind the summarized outcomes.
+                wiring.log.show();
+            }
         },
         recordSetupAttempt: (attempt) =>
             wiring.telemetry.recordPythonSetupAttempt(attempt),
