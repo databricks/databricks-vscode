@@ -538,6 +538,8 @@ export type EventReporter<E extends keyof EventTypes> = (
 
 export type EnvironmentType = "tests" | "prod";
 
+export type ExtensionMode = "remote" | "normal";
+
 /**
  * Additional metadata collected from the extension, independent of the event itself.
  */
@@ -574,10 +576,17 @@ export class MetadataTypes {
             comment: "The kind of authentication used by the user",
         },
     };
-    [Metadata.CONTEXT]: EventType<{environmentType: EnvironmentType}> = {
+    [Metadata.CONTEXT]: EventType<{
+        environmentType: EnvironmentType;
+        mode: ExtensionMode;
+    }> = {
         environmentType: {
             comment:
                 "A type of the environment this extension is running with (test, staging, prod)",
+        },
+        mode: {
+            comment:
+                "Whether the extension activated in remote (Databricks Remote SSH) or normal mode",
         },
     };
 }

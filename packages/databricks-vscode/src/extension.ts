@@ -390,6 +390,10 @@ export async function activate(
         process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
         Boolean(process.env["DATABRICKS_VIRTUAL_ENV"]);
     if (!isRemoteSshMode) {
+        telemetry.setMetadata(Metadata.CONTEXT, {
+            ...getContextMetadata(),
+            mode: "normal",
+        });
         aiToolsCommands.initializeCommand()();
     }
 
@@ -534,6 +538,10 @@ export async function activate(
             {venvPath}
         );
         customWhenContext.setRemoteMode(true);
+        telemetry.setMetadata(Metadata.CONTEXT, {
+            ...getContextMetadata(),
+            mode: "remote",
+        });
 
         try {
             await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
@@ -619,6 +627,7 @@ export async function activate(
         connectRemote();
 
         customWhenContext.setActivated(true);
+        telemetry.recordEvent(Events.EXTENSION_ACTIVATION);
         return;
     }
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
