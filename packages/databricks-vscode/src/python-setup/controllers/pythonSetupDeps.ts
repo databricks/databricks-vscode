@@ -6,7 +6,7 @@ import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
-import {formatSetupSummary} from "../utils/setupSummary";
+import {formatSetupLog, formatSetupSummary} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {
     CliRunner,
@@ -225,6 +225,12 @@ export function makePythonSetupDeps(
         },
         showSuccess: async (result) => {
             const {title, detail} = formatSetupSummary(result);
+            // Write the full breakdown to the log channel so "View logs" always
+            // has content: in --output json mode the CLI streams little or
+            // nothing to stderr on success, so the channel would otherwise be
+            // empty. This is also where the details the TL;DR notification omits
+            // (compute, venv path, backup, full warnings) live.
+            wiring.log.append(formatSetupLog(result));
             // A standard (non-modal) information notification, not a modal
             // dialog: the summary is informational, not something to interrupt
             // the user for. The notification message renders the title and the
