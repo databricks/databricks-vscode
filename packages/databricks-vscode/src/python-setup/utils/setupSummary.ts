@@ -1,17 +1,12 @@
-import path from "path";
-import {
-    PythonSetupComputeInfo,
-    PythonSetupResult,
-} from "../models/PythonSetupResult";
+import {PythonSetupResult} from "../models/PythonSetupResult";
 
 /**
- * Human-readable summary of a successful `environments setup-local` run, shown
- * in a completion modal. `title` is the bold dialog heading; `detail` is the
- * multi-line body (VS Code preserves its newlines). All copy is derived from
- * the result — mode drives the databricks-connect clause, artifactSource drives
- * download-vs-cache wording, and the backup/warnings lines appear only when the
- * corresponding fields are populated. Pure (no vscode import) so it is unit
- * tested against the golden fixtures.
+ * Short, TL;DR summary of a successful `environments setup-local` run, shown in
+ * a standard (non-modal) information notification. `title` is the headline;
+ * `detail` is a tight ✓-checklist of what was done, one item per line (VS Code
+ * preserves the newlines). Deliberately terse — the full provisioning log is a
+ * click away via "View logs". Pure (no vscode import) so it is unit tested
+ * against the golden fixtures.
  */
 export interface PythonSetupSummary {
     title: string;
@@ -33,63 +28,20 @@ export function formatSetupSummary(
     const dbconnect = result.resolved?.dbconnectVersion;
     lines.push(
         isDefault && dbconnect
-            ? `Python ${pythonVersion} · databricks-connect ${dbconnect}`
-            : `Python ${pythonVersion}`
+            ? `✓ Python ${pythonVersion} + databricks-connect ${dbconnect}`
+            : `✓ Python ${pythonVersion}`
     );
+    lines.push("✓ Added matching constraints, built .venv (uv sync)");
+    lines.push("✓ Selected .venv as the interpreter");
 
-    const compute = computeLabel(result.compute);
-    if (compute) {
-        lines.push(`Compute: ${compute}`);
-    }
-
-    lines.push("", "What was done");
-
-    lines.push(
-        result.resolved?.artifactSource === "cache"
-            ? "✓ Reused cached Databricks packages"
-            : "✓ Downloaded Databricks packages"
-    );
-    lines.push("✓ Added matching Databricks constraints to pyproject.toml");
-    lines.push("✓ Built the virtual environment with uv sync");
-    lines.push("✓ Selected .venv as the workspace interpreter");
-
-    if (result.backupPath) {
+    // Warnings are safety-relevant, so a one-line flag survives the TL;DR even
+    // though the details themselves stay in the log.
+    if (result.warnings.length > 0) {
+        const n = result.warnings.length;
         lines.push(
-            `✓ Backed up your previous pyproject.toml (${path.basename(
-                result.backupPath
-            )})`
+            `⚠ Completed with ${n} warning${n === 1 ? "" : "s"} — see logs`
         );
     }
 
-    if (result.venvPath) {
-        lines.push("", `Virtual environment: ${result.venvPath}`);
-    }
-
-    if (result.warnings.length > 0) {
-        lines.push("", "⚠ Warnings");
-        for (const w of result.warnings) {
-            lines.push(`• ${w.message}`);
-        }
-    }
-
     return {title, detail: lines.join("\n")};
-}
-
-/**
- * Short label for the compute the environment was provisioned against.
- * Serverless carries a `v`-prefixed version already; a cluster carries its id.
- */
-function computeLabel(
-    compute: PythonSetupComputeInfo | undefined
-): string | undefined {
-    if (!compute) {
-        return undefined;
-    }
-    if (compute.serverlessVersion) {
-        return `serverless ${compute.serverlessVersion}`;
-    }
-    if (compute.clusterId) {
-        return `cluster ${compute.clusterId}`;
-    }
-    return compute.source || undefined;
 }

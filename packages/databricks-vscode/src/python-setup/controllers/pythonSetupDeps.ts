@@ -225,9 +225,13 @@ export function makePythonSetupDeps(
         },
         showSuccess: async (result) => {
             const {title, detail} = formatSetupSummary(result);
+            // A standard (non-modal) information notification, not a modal
+            // dialog: the summary is informational, not something to interrupt
+            // the user for. The notification message renders the title and the
+            // itemized outcomes on their own lines, so what was done stays
+            // visible inline without opening anything.
             const choice = await window.showInformationMessage(
-                title,
-                {modal: true, detail},
+                `${title}\n${detail}`,
                 "View logs"
             );
             if (choice === "View logs") {
