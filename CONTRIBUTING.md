@@ -37,13 +37,7 @@ yarn workspace databricks run package:cli:fetch
 ```
 
 Re-run this whenever `cli.version` in `packages/databricks-vscode/package.json`
-changes — after every `git pull`, in practice. `bin/` is gitignored, so a pull
-that bumps the pinned version never updates the binary you already have, and a
-stale CLI rejects subcommands the extension expects. That failure is easy to
-misread: the rejected subcommand throws during activation, so the configuration
-view sits on "Initializing..." indefinitely instead of reporting an error. In a
-development checkout the extension compares the two versions on startup and
-warns when they differ, naming this command.
+changes — after every `git pull`, in practice.
 
 After that you're ready to build, run, and test the extension.
 

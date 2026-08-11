@@ -18,7 +18,9 @@ that bumps `cli.version` leaves the old binary in place. Re-fetch it:
 yarn workspace databricks run package:cli:fetch
 ```
 
-CONTRIBUTING.md explains what a stale binary looks like when you skip this.
+A stale binary rejects subcommands the extension expects and aborts activation, so
+the configuration view sits on "Initializing..." instead of reporting an error. In a
+development checkout the extension warns about the mismatch on startup.
 
 ## Code conventions
 

@@ -150,9 +150,9 @@ export function isCompatibleArchitecture(
 }
 
 /**
- * Warns when the bundled CLI is not the version `package.json` pins, because a
- * stale binary otherwise fails opaquely — see "Getting started" in
- * CONTRIBUTING.md.
+ * Warns when the bundled CLI is not the version `package.json` pins, because a stale
+ * binary otherwise aborts activation opaquely — see "Re-fetch the CLI after pulling"
+ * in AGENTS.md.
  *
  * Dev-only. A packaged extension fetches its CLI during the build, so the two
  * versions can't diverge there.
