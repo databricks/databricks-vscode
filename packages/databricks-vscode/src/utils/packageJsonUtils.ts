@@ -150,13 +150,9 @@ export function isCompatibleArchitecture(
 }
 
 /**
- * Warns when the bundled CLI is not the version `package.json` pins.
- *
- * `bin/` is gitignored, so the binary is fetched once by `package:cli:fetch` and
- * never updated by a `git pull`. A `cli.version` bump therefore leaves a stale
- * binary behind, and the resulting failure is opaque: the CLI rejects a
- * subcommand the extension expects, which aborts activation before the
- * configuration view leaves "Initializing...".
+ * Warns when the bundled CLI is not the version `package.json` pins, because a
+ * stale binary otherwise fails opaquely — see "Getting started" in
+ * CONTRIBUTING.md.
  *
  * Dev-only. A packaged extension fetches its CLI during the build, so the two
  * versions can't diverge there.
