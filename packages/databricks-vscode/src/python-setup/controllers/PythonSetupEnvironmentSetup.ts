@@ -442,6 +442,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                     compute.kind === "serverless" ? compute.version : undefined,
                 mode: invocation.mode,
                 isGreenfield,
+                // A run against a project already marked ready this session is a
+                // re-run (the ready row's Re-run button / row click); anything
+                // else is the first setup. Derived from state, not the command,
+                // so every entry point labels the same event correctly.
+                trigger: this.readyRoots.has(projectRoot) ? "rerun" : "initial",
             });
             return (report) => {
                 try {

@@ -1002,6 +1002,14 @@ export async function activate(
             "databricks.environment.setupPythonEnv",
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
+        ),
+        // Re-run affordance on the "Python environment ready" row. Delegates to
+        // the same setup handler (re-entrancy-guarded); a distinct id lets the
+        // menu show a "Re-run Python setup" title instead of the initial one.
+        telemetry.registerCommand(
+            "databricks.environment.rerunPythonEnv",
+            pythonSetupEnvironment.setup,
+            pythonSetupEnvironment
         )
     );
 
