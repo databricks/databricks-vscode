@@ -310,6 +310,28 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         );
     });
 
+    it("passes the CLI's raw failure detail to the log, not just the popup copy", async () => {
+        const shown: {message: string; detail?: string}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_NO_TARGET}),
+                showError: async (message, detail) => {
+                    shown.push({message, detail});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        // The popup stays the concise mapped copy (no raw CLI flag noise)...
+        expect(shown[0].message).to.not.contain("--serverless-version");
+        // ...while the detail carries the CLI's own explanation plus the
+        // phase/code, so the "Show Logs" button leads somewhere useful.
+        expect(shown[0].detail).to.contain("No compute target is selected");
+        expect(shown[0].detail).to.contain("E_NO_TARGET");
+    });
+
     it("surfaces the raw error message when the CLI run rejects", async () => {
         const shownErrors: string[] = [];
         const setup = new PythonSetupEnvironmentSetup(
