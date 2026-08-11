@@ -36,6 +36,9 @@ Fetch the Databricks CLI that the extension bundles:
 yarn workspace databricks run package:cli:fetch
 ```
 
+Re-run this whenever `cli.version` in `packages/databricks-vscode/package.json`
+changes — after every `git pull`, in practice.
+
 After that you're ready to build, run, and test the extension.
 
 ## Building and running
