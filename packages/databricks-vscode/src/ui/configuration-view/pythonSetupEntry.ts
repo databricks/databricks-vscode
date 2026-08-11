@@ -43,10 +43,7 @@ export function buildPythonSetupEntry(
             }`,
             iconPath: state.ready
                 ? new ThemeIcon("check")
-                : new ThemeIcon(
-                      "rocket",
-                      new ThemeColor("debugIcon.startForeground")
-                  ),
+                : new ThemeIcon("rocket", new ThemeColor("errorForeground")),
             command: {
                 title: "Set up Python environment",
                 command: commandId,
