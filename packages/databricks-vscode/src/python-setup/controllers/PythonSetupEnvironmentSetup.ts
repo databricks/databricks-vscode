@@ -9,6 +9,7 @@ import {
     PythonSetupResult,
 } from "../models/PythonSetupResult";
 import {
+    formatSetupFailureDetail,
     getPythonSetupErrorMessage,
     NO_COMPUTE_TARGET_MESSAGE,
 } from "../utils/errorMessages";
@@ -119,13 +120,18 @@ export interface PythonSetupSetupDeps {
 
     /**
      * A plain user-facing notification for pre-flight guidance (e.g. no compute
-     * attached), where no CLI ran. Unlike {@link showError} it does not reveal
-     * the output channel — there is no log to show.
+     * attached), where no CLI ran. Unlike {@link showError} it offers no log
+     * affordance — there is no log to show.
      */
     notify: (message: string) => Promise<void>;
 
-    /** Shows the mapped, user-facing copy — not raw CLI text. */
-    showError: (message: string) => Promise<void>;
+    /**
+     * Shows the mapped, user-facing copy — not raw CLI text — with a "Show Logs"
+     * action that reveals the setup output channel. `detail`, when given, is
+     * written to that channel first (see `formatSetupFailureDetail`), so the
+     * button leads to the CLI's full explanation instead of an empty log.
+     */
+    showError: (message: string, detail?: string) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
 
@@ -337,7 +343,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 envKey: result.compute?.envKey,
                 diskMutated: result.error?.diskMutated,
             });
-            await this.deps.showError(getPythonSetupErrorMessage(result));
+            await this.deps.showError(
+                getPythonSetupErrorMessage(result),
+                formatSetupFailureDetail(result)
+            );
             return;
         }
 
