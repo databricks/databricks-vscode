@@ -612,10 +612,33 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 mode: "default",
                 // hasPyprojectToml defaults to true, so this is not greenfield.
                 isGreenfield: false,
+                // First run for the project: not yet ready.
+                trigger: "initial",
             },
         ]);
         expect(telemetry.results).to.deep.equal([
             {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},
+        ]);
+    });
+
+    it("labels a run over an already-ready project as a rerun", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                getDetection: async () => detection("uv", ["uv"]),
+            })
+        );
+
+        // First run provisions the env and marks the project ready.
+        await setup.setup();
+        expect(setup.ready).to.equal(true);
+        // Second run over the same (now ready) project is a re-run.
+        await setup.setup();
+
+        expect(telemetry.attempts.map((a) => a.trigger)).to.deep.equal([
+            "initial",
+            "rerun",
         ]);
     });
 

@@ -6,6 +6,7 @@ import {
     PythonSetupFailurePhase,
     PythonSetupMode,
     PythonSetupOutcome,
+    PythonSetupRunTrigger,
 } from "./constants";
 
 /**
@@ -25,6 +26,12 @@ export interface PythonSetupAttempt {
      * `pyproject.toml` says nothing about greenfield-ness.
      */
     isGreenfield?: boolean;
+    /**
+     * Whether this is the first setup for the project this session or a re-run
+     * over an environment already provisioned this session (session-scoped).
+     * Same event, one enum dimension.
+     */
+    trigger: PythonSetupRunTrigger;
 }
 
 /** How a setup run ended, reduced to the categorical fields we report. */
@@ -137,6 +144,7 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
         packageManager: attempt.packageManager,
         targetType: attempt.targetType,
         mode: attempt.mode,
+        trigger: attempt.trigger,
         ...(attempt.serverlessVersion !== undefined
             ? {serverlessVersion: attempt.serverlessVersion}
             : {}),

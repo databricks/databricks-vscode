@@ -511,6 +511,13 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.environment.rerunPythonEnv",
+                "title": "Re-run Python setup",
+                "icon": "$(sync)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.environment.selectPythonInterpreter",
                 "title": "Change Python environment",
                 "icon": "$(gear)",
@@ -1151,6 +1158,18 @@
                     "icon": "$(gear)"
                 },
                 {
+                    "command": "databricks.environment.rerunPythonEnv",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.success$/",
+                    "group": "inline@0",
+                    "icon": "$(sync)"
+                },
+                {
+                    "command": "databricks.environment.rerunPythonEnv",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.success$/",
+                    "group": "navigation@0",
+                    "icon": "$(sync)"
+                },
+                {
                     "command": "databricks.environment.reinstallDBConnect",
                     "when": "view == configurationView && viewItem =~ /^databricks.environment.checkEnvironmentDependencies.success$/",
                     "group": "inline@0",
@@ -1248,6 +1267,10 @@
                 },
                 {
                     "command": "databricks.environment.setupPythonEnv",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.environment.rerunPythonEnv",
                     "when": "false"
                 },
                 {
