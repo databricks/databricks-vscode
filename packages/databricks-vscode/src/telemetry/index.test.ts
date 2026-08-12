@@ -77,10 +77,7 @@ describe(__filename, () => {
 
     it("sets context metadata with the extension mode", async () => {
         delete process.env["DATABRICKS_VSCODE_INTEGRATION_TEST"];
-        telemetry.setMetadata(Metadata.CONTEXT, {
-            ...getContextMetadata(),
-            mode: "remote",
-        });
+        telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata("remote"));
         telemetry.recordEvent(Events.COMMAND_EXECUTION, {
             command: "testCommand",
             success: true,
