@@ -211,12 +211,14 @@ export function makePythonSetupDeps(
             // The mapped one-liner is deliberately concise and drops the CLI's
             // own explanation; write that detail into the channel so the log the
             // popup points at actually contains it (under `--output json` the CLI
-            // streams little else). Then offer a button rather than force-opening
-            // the panel: a self-revealing, possibly-empty log is worse than one
-            // the user opens on demand.
+            // streams little else).
             if (detail !== undefined && detail.length > 0) {
                 wiring.log.append(detail);
             }
+            // Reveal the output channel automatically so the full log is in
+            // front of the user when setup fails, then still raise the
+            // notification (with its jump-to-logs button) as before.
+            wiring.log.show();
             const showLogs = "Show Logs";
             const picked = await window.showErrorMessage(message, showLogs);
             if (picked === showLogs) {
@@ -224,12 +226,16 @@ export function makePythonSetupDeps(
             }
         },
         showSuccess: async (result) => {
-            // Write the full breakdown to the log channel so "View Details"
-            // always has content: in --output json mode the CLI streams little
-            // or nothing to stderr on success, so the channel would otherwise
-            // be empty. This is where the details the one-line message omits
-            // (versions, compute, venv path, backup, full warnings) live.
+            // Write the full breakdown to the log channel: in --output json
+            // mode the CLI streams little or nothing to stderr on success, so
+            // the channel would otherwise be empty. This is where the details
+            // the one-line message omits (versions, compute, venv path, backup,
+            // full warnings) live.
             wiring.log.append(formatSetupLog(result));
+            // Reveal the output channel automatically so those details are in
+            // front of the user, then still raise the notification (with its
+            // "View Details" button) as before.
+            wiring.log.show();
             // A standard (non-modal) notification, not a modal dialog: the
             // outcome is informational, not something to interrupt the user
             // for. A run with warnings raises a warning toast so it doesn't
