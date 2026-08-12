@@ -222,6 +222,110 @@ describe(__filename, () => {
         }
     });
 
+    it("emits a warning count and a categorical per-code histogram", () => {
+        const {telemetry, events} = makeTelemetry();
+
+        telemetry.recordPythonSetupAttempt({
+            packageManager: "uv",
+            targetType: "serverless",
+            serverlessVersion: "5",
+            mode: "default",
+            trigger: "initial",
+        })({
+            outcome: "ok",
+            envKey: "serverless/serverless-v5",
+            warnings: [
+                {code: "W_REQUIRES_PYTHON_OVERRIDDEN", message: "irrelevant"},
+                {code: "W_DBCONNECT_PIN_OVERRIDDEN", message: "irrelevant"},
+                {code: "W_USER_CONSTRAINT_CONFLICT", message: "irrelevant"},
+                {code: "W_USER_CONSTRAINT_CONFLICT", message: "irrelevant"},
+            ],
+        });
+
+        // The total is a numeric metric, not a property.
+        expect(events[1].metrics["event.warningsCount"]).to.equal(4);
+        expect(events[1].props).to.not.have.property("event.warningsCount");
+        // The per-code counts are a JSON-stringified property (objects never
+        // become metrics), with the repeated code counted twice.
+        expect(
+            JSON.parse(events[1].props["event.warningCodeCounts"])
+        ).to.deep.equal({
+            W_REQUIRES_PYTHON_OVERRIDDEN: 1,
+            W_DBCONNECT_PIN_OVERRIDDEN: 1,
+            W_USER_CONSTRAINT_CONFLICT: 2,
+        });
+    });
+
+    it("reports warningsCount 0 and omits the histogram for a clean merge", () => {
+        const {telemetry, events} = makeTelemetry();
+
+        // A result with no warnings: 0 is a real value (unlike an omitted field),
+        // so it is emitted — but an empty "{}" histogram string is not.
+        telemetry.recordPythonSetupAttempt({
+            packageManager: "uv",
+            targetType: "serverless",
+            serverlessVersion: "5",
+            mode: "default",
+            trigger: "initial",
+        })({outcome: "ok", envKey: "serverless/serverless-v5", warnings: []});
+
+        expect(events[1].metrics["event.warningsCount"]).to.equal(0);
+        expect(events[1].props).to.not.have.property("event.warningCodeCounts");
+    });
+
+    it("collapses an unrecognised warning code to 'other'", () => {
+        // A code the CLI adds before this list is updated (or any drift) must not
+        // mint a new histogram bucket, and the free-form parts of a warning must
+        // never reach the wire.
+        const {telemetry, events} = makeTelemetry();
+
+        telemetry.recordPythonSetupAttempt({
+            packageManager: "uv",
+            targetType: "cluster",
+            mode: "default",
+            trigger: "initial",
+        })({
+            outcome: "ok",
+            warnings: [
+                {code: "W_REQUIRES_PYTHON_OVERRIDDEN", message: "irrelevant"},
+                {
+                    code: "W_SOME_FUTURE_CLI_CODE",
+                    message: "resolving for jane@example.com",
+                },
+                {code: "/Users/jane/secret-project", message: "irrelevant"},
+            ],
+        });
+
+        expect(events[1].metrics["event.warningsCount"]).to.equal(3);
+        expect(
+            JSON.parse(events[1].props["event.warningCodeCounts"])
+        ).to.deep.equal({
+            W_REQUIRES_PYTHON_OVERRIDDEN: 1,
+            other: 2,
+        });
+        const serialized = JSON.stringify(events[1].props);
+        expect(serialized).to.not.contain("jane");
+        expect(serialized).to.not.contain("example.com");
+        expect(serialized).to.not.contain("secret-project");
+    });
+
+    it("omits the warning fields when the CLI produced no result", () => {
+        const {telemetry, events} = makeTelemetry();
+
+        // cancelled / not_started / no_compute carry no `warnings` array, so
+        // neither the count nor the histogram is emitted (0 would be a lie: no
+        // merge ran).
+        telemetry.recordPythonSetupAttempt({
+            packageManager: "uv",
+            targetType: "cluster",
+            mode: "default",
+            trigger: "initial",
+        })({outcome: "cancelled"});
+
+        expect(events[1].metrics).to.not.have.property("event.warningsCount");
+        expect(events[1].props).to.not.have.property("event.warningCodeCounts");
+    });
+
     it("emits only the schema's fields, never extra ones on the caller's object", () => {
         const {telemetry, events} = makeTelemetry();
 

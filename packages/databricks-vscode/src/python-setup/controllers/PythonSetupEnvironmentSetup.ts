@@ -342,6 +342,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
                 diskMutated: result.error?.diskMutated,
+                warnings: result.warnings,
             });
             await this.deps.showError(
                 getPythonSetupErrorMessage(result),
@@ -366,6 +367,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 outcome: "failed",
                 failurePhase: "adopt",
                 envKey: result.compute.envKey,
+                warnings: result.warnings,
             });
             await this.deps.showError((e as Error).message);
             return;
@@ -388,6 +390,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
+                warnings: result.warnings,
             });
             throw e;
         }
@@ -395,7 +398,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // Reported before `showSuccess` on purpose: that awaits the user
         // dismissing a toast, and folding think-time into `duration` would wreck
         // the setup-time metric this event exists to measure.
-        reportResult({outcome: "ok", envKey: result.compute.envKey});
+        reportResult({
+            outcome: "ok",
+            envKey: result.compute.envKey,
+            warnings: result.warnings,
+        });
 
         await this.deps.showSuccess(result);
     }
