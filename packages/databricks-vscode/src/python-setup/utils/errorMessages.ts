@@ -77,6 +77,42 @@ export function getPythonSetupErrorMessage(result: PythonSetupResult): string {
 }
 
 /**
+ * The detailed failure text for the "Databricks Python Environment Setup" output
+ * channel — the counterpart to {@link getPythonSetupErrorMessage}'s concise
+ * popup copy. The popup is mapped from the error *code* and deliberately drops
+ * the CLI's raw `error.message`; under `--output json` that message (e.g. uv's
+ * version-conflict explanation) is otherwise nowhere the user can see it. This
+ * puts it, the failing phase/code, and the per-phase status line into the log
+ * so "review the conflict in the logs" actually leads somewhere.
+ *
+ * Returns `undefined` when the result carries no error, i.e. there is nothing to
+ * add to the log.
+ */
+export function formatSetupFailureDetail(
+    result: PythonSetupResult
+): string | undefined {
+    const err = result.error;
+    if (!err) {
+        return undefined;
+    }
+    const lines = [
+        `Setup failed in the ${err.failurePhase} phase (${err.code}).`,
+    ];
+    if (err.message) {
+        lines.push(err.message);
+    }
+    if (result.phases.length > 0) {
+        lines.push(
+            "Phases: " +
+                result.phases.map((p) => `${p.phase}=${p.status}`).join(", ")
+        );
+    }
+    // Bracket with blank lines so the block stands apart from any streamed CLI
+    // output already in the channel.
+    return `\n${lines.join("\n")}\n`;
+}
+
+/**
  * Trailing sentence describing what, if anything, changed on disk — so we never
  * point the user at a rollback path that does not exist.
  */

@@ -304,6 +304,10 @@ export async function activate(
 
     const cli = new CliWrapper(context, loggerManager, cliLogFilePath);
 
+    // Surfaces a stale bundled CLI in dev checkouts. Not awaited: it only warns,
+    // and activation shouldn't wait on spawning the CLI to find out.
+    void PackageJsonUtils.checkBundledCliVersion(cli.cliPath, packageMetadata);
+
     // Loggers
     context.subscriptions.push(
         telemetry.registerCommand(
@@ -1007,6 +1011,14 @@ export async function activate(
         pythonSetupEnvironment,
         telemetry.registerCommand(
             "databricks.environment.setupPythonEnv",
+            pythonSetupEnvironment.setup,
+            pythonSetupEnvironment
+        ),
+        // Re-run affordance on the "Python environment ready" row. Delegates to
+        // the same setup handler (re-entrancy-guarded); a distinct id lets the
+        // menu show a "Re-run Python setup" title instead of the initial one.
+        telemetry.registerCommand(
+            "databricks.environment.rerunPythonEnv",
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
         )
