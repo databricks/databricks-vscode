@@ -3,6 +3,7 @@ import {
     PythonSetupComputeInfo,
     PythonSetupResult,
 } from "../models/PythonSetupResult";
+import {venvInterpreterPath} from "./venvInterpreterPath";
 
 export interface PythonSetupNotification {
     message: string;
@@ -51,12 +52,17 @@ export function formatSetupNotification(
  * caller from `.venv/pyvenv.cfg`. It is shown in parentheses beside the venv
  * folder when known; when omitted the bare `.venv` folder name stands alone.
  *
+ * `platform` selects the OS-specific interpreter path shown in the notebook
+ * hint (`.venv/bin/python` vs `.venv\Scripts\python.exe`); it defaults to the
+ * host and is injectable so the output is deterministic in tests.
+ *
  * Returned with a leading and trailing newline so it reads as its own block
  * beneath any CLI output already streamed to the channel.
  */
 export function formatSetupLog(
     result: PythonSetupResult,
-    projectName?: string
+    projectName?: string,
+    platform: NodeJS.Platform = process.platform
 ): string {
     const isDefault = result.mode === "default";
     // The venv folder is always `.venv`; when the caller resolved the project
@@ -94,10 +100,12 @@ export function formatSetupLog(
     }
 
     // Name the environment to look for in the picker when we have it; the
-    // interpreter path is the version-proof anchor either way.
+    // interpreter path is the version-proof anchor either way. Render it
+    // OS-aware (`.venv/bin/python` vs `.venv\Scripts\python.exe`).
+    const interpreter = venvInterpreterPath(".venv", platform);
     const selectedHint = projectName
-        ? `is selected: ${projectName} (\`.venv/bin/python\`).`
-        : "is selected (`.venv/bin/python`).";
+        ? `is selected: ${projectName} (\`${interpreter}\`).`
+        : `is selected (\`${interpreter}\`).`;
     lines.push(
         "",
         "To run notebooks using this virtual environment, click Select " +

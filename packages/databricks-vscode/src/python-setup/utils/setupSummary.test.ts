@@ -74,7 +74,7 @@ describe("formatSetupLog", () => {
     });
 
     it("shows the project name beside .venv when one is resolved", () => {
-        const log = formatSetupLog(SUCCESS_DEFAULT, "my-project");
+        const log = formatSetupLog(SUCCESS_DEFAULT, "my-project", "linux");
         expect(log).to.contain(
             "  • Built a new virtual environment with uv sync called " +
                 ".venv (my-project)"
@@ -88,11 +88,20 @@ describe("formatSetupLog", () => {
     });
 
     it("tells the user how to run notebooks with the venv", () => {
-        expect(formatSetupLog(SUCCESS_DEFAULT)).to.contain(
+        expect(formatSetupLog(SUCCESS_DEFAULT, undefined, "linux")).to.contain(
             "To run notebooks using this virtual environment, click Select " +
                 "Kernel in the upper right of a notebook and ensure that the " +
                 "virtual environment is selected (`.venv/bin/python`)."
         );
+    });
+
+    it("uses the Windows interpreter path in the notebook hint", () => {
+        const log = formatSetupLog(SUCCESS_DEFAULT, "my-project", "win32");
+        expect(log).to.contain(
+            "virtual environment is selected: my-project " +
+                "(`.venv\\Scripts\\python.exe`)."
+        );
+        expect(log).to.not.contain(".venv/bin/python");
     });
 
     it("drops databricks-connect in constraints-only mode", () => {
