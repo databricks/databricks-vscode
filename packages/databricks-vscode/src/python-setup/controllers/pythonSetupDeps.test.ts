@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {Uri} from "vscode";
+import {Uri, window} from "vscode";
 import {
     makePythonSetupDeps,
     makePythonSetupVisibility,
@@ -421,5 +421,97 @@ describe("makePythonSetupDeps withProgress", () => {
         // cancellable:true, so this reflects the user's Cancel button.
         expect(token).to.not.equal(undefined);
         expect(token.isCancellationRequested).to.equal(false);
+    });
+});
+
+describe("makePythonSetupDeps showError", () => {
+    let originalShowError: typeof window.showErrorMessage;
+    let shownWith: {message: string; actions: string[]}[];
+    let reply: string | undefined;
+
+    beforeEach(() => {
+        originalShowError = window.showErrorMessage;
+        shownWith = [];
+        reply = undefined;
+        // Capture what the error popup is shown with, and control what the user
+        // "clicks". (ts-mockito can't stub the vscode namespace, so swap the fn.)
+        (window as unknown as {showErrorMessage: unknown}).showErrorMessage =
+            async (message: string, ...actions: string[]) => {
+                shownWith.push({message, actions});
+                return reply;
+            };
+    });
+
+    afterEach(() => {
+        (window as unknown as {showErrorMessage: unknown}).showErrorMessage =
+            originalShowError;
+    });
+
+    it("writes the detail into the log channel", async () => {
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+
+        await deps.showError("friendly copy", "raw conflict detail");
+
+        expect(appended.join("")).to.contain("raw conflict detail");
+    });
+
+    it("offers a Show Logs action and reveals the channel when it is picked", async () => {
+        let shown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        shown++;
+                    },
+                },
+            })
+        );
+        reply = "Show Logs";
+
+        await deps.showError("friendly copy", "detail");
+
+        expect(shownWith).to.have.length(1);
+        expect(shownWith[0].message).to.equal("friendly copy");
+        expect(shownWith[0].actions).to.contain("Show Logs");
+        expect(shown).to.equal(1);
+    });
+
+    it("does not reveal the channel when the popup is dismissed", async () => {
+        let shown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        shown++;
+                    },
+                },
+            })
+        );
+        reply = undefined; // user dismissed the popup without clicking
+
+        await deps.showError("friendly copy", "detail");
+
+        expect(shown).to.equal(0);
+    });
+
+    it("still offers the button but writes nothing when there is no detail", async () => {
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+
+        await deps.showError("friendly copy");
+
+        expect(appended).to.have.length(0);
+        expect(shownWith[0].actions).to.contain("Show Logs");
     });
 });

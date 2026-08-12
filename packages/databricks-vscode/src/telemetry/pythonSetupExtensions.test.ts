@@ -41,6 +41,7 @@ describe(__filename, () => {
             serverlessVersion: "5",
             mode: "default",
             isGreenfield: true,
+            trigger: "initial",
         });
         reportResult({
             outcome: "ok",
@@ -58,6 +59,7 @@ describe(__filename, () => {
             "event.serverlessVersion": "5",
             "event.mode": "default",
             "event.isGreenfield": "true",
+            "event.trigger": "initial",
         });
         expect(events[1].props).to.deep.equal({
             "version": "1.0",
@@ -73,6 +75,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            trigger: "initial",
         });
         reportResult({outcome: "ok"});
 
@@ -95,6 +98,7 @@ describe(__filename, () => {
             mode: "constraints-only",
             serverlessVersion: undefined,
             isGreenfield: undefined,
+            trigger: "initial",
         });
         // A cancelled run has no phase, error code, env key or disk state.
         reportResult({
@@ -110,6 +114,7 @@ describe(__filename, () => {
             "event.packageManager": "pip",
             "event.targetType": "cluster",
             "event.mode": "constraints-only",
+            "event.trigger": "initial",
         });
         expect(events[1].props).to.deep.equal({
             "version": "1.0",
@@ -130,6 +135,7 @@ describe(__filename, () => {
             targetType: "cluster",
             mode: "default",
             isGreenfield: false,
+            trigger: "initial",
         });
         reportResult({
             outcome: "failed",
@@ -156,6 +162,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            trigger: "initial",
         });
         reportResult({outcome: "ok"});
         // A second call (e.g. from a future refactor that adds a terminal path
@@ -181,6 +188,7 @@ describe(__filename, () => {
                 packageManager: "uv",
                 targetType: "cluster",
                 mode: "default",
+                trigger: "initial",
             })({outcome: "ok", envKey});
             expect(events[1].props["event.envKey"]).to.equal(envKey);
         }
@@ -208,6 +216,7 @@ describe(__filename, () => {
                 packageManager: "uv",
                 targetType: "cluster",
                 mode: "default",
+                trigger: "initial",
             })({outcome: "ok", envKey});
             expect(events[1].props["event.envKey"]).to.equal("other");
         }
@@ -225,6 +234,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            trigger: "initial",
             clusterId: "0710-142042-secretcluster",
             projectPath: "/Users/jane/projects/acme",
         } as any)({
@@ -243,6 +253,7 @@ describe(__filename, () => {
             "event.mode",
             "event.packageManager",
             "event.targetType",
+            "event.trigger",
             "version",
         ]);
         expect(Object.keys(events[1].props).sort()).to.deep.equal([
@@ -278,6 +289,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            trigger: "initial",
         });
 
         expect(() => reportResult({outcome: "ok"})).to.not.throw();

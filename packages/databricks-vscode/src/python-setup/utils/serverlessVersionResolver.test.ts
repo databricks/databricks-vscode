@@ -119,7 +119,9 @@ describe("makeServerlessVersionPrompt", () => {
         });
 
         expect(await prompt()).to.equal("4");
-        expect(ranked).to.deep.equal([["4", "5"]]);
+        // The bundle-declared "4" (weight 100) leads; the rest of the supported
+        // range is still offered at score 0, ordered by higher version.
+        expect(ranked).to.deep.equal([["4", "5", "3", "2", "1"]]);
     });
 
     it("returns undefined when the user dismisses the picker", async () => {
