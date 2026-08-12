@@ -8,6 +8,10 @@ import {
 } from "./pythonSetupDeps";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {Telemetry} from "../../telemetry";
+import {
+    SUCCESS_DEFAULT,
+    SUCCESS_WITH_WARNINGS,
+} from "../models/fixtures/setupLocalResults";
 
 describe("makePythonSetupVisibility", () => {
     const uvDetection = {
@@ -460,7 +464,7 @@ describe("makePythonSetupDeps showError", () => {
         expect(appended.join("")).to.contain("raw conflict detail");
     });
 
-    it("offers a Show Logs action and reveals the channel when it is picked", async () => {
+    it("reveals the channel automatically and offers a Show Logs action", async () => {
         let shown = 0;
         const deps = makePythonSetupDeps(
             makeWiring({
@@ -479,10 +483,11 @@ describe("makePythonSetupDeps showError", () => {
         expect(shownWith).to.have.length(1);
         expect(shownWith[0].message).to.equal("friendly copy");
         expect(shownWith[0].actions).to.contain("Show Logs");
-        expect(shown).to.equal(1);
+        // Once on the automatic reveal, again when the button is picked.
+        expect(shown).to.equal(2);
     });
 
-    it("does not reveal the channel when the popup is dismissed", async () => {
+    it("still reveals the channel when the popup is dismissed", async () => {
         let shown = 0;
         const deps = makePythonSetupDeps(
             makeWiring({
@@ -498,7 +503,8 @@ describe("makePythonSetupDeps showError", () => {
 
         await deps.showError("friendly copy", "detail");
 
-        expect(shown).to.equal(0);
+        // The automatic reveal fires regardless of what the user clicks.
+        expect(shown).to.equal(1);
     });
 
     it("still offers the button but writes nothing when there is no detail", async () => {
@@ -513,5 +519,105 @@ describe("makePythonSetupDeps showError", () => {
 
         expect(appended).to.have.length(0);
         expect(shownWith[0].actions).to.contain("Show Logs");
+    });
+});
+
+describe("makePythonSetupDeps showSuccess", () => {
+    let originalInfo: typeof window.showInformationMessage;
+    let originalWarn: typeof window.showWarningMessage;
+    let infoShownWith: {message: string; actions: string[]}[];
+    let warnShownWith: {message: string; actions: string[]}[];
+    let reply: string | undefined;
+
+    beforeEach(() => {
+        originalInfo = window.showInformationMessage;
+        originalWarn = window.showWarningMessage;
+        infoShownWith = [];
+        warnShownWith = [];
+        reply = undefined;
+        // ts-mockito can't stub the vscode namespace, so swap the fns to
+        // capture what each notification is raised with and what the user
+        // "clicks".
+        (
+            window as unknown as {showInformationMessage: unknown}
+        ).showInformationMessage = async (
+            message: string,
+            ...actions: string[]
+        ) => {
+            infoShownWith.push({message, actions});
+            return reply;
+        };
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = async (
+            message: string,
+            ...actions: string[]
+        ) => {
+            warnShownWith.push({message, actions});
+            return reply;
+        };
+    });
+
+    afterEach(() => {
+        (
+            window as unknown as {showInformationMessage: unknown}
+        ).showInformationMessage = originalInfo;
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = originalWarn;
+    });
+
+    it("writes the details, reveals the channel and raises an info toast", async () => {
+        let shown = 0;
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: (c) => appended.push(c),
+                    show: () => {
+                        shown++;
+                    },
+                },
+            })
+        );
+
+        await deps.showSuccess(SUCCESS_DEFAULT);
+
+        expect(appended.join("")).to.have.length.greaterThan(0);
+        // The automatic reveal fires regardless of what the user clicks.
+        expect(shown).to.equal(1);
+        expect(infoShownWith).to.have.length(1);
+        expect(infoShownWith[0].actions).to.contain("View Details");
+        expect(warnShownWith).to.have.length(0);
+    });
+
+    it("raises a warning toast when the run had warnings", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+
+        await deps.showSuccess(SUCCESS_WITH_WARNINGS);
+
+        expect(warnShownWith).to.have.length(1);
+        expect(warnShownWith[0].actions).to.contain("View Details");
+        expect(infoShownWith).to.have.length(0);
+    });
+
+    it("reveals the channel again when View Details is picked", async () => {
+        let shown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        shown++;
+                    },
+                },
+            })
+        );
+        reply = "View Details";
+
+        await deps.showSuccess(SUCCESS_DEFAULT);
+
+        // Once on the automatic reveal, again when the button is picked.
+        expect(shown).to.equal(2);
     });
 });
