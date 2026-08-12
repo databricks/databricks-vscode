@@ -8,6 +8,7 @@ import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
+import {readVenvProjectName} from "../utils/venvProjectName";
 import {
     CliRunner,
     PythonSetupPersistedState,
@@ -229,9 +230,13 @@ export function makePythonSetupDeps(
             // Write the full breakdown to the log channel: in --output json
             // mode the CLI streams little or nothing to stderr on success, so
             // the channel would otherwise be empty. This is where the details
-            // the one-line message omits (versions, compute, venv path, backup,
-            // full warnings) live.
-            wiring.log.append(formatSetupLog(result));
+            // the one-line message omits (versions, compute, backup, how to run
+            // notebooks, full warnings) live. Enrich the venv lines with the
+            // project name uv recorded in pyvenv.cfg when it can be read.
+            const projectName = result.venvPath
+                ? await readVenvProjectName(result.venvPath)
+                : undefined;
+            wiring.log.append(formatSetupLog(result, projectName));
             // Reveal the output channel automatically so those details are in
             // front of the user, then still raise the notification (with its
             // "View Details" button) as before.

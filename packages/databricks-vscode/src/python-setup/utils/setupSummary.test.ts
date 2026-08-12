@@ -53,34 +53,45 @@ describe("formatSetupLog", () => {
         expect(log.trim().length).to.be.greaterThan(0);
     });
 
-    it("includes the versions, compute and artifact source", () => {
+    it("includes the versions and capitalized compute label", () => {
         const log = formatSetupLog(SUCCESS_DEFAULT);
         expect(log).to.contain("Python:             3.12");
         expect(log).to.contain("databricks-connect: 17.2.0");
-        expect(log).to.contain("Compute:            serverless v4");
-        expect(log).to.contain("Packages:           downloaded from network");
+        expect(log).to.contain("Compute:            Serverless v4");
     });
 
-    it("lists what was done", () => {
+    it("lists what was done, falling back to the bare .venv name", () => {
         const log = formatSetupLog(SUCCESS_DEFAULT);
         expect(log).to.contain(
             "  • Added matching Databricks constraints to pyproject.toml"
         );
         expect(log).to.contain(
-            "  • Built the virtual environment with uv sync"
+            "  • Built a new virtual environment with uv sync called .venv"
         );
         expect(log).to.contain(
             "  • Selected .venv as the workspace interpreter"
         );
     });
 
-    it("reuses-from-cache wording when artifacts came from cache", () => {
-        const cached: PythonSetupResult = {
-            ...SUCCESS_DEFAULT,
-            resolved: {...SUCCESS_DEFAULT.resolved!, artifactSource: "cache"},
-        };
-        expect(formatSetupLog(cached)).to.contain(
-            "Packages:           reused from cache"
+    it("shows the project name beside .venv when one is resolved", () => {
+        const log = formatSetupLog(SUCCESS_DEFAULT, "my-project");
+        expect(log).to.contain(
+            "  • Built a new virtual environment with uv sync called " +
+                ".venv (my-project)"
+        );
+        expect(log).to.contain(
+            "  • Selected .venv (my-project) as the workspace interpreter"
+        );
+        expect(log).to.contain(
+            "virtual environment is selected: my-project (`.venv/bin/python`)."
+        );
+    });
+
+    it("tells the user how to run notebooks with the venv", () => {
+        expect(formatSetupLog(SUCCESS_DEFAULT)).to.contain(
+            "To run notebooks using this virtual environment, click Select " +
+                "Kernel in the upper right of a notebook and ensure that the " +
+                "virtual environment is selected (`.venv/bin/python`)."
         );
     });
 
@@ -92,12 +103,11 @@ describe("formatSetupLog", () => {
         expect(log).to.not.contain("databricks-connect");
     });
 
-    it("shows the backup file and venv path on a real run", () => {
+    it("shows the backup file on a real run", () => {
         const log = formatSetupLog(SUCCESS_REAL_RUN);
         expect(log).to.contain(
             "  • Backed up your previous pyproject.toml (pyproject.toml.bak)"
         );
-        expect(log).to.contain("Virtual environment: /home/user/project/.venv");
     });
 
     it("omits the backup line when nothing was backed up", () => {
