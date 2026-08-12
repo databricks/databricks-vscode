@@ -145,7 +145,18 @@ export function parsePythonSetupResult(stdout: string): PythonSetupResult {
             "CLI JSON is not a setup-local result (missing boolean `ok`)"
         );
     }
-    return obj as PythonSetupResult;
+    const result = obj as PythonSetupResult;
+    // `warnings` is typed (and documented) as an always-present array, but this
+    // parser is deliberately minimal and only structurally casts the JSON. A
+    // drifted or older CLI that omits `warnings` (or sends null) would leave the
+    // field non-array at runtime, where the telemetry layer both reads
+    // `warnings.length` and iterates it. Normalize to [] so a real run with a
+    // missing key is still recorded as a clean merge (`warningsCount` 0) instead
+    // of throwing or being mis-attributed as "the CLI produced no result".
+    if (!Array.isArray(result.warnings)) {
+        result.warnings = [];
+    }
+    return result;
 }
 
 /** Whether a parsed result represents a successful run. */
