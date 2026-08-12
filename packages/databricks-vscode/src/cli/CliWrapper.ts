@@ -582,7 +582,9 @@ export class CliWrapper {
                         await FileUtils.openDatabricksConfigFile();
                     }
                     if (choice === "Show Error Logs") {
-                        this.loggerManager.showOutputChannel("Databricks Logs");
+                        await this.loggerManager.showOutputChannel(
+                            "Databricks Logs"
+                        );
                     }
                 });
         }
