@@ -94,6 +94,16 @@ export type TargetCompute = ComputeType | "none";
 /** What triggered a package-manager detection emission. */
 export type SetupTrigger = "auto_open" | "explicit_command" | "run" | "debug";
 
+/**
+ * Whether a setup run is the first for the project *this session* (`initial`)
+ * or a re-run over an environment already provisioned this session (`rerun`,
+ * e.g. the "Re-run Python setup" button on the ready row). Derived from the
+ * session-scoped ready state, so a run after a window reload reads as `initial`
+ * again. One event, one enum dimension — so re-runs stay analysable without
+ * fingerprinting on the command id.
+ */
+export type PythonSetupRunTrigger = "initial" | "rerun";
+
 // The uv-native ("VPEX") python-setup flow mirrors the CLI's `environments
 // setup-local --output json` contract, so the setup event unions are owned by
 // the result model (the TypeScript view of that contract) and re-exported here.
@@ -437,12 +447,19 @@ export class EventTypes {
         serverlessVersion?: string;
         mode: PythonSetupMode;
         isGreenfield?: boolean;
+        trigger: PythonSetupRunTrigger;
     }> = {
         comment:
             "A uv-native Python environment setup run is starting: emitted once the compute " +
             "target is known and immediately before the CLI is spawned, so every attempt has " +
             "exactly one matching python_env.setup.result. Categorical data only — no cluster " +
             "IDs/names, paths, or package names.",
+        trigger: {
+            comment:
+                "initial (first setup for the project this session) or rerun (re-running over an " +
+                "environment already provisioned this session, e.g. via the ready row's Re-run " +
+                "button). Session-scoped: a run after a window reload reads as initial again",
+        },
         packageManager: {
             comment:
                 "The package manager detected for the project (uv > poetry > conda > pip), or unknown",
