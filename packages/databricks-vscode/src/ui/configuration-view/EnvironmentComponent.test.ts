@@ -7,7 +7,10 @@ import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {ConfigurationTreeItem} from "./types";
 import {PythonSetupEntry} from "./pythonSetupEntry";
 
-const ENVIRONMENT_ROOT = {id: "ENVIRONMENT"} as ConfigurationTreeItem;
+const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
+const ENVIRONMENT_ROOT = {
+    id: ENVIRONMENT_COMPONENT_ID,
+} as ConfigurationTreeItem;
 const PYTHON_SETUP_ENTRY_ID = "ENVIRONMENT_PYTHON_SETUP";
 
 /** A stub {@link PythonSetupEntry} with no VS Code dependency. */
@@ -81,14 +84,26 @@ describe("EnvironmentComponent dispatch", () => {
         expect(children.map((c) => c.id)).to.not.include(PYTHON_SETUP_ENTRY_ID);
     });
 
-    it("shows only the uv entry (not the checklist) when visible", async () => {
-        const children = await make(
-            stubPythonSetup({visible: true, ready: false})
-        ).getChildren(ENVIRONMENT_ROOT);
+    it("shows the Python Environment group at the top level when not visible", async () => {
+        const root = await make(
+            stubPythonSetup({visible: false, ready: false})
+        ).getChildren();
 
-        // Mutually exclusive: exactly the one uv entry, checklist skipped.
-        expect(children).to.have.length(1);
-        expect(children[0].id).to.equal(PYTHON_SETUP_ENTRY_ID);
-        expect(children.map((c) => c.label)).to.not.include("Install deps");
+        expect(root).to.have.length(1);
+        expect(root[0].id).to.equal(ENVIRONMENT_COMPONENT_ID);
+    });
+
+    it("promotes the uv entry to the top level when visible", async () => {
+        const component = make(stubPythonSetup({visible: true, ready: false}));
+
+        // The top-level row is the uv entry itself, not a "Python Environment"
+        // group wrapping it.
+        const root = await component.getChildren();
+        expect(root).to.have.length(1);
+        expect(root[0].id).to.equal(PYTHON_SETUP_ENTRY_ID);
+
+        // Being a leaf, it has no children — so the checklist never renders.
+        const children = await component.getChildren(root[0]);
+        expect(children).to.have.length(0);
     });
 });
