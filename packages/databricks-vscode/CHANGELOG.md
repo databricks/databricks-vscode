@@ -1,3 +1,22 @@
+# Release: v2.13.1
+
+## packages/databricks-vscode
+
+## (2026-08-12)
+
+-   Fix show bundle logs in Cursor (#2093) ([a1c7e84](https://github.com/databricks/databricks-vscode/commit/a1c7e84)), closes [#2093](https://github.com/databricks/databricks-vscode/issues/2093)
+-   Promote uv Python setup entry to the top level of the Configuration view (#2104) ([9a9f7d0](https://github.com/databricks/databricks-vscode/commit/9a9f7d0)), closes [#2104](https://github.com/databricks/databricks-vscode/issues/2104)
+-   feat(python-setup): add "Re-run Python setup" button on the ready row (#2100) ([cebc5a8](https://github.com/databricks/databricks-vscode/commit/cebc5a8)), closes [#2100](https://github.com/databricks/databricks-vscode/issues/2100)
+-   feat(python-setup): report merge-warning count and per-code histogram (#2103) ([6099616](https://github.com/databricks/databricks-vscode/commit/6099616)), closes [#2103](https://github.com/databricks/databricks-vscode/issues/2103)
+-   feat(python-setup): report what setup did in a completion notification (#2102) ([4936a37](https://github.com/databricks/databricks-vscode/commit/4936a37)), closes [#2102](https://github.com/databricks/databricks-vscode/issues/2102)
+-   feat(telemetry): capture extension activation in remote mode (#2101) ([c149c1a](https://github.com/databricks/databricks-vscode/commit/c149c1a)), closes [#2101](https://github.com/databricks/databricks-vscode/issues/2101)
+-   fix(cli): warn when the bundled CLI is stale in a dev checkout (#2096) ([85125de](https://github.com/databricks/databricks-vscode/commit/85125de)), closes [#2096](https://github.com/databricks/databricks-vscode/issues/2096) [#2025](https://github.com/databricks/databricks-vscode/issues/2025)
+-   fix(python-setup): show red icon when setup is not done (#2094) ([2977330](https://github.com/databricks/databricks-vscode/commit/2977330)), closes [#2094](https://github.com/databricks/databricks-vscode/issues/2094) [#2](https://github.com/databricks/databricks-vscode/issues/2)
+-   fix(python-setup): show vN versions and offer the full supported range (#2097) ([50ec029](https://github.com/databricks/databricks-vscode/commit/50ec029)), closes [#2097](https://github.com/databricks/databricks-vscode/issues/2097) [#4](https://github.com/databricks/databricks-vscode/issues/4) [#5](https://github.com/databricks/databricks-vscode/issues/5) [#4](https://github.com/databricks/databricks-vscode/issues/4) [#5](https://github.com/databricks/databricks-vscode/issues/5)
+-   fix(python-setup): surface the CLI failure detail in the setup log (#2098) ([2e85b1c](https://github.com/databricks/databricks-vscode/commit/2e85b1c)), closes [#2098](https://github.com/databricks/databricks-vscode/issues/2098)
+-   fix(shellUtils): build terminal commands for the shell that runs them (#1822) (#2092) ([ebcf7c9](https://github.com/databricks/databricks-vscode/commit/ebcf7c9)), closes [#1822](https://github.com/databricks/databricks-vscode/issues/1822) [#2092](https://github.com/databricks/databricks-vscode/issues/2092) [#1822](https://github.com/databricks/databricks-vscode/issues/1822) [#1822](https://github.com/databricks/databricks-vscode/issues/1822)
+-   test(e2e): win the sub-second cancel race in run_files (#2095) ([04195a7](https://github.com/databricks/databricks-vscode/commit/04195a7)), closes [#2095](https://github.com/databricks/databricks-vscode/issues/2095) [#2056](https://github.com/databricks/databricks-vscode/issues/2056)
+
 # Release: v2.13.0
 
 ## packages/databricks-vscode
