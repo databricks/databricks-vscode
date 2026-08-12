@@ -491,6 +491,12 @@ export class EventTypes {
         errorCode?: PythonSetupErrorCode;
         envKey?: string;
         diskMutated?: boolean;
+        warningsCount?: number;
+        // A code->count histogram, not a list: JSON-stringified into a property
+        // by recordEvent (numbers alone become metrics). Keys are a closed
+        // categorical set (the CLI's W_* codes, or "other"); never the warning
+        // messages, which carry package names and version specifiers.
+        warningCodeCounts?: Record<string, number>;
         // Optional rather than the usual required DurationMeasurement: the
         // `no_compute` outcome is reported without a run having started, so
         // there is no elapsed time. Emitting 0 there would drag the
@@ -529,6 +535,19 @@ export class EventTypes {
             comment:
                 "Whether the failed run had already modified project files. Omitted when the CLI reported no error object",
         },
+        warningsCount: {
+            comment:
+                "How many merge-phase advisories the CLI emitted (env-owned pins conflicting with the " +
+                "user's existing project) — a proxy for merge quality. 0 is a real value (a clean " +
+                "merge); omitted only when the CLI produced no result at all (cancelled/not_started/no_compute)",
+        },
+        warningCodeCounts: {
+            comment:
+                "Per-code histogram of the merge warnings (e.g. W_DBCONNECT_PIN_DUPLICATED: 1), so a " +
+                "consumer sees which conflicts occurred, not just how many. Codes are a closed set; any " +
+                'unrecognised code collapses to "other". Omitted when there were no warnings. Categorical ' +
+                "counts only — never the human-readable warning messages",
+        },
         // Measured by the extension around the whole run, not read from the
         // CLI's own durationMs (documented as reserved and always 0). This is
         // also the latency the user actually experiences: it includes process
@@ -554,6 +573,8 @@ export type EventReporter<E extends keyof EventTypes> = (
 ) => void;
 
 export type EnvironmentType = "tests" | "prod";
+
+export type ExtensionMode = "remote" | "normal";
 
 /**
  * Additional metadata collected from the extension, independent of the event itself.
@@ -591,10 +612,17 @@ export class MetadataTypes {
             comment: "The kind of authentication used by the user",
         },
     };
-    [Metadata.CONTEXT]: EventType<{environmentType: EnvironmentType}> = {
+    [Metadata.CONTEXT]: EventType<{
+        environmentType: EnvironmentType;
+        mode: ExtensionMode;
+    }> = {
         environmentType: {
             comment:
                 "A type of the environment this extension is running with (test, staging, prod)",
+        },
+        mode: {
+            comment:
+                "Whether the extension activated in remote (Databricks Remote SSH) or normal mode",
         },
     };
 }
