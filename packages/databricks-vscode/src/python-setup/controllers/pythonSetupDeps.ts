@@ -206,11 +206,21 @@ export function makePythonSetupDeps(
             // revealing the (empty) output channel.
             await window.showWarningMessage(message);
         },
-        showError: async (message: string) => {
-            // Reveal the streamed CLI log alongside the mapped one-liner so the
-            // user can see why the run failed, not just that it did.
-            wiring.log.show();
-            await window.showErrorMessage(message);
+        showError: async (message: string, detail?: string) => {
+            // The mapped one-liner is deliberately concise and drops the CLI's
+            // own explanation; write that detail into the channel so the log the
+            // popup points at actually contains it (under `--output json` the CLI
+            // streams little else). Then offer a button rather than force-opening
+            // the panel: a self-revealing, possibly-empty log is worse than one
+            // the user opens on demand.
+            if (detail !== undefined && detail.length > 0) {
+                wiring.log.append(detail);
+            }
+            const showLogs = "Show Logs";
+            const picked = await window.showErrorMessage(message, showLogs);
+            if (picked === showLogs) {
+                wiring.log.show();
+            }
         },
         showSuccess: async () => {
             await window.showInformationMessage(
