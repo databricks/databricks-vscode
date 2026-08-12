@@ -11,6 +11,7 @@ import {
 import {PythonSetupResult} from "../models/PythonSetupResult";
 import {
     SUCCESS_REAL_RUN,
+    SUCCESS_REAL_RUN_WITH_WARNINGS,
     ERROR_NO_TARGET,
 } from "../models/fixtures/setupLocalResults";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
@@ -617,7 +618,33 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
             },
         ]);
         expect(telemetry.results).to.deep.equal([
-            {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},
+            {
+                outcome: "ok",
+                envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN.warnings,
+            },
+        ]);
+    });
+
+    it("threads the CLI's merge warnings into the ok result", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                cli: makeCli({resolve: SUCCESS_REAL_RUN_WITH_WARNINGS}),
+            })
+        );
+
+        await setup.setup();
+
+        // The report carries the CLI's warnings verbatim; the count and the
+        // categorical histogram are derived in the telemetry layer, not here.
+        expect(telemetry.results).to.deep.equal([
+            {
+                outcome: "ok",
+                envKey: SUCCESS_REAL_RUN_WITH_WARNINGS.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN_WITH_WARNINGS.warnings,
+            },
         ]);
     });
 
@@ -761,6 +788,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 errorCode: ERROR_NO_TARGET.error!.code,
                 envKey: ERROR_NO_TARGET.compute?.envKey,
                 diskMutated: ERROR_NO_TARGET.error!.diskMutated,
+                warnings: ERROR_NO_TARGET.warnings,
             },
         ]);
     });
@@ -785,6 +813,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 outcome: "failed",
                 failurePhase: "adopt",
                 envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN.warnings,
             },
         ]);
     });
@@ -947,6 +976,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN.warnings,
             },
         ]);
     });
@@ -1044,7 +1074,11 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         // the same way), and this project has a pyproject.toml.
         expect(telemetry.attempts[0].isGreenfield).to.equal(false);
         expect(telemetry.results).to.deep.equal([
-            {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},
+            {
+                outcome: "ok",
+                envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN.warnings,
+            },
         ]);
     });
 });
