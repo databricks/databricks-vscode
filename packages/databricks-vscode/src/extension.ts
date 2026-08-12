@@ -275,8 +275,17 @@ export async function activate(
         return undefined;
     }
 
+    // Mode is fully determined by the ambient env vars, so decide it once here
+    // and bake it into the context metadata (rather than re-setting it later).
+    const isRemoteSshMode =
+        process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
+        Boolean(process.env["DATABRICKS_VIRTUAL_ENV"]);
+
     const telemetry = Telemetry.createDefault();
-    telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
+    telemetry.setMetadata(
+        Metadata.CONTEXT,
+        getContextMetadata(isRemoteSshMode ? "remote" : "normal")
+    );
 
     const loggerManager = new LoggerManager(context);
     if (workspaceConfigs.loggingEnabled) {
@@ -390,9 +399,6 @@ export async function activate(
     // Non-blocking so it doesn't delay activation. Skipped in Remote SSH mode,
     // where the AI tools commands are gated off (see the remote-mode branch
     // below) so there is nothing to initialize.
-    const isRemoteSshMode =
-        process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
-        Boolean(process.env["DATABRICKS_VIRTUAL_ENV"]);
     if (!isRemoteSshMode) {
         aiToolsCommands.initializeCommand()();
     }
@@ -623,6 +629,7 @@ export async function activate(
         connectRemote();
 
         customWhenContext.setActivated(true);
+        telemetry.recordEvent(Events.EXTENSION_ACTIVATION);
         return;
     }
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
