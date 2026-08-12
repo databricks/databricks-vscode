@@ -4,8 +4,13 @@ import {commands} from "vscode";
  * Recovers the command that reveals a `LogOutputChannel` on hosts that register
  * the channel under a different id than the extension host believes it has.
  *
- * See ./README.md for why this is needed and why the check is shaped as a
- * capability probe rather than a fork-name check.
+ * The extension host derives a channel's id locally (`<extensionId>.<sanitized
+ * name>`) and never round-trips it through the workbench, so some hosts register
+ * under a different id (e.g. appending a `.workspaceId-<id>` scope segment). When
+ * they disagree, `LogOutputChannel.show()` targets an unregistered id and does
+ * nothing. This probes the registered command list to find the real reveal
+ * command. It is a capability probe rather than a host/fork-name check, so it
+ * degrades to plain `.show()` on hosts where the ids already agree.
  */
 
 /** Mirrors the character class the extension host strips from channel names. */
@@ -59,7 +64,7 @@ export function pickRevealCommand(
     // Ambiguous: prefer the known workspace-scope shape, and otherwise give up
     // rather than reveal some unrelated channel of ours.
     const workspaceScoped = candidates.filter((command) =>
-        command.slice(prefix.length).startsWith(".workspaceId-")
+        command.slice(prefix.length).toLowerCase().startsWith(".workspaceid-")
     );
     return workspaceScoped.length === 1 ? workspaceScoped[0] : undefined;
 }

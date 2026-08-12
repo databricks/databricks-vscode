@@ -29,11 +29,35 @@ export type LogChannelName = "Databricks Logs" | "Databricks Bundle Logs";
  */
 const REVEAL_COMMAND_RETRY_DELAY_MS = 200;
 
+/**
+ * The VS Code command APIs the reveal logic depends on, injectable so tests can
+ * drive the orchestration deterministically. Defaults to the real `commands`.
+ */
+export interface RevealCommandApi {
+    getCommands: () => Thenable<string[]>;
+    executeCommand: (command: string) => Thenable<unknown>;
+}
+
+const defaultRevealCommandApi: RevealCommandApi = {
+    getCommands: () => commands.getCommands(true),
+    executeCommand: (command) => commands.executeCommand(command),
+};
+
 export class LoggerManager {
     private outputChannels: Map<LogChannelName, LogOutputChannel> = new Map();
-    private readonly revealCommands: Map<LogChannelName, string> = new Map();
+    /**
+     * Resolved reveal command per channel. `null` is a "no command needed, use
+     * `.show()`" sentinel that we cache so repeated reveals don't re-enumerate
+     * every registered command; `undefined` (absent key) means "not resolved
+     * yet".
+     */
+    private readonly revealCommands: Map<LogChannelName, string | null> =
+        new Map();
 
-    constructor(readonly context: ExtensionContext) {}
+    constructor(
+        readonly context: ExtensionContext,
+        private readonly commandApi: RevealCommandApi = defaultRevealCommandApi
+    ) {}
 
     async getLogFile(prefix: string) {
         await mkdir(this.context.logUri.fsPath, {recursive: true});
@@ -173,17 +197,17 @@ export class LoggerManager {
     }
 
     /**
-     * Reveals a log output channel. Never rejects: any failure to resolve the
-     * host's reveal command falls back to `LogOutputChannel.show()`, which is
-     * correct everywhere the channel ids agree.
+     * Reveals a log output channel. Any failure to resolve or run the host's
+     * reveal command is swallowed and falls back to `LogOutputChannel.show()`,
+     * which is correct everywhere the channel ids agree.
      */
     async showOutputChannel(name: LogChannelName): Promise<void> {
         const justCreated = !this.outputChannels.has(name);
         const channel = this.getLogOutputChannel(name);
         try {
             const command = await this.resolveRevealCommand(name, justCreated);
-            if (command !== undefined) {
-                await commands.executeCommand(command);
+            if (command !== null) {
+                await this.commandApi.executeCommand(command);
                 return;
             }
         } catch (e) {
@@ -198,22 +222,36 @@ export class LoggerManager {
         channel.show();
     }
 
+    /**
+     * Resolves the reveal command for a channel, or `null` when plain `.show()`
+     * is correct (the ids agree). Both outcomes are cached; on the `justCreated`
+     * path an unresolved command is left uncached so a later call retries, since
+     * the workbench may not have registered it yet.
+     */
     private async resolveRevealCommand(
         name: LogChannelName,
         justCreated: boolean
-    ): Promise<string | undefined> {
+    ): Promise<string | null> {
         const cached = this.revealCommands.get(name);
         if (cached !== undefined) {
             return cached;
         }
 
         const extensionId = this.context.extension.id;
-        let command = await findRevealCommand(extensionId, name);
+        let command = await findRevealCommand(
+            extensionId,
+            name,
+            this.commandApi.getCommands
+        );
         if (command === undefined && justCreated) {
             await new Promise((resolve) =>
                 setTimeout(resolve, REVEAL_COMMAND_RETRY_DELAY_MS)
             );
-            command = await findRevealCommand(extensionId, name);
+            command = await findRevealCommand(
+                extensionId,
+                name,
+                this.commandApi.getCommands
+            );
         }
 
         if (command !== undefined) {
@@ -221,8 +259,16 @@ export class LoggerManager {
             NamedLogger.getOrCreate(Loggers.Extension).debug(
                 `Revealing the "${name}" output channel via ${command}, as the host registered it under a scoped id`
             );
+            return command;
         }
-        return command;
+
+        // No scoped command found. Cache the "use .show()" sentinel unless the
+        // channel was only just created — then the command may simply not be
+        // registered yet, so leave it unresolved for the next call to retry.
+        if (!justCreated) {
+            this.revealCommands.set(name, null);
+        }
+        return null;
     }
 }
 
