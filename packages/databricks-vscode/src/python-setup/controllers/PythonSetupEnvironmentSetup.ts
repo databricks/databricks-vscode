@@ -9,6 +9,7 @@ import {
     PythonSetupResult,
 } from "../models/PythonSetupResult";
 import {
+    formatSetupFailureDetail,
     getPythonSetupErrorMessage,
     NO_COMPUTE_TARGET_MESSAGE,
 } from "../utils/errorMessages";
@@ -119,13 +120,18 @@ export interface PythonSetupSetupDeps {
 
     /**
      * A plain user-facing notification for pre-flight guidance (e.g. no compute
-     * attached), where no CLI ran. Unlike {@link showError} it does not reveal
-     * the output channel — there is no log to show.
+     * attached), where no CLI ran. Unlike {@link showError} it offers no log
+     * affordance — there is no log to show.
      */
     notify: (message: string) => Promise<void>;
 
-    /** Shows the mapped, user-facing copy — not raw CLI text. */
-    showError: (message: string) => Promise<void>;
+    /**
+     * Shows the mapped, user-facing copy — not raw CLI text — with a "Show Logs"
+     * action that reveals the setup output channel. `detail`, when given, is
+     * written to that channel first (see `formatSetupFailureDetail`), so the
+     * button leads to the CLI's full explanation instead of an empty log.
+     */
+    showError: (message: string, detail?: string) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
 
@@ -336,8 +342,12 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
                 diskMutated: result.error?.diskMutated,
+                warnings: result.warnings,
             });
-            await this.deps.showError(getPythonSetupErrorMessage(result));
+            await this.deps.showError(
+                getPythonSetupErrorMessage(result),
+                formatSetupFailureDetail(result)
+            );
             return;
         }
 
@@ -357,6 +367,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 outcome: "failed",
                 failurePhase: "adopt",
                 envKey: result.compute.envKey,
+                warnings: result.warnings,
             });
             await this.deps.showError((e as Error).message);
             return;
@@ -379,14 +390,19 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
+                warnings: result.warnings,
             });
             throw e;
         }
 
         // Reported before `showSuccess` on purpose: that awaits the user
-        // dismissing a toast, and folding think-time into `duration` would wreck
-        // the setup-time metric this event exists to measure.
-        reportResult({outcome: "ok", envKey: result.compute.envKey});
+        // dismissing the notification, and folding think-time into `duration`
+        // would wreck the setup-time metric this event exists to measure.
+        reportResult({
+            outcome: "ok",
+            envKey: result.compute.envKey,
+            warnings: result.warnings,
+        });
 
         await this.deps.showSuccess(result);
     }
@@ -442,6 +458,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                     compute.kind === "serverless" ? compute.version : undefined,
                 mode: invocation.mode,
                 isGreenfield,
+                // A run against a project already marked ready this session is a
+                // re-run (the ready row's Re-run button / row click); anything
+                // else is the first setup. Derived from state, not the command,
+                // so every entry point labels the same event correctly.
+                trigger: this.readyRoots.has(projectRoot) ? "rerun" : "initial",
             });
             return (report) => {
                 try {

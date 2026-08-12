@@ -1,9 +1,12 @@
 import assert from "assert";
 import {writeFile} from "fs/promises";
+import path from "node:path";
 import * as tmp from "tmp";
 import {anything, instance, mock, when} from "ts-mockito";
 import {ExtensionContext} from "vscode";
 import {
+    checkBundledCliVersion,
+    getBundledCliVersion,
     getCorrectVsixInstallString,
     getMetadata,
     isCompatibleArchitecture,
@@ -12,6 +15,18 @@ import {
     nodeOsMap,
     vsixArchMap,
 } from "./packageJsonUtils";
+import {EXTENSION_DEVELOPMENT} from "./developmentUtils";
+
+// The real bundled CLI, which CI fetches at the pinned version before running
+// the suite. Mirrors CliWrapper.cliPath — `databricks.exe` on Windows.
+const cliPath = path.join(
+    __dirname,
+    "../../bin/" +
+        (process.platform === "win32" ? "databricks.exe" : "databricks")
+);
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pinnedCliVersion = require("../../package.json").cli.version;
 
 describe(__filename, () => {
     it("should correctly check compatibility", () => {
@@ -54,6 +69,9 @@ describe(__filename, () => {
                 vsixArch: "vsixArch",
             },
             commitSha: "commitSha",
+            cli: {
+                version: "1.11.0",
+            },
         };
         await writeFile(path, JSON.stringify(metaData));
 
@@ -68,6 +86,7 @@ describe(__filename, () => {
             cliArch: "cliArch",
             vsixArch: "vsixArch",
             commitSha: "commitSha",
+            cliVersion: "1.11.0",
         });
     });
 
@@ -94,6 +113,75 @@ describe(__filename, () => {
                           "Current system architecture is not supported."
                       );
             });
+        });
+    });
+
+    describe("bundled CLI version", () => {
+        const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
+
+        beforeEach(() => {
+            process.env[EXTENSION_DEVELOPMENT] = "true";
+        });
+
+        afterEach(() => {
+            if (originalDevFlag === undefined) {
+                delete process.env[EXTENSION_DEVELOPMENT];
+            } else {
+                process.env[EXTENSION_DEVELOPMENT] = originalDevFlag;
+            }
+        });
+
+        it("should read the version the bundled CLI reports", async () => {
+            assert.equal(await getBundledCliVersion(cliPath), pinnedCliVersion);
+        });
+
+        it("should accept a CLI matching the pinned version", async () => {
+            assert.ok(
+                await checkBundledCliVersion(cliPath, {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                    cliVersion: pinnedCliVersion,
+                })
+            );
+        });
+
+        it("should detect a stale CLI", async () => {
+            assert.ok(
+                !(await checkBundledCliVersion(cliPath, {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                    cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
+                }))
+            );
+        });
+
+        it("should not warn outside a dev checkout", async () => {
+            delete process.env[EXTENSION_DEVELOPMENT];
+            assert.ok(
+                await checkBundledCliVersion(cliPath, {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                    cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
+                })
+            );
+        });
+
+        it("should return undefined for a missing binary", async () => {
+            assert.equal(
+                await getBundledCliVersion(
+                    path.join(__dirname, "nonexistent-databricks")
+                ),
+                undefined
+            );
+        });
+
+        it("should not warn when the pinned version is unknown", async () => {
+            assert.ok(
+                await checkBundledCliVersion("/nonexistent/databricks", {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                })
+            );
         });
     });
 });

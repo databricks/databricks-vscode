@@ -94,6 +94,16 @@ export type TargetCompute = ComputeType | "none";
 /** What triggered a package-manager detection emission. */
 export type SetupTrigger = "auto_open" | "explicit_command" | "run" | "debug";
 
+/**
+ * Whether a setup run is the first for the project *this session* (`initial`)
+ * or a re-run over an environment already provisioned this session (`rerun`,
+ * e.g. the "Re-run Python setup" button on the ready row). Derived from the
+ * session-scoped ready state, so a run after a window reload reads as `initial`
+ * again. One event, one enum dimension — so re-runs stay analysable without
+ * fingerprinting on the command id.
+ */
+export type PythonSetupRunTrigger = "initial" | "rerun";
+
 // The uv-native ("VPEX") python-setup flow mirrors the CLI's `environments
 // setup-local --output json` contract, so the setup event unions are owned by
 // the result model (the TypeScript view of that contract) and re-exported here.
@@ -437,12 +447,19 @@ export class EventTypes {
         serverlessVersion?: string;
         mode: PythonSetupMode;
         isGreenfield?: boolean;
+        trigger: PythonSetupRunTrigger;
     }> = {
         comment:
             "A uv-native Python environment setup run is starting: emitted once the compute " +
             "target is known and immediately before the CLI is spawned, so every attempt has " +
             "exactly one matching python_env.setup.result. Categorical data only — no cluster " +
             "IDs/names, paths, or package names.",
+        trigger: {
+            comment:
+                "initial (first setup for the project this session) or rerun (re-running over an " +
+                "environment already provisioned this session, e.g. via the ready row's Re-run " +
+                "button). Session-scoped: a run after a window reload reads as initial again",
+        },
         packageManager: {
             comment:
                 "The package manager detected for the project (uv > poetry > conda > pip), or unknown",
@@ -474,6 +491,12 @@ export class EventTypes {
         errorCode?: PythonSetupErrorCode;
         envKey?: string;
         diskMutated?: boolean;
+        warningsCount?: number;
+        // A code->count histogram, not a list: JSON-stringified into a property
+        // by recordEvent (numbers alone become metrics). Keys are a closed
+        // categorical set (the CLI's W_* codes, or "other"); never the warning
+        // messages, which carry package names and version specifiers.
+        warningCodeCounts?: Record<string, number>;
         // Optional rather than the usual required DurationMeasurement: the
         // `no_compute` outcome is reported without a run having started, so
         // there is no elapsed time. Emitting 0 there would drag the
@@ -512,6 +535,19 @@ export class EventTypes {
             comment:
                 "Whether the failed run had already modified project files. Omitted when the CLI reported no error object",
         },
+        warningsCount: {
+            comment:
+                "How many merge-phase advisories the CLI emitted (env-owned pins conflicting with the " +
+                "user's existing project) — a proxy for merge quality. 0 is a real value (a clean " +
+                "merge); omitted only when the CLI produced no result at all (cancelled/not_started/no_compute)",
+        },
+        warningCodeCounts: {
+            comment:
+                "Per-code histogram of the merge warnings (e.g. W_DBCONNECT_PIN_DUPLICATED: 1), so a " +
+                "consumer sees which conflicts occurred, not just how many. Codes are a closed set; any " +
+                'unrecognised code collapses to "other". Omitted when there were no warnings. Categorical ' +
+                "counts only — never the human-readable warning messages",
+        },
         // Measured by the extension around the whole run, not read from the
         // CLI's own durationMs (documented as reserved and always 0). This is
         // also the latency the user actually experiences: it includes process
@@ -537,6 +573,8 @@ export type EventReporter<E extends keyof EventTypes> = (
 ) => void;
 
 export type EnvironmentType = "tests" | "prod";
+
+export type ExtensionMode = "remote" | "normal";
 
 /**
  * Additional metadata collected from the extension, independent of the event itself.
@@ -574,10 +612,17 @@ export class MetadataTypes {
             comment: "The kind of authentication used by the user",
         },
     };
-    [Metadata.CONTEXT]: EventType<{environmentType: EnvironmentType}> = {
+    [Metadata.CONTEXT]: EventType<{
+        environmentType: EnvironmentType;
+        mode: ExtensionMode;
+    }> = {
         environmentType: {
             comment:
                 "A type of the environment this extension is running with (test, staging, prod)",
+        },
+        mode: {
+            comment:
+                "Whether the extension activated in remote (Databricks Remote SSH) or normal mode",
         },
     };
 }

@@ -6,6 +6,7 @@ import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
+import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {
     CliRunner,
@@ -206,16 +207,41 @@ export function makePythonSetupDeps(
             // revealing the (empty) output channel.
             await window.showWarningMessage(message);
         },
-        showError: async (message: string) => {
-            // Reveal the streamed CLI log alongside the mapped one-liner so the
-            // user can see why the run failed, not just that it did.
-            wiring.log.show();
-            await window.showErrorMessage(message);
+        showError: async (message: string, detail?: string) => {
+            // The mapped one-liner is deliberately concise and drops the CLI's
+            // own explanation; write that detail into the channel so the log the
+            // popup points at actually contains it (under `--output json` the CLI
+            // streams little else). Then offer a button rather than force-opening
+            // the panel: a self-revealing, possibly-empty log is worse than one
+            // the user opens on demand.
+            if (detail !== undefined && detail.length > 0) {
+                wiring.log.append(detail);
+            }
+            const showLogs = "Show Logs";
+            const picked = await window.showErrorMessage(message, showLogs);
+            if (picked === showLogs) {
+                wiring.log.show();
+            }
         },
-        showSuccess: async () => {
-            await window.showInformationMessage(
-                "Python environment is set up for Databricks Connect."
-            );
+        showSuccess: async (result) => {
+            // Write the full breakdown to the log channel so "View Details"
+            // always has content: in --output json mode the CLI streams little
+            // or nothing to stderr on success, so the channel would otherwise
+            // be empty. This is where the details the one-line message omits
+            // (versions, compute, venv path, backup, full warnings) live.
+            wiring.log.append(formatSetupLog(result));
+            // A standard (non-modal) notification, not a modal dialog: the
+            // outcome is informational, not something to interrupt the user
+            // for. A run with warnings raises a warning toast so it doesn't
+            // read as an unqualified success; the warnings are in the details.
+            const {message, isWarning} = formatSetupNotification(result);
+            const viewDetails = "View Details";
+            const choice = isWarning
+                ? await window.showWarningMessage(message, viewDetails)
+                : await window.showInformationMessage(message, viewDetails);
+            if (choice === viewDetails) {
+                wiring.log.show();
+            }
         },
         recordSetupAttempt: (attempt) =>
             wiring.telemetry.recordPythonSetupAttempt(attempt),
