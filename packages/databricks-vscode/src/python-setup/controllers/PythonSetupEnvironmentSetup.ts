@@ -396,8 +396,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         }
 
         // Reported before `showSuccess` on purpose: that awaits the user
-        // dismissing a toast, and folding think-time into `duration` would wreck
-        // the setup-time metric this event exists to measure.
+        // dismissing the notification, and folding think-time into `duration`
+        // would wreck the setup-time metric this event exists to measure.
         reportResult({
             outcome: "ok",
             envKey: result.compute.envKey,
