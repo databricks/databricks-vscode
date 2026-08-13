@@ -242,7 +242,18 @@ export function makePythonSetupDeps(
             if (picked === showLogs) {
                 wiring.log.show();
             } else if (remediation && picked === remediation.label) {
-                await openExternal(remediation.url);
+                // showError is the failure-reporting path and its one caller does
+                // not wrap it, so a failed browser launch must be contained here
+                // rather than rejecting the whole setup flow. Record it and move on.
+                try {
+                    await openExternal(remediation.url);
+                } catch (e) {
+                    wiring.log.append(
+                        `\nFailed to open ${remediation.url}: ${
+                            (e as Error).message
+                        }\n`
+                    );
+                }
             }
         },
         showSuccess: async (result) => {

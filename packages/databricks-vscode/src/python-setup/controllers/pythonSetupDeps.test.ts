@@ -586,6 +586,37 @@ describe("makePythonSetupDeps showError", () => {
         }
     });
 
+    it("does not reject when opening the remediation URL fails", async () => {
+        // The popup is the failure-reporting path; a failed browser launch must
+        // not turn it into a rejected promise (the caller does not wrap it).
+        const originalOpen = env.openExternal;
+        (env as unknown as {openExternal: unknown}).openExternal = async () => {
+            throw new Error("no browser available");
+        };
+        const appended: string[] = [];
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({
+                    log: {append: (c) => appended.push(c), show: () => {}},
+                })
+            );
+            reply = "Install uv";
+
+            // Must resolve, not throw.
+            await deps.showError("uv missing", "detail", {
+                label: "Install uv",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            // The failure is recorded to the log channel rather than swallowed
+            // silently.
+            expect(appended.join("")).to.contain("no browser available");
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
     it("does not open the URL when the action button is not picked", async () => {
         const originalOpen = env.openExternal;
         const opened: string[] = [];
