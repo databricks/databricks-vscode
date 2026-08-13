@@ -227,14 +227,22 @@ export function makePythonSetupDeps(
             // notification (with its jump-to-logs button) as before.
             wiring.log.show();
             const showLogs = "Show Logs";
+            // `showErrorMessage` hands the picked value back as a bare label
+            // string, so two buttons sharing a label are indistinguishable. Drop
+            // a remediation action that reuses the reserved "Show Logs" label
+            // rather than offer an ambiguous button whose URL branch is dead.
+            const remediation =
+                action && action.label !== showLogs ? action : undefined;
             // Lead with the remediation button (e.g. "Install uv") when one is
             // attached, so the action the user most likely wants comes first.
-            const actions = action ? [action.label, showLogs] : [showLogs];
+            const actions = remediation
+                ? [remediation.label, showLogs]
+                : [showLogs];
             const picked = await window.showErrorMessage(message, ...actions);
             if (picked === showLogs) {
                 wiring.log.show();
-            } else if (action && picked === action.label) {
-                await openExternal(action.url);
+            } else if (remediation && picked === remediation.label) {
+                await openExternal(remediation.url);
             }
         },
         showSuccess: async (result) => {

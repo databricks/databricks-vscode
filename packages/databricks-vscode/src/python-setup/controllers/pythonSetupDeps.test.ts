@@ -552,6 +552,40 @@ describe("makePythonSetupDeps showError", () => {
         }
     });
 
+    it("ignores a remediation action that reuses the reserved Show Logs label", async () => {
+        // Defensive: the picked value comes back as a bare label string, so two
+        // buttons sharing "Show Logs" would be indistinguishable and the URL
+        // branch would be dead. Such an action is dropped (log-only) rather than
+        // silently mis-dispatched.
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Show Logs";
+
+            await deps.showError("uv missing", "detail", {
+                label: "Show Logs",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            // Only the single, unambiguous Show Logs button is offered...
+            expect(shownWith[0].actions).to.deep.equal(["Show Logs"]);
+            // ...and clicking it reveals the log, never opening the URL.
+            expect(opened).to.have.length(0);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
     it("does not open the URL when the action button is not picked", async () => {
         const originalOpen = env.openExternal;
         const opened: string[] = [];
