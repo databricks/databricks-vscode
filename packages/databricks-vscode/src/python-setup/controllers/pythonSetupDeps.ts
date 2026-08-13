@@ -139,12 +139,14 @@ export interface PythonSetupWiringDeps {
     persistServerlessVersion: (version: string) => Promise<void>;
     /**
      * Open the compute picker so the user can attach a target when none is
-     * selected, resolving once it closes. The selection is persisted through
-     * the connection manager (a cluster attaches, serverless enables), so the
-     * caller re-reads {@link attachedCompute} afterward rather than taking a
-     * return value -- and re-reads `none` when the user dismissed it.
+     * selected, resolving to the chosen compute once it closes (or `undefined`
+     * when the user dismisses it). The picker also attaches the selection
+     * through the connection manager as a side effect, but the caller uses this
+     * return value directly rather than re-reading {@link attachedCompute}: a
+     * cluster attach propagates asynchronously (a network-gated,
+     * fire-and-forget config listener), so an immediate re-read would race it.
      */
-    promptSelectCompute: () => Promise<void>;
+    promptSelectCompute: () => Promise<SetupCompute | undefined>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -177,16 +179,19 @@ export function makePythonSetupDeps(
         projectRoot: wiring.projectRoot,
         isVisible,
         resolveCompute: async () => {
-            let resolution = resolveComputeFrom(wiring.attachedCompute());
+            const resolution = resolveComputeFrom(wiring.attachedCompute());
             if (resolution.status === "none") {
                 // Nothing attached: open the compute picker inline so the user
-                // can choose a target, rather than dead-ending the CTA. The
-                // picker persists the selection through the connection manager,
-                // so re-read the attachment afterward -- it reflects whatever
-                // they chose, or stays `none` if they dismissed the picker (in
-                // which case the orchestrator shows the guidance message).
-                await wiring.promptSelectCompute();
-                resolution = resolveComputeFrom(wiring.attachedCompute());
+                // can choose a target, rather than dead-ending the CTA. Use the
+                // picker's own return value -- re-reading the attachment from
+                // the connection manager would race the cluster attach, which
+                // propagates asynchronously through a network-gated config
+                // listener. `undefined` means the user dismissed the picker, so
+                // fall through to `none` and let the orchestrator guide them.
+                const picked = await wiring.promptSelectCompute();
+                return picked === undefined
+                    ? {status: "none"}
+                    : {status: "ok", compute: picked};
             }
             if (resolution.status !== "needsServerlessVersion") {
                 return resolution;

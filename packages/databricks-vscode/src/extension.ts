@@ -58,6 +58,7 @@ import {
     resolveComputeFrom,
 } from "./python-setup/controllers/pythonSetupDeps";
 import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDriftManager";
+import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
 import {
     isPythonSetupEnabled,
@@ -1005,14 +1006,14 @@ export async function activate(
             // setup flow.
             persistServerlessVersion: (version) =>
                 connectionManager.enableServerless(version),
-            // Reuses the existing compute picker. When the feature is opted in,
-            // its serverless branch also records the environment version, so a
-            // serverless selection made here comes back version-complete and
-            // setup need not re-prompt. Resolves once the picker closes; the
-            // setup flow then re-reads the attached compute.
+            // Reuses the existing compute picker, which returns the compute the
+            // user chose (or undefined if dismissed). When the feature is opted
+            // in, its serverless branch also resolves the environment version,
+            // so a serverless selection comes back version-complete and setup
+            // need not re-prompt.
             promptSelectCompute: () =>
                 Promise.resolve(
-                    commands.executeCommand<void>(
+                    commands.executeCommand<SetupCompute | undefined>(
                         "databricks.connection.attachClusterQuickPick"
                     )
                 ),
