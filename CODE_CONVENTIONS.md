@@ -345,6 +345,12 @@ The choices that affect how you write:
 - `(x) => …` — always parenthesize arrow params.
 - Trailing commas where ES5 allows.
 - Prefer `===` / `!==` and always use curly braces (`curly`).
+- **Windows too — don't hard-code POSIX paths.** The extension ships on Windows as
+  well as macOS/Linux, so any path or executable — in code _and_ in user-facing
+  text — must account for the platform. A venv interpreter is `.venv/bin/python` on
+  macOS/Linux but `.venv\Scripts\python.exe` on Windows. Build paths with `path`
+  (or a helper like `venvInterpreterPath`) instead of concatenating POSIX literals,
+  and when a message quotes a concrete path, pick it per `process.platform`.
 
 ---
 
