@@ -41,7 +41,7 @@ describe("buildPythonSetupEntry", () => {
         );
         expect((item.iconPath as ThemeIcon).id).to.equal("warning");
         expect(item.command?.command).to.equal(RERUN);
-        expect(String(item.label)).to.match(/out of date/i);
+        expect(String(item.label)).to.match(/drifted/i);
     });
 
     it("drift takes precedence even when not ready this session", () => {
@@ -52,6 +52,23 @@ describe("buildPythonSetupEntry", () => {
         );
         expect((item.iconPath as ThemeIcon).id).to.equal("warning");
         expect(item.command?.command).to.equal(RERUN);
+    });
+
+    it("gives the drifted row a distinct id so VS Code rebinds its command", () => {
+        // The drifted state points at a different command than ready/set-up; if
+        // it reused the same tree-item id, VS Code would not reliably rebind the
+        // command on refresh and the re-run click would be inert.
+        const [drifted] = buildPythonSetupEntry(
+            {ready: true, drifted: true},
+            COMMAND,
+            RERUN
+        );
+        const [ready] = buildPythonSetupEntry(
+            {ready: true, drifted: false},
+            COMMAND,
+            RERUN
+        );
+        expect(drifted.id).to.not.equal(ready.id);
     });
 
     it("returns exactly one entry (mutually exclusive with the checklist)", () => {

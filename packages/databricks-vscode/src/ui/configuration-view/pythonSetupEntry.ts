@@ -2,6 +2,14 @@ import {Disposable, Event, EventEmitter, ThemeColor, ThemeIcon} from "vscode";
 import {ConfigurationTreeItem} from "./types";
 
 const PYTHON_SETUP_ENTRY_ID = "ENVIRONMENT_PYTHON_SETUP";
+// The drifted row deliberately uses a DISTINCT tree-item id from the ready/set-up
+// row. VS Code does not reliably rebind a tree node's `command` when an item
+// keeps the same `id` but swaps to a different command across a refresh: the
+// label/icon update but clicks still fire (or fail to fire) the old binding. The
+// ready and set-up states share one command (setupPythonEnv), but the drifted
+// state points at a different command (rerunPythonEnv, for its own telemetry), so
+// it must be a separate node — otherwise the "re-run" click is silently inert.
+const PYTHON_SETUP_DRIFTED_ENTRY_ID = "ENVIRONMENT_PYTHON_SETUP_DRIFTED";
 
 /**
  * The slice of the setup orchestrator the config view needs to render its
@@ -42,8 +50,8 @@ export function buildPythonSetupEntry(
     if (state.drifted) {
         return [
             {
-                id: PYTHON_SETUP_ENTRY_ID,
-                label: "Python environment out of date",
+                id: PYTHON_SETUP_DRIFTED_ENTRY_ID,
+                label: "Python environment is drifted",
                 tooltip:
                     "The selected compute no longer matches your Python " +
                     "environment. Re-run setup to align it.",
