@@ -541,8 +541,11 @@ describe("makePythonSetupDeps showError", () => {
                 url: "https://docs.astral.sh/uv/getting-started/installation/",
             });
 
-            expect(shownWith[0].actions).to.contain("Install uv");
-            expect(shownWith[0].actions).to.contain("Show Logs");
+            // Order matters: the remediation button leads, "Show Logs" follows.
+            expect(shownWith[0].actions).to.deep.equal([
+                "Install uv",
+                "Show Logs",
+            ]);
             expect(opened).to.deep.equal([
                 "https://docs.astral.sh/uv/getting-started/installation/",
             ]);
@@ -580,6 +583,33 @@ describe("makePythonSetupDeps showError", () => {
             expect(shownWith[0].actions).to.deep.equal(["Show Logs"]);
             // ...and clicking it reveals the log, never opening the URL.
             expect(opened).to.have.length(0);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("logs when the browser cannot open the remediation URL (resolves false)", async () => {
+        // env.openExternal resolves false (rather than rejecting) when VS Code
+        // cannot open the URI; that ineffective click must still be recorded.
+        const originalOpen = env.openExternal;
+        (env as unknown as {openExternal: unknown}).openExternal = async () =>
+            false;
+        const appended: string[] = [];
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({
+                    log: {append: (c) => appended.push(c), show: () => {}},
+                })
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", {
+                label: "Install uv",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            expect(appended.join("")).to.match(/could not open/i);
         } finally {
             (env as unknown as {openExternal: unknown}).openExternal =
                 originalOpen;

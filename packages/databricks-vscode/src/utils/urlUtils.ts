@@ -3,8 +3,10 @@ import {env, Uri} from "vscode";
 export function addHttpsIfNoProtocol(url: string) {
     return `${url}`.startsWith("http") ? `${url}` : `https://${url}`;
 }
-export async function openExternal(url: string) {
-    await env.openExternal(Uri.parse(addHttpsIfNoProtocol(url), true));
+export async function openExternal(url: string): Promise<boolean> {
+    // Forward VS Code's result: it resolves false when the URI could not be
+    // opened (rather than rejecting), which some callers need to observe.
+    return env.openExternal(Uri.parse(addHttpsIfNoProtocol(url), true));
 }
 
 export class UrlError extends Error {
