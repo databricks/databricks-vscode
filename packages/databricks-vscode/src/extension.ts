@@ -1005,6 +1005,17 @@ export async function activate(
             // setup flow.
             persistServerlessVersion: (version) =>
                 connectionManager.enableServerless(version),
+            // Reuses the existing compute picker. When the feature is opted in,
+            // its serverless branch also records the environment version, so a
+            // serverless selection made here comes back version-complete and
+            // setup need not re-prompt. Resolves once the picker closes; the
+            // setup flow then re-reads the attached compute.
+            promptSelectCompute: () =>
+                Promise.resolve(
+                    commands.executeCommand<void>(
+                        "databricks.connection.attachClusterQuickPick"
+                    )
+                ),
             setActiveInterpreter: async (interpreterPath, root) => {
                 await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
                     interpreterPath,

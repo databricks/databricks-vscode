@@ -137,6 +137,14 @@ export interface PythonSetupWiringDeps {
      * selection, so the next run does not ask again.
      */
     persistServerlessVersion: (version: string) => Promise<void>;
+    /**
+     * Open the compute picker so the user can attach a target when none is
+     * selected, resolving once it closes. The selection is persisted through
+     * the connection manager (a cluster attaches, serverless enables), so the
+     * caller re-reads {@link attachedCompute} afterward rather than taking a
+     * return value -- and re-reads `none` when the user dismissed it.
+     */
+    promptSelectCompute: () => Promise<void>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -169,7 +177,17 @@ export function makePythonSetupDeps(
         projectRoot: wiring.projectRoot,
         isVisible,
         resolveCompute: async () => {
-            const resolution = resolveComputeFrom(wiring.attachedCompute());
+            let resolution = resolveComputeFrom(wiring.attachedCompute());
+            if (resolution.status === "none") {
+                // Nothing attached: open the compute picker inline so the user
+                // can choose a target, rather than dead-ending the CTA. The
+                // picker persists the selection through the connection manager,
+                // so re-read the attachment afterward -- it reflects whatever
+                // they chose, or stays `none` if they dismissed the picker (in
+                // which case the orchestrator shows the guidance message).
+                await wiring.promptSelectCompute();
+                resolution = resolveComputeFrom(wiring.attachedCompute());
+            }
             if (resolution.status !== "needsServerlessVersion") {
                 return resolution;
             }

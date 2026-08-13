@@ -143,8 +143,15 @@ export class ConnectionCommands implements Disposable {
         };
     }
 
+    /**
+     * The returned handler resolves only once the picker has fully closed --
+     * after any attach/enable it triggers has completed, or immediately when the
+     * user dismisses it. Callers that just open the picker can ignore the result
+     * (they always have); the resolution lets a caller that needs the outcome
+     * (python-setup, which re-reads the attached compute afterward) await it.
+     */
     attachClusterQuickPickCommand() {
-        return async (title?: string) => {
+        return async (title?: string): Promise<void> => {
             const workspaceClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
             if (!workspaceClient || !me) {
@@ -204,33 +211,53 @@ export class ConnectionCommands implements Disposable {
             refreshQuickPickItems();
             quickPick.show();
 
-            quickPick.onDidAccept(async () => {
-                const selectedItem = quickPick.selectedItems[0];
-                if ("cluster" in selectedItem) {
-                    const cluster = selectedItem.cluster;
-                    await this.connectionManager.attachCluster(cluster.id);
-                } else if (selectedItem.label === "$(cloud) Serverless") {
-                    // Dispose the compute QuickPick before opening the version
-                    // sub-picker so they don't stack visually.
-                    disposables.forEach((d) => d.dispose());
-                    await this.selectServerless();
-                    return;
-                } else {
-                    await UrlUtils.openExternal(
-                        `${
-                            (
-                                await this.connectionManager.workspaceClient
-                                    ?.apiClient?.host
-                            )?.href ?? ""
-                        }#create/cluster`
-                    );
-                }
-                disposables.forEach((d) => d.dispose());
-            });
+            // Resolve only once the picker's work is done: on accept, after the
+            // attach/enable (or browser hand-off) it triggers; on a plain hide,
+            // right away. `accepted` keeps the hide handler -- which also fires
+            // when accept disposes the picker -- from resolving early, before the
+            // accept branch's awaits have settled.
+            await new Promise<void>((resolve) => {
+                let accepted = false;
+                quickPick.onDidAccept(async () => {
+                    accepted = true;
+                    try {
+                        const selectedItem = quickPick.selectedItems[0];
+                        if ("cluster" in selectedItem) {
+                            const cluster = selectedItem.cluster;
+                            await this.connectionManager.attachCluster(
+                                cluster.id
+                            );
+                        } else if (
+                            selectedItem.label === "$(cloud) Serverless"
+                        ) {
+                            // Dispose the compute QuickPick before opening the
+                            // version sub-picker so they don't stack visually.
+                            disposables.forEach((d) => d.dispose());
+                            await this.selectServerless();
+                            return;
+                        } else {
+                            await UrlUtils.openExternal(
+                                `${
+                                    (
+                                        await this.connectionManager
+                                            .workspaceClient?.apiClient?.host
+                                    )?.href ?? ""
+                                }#create/cluster`
+                            );
+                        }
+                        disposables.forEach((d) => d.dispose());
+                    } finally {
+                        resolve();
+                    }
+                });
 
-            quickPick.onDidHide(() => {
-                disposables.forEach((d) => d.dispose());
-                quickPick.dispose();
+                quickPick.onDidHide(() => {
+                    disposables.forEach((d) => d.dispose());
+                    quickPick.dispose();
+                    if (!accepted) {
+                        resolve();
+                    }
+                });
             });
         };
     }

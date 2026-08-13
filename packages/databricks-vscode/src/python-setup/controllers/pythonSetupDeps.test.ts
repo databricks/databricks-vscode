@@ -175,6 +175,7 @@ function makeWiring(
         }),
         promptServerlessVersion: async () => "4",
         persistServerlessVersion: async () => {},
+        promptSelectCompute: async () => {},
         setActiveInterpreter: async () => {},
         persistSetupState: () => {},
         log: {append: () => {}, show: () => {}},
@@ -254,21 +255,108 @@ describe("makePythonSetupDeps resolveCompute", () => {
         expect(prompted).to.equal(0);
     });
 
-    it("never prompts when nothing is attached", async () => {
-        // Nothing selected is a real dead end, not a missing detail: the flow
-        // must guide the user, not open a version picker.
-        let prompted = 0;
+    it("offers the compute picker (not the version picker) when nothing is attached", async () => {
+        // Nothing selected is a missing target, not a missing detail: the flow
+        // opens the compute picker so the user can choose one -- it must never
+        // jump straight to the serverless version picker.
+        let versionPrompted = 0;
+        let pickerOpened = 0;
         const deps = makePythonSetupDeps(
             makeWiring({
+                promptSelectCompute: async () => {
+                    pickerOpened++;
+                    // User dismisses the picker without attaching anything.
+                },
                 promptServerlessVersion: async () => {
-                    prompted++;
+                    versionPrompted++;
                     return "4";
                 },
             })
         );
 
+        // Dismissed with nothing attached -> still the dead-end `none`, which
+        // the orchestrator turns into the guidance message.
         expect(await deps.resolveCompute()).to.deep.equal({status: "none"});
-        expect(prompted).to.equal(0);
+        expect(pickerOpened).to.equal(1);
+        expect(versionPrompted).to.equal(0);
+    });
+
+    it("runs against the compute the user attaches through the picker", async () => {
+        // The picker persists the selection through the connection manager, so
+        // resolveCompute re-reads the attachment after it closes.
+        let attached = {
+            serverless: false,
+            cluster: undefined as {id: string} | undefined,
+            serverlessVersion: undefined as string | undefined,
+        };
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => attached,
+                promptSelectCompute: async () => {
+                    attached = {
+                        serverless: false,
+                        cluster: {id: "c1"},
+                        serverlessVersion: undefined,
+                    };
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+    });
+
+    it("does not open the compute picker when a cluster is already attached", async () => {
+        let pickerOpened = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => ({
+                    serverless: false,
+                    cluster: {id: "c1"},
+                    serverlessVersion: undefined,
+                }),
+                promptSelectCompute: async () => {
+                    pickerOpened++;
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+        expect(pickerOpened).to.equal(0);
+    });
+
+    it("prompts for a version when the picker attaches version-less serverless", async () => {
+        // The picker can leave serverless selected without a version (a config
+        // that enables serverless without opening the version sub-picker). The
+        // flow then resolves the version rather than dead-ending.
+        let attached = {
+            serverless: false,
+            cluster: undefined as {id: string} | undefined,
+            serverlessVersion: undefined as string | undefined,
+        };
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => attached,
+                promptSelectCompute: async () => {
+                    attached = {
+                        serverless: true,
+                        cluster: undefined,
+                        serverlessVersion: undefined,
+                    };
+                },
+                promptServerlessVersion: async () => "4",
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "4"},
+        });
     });
 
     it("never prompts when serverless already has a version", async () => {
