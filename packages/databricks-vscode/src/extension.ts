@@ -2,6 +2,7 @@ import {
     commands,
     debug,
     env,
+    EventEmitter,
     ExtensionContext,
     extensions,
     OutputChannel,
@@ -16,6 +17,7 @@ import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
+import {composePythonSetupEntry} from "./ui/configuration-view/pythonSetupEntry";
 import {AiToolsManager} from "./aitools/AiToolsManager";
 import {AiToolsCommands} from "./aitools/AiToolsCommands";
 import {RunCommands} from "./run/RunCommands";
@@ -1023,6 +1025,19 @@ export async function activate(
             pythonSetupEnvironment
         )
     );
+    // The config-view entry combines the setup controller's readiness with the
+    // drift manager's `drifted` signal. The drift manager is not wired here yet,
+    // so pass an inert drift source (never drifted) for now: behaviour is
+    // identical to before, and the wiring drops in without touching this call.
+    const pythonSetupDrift = {
+        drifted: false,
+        onDidChangeState: new EventEmitter<void>().event,
+    };
+    const pythonSetupEntry = composePythonSetupEntry(
+        pythonSetupEnvironment,
+        pythonSetupDrift
+    );
+    context.subscriptions.push(pythonSetupEntry);
 
     const environmentCommands = new EnvironmentCommands(
         featureManager,
@@ -1143,7 +1158,7 @@ export async function activate(
         featureManager,
         workspaceFolderManager,
         aiToolsManager,
-        pythonSetupEnvironment
+        pythonSetupEntry
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,

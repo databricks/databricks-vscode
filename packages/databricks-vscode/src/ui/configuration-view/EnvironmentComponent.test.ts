@@ -17,10 +17,12 @@ const PYTHON_SETUP_ENTRY_ID = "ENVIRONMENT_PYTHON_SETUP";
 function stubPythonSetup(opts: {
     visible: boolean;
     ready: boolean;
+    drifted?: boolean;
 }): PythonSetupEntry {
     return {
         isVisible: async () => opts.visible,
         ready: opts.ready,
+        drifted: opts.drifted ?? false,
         // Minimal Event: registering a listener returns a no-op Disposable.
         onDidChangeState: () => ({dispose() {}}),
     };
