@@ -9,9 +9,9 @@ describe("buildPythonSetupEntry", () => {
     const COMMAND = "databricks.environment.setupPythonEnv";
     const RERUN = "databricks.environment.rerunPythonEnv";
 
-    it("renders a run CTA when setup is not yet ready", () => {
+    it("renders a run CTA when setup has never completed", () => {
         const [item] = buildPythonSetupEntry(
-            {ready: false, drifted: false},
+            {ready: false, driftState: "unset"},
             COMMAND,
             RERUN
         );
@@ -25,7 +25,7 @@ describe("buildPythonSetupEntry", () => {
 
     it("renders a ready status line (check icon) once setup succeeded", () => {
         const [item] = buildPythonSetupEntry(
-            {ready: true, drifted: false},
+            {ready: true, driftState: "unset"},
             COMMAND,
             RERUN
         );
@@ -33,9 +33,22 @@ describe("buildPythonSetupEntry", () => {
         expect(item.command?.command).to.equal(COMMAND);
     });
 
+    it("stays ready across a reload when a prior setup is persisted", () => {
+        // The session `ready` flag is false after a reload, but a persisted
+        // `ready` drift state (a setup on record that still matches) must keep the
+        // row on the "ready" status line instead of reverting to the rocket CTA.
+        const [item] = buildPythonSetupEntry(
+            {ready: false, driftState: "ready"},
+            COMMAND,
+            RERUN
+        );
+        expect((item.iconPath as ThemeIcon).id).to.equal("check");
+        expect(String(item.label)).to.match(/ready/i);
+    });
+
     it("renders an out-of-date state that re-runs setup when drifted", () => {
         const [item] = buildPythonSetupEntry(
-            {ready: true, drifted: true},
+            {ready: true, driftState: "drifted"},
             COMMAND,
             RERUN
         );
@@ -44,9 +57,9 @@ describe("buildPythonSetupEntry", () => {
         expect(String(item.label)).to.match(/drifted/i);
     });
 
-    it("drift takes precedence even when not ready this session", () => {
+    it("drift takes precedence over the ready session flag", () => {
         const [item] = buildPythonSetupEntry(
-            {ready: false, drifted: true},
+            {ready: true, driftState: "drifted"},
             COMMAND,
             RERUN
         );
@@ -59,12 +72,12 @@ describe("buildPythonSetupEntry", () => {
         // it reused the same tree-item id, VS Code would not reliably rebind the
         // command on refresh and the re-run click would be inert.
         const [drifted] = buildPythonSetupEntry(
-            {ready: true, drifted: true},
+            {ready: true, driftState: "drifted"},
             COMMAND,
             RERUN
         );
         const [ready] = buildPythonSetupEntry(
-            {ready: true, drifted: false},
+            {ready: true, driftState: "ready"},
             COMMAND,
             RERUN
         );
@@ -74,7 +87,7 @@ describe("buildPythonSetupEntry", () => {
     it("returns exactly one entry (mutually exclusive with the checklist)", () => {
         expect(
             buildPythonSetupEntry(
-                {ready: false, drifted: false},
+                {ready: false, driftState: "unset"},
                 COMMAND,
                 RERUN
             )
@@ -94,18 +107,22 @@ describe("composePythonSetupEntry", () => {
     }
     function fakeDrift() {
         const e = new EventEmitter<void>();
-        return {_e: e, drifted: false, onDidChangeState: e.event};
+        return {
+            _e: e,
+            state: "unset" as "unset" | "ready" | "drifted",
+            onDidChangeState: e.event,
+        };
     }
 
-    it("forwards ready, drifted and isVisible from the sources", async () => {
+    it("forwards ready, driftState and isVisible from the sources", async () => {
         const setup = fakeSetup();
         const drift = fakeDrift();
         const entry = composePythonSetupEntry(setup, drift);
 
         setup.ready = true;
-        drift.drifted = true;
+        drift.state = "drifted";
         expect(entry.ready).to.be.true;
-        expect(entry.drifted).to.be.true;
+        expect(entry.driftState).to.equal("drifted");
         expect(await entry.isVisible()).to.be.true;
         entry.dispose();
     });

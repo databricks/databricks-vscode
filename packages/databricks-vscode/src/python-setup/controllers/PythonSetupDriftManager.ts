@@ -25,10 +25,21 @@ export interface PythonSetupDriftDeps {
 }
 
 /**
+ * The config-view row's derived state, from the persisted setup record vs. the
+ * selected compute:
+ *  - `unset`   — no successful setup on record (show the initial CTA);
+ *  - `ready`   — a setup is on record and the compute still matches (or drift
+ *    can't be assessed — the fail-safe direction);
+ *  - `drifted` — a setup is on record but the selected compute no longer matches.
+ */
+export type PythonSetupDriftState = "unset" | "ready" | "drifted";
+
+/**
  * Watches for compute drift: when the selected compute's environment key no
  * longer matches the one recorded by the last successful setup, exposes a
- * `drifted` flag (and fires `onDidChangeState`) that the config-view row renders
- * as an "out of date -- re-run setup" affordance.
+ * {@link PythonSetupDriftState} (and fires `onDidChangeState`) that the
+ * config-view row renders — `drifted` becomes an "out of date -- re-run setup"
+ * affordance.
  *
  * The check is deliberately passive: it runs a silent CLI `--dry-run` (no
  * progress UI, no prompt, no error surface), is gated by `isVisible` and the
@@ -56,8 +67,18 @@ export class PythonSetupDriftManager implements Disposable {
         private readonly debounceMs: number = 500
     ) {}
 
-    get drifted(): boolean {
-        return this._drifted;
+    /**
+     * The row's derived state. Persisted state is read live so it reflects the
+     * current project across window reloads: with a setup on record the row
+     * stays `ready` (or `drifted` once a mismatch is detected) instead of
+     * reverting to the initial CTA; with none it is `unset`. The mismatch flag
+     * is only ever set while a setup is on record, so ordering here is moot.
+     */
+    get state(): PythonSetupDriftState {
+        if (this.deps.getPersistedEnvKey() === undefined) {
+            return "unset";
+        }
+        return this._drifted ? "drifted" : "ready";
     }
 
     /** Debounced entry point for triggers (compute change, open, setup done). */

@@ -44,7 +44,10 @@ export class EnvironmentComponent extends BaseComponent {
         const pythonSetup = this.pythonSetup;
         if (pythonSetup && (await pythonSetup.isVisible())) {
             return buildPythonSetupEntry(
-                {ready: pythonSetup.ready, drifted: pythonSetup.drifted},
+                {
+                    ready: pythonSetup.ready,
+                    driftState: pythonSetup.driftState,
+                },
                 PYTHON_SETUP_COMMAND,
                 PYTHON_SETUP_RERUN_COMMAND
             );

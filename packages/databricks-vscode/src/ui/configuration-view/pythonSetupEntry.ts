@@ -1,4 +1,5 @@
 import {Disposable, Event, EventEmitter, ThemeColor, ThemeIcon} from "vscode";
+import type {PythonSetupDriftState} from "../../python-setup/controllers/PythonSetupDriftManager";
 import {ConfigurationTreeItem} from "./types";
 
 const PYTHON_SETUP_ENTRY_ID = "ENVIRONMENT_PYTHON_SETUP";
@@ -24,11 +25,13 @@ export interface PythonSetupEntry {
     /** True once a setup has completed successfully this session. */
     readonly ready: boolean;
     /**
-     * True when the selected compute no longer matches the recorded setup state
-     * (see {@link PythonSetupDriftManager}); renders the "out of date" state.
+     * The persisted setup/drift state (see {@link PythonSetupDriftState}): a
+     * single signal derived from the recorded setup vs. the selected compute. It
+     * survives a window reload — `ready`/`drifted` mean a prior setup is on
+     * record — so the row does not revert to the initial CTA across sessions.
      */
-    readonly drifted: boolean;
-    /** Fires when {@link ready} or {@link drifted} changes, so the view refreshes. */
+    readonly driftState: PythonSetupDriftState;
+    /** Fires when readiness or drift state changes, so the view refreshes. */
     readonly onDidChangeState: Event<void>;
 }
 
@@ -36,18 +39,20 @@ export interface PythonSetupEntry {
  * Build the single Python Environment child row for the uv-native setup.
  *
  * Three states, in precedence order:
- *   - drifted  -> an "out of date" warning that re-runs setup (rerunCommandId);
- *   - ready    -> a done status line (check) that can still be re-run;
- *   - neither  -> a run call-to-action (rocket).
- * Drift wins over ready: a stale environment is the more urgent thing to show,
- * and its action (re-run) is what resolves it.
+ *   - drifted      -> an "out of date" warning that re-runs setup (rerunCommandId);
+ *   - done         -> a done status line (check) that can still be re-run;
+ *   - neither      -> a run call-to-action (rocket).
+ * Drift wins: a stale environment is the more urgent thing to show, and its
+ * action (re-run) is what resolves it. "Done" is the session `ready` flag OR a
+ * persisted `driftState` of `ready` (a prior setup on record that still matches),
+ * so the row stays "ready" across a window reload rather than reverting to the CTA.
  */
 export function buildPythonSetupEntry(
-    state: {ready: boolean; drifted: boolean},
+    state: {ready: boolean; driftState: PythonSetupDriftState},
     commandId: string,
     rerunCommandId: string
 ): ConfigurationTreeItem[] {
-    if (state.drifted) {
+    if (state.driftState === "drifted") {
         return [
             {
                 id: PYTHON_SETUP_DRIFTED_ENTRY_ID,
@@ -67,16 +72,17 @@ export function buildPythonSetupEntry(
             },
         ];
     }
+    const done = state.ready || state.driftState === "ready";
     return [
         {
             id: PYTHON_SETUP_ENTRY_ID,
-            label: state.ready
+            label: done
                 ? "Python environment ready"
                 : "Set up Python environment",
             contextValue: `databricks.environment.pythonSetup.${
-                state.ready ? "success" : "error"
+                done ? "success" : "error"
             }`,
-            iconPath: state.ready
+            iconPath: done
                 ? new ThemeIcon("check")
                 : new ThemeIcon("rocket", new ThemeColor("errorForeground")),
             command: {
@@ -88,8 +94,8 @@ export function buildPythonSetupEntry(
 }
 
 /**
- * Combine the setup controller's `ready` state and the drift manager's
- * `drifted` state into the single {@link PythonSetupEntry} the config view
+ * Combine the setup controller's session `ready` flag with the drift manager's
+ * derived `state` into the single {@link PythonSetupEntry} the config view
  * consumes, merging both change events so a change in either refreshes the row.
  * Returns a Disposable that tears down the merged emitter and its subscriptions.
  */
@@ -100,7 +106,7 @@ export function composePythonSetupEntry(
         readonly onDidChangeState: Event<void>;
     },
     drift: {
-        readonly drifted: boolean;
+        readonly state: PythonSetupDriftState;
         readonly onDidChangeState: Event<void>;
     }
 ): PythonSetupEntry & Disposable {
@@ -114,8 +120,8 @@ export function composePythonSetupEntry(
         get ready() {
             return setup.ready;
         },
-        get drifted() {
-            return drift.drifted;
+        get driftState() {
+            return drift.state;
         },
         onDidChangeState: emitter.event,
         dispose() {
