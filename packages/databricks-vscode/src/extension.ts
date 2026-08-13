@@ -2,7 +2,6 @@ import {
     commands,
     debug,
     env,
-    EventEmitter,
     ExtensionContext,
     extensions,
     OutputChannel,
@@ -53,7 +52,11 @@ import {
 import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
 import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
-import {makePythonSetupDeps} from "./python-setup/controllers/pythonSetupDeps";
+import {
+    makePythonSetupDeps,
+    resolveComputeFrom,
+} from "./python-setup/controllers/pythonSetupDeps";
+import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDriftManager";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
 import {
     isPythonSetupEnabled,
@@ -1016,23 +1019,82 @@ export async function activate(
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
         ),
-        // Re-run affordance on the "Python environment ready" row. Delegates to
-        // the same setup handler (re-entrancy-guarded); a distinct id lets the
-        // menu show a "Re-run Python setup" title instead of the initial one.
+        // Re-run affordance shared by the "Python environment ready" row and the
+        // drifted row. Delegates to the same setup handler (re-entrancy-guarded);
+        // a distinct command id lets the menu show a "Re-run Python setup" title
+        // and gives re-runs their own COMMAND_EXECUTION telemetry.
         telemetry.registerCommand(
             "databricks.environment.rerunPythonEnv",
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
         )
     );
+    // Drives the config-view row's "out of date" state: on compute/open/setup
+    // triggers it silently resolves the selected compute's env key via a CLI
+    // dry-run and compares it against the last successful setup's key. Every
+    // resolution path is fail-safe (returns undefined => "unknown", no drift) and
+    // never surfaces UI.
+    const pythonSetupDrift = new PythonSetupDriftManager({
+        // Reuse the exact feature+greenfield gate the row is shown under.
+        isVisible: () => pythonSetupEnvironment.isVisible(),
+        getPersistedEnvKey: () =>
+            stateStorage.get("databricks.pythonSetup.setupState")?.envKey,
+        resolveCurrentEnvKey: async (token) => {
+            // activeProjectUri throws when no project is active; degrade to
+            // "unknown" rather than letting it reject into the drift check.
+            let root: string | undefined;
+            try {
+                root = workspaceFolderManager.activeProjectUri.fsPath;
+            } catch {
+                return undefined;
+            }
+            const resolution = resolveComputeFrom({
+                serverless: connectionManager.serverless,
+                cluster: connectionManager.cluster
+                    ? {id: connectionManager.cluster.id}
+                    : undefined,
+                serverlessVersion: connectionManager.serverlessVersion,
+            });
+            if (resolution.status !== "ok") {
+                return undefined;
+            }
+            try {
+                const result = await pythonSetupClient.run(
+                    {
+                        mode: "default",
+                        dryRun: true,
+                        compute: resolution.compute,
+                    },
+                    {cwd: root, token}
+                );
+                return result.compute?.envKey;
+            } catch {
+                return undefined;
+            }
+        },
+        recordDrift: (report) => telemetry.recordPythonSetupDrift(report),
+    });
+    context.subscriptions.push(
+        pythonSetupDrift,
+        // Compute target changed (cluster attach/detach/switch).
+        connectionManager.onDidChangeCluster(() =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // Serverless selection / version changes flow through connection state.
+        connectionManager.onDidChangeState(() =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // A completed setup updates the persisted state; re-evaluate so a
+        // successful re-run clears the badge promptly.
+        pythonSetupEnvironment.onDidChangeState(() =>
+            pythonSetupDrift.check("setupCompleted")
+        )
+    );
+    // The "workspace open" trigger: evaluate once now that everything is wired.
+    pythonSetupDrift.check("workspaceOpen");
+
     // The config-view entry combines the setup controller's readiness with the
-    // drift manager's `drifted` signal. The drift manager is not wired here yet,
-    // so pass an inert drift source (never drifted) for now: behaviour is
-    // identical to before, and the wiring drops in without touching this call.
-    const pythonSetupDrift = {
-        drifted: false,
-        onDidChangeState: new EventEmitter<void>().event,
-    };
+    // drift manager's `drifted` signal.
     const pythonSetupEntry = composePythonSetupEntry(
         pythonSetupEnvironment,
         pythonSetupDrift
