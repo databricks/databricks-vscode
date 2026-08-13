@@ -1,4 +1,6 @@
 import {Disposable, Event, EventEmitter} from "vscode";
+import {logging} from "@databricks/sdk-experimental";
+import {Loggers} from "../../logger";
 import {
     CancellationLike,
     PythonSetupCancelledError,
@@ -254,7 +256,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
 
     setup(): Promise<void> {
         // Re-entrancy guard: coalesce concurrent callers onto the running run
-        // rather than spawning a second project-mutating CLI process.
+        // rather than spawning a second project-mutating CLI process. The guard
+        // releases when the run's *work* settles; the terminal notification is
+        // presented via {@link present} (fire-and-forget), so a toast left open
+        // never wedges the entry -- see that method.
         if (this.inFlight) {
             return this.inFlight;
         }
@@ -263,6 +268,29 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         });
         this.inFlight = run;
         return run;
+    }
+
+    /**
+     * Present a terminal user notification without blocking the run. The
+     * re-entrancy guard in {@link setup} must release when the mutating work
+     * (CLI run, interpreter adoption, state write) finishes -- NOT when the user
+     * dismisses the toast. `showError`/`showSuccess`/`notify` each await
+     * `window.show*Message`, which stays pending until the toast is acted on, so
+     * awaiting them inside the guarded run wedged the entry: every later click
+     * returned the still-pending promise until the window was reloaded.
+     * A rejection must not become an unhandled rejection or fail the (already
+     * finished) setup, but it is not silently discarded: `showSuccess`/
+     * `showError` do real work before the toast (reading the venv project name,
+     * formatting the log, writing the output channel), so a throw there is a
+     * genuine bug worth a debug-level trace.
+     */
+    private present(notification: Promise<void>): void {
+        void notification.catch((e) =>
+            logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                "Failed to present python-setup notification",
+                e
+            )
+        );
     }
 
     private async runSetup(): Promise<void> {
@@ -298,7 +326,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             } catch {
                 // Measurement must never break the flow it measures.
             }
-            await this.deps.notify(NO_COMPUTE_TARGET_MESSAGE);
+            this.present(this.deps.notify(NO_COMPUTE_TARGET_MESSAGE));
             return;
         }
         const compute = resolved.compute;
@@ -331,7 +359,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // result object exists, hence `not_started` rather than `failed`:
             // there is no phase or error code to attribute the break to.
             reportResult({outcome: "not_started"});
-            await this.deps.showError((e as Error).message);
+            this.present(this.deps.showError((e as Error).message));
             return;
         }
 
@@ -344,9 +372,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 diskMutated: result.error?.diskMutated,
                 warnings: result.warnings,
             });
-            await this.deps.showError(
-                getPythonSetupErrorMessage(result),
-                formatSetupFailureDetail(result)
+            this.present(
+                this.deps.showError(
+                    getPythonSetupErrorMessage(result),
+                    formatSetupFailureDetail(result)
+                )
             );
             return;
         }
@@ -369,7 +399,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 envKey: result.compute.envKey,
                 warnings: result.warnings,
             });
-            await this.deps.showError((e as Error).message);
+            this.present(this.deps.showError((e as Error).message));
             return;
         }
 
@@ -395,16 +425,17 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             throw e;
         }
 
-        // Reported before `showSuccess` on purpose: that awaits the user
-        // dismissing the notification, and folding think-time into `duration`
-        // would wreck the setup-time metric this event exists to measure.
+        // Report before presenting success: `duration` should measure the
+        // setup work, not the time the toast sits on screen. `present` is
+        // fire-and-forget, so the run settles here and the re-entrancy guard
+        // releases regardless of whether the user dismisses the notification.
         reportResult({
             outcome: "ok",
             envKey: result.compute.envKey,
             warnings: result.warnings,
         });
 
-        await this.deps.showSuccess(result);
+        this.present(this.deps.showSuccess(result));
     }
 
     /**
