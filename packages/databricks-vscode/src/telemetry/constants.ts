@@ -27,6 +27,7 @@ export enum Events {
     PYTHON_ENV_SETUP_DETECTED = "python_env.setup.detected",
     PYTHON_ENV_SETUP_ATTEMPT = "python_env.setup.attempt",
     PYTHON_ENV_SETUP_RESULT = "python_env.setup.result",
+    PYTHON_ENV_DRIFT = "python_env.drift",
     AITOOLS_INSTALL = "aitoolsInstall",
     AITOOLS_UPDATE = "aitoolsUpdate",
     AITOOLS_UNINSTALL = "aitoolsUninstall",
@@ -152,6 +153,12 @@ export type PythonSetupFailurePhase =
     | PythonSetupPhaseName
     | "adopt"
     | "persist";
+
+/** How a drift check was triggered. */
+export type PythonSetupDriftTrigger =
+    | "computeChange"
+    | "workspaceOpen"
+    | "setupCompleted";
 
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
@@ -553,6 +560,31 @@ export class EventTypes {
         // also the latency the user actually experiences: it includes process
         // spawn and interpreter adoption.
         ...getDurationProperty(),
+    };
+    [Events.PYTHON_ENV_DRIFT]: EventType<{
+        trigger: PythonSetupDriftTrigger;
+        fromEnvKey: string;
+        toEnvKey: string;
+    }> = {
+        comment:
+            "Emitted when the selected compute's environment key no longer matches the one the " +
+            "local .venv was provisioned against (from databricks.pythonSetup.setupState). Reported " +
+            "once per newly-detected distinct mismatch, not on every trigger. Categorical data only.",
+        trigger: {
+            comment:
+                "What prompted the check: computeChange | workspaceOpen | setupCompleted",
+        },
+        fromEnvKey: {
+            comment:
+                'The recorded environment key (e.g. "serverless/serverless-v4", ' +
+                '"dbr/15.4.x-scala2.12"). Constrained to those shapes before emission; anything ' +
+                'else becomes "other". Never a cluster id or name',
+        },
+        toEnvKey: {
+            comment:
+                "The environment key the currently selected compute resolves to, same closed " +
+                'vocabulary as fromEnvKey (else "other")',
+        },
     };
 }
 
