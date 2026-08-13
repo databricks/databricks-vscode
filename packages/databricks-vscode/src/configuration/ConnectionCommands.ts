@@ -30,20 +30,22 @@ import {
 } from "../python-setup/utils/serverlessVersionResolver";
 import {pickServerlessVersion} from "../python-setup/utils/serverlessVersionPicker";
 import {collectServerlessVersionObservations} from "../python-setup/utils/serverlessVersionObservations";
+import type {SetupCompute} from "../python-setup/controllers/PythonSetupEnvironmentSetup";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {Loggers} from "../logger";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
 
 /**
- * A compute target the user picked in the compute QuickPick. Structurally the
- * `setup-local` compute shape, so python-setup can consume it directly without
- * this module depending on the python-setup layer. Serverless is only ever
- * returned version-complete (see {@link ConnectionCommands.selectServerless}).
+ * A compute target the user picked in the compute QuickPick. Aliased to the
+ * `setup-local` compute shape (rather than re-declared) so python-setup can
+ * consume the picker's result directly and any drift in that shape is a compile
+ * error here, not a silent runtime mismatch through `executeCommand`'s unchecked
+ * generic. Serverless is only ever returned version-complete (see
+ * {@link ConnectionCommands.selectServerless}).
  */
-export type SelectedCompute =
-    | {kind: "cluster"; clusterId: string}
-    | {kind: "serverless"; version: string};
+export type SelectedCompute = SetupCompute;
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -276,7 +278,7 @@ export class ConnectionCommands implements Disposable {
                         // (they are @onError-decorated); swallow here only so a
                         // throw can't become an unhandled rejection or leave the
                         // picker open. `selected` stays undefined.
-                        NamedLogger.getOrCreate("Extension").error(
+                        NamedLogger.getOrCreate(Loggers.Extension).error(
                             "Compute picker selection failed",
                             e
                         );
