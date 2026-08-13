@@ -1039,6 +1039,24 @@ export async function activate(
         isVisible: () => pythonSetupEnvironment.isVisible(),
         getPersistedEnvKey: () =>
             stateStorage.get("databricks.pythonSetup.setupState")?.envKey,
+        // Cheap, synchronous compute identity (no CLI). A cluster's env key is
+        // derived from its Spark version, so include it: a runtime-state change
+        // (RUNNING -> TERMINATED) keeps the descriptor stable and is skipped,
+        // while a DBR edit changes it and re-checks. undefined means nothing
+        // comparable is attached (drift is then meaningless).
+        getComputeDescriptor: () => {
+            const cluster = connectionManager.cluster;
+            if (cluster) {
+                return `cluster:${cluster.id}:${cluster.sparkVersion}`;
+            }
+            if (connectionManager.serverless) {
+                const version = connectionManager.serverlessVersion;
+                return version === undefined
+                    ? undefined
+                    : `serverless:${version}`;
+            }
+            return undefined;
+        },
         resolveCurrentEnvKey: async (token) => {
             // activeProjectUri throws when no project is active; degrade to
             // "unknown" rather than letting it reject into the drift check.
@@ -1080,8 +1098,15 @@ export async function activate(
         connectionManager.onDidChangeCluster(() =>
             pythonSetupDrift.check("computeChange")
         ),
-        // Serverless selection / version changes flow through connection state.
+        // Serverless enable/disable and connection churn flow through state.
         connectionManager.onDidChangeState(() =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // Re-picking the serverless version while serverless is already selected
+        // fires neither onDidChangeCluster nor onDidChangeState -- it only writes
+        // the `serverlessVersion` config key -- so watch that key directly, or a
+        // v4 -> v2 switch would silently miss drift.
+        configModel.onDidChangeKey("serverlessVersion")(async () =>
             pythonSetupDrift.check("computeChange")
         ),
         // A completed setup updates the persisted state; re-evaluate so a

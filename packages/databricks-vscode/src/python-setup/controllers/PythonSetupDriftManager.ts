@@ -7,6 +7,17 @@ import {isDrifted} from "../utils/driftDetection";
 export interface PythonSetupDriftDeps {
     isVisible: () => Promise<boolean>;
     getPersistedEnvKey: () => string | undefined;
+    /**
+     * A cheap, synchronous descriptor of the currently selected compute's
+     * IDENTITY (e.g. `"cluster:<id>:<sparkVersion>"`, `"serverless:v5"`), or
+     * `undefined` when no comparable compute is attached (nothing selected, or
+     * serverless with no chosen version). Unlike {@link resolveCurrentEnvKey}
+     * this never spawns the CLI. It lets the manager (a) skip the dry-run when a
+     * compute-change trigger fires but the identity is unchanged -- a cluster
+     * runtime-state transition rather than a switch -- and (b) clear a stale
+     * drift flag when nothing comparable is attached.
+     */
+    getComputeDescriptor: () => string | undefined;
     resolveCurrentEnvKey: (
         token: CancellationLike
     ) => Promise<string | undefined>;
@@ -23,12 +34,16 @@ export interface PythonSetupDriftDeps {
  * progress UI, no prompt, no error surface), is gated by `isVisible` and the
  * presence of a persisted state, is debounced against rapid compute switches,
  * and treats any inability to resolve the current key as "unknown" -- never a
- * false alarm.
+ * false alarm. To avoid needless dry-runs it skips a compute-change check whose
+ * compute identity is unchanged (a runtime-state transition, not a switch), and
+ * it clears drift outright when no comparable compute is attached.
  */
 export class PythonSetupDriftManager implements Disposable {
     private _drifted = false;
     /** `${from}->${to}` of the last reported mismatch, to dedupe telemetry. */
     private lastReported: string | undefined;
+    /** Compute descriptor evaluated last, to skip no-op compute-change checks. */
+    private lastComputeDescriptor: string | undefined;
     private generation = 0;
     private debounceTimer: ReturnType<typeof setTimeout> | undefined;
     private inFlight: CancellationTokenSource | undefined;
@@ -86,6 +101,28 @@ export class PythonSetupDriftManager implements Disposable {
                 this.setDrifted(false);
                 return;
             }
+            const descriptor = this.deps.getComputeDescriptor();
+            // No comparable compute attached (detached, or serverless with no
+            // chosen version): drift is meaningless -- you cannot be drifted from
+            // nothing -- so clear any stale flag instead of leaving it set.
+            if (descriptor === undefined) {
+                this.lastComputeDescriptor = undefined;
+                this.setDrifted(false);
+                return;
+            }
+            // A compute-change trigger whose resolved identity is unchanged is a
+            // runtime-state transition (e.g. a cluster going RUNNING ->
+            // TERMINATED), not a compute switch. The environment key is derived
+            // from the identity, so it cannot have changed: skip the dry-run.
+            // workspaceOpen / setupCompleted always re-evaluate -- the first
+            // check must run, and a completed setup moves the persisted baseline.
+            if (
+                trigger === "computeChange" &&
+                descriptor === this.lastComputeDescriptor
+            ) {
+                return;
+            }
+            this.lastComputeDescriptor = descriptor;
             const current = await this.deps.resolveCurrentEnvKey(source.token);
 
             // A newer trigger started while we awaited: drop this stale result.

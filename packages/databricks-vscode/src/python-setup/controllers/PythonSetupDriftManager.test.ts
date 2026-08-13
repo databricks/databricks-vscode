@@ -8,18 +8,23 @@ import {
 function makeDeps(over: Partial<PythonSetupDriftDeps> = {}): {
     deps: PythonSetupDriftDeps;
     recorded: unknown[];
+    calls: {resolve: number};
 } {
     const recorded: unknown[] = [];
+    const calls = {resolve: 0};
     const deps: PythonSetupDriftDeps = {
         isVisible: async () => true,
         getPersistedEnvKey: () => "serverless/serverless-v4",
+        getComputeDescriptor: () => "cluster:c1",
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        resolveCurrentEnvKey: async (_token: CancellationLike) =>
-            "dbr/15.4.x-scala2.12",
+        resolveCurrentEnvKey: async (_token: CancellationLike) => {
+            calls.resolve++;
+            return "dbr/15.4.x-scala2.12";
+        },
         recordDrift: (r) => recorded.push(r),
         ...over,
     };
-    return {deps, recorded};
+    return {deps, recorded, calls};
 }
 
 describe("PythonSetupDriftManager", () => {
@@ -105,14 +110,46 @@ describe("PythonSetupDriftManager", () => {
         await m.evaluate("workspaceOpen"); // same mismatch, no new telemetry
         expect(recorded).to.have.length(1);
 
-        // Clears, then the same mismatch recurs -> reported again.
+        // Clears, then a mismatch recurs on a DIFFERENT compute -> reported
+        // again (a different descriptor is required, since a compute-change with
+        // the same identity is skipped as a no-op runtime-state transition).
         (deps as {resolveCurrentEnvKey: unknown}).resolveCurrentEnvKey =
             async () => "serverless/serverless-v4";
         await m.evaluate("setupCompleted");
+        (deps as {getComputeDescriptor: unknown}).getComputeDescriptor = () =>
+            "cluster:c2";
         (deps as {resolveCurrentEnvKey: unknown}).resolveCurrentEnvKey =
             async () => "dbr/15.4.x-scala2.12";
         await m.evaluate("computeChange");
         expect(recorded).to.have.length(2);
+        m.dispose();
+    });
+
+    it("skips the dry-run when a compute-change leaves the identity unchanged", async () => {
+        // Same descriptor across two compute-change triggers models a cluster
+        // runtime-state transition (RUNNING -> TERMINATED): the env key cannot
+        // have changed, so the CLI dry-run must not run a second time.
+        const {deps, calls} = makeDeps();
+        const m = new PythonSetupDriftManager(deps);
+        await m.evaluate("computeChange");
+        expect(calls.resolve).to.equal(1);
+        await m.evaluate("computeChange");
+        expect(calls.resolve).to.equal(1);
+        m.dispose();
+    });
+
+    it("clears drift when no comparable compute is attached", async () => {
+        // Start drifted, then compute is detached: drift is meaningless, so the
+        // stale flag must clear rather than linger.
+        const {deps} = makeDeps();
+        const m = new PythonSetupDriftManager(deps);
+        await m.evaluate("computeChange");
+        expect(m.drifted).to.be.true;
+
+        (deps as {getComputeDescriptor: unknown}).getComputeDescriptor = () =>
+            undefined;
+        await m.evaluate("computeChange");
+        expect(m.drifted).to.be.false;
         m.dispose();
     });
 
