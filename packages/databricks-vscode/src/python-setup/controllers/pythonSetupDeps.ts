@@ -5,6 +5,8 @@ import {PackageManagerDetection} from "../../language/packageManagerDetection";
 import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
+import {openExternal} from "../../utils/urlUtils";
+import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
@@ -208,7 +210,11 @@ export function makePythonSetupDeps(
             // revealing the (empty) output channel.
             await window.showWarningMessage(message);
         },
-        showError: async (message: string, detail?: string) => {
+        showError: async (
+            message: string,
+            detail?: string,
+            action?: PythonSetupErrorAction
+        ) => {
             // The mapped one-liner is deliberately concise and drops the CLI's
             // own explanation; write that detail into the channel so the log the
             // popup points at actually contains it (under `--output json` the CLI
@@ -221,9 +227,14 @@ export function makePythonSetupDeps(
             // notification (with its jump-to-logs button) as before.
             wiring.log.show();
             const showLogs = "Show Logs";
-            const picked = await window.showErrorMessage(message, showLogs);
+            // Lead with the remediation button (e.g. "Install uv") when one is
+            // attached, so the action the user most likely wants comes first.
+            const actions = action ? [action.label, showLogs] : [showLogs];
+            const picked = await window.showErrorMessage(message, ...actions);
             if (picked === showLogs) {
                 wiring.log.show();
+            } else if (action && picked === action.label) {
+                await openExternal(action.url);
             }
         },
         showSuccess: async (result) => {

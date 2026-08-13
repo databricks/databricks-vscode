@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {Uri, window} from "vscode";
+import {env, Uri, window} from "vscode";
 import {
     makePythonSetupDeps,
     makePythonSetupVisibility,
@@ -519,6 +519,64 @@ describe("makePythonSetupDeps showError", () => {
 
         expect(appended).to.have.length(0);
         expect(shownWith[0].actions).to.contain("Show Logs");
+    });
+
+    it("offers the given action button and opens its URL when picked", async () => {
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", {
+                label: "Install uv",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            expect(shownWith[0].actions).to.contain("Install uv");
+            expect(shownWith[0].actions).to.contain("Show Logs");
+            expect(opened).to.deep.equal([
+                "https://docs.astral.sh/uv/getting-started/installation/",
+            ]);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("does not open the URL when the action button is not picked", async () => {
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Show Logs";
+
+            await deps.showError("uv missing", "detail", {
+                label: "Install uv",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            expect(opened).to.have.length(0);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
     });
 });
 

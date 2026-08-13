@@ -14,6 +14,10 @@ import {
     SUCCESS_REAL_RUN_WITH_WARNINGS,
     ERROR_NO_TARGET,
 } from "../models/fixtures/setupLocalResults";
+import {
+    PythonSetupErrorAction,
+    UV_INSTALL_DOCS_URL,
+} from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     PythonSetupAttempt,
@@ -331,6 +335,63 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         // phase/code, so the "Show Logs" button leads somewhere useful.
         expect(shown[0].detail).to.contain("No compute target is selected");
         expect(shown[0].detail).to.contain("E_NO_TARGET");
+    });
+
+    it("offers an Install uv action when the CLI reports uv is missing", async () => {
+        const shown: {
+            message: string;
+            action?: PythonSetupErrorAction;
+        }[] = [];
+        const uvMissing: PythonSetupResult = {
+            schemaVersion: 1,
+            command: "environments setup-local",
+            ok: false,
+            mode: "default",
+            dryRun: false,
+            greenfield: false,
+            phases: [],
+            warnings: [],
+            durationMs: 0,
+            error: {
+                code: "E_UV_MISSING",
+                failurePhase: "preflight",
+                message: "uv not found on PATH",
+                diskMutated: false,
+            },
+        };
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: uvMissing}),
+                showError: async (message, _detail, action) => {
+                    shown.push({message, action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].action).to.deep.equal({
+            label: "Install uv",
+            url: UV_INSTALL_DOCS_URL,
+        });
+    });
+
+    it("passes no remediation action for failures other than uv-missing", async () => {
+        const shown: {action?: PythonSetupErrorAction}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_NO_TARGET}),
+                showError: async (_message, _detail, action) => {
+                    shown.push({action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].action).to.equal(undefined);
     });
 
     it("surfaces the raw error message when the CLI run rejects", async () => {
