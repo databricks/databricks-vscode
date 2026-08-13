@@ -53,6 +53,13 @@ export interface PythonSetupOutcomeReport {
     envKey?: string;
     diskMutated?: boolean;
     /**
+     * Blocked package index vs. a genuine dependency conflict — both arrive as
+     * `E_PROVISION`, so this splits them to gauge how often proxies bite. Set on
+     * every CLI setup failure (`false` is meaningful — the rate's denominator);
+     * omitted with no CLI result and on post-CLI adopt/persist failures.
+     */
+    indexUnreachable?: boolean;
+    /**
      * The CLI's merge-phase warnings, verbatim from the result. Present whenever
      * the CLI produced a result (so `[]` reads as "a run happened with no
      * warnings"); absent when no result exists (cancelled / not_started /
@@ -251,6 +258,9 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
                 : {}),
             ...(report.diskMutated !== undefined
                 ? {diskMutated: report.diskMutated}
+                : {}),
+            ...(report.indexUnreachable !== undefined
+                ? {indexUnreachable: report.indexUnreachable}
                 : {}),
             // A present `warnings` array means the CLI produced a result, so the
             // count is meaningful even at 0 (a clean merge) -- unlike the omitted

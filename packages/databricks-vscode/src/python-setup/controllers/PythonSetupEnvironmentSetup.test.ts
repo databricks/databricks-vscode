@@ -872,9 +872,43 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 errorCode: ERROR_NO_TARGET.error!.code,
                 envKey: ERROR_NO_TARGET.compute?.envKey,
                 diskMutated: ERROR_NO_TARGET.error!.diskMutated,
+                // E_NO_TARGET is not one of the package-fetching phases.
+                indexUnreachable: false,
                 warnings: ERROR_NO_TARGET.warnings,
             },
         ]);
+    });
+
+    it("flags indexUnreachable when uv cannot reach the package index", async () => {
+        const telemetry = makeTelemetryRecorder();
+        // A provision failure whose message is uv's connection-refused signature
+        // (blocked pypi.org needing a proxy), not a dependency conflict.
+        const blockedIndex: PythonSetupResult = {
+            ...ERROR_NO_TARGET,
+            phases: [
+                {phase: "preflight", status: "ok"},
+                {phase: "resolve", status: "ok"},
+                {phase: "fetch", status: "ok"},
+                {phase: "merge", status: "ok"},
+                {phase: "provision", status: "error"},
+                {phase: "validate", status: "pending"},
+            ],
+            error: {
+                code: "E_PROVISION",
+                failurePhase: "provision",
+                message:
+                    "error: Failed to fetch: `https://pypi.org/simple/ipykernel/`\n" +
+                    "  Caused by: tcp connect error: Connection refused (os error 61)",
+                diskMutated: false,
+            },
+        };
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({...telemetry, cli: makeCli({resolve: blockedIndex})})
+        );
+
+        await setup.setup();
+
+        expect(telemetry.results[0].indexUnreachable).to.equal(true);
     });
 
     it('reports the synthetic "adopt" phase when interpreter adoption fails', async () => {
