@@ -54,7 +54,7 @@ describe("buildPythonSetupEntry", () => {
         );
         expect((item.iconPath as ThemeIcon).id).to.equal("warning");
         expect(item.command?.command).to.equal(RERUN);
-        expect(String(item.label)).to.match(/drifted/i);
+        expect(String(item.label)).to.match(/out of sync/i);
     });
 
     it("drift takes precedence over the ready session flag", () => {

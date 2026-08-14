@@ -1,12 +1,7 @@
 /**
- * Decide whether the local environment has drifted from the selected compute.
- *
- * Drift means we know both the environment key we last provisioned against
- * (`persistedEnvKey`, from `databricks.pythonSetup.setupState`) and the key the
- * currently selected compute would resolve to (`currentEnvKey`), and they
- * differ. Anything unknown — no prior setup, or a compute whose key could not be
- * resolved — is deliberately NOT drift: absence of a clear signal must never
- * raise a false alarm (see the design's fail-safe rule).
+ * Whether the local environment has drifted: both the last-provisioned key
+ * (`persistedEnvKey`) and the selected compute's key (`currentEnvKey`) are known
+ * and differ. Anything unknown is deliberately NOT drift — never a false alarm.
  */
 export function isDrifted(
     persistedEnvKey: string | undefined,

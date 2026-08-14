@@ -1019,31 +1019,27 @@ export async function activate(
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
         ),
-        // Re-run affordance shared by the "Python environment ready" row and the
-        // drifted row. Delegates to the same setup handler (re-entrancy-guarded);
-        // a distinct command id lets the menu show a "Re-run Python setup" title
-        // and gives re-runs their own COMMAND_EXECUTION telemetry.
+        // Re-run affordance shared by the ready and out-of-sync rows. Delegates
+        // to the same (re-entrancy-guarded) setup handler; a distinct command id
+        // gives the menu a "Re-run Python setup" title and its own telemetry.
         telemetry.registerCommand(
             "databricks.environment.rerunPythonEnv",
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
         )
     );
-    // Drives the config-view row's "out of date" state: on compute/open/setup
+    // Drives the config-view row's out-of-sync state: on compute/open/setup
     // triggers it silently resolves the selected compute's env key via a CLI
-    // dry-run and compares it against the last successful setup's key. Every
-    // resolution path is fail-safe (returns undefined => "unknown", no drift) and
-    // never surfaces UI.
+    // dry-run and compares it against the last setup's. Fail-safe throughout
+    // (undefined => "unknown", no drift) and never surfaces UI.
     const pythonSetupDrift = new PythonSetupDriftManager({
-        // Reuse the exact feature+greenfield gate the row is shown under.
+        // Reuse the exact gate the row is shown under.
         isVisible: () => pythonSetupEnvironment.isVisible(),
         getPersistedEnvKey: () =>
             stateStorage.get("databricks.pythonSetup.setupState")?.envKey,
-        // Cheap, synchronous compute identity (no CLI). A cluster's env key is
-        // derived from its Spark version, so include it: a runtime-state change
-        // (RUNNING -> TERMINATED) keeps the descriptor stable and is skipped,
-        // while a DBR edit changes it and re-checks. undefined means nothing
-        // comparable is attached (drift is then meaningless).
+        // Cheap, synchronous compute identity (no CLI). A cluster's Spark version
+        // is included so a DBR edit re-checks while a runtime-state change
+        // (RUNNING -> TERMINATED) is skipped. undefined => nothing comparable.
         getComputeDescriptor: () => {
             const cluster = connectionManager.cluster;
             if (cluster) {
@@ -1059,7 +1055,7 @@ export async function activate(
         },
         resolveCurrentEnvKey: async (token) => {
             // activeProjectUri throws when no project is active; degrade to
-            // "unknown" rather than letting it reject into the drift check.
+            // "unknown" instead of rejecting into the drift check.
             let root: string | undefined;
             try {
                 root = workspaceFolderManager.activeProjectUri.fsPath;
@@ -1102,24 +1098,22 @@ export async function activate(
         connectionManager.onDidChangeState(() =>
             pythonSetupDrift.check("computeChange")
         ),
-        // Re-picking the serverless version while serverless is already selected
-        // fires neither onDidChangeCluster nor onDidChangeState -- it only writes
-        // the `serverlessVersion` config key -- so watch that key directly, or a
+        // Re-picking the serverless version fires neither event above — it only
+        // writes the `serverlessVersion` key — so watch it directly, or a
         // v4 -> v2 switch would silently miss drift.
         configModel.onDidChangeKey("serverlessVersion")(async () =>
             pythonSetupDrift.check("computeChange")
         ),
-        // A completed setup updates the persisted state; re-evaluate so a
-        // successful re-run clears the badge promptly.
+        // A completed setup moves the persisted baseline; re-evaluate to clear
+        // the badge promptly after a successful re-run.
         pythonSetupEnvironment.onDidChangeState(() =>
             pythonSetupDrift.check("setupCompleted")
         )
     );
-    // The "workspace open" trigger: evaluate once now that everything is wired.
+    // Evaluate once now that everything is wired.
     pythonSetupDrift.check("workspaceOpen");
 
-    // The config-view entry combines the setup controller's readiness with the
-    // drift manager's `drifted` signal.
+    // Combine the setup controller's readiness with the drift signal.
     const pythonSetupEntry = composePythonSetupEntry(
         pythonSetupEnvironment,
         pythonSetupDrift

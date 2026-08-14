@@ -286,13 +286,10 @@ Telemetry.prototype.recordPythonSetupDrift = function (
 ): void {
     this.recordEvent(Events.PYTHON_ENV_DRIFT, {
         trigger: report.trigger,
-        // Both keys are copied from CLI/persisted JSON; constrain them to the
-        // closed envKey vocabulary so an unexpected runtime string (or a cluster
-        // id that slipped in) collapses to "other" rather than leaking
-        // high-cardinality / identifying content.
-        // categoricalEnvKey only returns undefined for an undefined input; both
-        // fields are required non-null strings, so the results are always
-        // defined (asserted here to satisfy the string-typed schema).
+        // Constrain both keys to the closed envKey vocabulary so an unexpected
+        // string can't leak high-cardinality / identifying content. The `!` is
+        // safe: categoricalEnvKey only returns undefined for undefined input, and
+        // both fields are required strings.
         fromEnvKey: categoricalEnvKey(report.fromEnvKey)!,
         toEnvKey: categoricalEnvKey(report.toEnvKey)!,
     });
