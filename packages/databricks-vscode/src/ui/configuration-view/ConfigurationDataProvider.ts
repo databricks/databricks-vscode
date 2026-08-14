@@ -10,6 +10,7 @@ import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
+import {stampCopyKind} from "./copyActions";
 import {BundleTargetComponent} from "./BundleTargetComponent";
 import {AuthTypeComponent} from "./AuthTypeComponent";
 import {ClusterComponent} from "./ClusterComponent";
@@ -104,6 +105,7 @@ export class ConfigurationDataProvider
     }
 
     getTreeItem(element: ConfigurationTreeItem): TreeItem | Thenable<TreeItem> {
+        stampCopyKind(element);
         return element;
     }
 
