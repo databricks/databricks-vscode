@@ -1,12 +1,18 @@
 import * as assert from "assert";
-import {Uri} from "vscode";
+import {CancellationTokenSource, commands, Uri, window} from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
-import {writeFile, readFile} from "node:fs/promises";
+import {writeFile, readFile, mkdtemp, rm} from "node:fs/promises";
 import {when, spy, reset, instance, mock} from "ts-mockito";
-import {CliWrapper, getSshConnectCommand, waitForProcess} from "./CliWrapper";
+import {
+    cancellableExecFile,
+    CliWrapper,
+    ProcessError,
+    getSshConnectCommand,
+    waitForProcess,
+} from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
@@ -56,6 +62,44 @@ describe(__filename, function () {
     it("should embed a working databricks CLI", async () => {
         const result = await execFile(cliPath, ["--help"]);
         assert.ok(result.stdout.indexOf("databricks") > 0);
+    });
+
+    it("aitoolsList returns parsed JSON from the bundled CLI", async () => {
+        const cli = createCliWrapper();
+        const tmpDir = await mkdtemp(path.join(os.tmpdir(), "aitools-cli-"));
+        try {
+            const result = await cli.aitoolsList(tmpDir);
+            // The bundled CLI reports the release and the full skill catalog,
+            // each with a latest_version and an installed map, even when nothing
+            // is installed in the (empty) temp dir.
+            assert.ok(typeof result.release === "string", "expected release");
+            assert.ok(Array.isArray(result.skills), "expected skills");
+            assert.ok(result.skills.length > 0, "expected non-empty skills");
+            const skill = result.skills[0];
+            assert.ok(typeof skill.name === "string", "expected skill name");
+            assert.ok(
+                typeof skill.latest_version === "string",
+                "expected skill latest version"
+            );
+            assert.ok(
+                typeof skill.installed === "object",
+                "expected skill installed object"
+            );
+
+            // It also reports the coding agents it knows about, each with a
+            // display name and detection/management flags; the agent picker
+            // relies on these fields.
+            assert.ok(Array.isArray(result.agents));
+            assert.ok(result.agents.length > 0);
+            const agent = result.agents[0];
+            assert.ok(typeof agent.name === "string");
+            assert.ok(typeof agent.display_name === "string");
+            assert.ok(typeof agent.managed === "boolean");
+            assert.ok(typeof agent.detected === "boolean");
+            assert.ok(typeof agent.installed === "object");
+        } finally {
+            await rm(tmpDir, {recursive: true, force: true});
+        }
     });
 
     it("should resolve the platform-specific CLI binary name", () => {
@@ -402,6 +446,51 @@ token = dapitest5678
     });
 });
 
+describe("cancellableExecFile closeStdin", () => {
+    // `cat` with no args reads stdin until EOF. Without closeStdin the child's
+    // stdin pipe stays open forever and the call hangs; closeStdin sends EOF so
+    // it completes. This mirrors why `aitools update` hung on launch when it
+    // prompted for confirmation.
+    it("completes a stdin-reading process when closeStdin is set", async () => {
+        const {stdout} = await cancellableExecFile("cat", [], {}, undefined, {
+            closeStdin: true,
+        });
+        assert.strictEqual(stdout, "");
+    });
+
+    it("hangs on a stdin-reading process without closeStdin", async () => {
+        // Drive the process through a cancellation token so we can kill the
+        // lingering `cat` (which would otherwise read stdin forever) once
+        // we've confirmed it hasn't completed on its own.
+        const tokenSource = new CancellationTokenSource();
+        const execPromise = cancellableExecFile(
+            "cat",
+            [],
+            {},
+            tokenSource.token
+        );
+        // Swallow the abort rejection so it doesn't surface as an unhandled
+        // rejection after the test finishes.
+        const settled = execPromise.then(
+            () => "completed",
+            () => "aborted"
+        );
+        try {
+            const raced = await Promise.race([
+                settled,
+                new Promise((resolve) =>
+                    setTimeout(() => resolve("timed-out"), 500)
+                ),
+            ]);
+            assert.strictEqual(raced, "timed-out");
+        } finally {
+            tokenSource.cancel();
+            tokenSource.dispose();
+            await settled;
+        }
+    });
+});
+
 describe("waitForProcess", () => {
     it("should return correctly formatted stdout and stderr", async () => {
         const process = new ChildProcess();
@@ -424,5 +513,64 @@ describe("waitForProcess", () => {
         const {stdout, stderr} = await waitPromise;
         assert.equal(stdout, `{"hello": "world"}`);
         assert.equal(stderr, `{"error": "nooo"}`);
+    });
+});
+
+describe("ProcessError.showErrorMessage", () => {
+    let originalShowError: typeof window.showErrorMessage;
+    let originalExecuteCommand: typeof commands.executeCommand;
+    let executed: string[];
+
+    beforeEach(() => {
+        executed = [];
+        originalShowError = window.showErrorMessage;
+        // Resolve as if the user clicked the primary action button (the last
+        // vararg), so both the "Show Logs" and "Assign Values" branches fire.
+        (window as any).showErrorMessage = async (
+            _message: string,
+            ...items: string[]
+        ) => items[items.length - 1];
+        originalExecuteCommand = commands.executeCommand;
+        (commands as any).executeCommand = (command: string) => {
+            executed.push(command);
+        };
+    });
+
+    afterEach(() => {
+        (window as any).showErrorMessage = originalShowError;
+        (commands as any).executeCommand = originalExecuteCommand;
+    });
+
+    // `showErrorMessage` handles the toast promise with `.then` (fire and
+    // forget), so a microtask tick is needed before the executeCommand runs.
+    async function flush() {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    it("opens the bundle logs channel by default", async () => {
+        new ProcessError("boom", 1).showErrorMessage("Prefix.");
+        await flush();
+        assert.deepStrictEqual(executed, ["databricks.bundle.showLogs"]);
+    });
+
+    it("opens the given logs channel when one is passed", async () => {
+        new ProcessError("boom", 1).showErrorMessage(
+            "Prefix.",
+            "databricks.internal.showOutput"
+        );
+        await flush();
+        assert.deepStrictEqual(executed, ["databricks.internal.showOutput"]);
+    });
+
+    it("ignores the logsCommand for the missing-variable path", async () => {
+        // The "no value assigned to required variable" branch has its own
+        // fixed set of commands and never consults logsCommand.
+        new ProcessError(
+            "no value assigned to required variable foo",
+            1
+        ).showErrorMessage("Prefix.", "databricks.internal.showOutput");
+        await flush();
+        assert.ok(!executed.includes("databricks.internal.showOutput"));
+        assert.ok(executed.includes("databricks.bundle.showLogs"));
     });
 });

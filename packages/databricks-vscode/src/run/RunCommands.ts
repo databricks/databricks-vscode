@@ -7,8 +7,8 @@ import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
 import {FeatureManager, FeatureState} from "../feature-manager/FeatureManager";
 import {
-    escapeExecutableForTerminal,
-    escapePathArgument,
+    escapeExecutableForUnknownShell,
+    escapePathArgumentForUnknownShell,
 } from "../utils/shellUtils";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
@@ -244,10 +244,15 @@ export class RunCommands {
             path.join("resources", "python", "dbconnect-bootstrap.py")
         );
         terminal.show();
+        // This reuses whatever terminal is focused, so we can't know which shell
+        // will parse the line — hence the unknown-shell quoting rather than the
+        // per-dialect helpers used where we create the terminal ourselves.
         terminal.sendText(
-            `${escapeExecutableForTerminal(executable)} ${escapePathArgument(
+            `${escapeExecutableForUnknownShell(
+                executable
+            )} ${escapePathArgumentForUnknownShell(
                 bootstrapPath
-            )} ${escapePathArgument(targetResource.fsPath)}`
+            )} ${escapePathArgumentForUnknownShell(targetResource.fsPath)}`
         );
 
         this.telemetry.recordEvent(Events.DBCONNECT_RUN, {

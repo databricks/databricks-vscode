@@ -5,6 +5,7 @@ import {
     DEV_APP_INSIGHTS_CONFIGURATION_KEY,
     EventProperties,
     EventTypes,
+    ExtensionMode,
     ExtraMetadata,
     Metadata,
     MetadataTypes,
@@ -81,9 +82,12 @@ export async function toUserMetadata(
     return {...dbWorkspaceMetadata, ...authType};
 }
 
-export function getContextMetadata(): ExtraMetadata[Metadata.CONTEXT] {
+export function getContextMetadata(
+    mode?: ExtensionMode
+): ExtraMetadata[Metadata.CONTEXT] {
     return {
         environmentType: isIntegrationTest() ? "tests" : "prod",
+        ...(mode ? {mode} : {}),
     };
 }
 

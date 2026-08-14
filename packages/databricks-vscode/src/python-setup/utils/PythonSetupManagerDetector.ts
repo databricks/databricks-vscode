@@ -28,13 +28,19 @@ export class PythonSetupManagerDetector {
 
     async detect(
         projectRoot: string
-    ): Promise<Pick<PackageManagerDetection, "primary" | "managers">> {
+    ): Promise<
+        Pick<PackageManagerDetection, "primary" | "managers" | "signals">
+    > {
         try {
-            const signals = await this.collect(projectRoot);
-            const {primary, managers} = detectPackageManagers(signals);
-            return {primary, managers};
+            const collected = await this.collect(projectRoot);
+            const {primary, managers, signals} =
+                detectPackageManagers(collected);
+            // `signals` is forwarded because the gate distinguishes a real pip
+            // workflow from a merely packaging-shaped pyproject.toml, which the
+            // manager list alone cannot express (both read as "pip").
+            return {primary, managers, signals};
         } catch {
-            return {primary: "unknown", managers: []};
+            return {primary: "unknown", managers: [], signals: []};
         }
     }
 }

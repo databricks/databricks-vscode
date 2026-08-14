@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.12.4",
+    "version": "2.13.1",
     "engines": {
         "vscode": "^1.86.0",
         "node": ">=22.0"
@@ -97,6 +97,48 @@
                 "category": "Databricks",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "icon": "$(debug-disconnect)"
+            },
+            {
+                "command": "databricks.aitools.install",
+                "title": "Install AI tools",
+                "category": "Databricks",
+                "icon": "$(cloud-download)"
+            },
+            {
+                "command": "databricks.aitools.checkForUpdates",
+                "title": "Check for AI tools updates",
+                "category": "Databricks",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.aitools.reload",
+                "title": "Reload AI tools",
+                "category": "Databricks",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.aitools.update",
+                "title": "Update AI tools",
+                "category": "Databricks",
+                "icon": "$(arrow-circle-up)"
+            },
+            {
+                "command": "databricks.aitools.uninstall",
+                "title": "Uninstall AI tools",
+                "category": "Databricks",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "databricks.aitools.addCursorPlugin",
+                "title": "Add Databricks plugin to Cursor",
+                "category": "Databricks",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.aitools.installAgent",
+                "title": "Install AI tools for this agent",
+                "category": "Databricks",
+                "icon": "$(cloud-download)"
             },
             {
                 "command": "databricks.cluster.filterByAll",
@@ -448,6 +490,90 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.configuration.copyPath",
+                "title": "Copy Path",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyTarget",
+                "title": "Copy Target",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyHost",
+                "title": "Copy Host",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyMode",
+                "title": "Copy Mode",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyAuthType",
+                "title": "Copy Auth Type",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyClusterName",
+                "title": "Copy Cluster Name",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyClusterId",
+                "title": "Copy Cluster ID",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyRuntime",
+                "title": "Copy Runtime",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyCreator",
+                "title": "Copy Creator",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyState",
+                "title": "Copy State",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyAccessMode",
+                "title": "Copy Access Mode",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copySyncState",
+                "title": "Copy Sync State",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyScope",
+                "title": "Copy Scope",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyVersion",
+                "title": "Copy Version",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.environment.refresh",
                 "title": "Refresh python environment status",
                 "icon": "$(refresh)",
@@ -465,6 +591,13 @@
                 "command": "databricks.environment.setupPythonEnv",
                 "title": "Set up Python environment (uv)",
                 "icon": "$(rocket)",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.rerunPythonEnv",
+                "title": "Re-run Python setup",
+                "icon": "$(sync)",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
                 "category": "Databricks"
             },
@@ -1010,6 +1143,21 @@
                     "group": "navigation@0"
                 },
                 {
+                    "command": "databricks.aitools.addCursorPlugin",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.aitools.(installed|upToDate|updateAvailable|checking|updating|error)$/ && databricks.context.aitools.showCursorPlugin",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.aitools.uninstall",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.aitools.(installed|upToDate|updateAvailable|checking|updating|error)$/",
+                    "group": "navigation@9"
+                },
+                {
+                    "command": "databricks.aitools.installAgent",
+                    "when": "view == configurationView && viewItem == databricks.configuration.aitools.agent.notInstalled",
+                    "group": "inline@0"
+                },
+                {
                     "command": "databricks.bundle.deployAndRunJob",
                     "when": "view == dabsResourceExplorerView && viewItem =~ /^databricks.bundle.resource=jobs.runnable.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@0"
@@ -1066,7 +1214,77 @@
                 },
                 {
                     "command": "databricks.utils.copy",
-                    "when": "view == dabsResourceExplorerView || view == configurationView",
+                    "when": "view == dabsResourceExplorerView",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyPath",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=path$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyTarget",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=target$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyHost",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=host$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyMode",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=mode$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyAuthType",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=authType$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterName",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=clusterName$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterId",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=clusterId$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyRuntime",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=runtime$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyCreator",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=creator$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyState",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=state$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyAccessMode",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=accessMode$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copySyncState",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=syncState$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyScope",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=scope$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyVersion",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=version$/",
                     "group": "navigation_2@0"
                 },
                 {
@@ -1092,6 +1310,18 @@
                     "when": "view == configurationView && viewItem =~ /^databricks.environment.checkPythonEnvironment.success$/",
                     "group": "navigation@0",
                     "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.environment.rerunPythonEnv",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.(success|drifted)$/",
+                    "group": "inline@0",
+                    "icon": "$(sync)"
+                },
+                {
+                    "command": "databricks.environment.rerunPythonEnv",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.(success|drifted)$/",
+                    "group": "navigation@0",
+                    "icon": "$(sync)"
                 },
                 {
                     "command": "databricks.environment.reinstallDBConnect",
@@ -1162,7 +1392,95 @@
             ],
             "commandPalette": [
                 {
+                    "command": "databricks.configuration.copyPath",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyTarget",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyHost",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyMode",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyAuthType",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterName",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterId",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyRuntime",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyCreator",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyState",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyAccessMode",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copySyncState",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyScope",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyVersion",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.aitools.addCursorPlugin",
+                    "when": "databricks.context.aitools.showCursorPlugin && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.install",
+                    "when": "!databricks.context.aitools.installed && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.uninstall",
+                    "when": "databricks.context.aitools.installed && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.update",
+                    "when": "databricks.context.aitools.installed && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.checkForUpdates",
+                    "when": "databricks.context.aitools.installed && !databricks.context.remoteMode"
+                },
+                {
+                    "command": "databricks.aitools.reload",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.aitools.installAgent",
+                    "when": "false"
+                },
+                {
                     "command": "databricks.environment.setupPythonEnv",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.environment.rerunPythonEnv",
                     "when": "false"
                 },
                 {
@@ -1536,7 +1854,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.11.0"
+        "version": "1.12.1"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",

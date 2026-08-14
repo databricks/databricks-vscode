@@ -1,5 +1,10 @@
 import {expect} from "chai";
-import {getPythonSetupErrorMessage} from "./errorMessages";
+import {
+    formatSetupFailureDetail,
+    getPythonSetupErrorAction,
+    getPythonSetupErrorMessage,
+    UV_INSTALL_DOCS_URL,
+} from "./errorMessages";
 import {
     PythonSetupResult,
     PythonSetupErrorCode,
@@ -199,5 +204,77 @@ describe("getPythonSetupErrorMessage", () => {
 
         const usage = getPythonSetupErrorMessage(ERROR_USAGE);
         expect(usage).to.be.a("string").and.not.be.empty;
+    });
+});
+
+describe("getPythonSetupErrorAction", () => {
+    it("offers an Install uv action pointing at the uv docs for E_UV_MISSING", () => {
+        const action = getPythonSetupErrorAction(
+            failure("E_UV_MISSING", {failurePhase: "preflight"})
+        );
+        expect(action).to.deep.equal({
+            label: "Install uv",
+            url: UV_INSTALL_DOCS_URL,
+        });
+    });
+
+    it("offers no action for error codes other than E_UV_MISSING", () => {
+        expect(getPythonSetupErrorAction(failure("E_PROVISION"))).to.equal(
+            undefined
+        );
+    });
+
+    it("offers no action when the result carries no error", () => {
+        const ok = failure("E_UV_MISSING");
+        ok.error = null;
+        expect(getPythonSetupErrorAction(ok)).to.equal(undefined);
+    });
+});
+
+describe("formatSetupFailureDetail", () => {
+    it("names the failing phase and error code", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {failurePhase: "provision"})
+        );
+        expect(detail).to.contain("provision");
+        expect(detail).to.contain("E_PROVISION");
+    });
+
+    it("includes the raw CLI message (the detail the friendly copy drops)", () => {
+        // This is the whole point: the uv conflict text lives in error.message,
+        // which the mapped popup copy discards. It must reach the log channel.
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {
+                message:
+                    "x==1 depends on y<2, but the runtime requires y==2 (conflict)",
+            })
+        );
+        expect(detail).to.contain("x==1 depends on y<2");
+        expect(detail).to.contain("conflict");
+    });
+
+    it("lists the per-phase statuses so the break point is visible", () => {
+        const detail = formatSetupFailureDetail(
+            failure(
+                "E_PROVISION",
+                {failurePhase: "provision"},
+                {
+                    phases: [
+                        {phase: "preflight", status: "ok"},
+                        {phase: "resolve", status: "ok"},
+                        {phase: "provision", status: "error"},
+                    ],
+                }
+            )
+        );
+        expect(detail).to.contain("preflight");
+        expect(detail).to.contain("resolve");
+        expect(detail).to.match(/provision.*error/);
+    });
+
+    it("returns undefined when the result carries no error (nothing to log)", () => {
+        const ok = failure("E_PROVISION");
+        ok.error = null;
+        expect(formatSetupFailureDetail(ok)).to.equal(undefined);
     });
 });

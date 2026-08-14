@@ -1,4 +1,6 @@
 import {Disposable, Event, EventEmitter} from "vscode";
+import {logging} from "@databricks/sdk-experimental";
+import {Loggers} from "../../logger";
 import {
     CancellationLike,
     PythonSetupCancelledError,
@@ -9,8 +11,11 @@ import {
     PythonSetupResult,
 } from "../models/PythonSetupResult";
 import {
+    formatSetupFailureDetail,
+    getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
     NO_COMPUTE_TARGET_MESSAGE,
+    PythonSetupErrorAction,
 } from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
@@ -18,6 +23,10 @@ import {
     PythonSetupResultReporter,
 } from "../../telemetry/pythonSetupExtensions";
 import {PrimaryManager} from "../../language/packageManagerDetection";
+import {
+    isUvSetupSuitable,
+    SuitabilityDetection,
+} from "../utils/pythonSetupGate";
 
 /**
  * The one method the orchestrator needs from {@link PythonSetupCliClient}, typed
@@ -31,6 +40,17 @@ export interface CliRunner {
 }
 
 export type SetupCompute = SetupLocalInvocation["compute"];
+
+/**
+ * What the compute seam resolved to. `cancelled` means the user was asked for a
+ * missing piece (a serverless version) and dismissed the prompt -- a user
+ * action, not a dead end, so it must stay silent and must not be counted as a
+ * no-compute click.
+ */
+export type ResolvedCompute =
+    | {status: "ok"; compute: SetupCompute}
+    | {status: "none"}
+    | {status: "cancelled"};
 
 /** Persisted after a successful setup, for later drift detection. */
 export interface PythonSetupPersistedState {
@@ -82,13 +102,15 @@ export interface PythonSetupSetupDeps {
     isVisible: () => Promise<boolean>;
 
     /**
-     * The compute target to provision for, or `undefined` to abort silently
-     * (nothing selected). The extension resolves this from the attached
-     * compute: a cluster maps directly; a serverless session uses the version
-     * the compute picker persisted (`serverlessVersion`), so a serverless
-     * session with no chosen version yields `undefined`.
+     * The compute target to provision for. `none` means nothing is attached
+     * (the CTA is a dead end -- guide the user); `cancelled` means the user
+     * dismissed a prompt for a missing detail and the flow should stop quietly.
+     * The extension resolves this from the attached compute: a cluster maps
+     * directly, a serverless session uses the version the compute picker
+     * persisted (`serverlessVersion`), and a serverless session with no chosen
+     * version prompts for one.
      */
-    resolveCompute: () => Promise<SetupCompute | undefined>;
+    resolveCompute: () => Promise<ResolvedCompute>;
 
     /**
      * Point the MS Python extension at the provisioned venv interpreter for
@@ -102,13 +124,25 @@ export interface PythonSetupSetupDeps {
 
     /**
      * A plain user-facing notification for pre-flight guidance (e.g. no compute
-     * attached), where no CLI ran. Unlike {@link showError} it does not reveal
-     * the output channel — there is no log to show.
+     * attached), where no CLI ran. Unlike {@link showError} it offers no log
+     * affordance — there is no log to show.
      */
     notify: (message: string) => Promise<void>;
 
-    /** Shows the mapped, user-facing copy — not raw CLI text. */
-    showError: (message: string) => Promise<void>;
+    /**
+     * Shows the mapped, user-facing copy — not raw CLI text — with a "Show Logs"
+     * action that reveals the setup output channel. `detail`, when given, is
+     * written to that channel first (see `formatSetupFailureDetail`), so the
+     * button leads to the CLI's full explanation instead of an empty log.
+     * `action`, when given, adds one more button that opens an external URL —
+     * e.g. "Install uv" pointing at uv's install guide (see
+     * `getPythonSetupErrorAction`).
+     */
+    showError: (
+        message: string,
+        detail?: string,
+        action?: PythonSetupErrorAction
+    ) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
 
@@ -139,15 +173,20 @@ export interface PythonSetupSetupDeps {
     recordNoCompute: () => void;
 
     /**
-     * The project's detected package manager, for the attempt event. Reads the
-     * same detection the visibility gate runs; `undefined` when detection was
-     * unavailable, in which case the attempt reports `unknown`.
+     * The project's package-manager detection, for the attempt event. Reads the
+     * same detection the visibility gate runs — the whole result rather than
+     * just `primary`, because the greenfield signal needs the manager list and
+     * the fired signals to reuse the gate's own suitability predicate.
+     * `undefined` when detection was unavailable, in which case the attempt
+     * reports `unknown` and omits the greenfield flag.
      */
-    getPackageManager: () => Promise<PrimaryManager | undefined>;
+    getDetection: () => Promise<
+        (SuitabilityDetection & {primary: PrimaryManager}) | undefined
+    >;
 
     /**
-     * Whether the project has no `pyproject.toml` yet. Consulted only when the
-     * detected manager is uv/unknown — see {@link greenfieldSignal}.
+     * Whether the project has no `pyproject.toml` yet. Consulted only for a
+     * uv-suitable project — see {@link greenfieldSignal}.
      */
     hasPyprojectToml: (projectRoot: string) => Promise<boolean>;
 }
@@ -157,16 +196,21 @@ export interface PythonSetupSetupDeps {
  *
  * A missing `pyproject.toml` only means "greenfield" for a project that has no
  * competing manager: pip and conda users may never have one, so for them the
- * absence says nothing and reporting it would inflate the greenfield rate. The
- * signal is therefore emitted only for uv/unknown projects — which is exactly
- * the population the visibility gate admits.
+ * absence says nothing and reporting it would inflate the greenfield rate.
+ *
+ * The population is therefore exactly the one the visibility gate admits, by
+ * construction: both ask {@link isUvSetupSuitable}. Reusing the gate's predicate
+ * rather than re-deriving it from `primary` matters, because a packaging-shaped
+ * `pyproject.toml` is attributed to pip while still being a project we set up —
+ * keying off `primary` alone would blank this field for every freshly-initialised
+ * bundle project, i.e. the exact cohort worth measuring.
  */
 async function greenfieldSignal(
-    manager: PrimaryManager,
+    detection: SuitabilityDetection,
     projectRoot: string,
     hasPyprojectToml: (projectRoot: string) => Promise<boolean>
 ): Promise<boolean | undefined> {
-    if (manager !== "uv" && manager !== "unknown") {
+    if (!isUvSetupSuitable(detection)) {
         return undefined;
     }
     return !(await hasPyprojectToml(projectRoot));
@@ -221,7 +265,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
 
     setup(): Promise<void> {
         // Re-entrancy guard: coalesce concurrent callers onto the running run
-        // rather than spawning a second project-mutating CLI process.
+        // rather than spawning a second project-mutating CLI process. The guard
+        // releases when the run's *work* settles; the terminal notification is
+        // presented via {@link present} (fire-and-forget), so a toast left open
+        // never wedges the entry -- see that method.
         if (this.inFlight) {
             return this.inFlight;
         }
@@ -230,6 +277,29 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         });
         this.inFlight = run;
         return run;
+    }
+
+    /**
+     * Present a terminal user notification without blocking the run. The
+     * re-entrancy guard in {@link setup} must release when the mutating work
+     * (CLI run, interpreter adoption, state write) finishes -- NOT when the user
+     * dismisses the toast. `showError`/`showSuccess`/`notify` each await
+     * `window.show*Message`, which stays pending until the toast is acted on, so
+     * awaiting them inside the guarded run wedged the entry: every later click
+     * returned the still-pending promise until the window was reloaded.
+     * A rejection must not become an unhandled rejection or fail the (already
+     * finished) setup, but it is not silently discarded: `showSuccess`/
+     * `showError` do real work before the toast (reading the venv project name,
+     * formatting the log, writing the output channel), so a throw there is a
+     * genuine bug worth a debug-level trace.
+     */
+    private present(notification: Promise<void>): void {
+        void notification.catch((e) =>
+            logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                "Failed to present python-setup notification",
+                e
+            )
+        );
     }
 
     private async runSetup(): Promise<void> {
@@ -246,22 +316,29 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             return;
         }
 
-        const compute = await resolveCompute();
-        if (compute === undefined) {
+        const resolved = await resolveCompute();
+        if (resolved.status === "cancelled") {
+            // The user was asked for the missing serverless version and
+            // dismissed the prompt. That is a deliberate bail-out, not a dead
+            // end: stay silent (as with a cancelled run) and record nothing, so
+            // the no-compute metric keeps meaning "the CTA had nothing to do".
+            return;
+        }
+        if (resolved.status === "none") {
             // The entry is visible whenever the project fits (flag + uv shape),
             // independent of compute — so a user can click the CTA with no
-            // cluster attached or a serverless session without a chosen version.
-            // Tell them what to do instead of silently no-op'ing the button.
-            // Plain notify (not showError): no CLI ran, so there is no log to
-            // reveal.
+            // compute attached at all. Tell them what to do instead of silently
+            // no-op'ing the button. Plain notify (not showError): no CLI ran, so
+            // there is no log to reveal.
             try {
                 this.deps.recordNoCompute();
             } catch {
                 // Measurement must never break the flow it measures.
             }
-            await this.deps.notify(NO_COMPUTE_TARGET_MESSAGE);
+            this.present(this.deps.notify(NO_COMPUTE_TARGET_MESSAGE));
             return;
         }
+        const compute = resolved.compute;
 
         const invocation: SetupLocalInvocation = {
             mode: "default",
@@ -291,7 +368,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // result object exists, hence `not_started` rather than `failed`:
             // there is no phase or error code to attribute the break to.
             reportResult({outcome: "not_started"});
-            await this.deps.showError((e as Error).message);
+            this.present(this.deps.showError((e as Error).message));
             return;
         }
 
@@ -302,8 +379,15 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
                 diskMutated: result.error?.diskMutated,
+                warnings: result.warnings,
             });
-            await this.deps.showError(getPythonSetupErrorMessage(result));
+            this.present(
+                this.deps.showError(
+                    getPythonSetupErrorMessage(result),
+                    formatSetupFailureDetail(result),
+                    getPythonSetupErrorAction(result)
+                )
+            );
             return;
         }
 
@@ -323,8 +407,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 outcome: "failed",
                 failurePhase: "adopt",
                 envKey: result.compute.envKey,
+                warnings: result.warnings,
             });
-            await this.deps.showError((e as Error).message);
+            this.present(this.deps.showError((e as Error).message));
             return;
         }
 
@@ -345,16 +430,22 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
+                warnings: result.warnings,
             });
             throw e;
         }
 
-        // Reported before `showSuccess` on purpose: that awaits the user
-        // dismissing a toast, and folding think-time into `duration` would wreck
-        // the setup-time metric this event exists to measure.
-        reportResult({outcome: "ok", envKey: result.compute.envKey});
+        // Report before presenting success: `duration` should measure the
+        // setup work, not the time the toast sits on screen. `present` is
+        // fire-and-forget, so the run settles here and the re-entrancy guard
+        // releases regardless of whether the user dismisses the notification.
+        reportResult({
+            outcome: "ok",
+            envKey: result.compute.envKey,
+            warnings: result.warnings,
+        });
 
-        await this.deps.showSuccess(result);
+        this.present(this.deps.showSuccess(result));
     }
 
     /**
@@ -371,6 +462,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         projectRoot: string
     ): Promise<PythonSetupResultReporter> {
         const {compute} = invocation;
+        // An unavailable detection degrades to "no manager fired", which reads as
+        // a greenfield-suitable project -- the same reading the visibility gate
+        // gives it, so the two stay consistent even on the failure path.
+        let detection: SuitabilityDetection = {managers: [], signals: []};
         let packageManager: PrimaryManager = "unknown";
         let isGreenfield: boolean | undefined;
         // Two independent probes, so they get independent try blocks: a failing
@@ -379,13 +474,17 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // `unknown`). Either failing just narrows the attempt, never breaks the
         // user's setup run.
         try {
-            packageManager = (await this.deps.getPackageManager()) ?? "unknown";
+            const detected = await this.deps.getDetection();
+            if (detected !== undefined) {
+                detection = detected;
+                packageManager = detected.primary;
+            }
         } catch {
-            // Keep `unknown`.
+            // Keep `unknown` and the greenfield-suitable default.
         }
         try {
             isGreenfield = await greenfieldSignal(
-                packageManager,
+                detection,
                 projectRoot,
                 this.deps.hasPyprojectToml
             );
@@ -400,6 +499,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                     compute.kind === "serverless" ? compute.version : undefined,
                 mode: invocation.mode,
                 isGreenfield,
+                // A run against a project already marked ready this session is a
+                // re-run (the ready row's Re-run button / row click); anything
+                // else is the first setup. Derived from state, not the command,
+                // so every entry point labels the same event correctly.
+                trigger: this.readyRoots.has(projectRoot) ? "rerun" : "initial",
             });
             return (report) => {
                 try {

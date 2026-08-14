@@ -25,6 +25,25 @@ import {
 export const NO_COMPUTE_TARGET_MESSAGE =
     "Select a cluster or serverless compute before setting up the environment.";
 
+/**
+ * uv's official installation guide. Single-sourced here so the popup action and
+ * its test point at the same page; the extension deliberately links to the docs
+ * (which pick the right installer per platform) rather than running an installer
+ * itself.
+ */
+export const UV_INSTALL_DOCS_URL =
+    "https://docs.astral.sh/uv/getting-started/installation/";
+
+/**
+ * An optional remediation button to attach to a failure popup: a label and the
+ * external URL it opens. Kept alongside {@link getPythonSetupErrorMessage} so the
+ * copy and its call-to-action live together.
+ */
+export interface PythonSetupErrorAction {
+    label: string;
+    url: string;
+}
+
 /* eslint-disable @typescript-eslint/naming-convention */
 const BASE_MESSAGE: Record<
     PythonSetupErrorCode,
@@ -74,6 +93,57 @@ export function getPythonSetupErrorMessage(result: PythonSetupResult): string {
     }
     const base = BASE_MESSAGE[err.code]?.(result) ?? GENERIC;
     return base + diskStateSuffix(result, err);
+}
+
+/**
+ * The remediation button, if any, for a failed setup result. Only `E_UV_MISSING`
+ * carries one today: the CLI could neither find nor auto-install uv, so we point
+ * the user at uv's install guide. All other codes are actionable from the message
+ * and logs alone, so they get no extra button.
+ */
+export function getPythonSetupErrorAction(
+    result: PythonSetupResult
+): PythonSetupErrorAction | undefined {
+    if (result.error?.code === "E_UV_MISSING") {
+        return {label: "Install uv", url: UV_INSTALL_DOCS_URL};
+    }
+    return undefined;
+}
+
+/**
+ * The detailed failure text for the "Databricks Python Environment Setup" output
+ * channel — the counterpart to {@link getPythonSetupErrorMessage}'s concise
+ * popup copy. The popup is mapped from the error *code* and deliberately drops
+ * the CLI's raw `error.message`; under `--output json` that message (e.g. uv's
+ * version-conflict explanation) is otherwise nowhere the user can see it. This
+ * puts it, the failing phase/code, and the per-phase status line into the log
+ * so "review the conflict in the logs" actually leads somewhere.
+ *
+ * Returns `undefined` when the result carries no error, i.e. there is nothing to
+ * add to the log.
+ */
+export function formatSetupFailureDetail(
+    result: PythonSetupResult
+): string | undefined {
+    const err = result.error;
+    if (!err) {
+        return undefined;
+    }
+    const lines = [
+        `Setup failed in the ${err.failurePhase} phase (${err.code}).`,
+    ];
+    if (err.message) {
+        lines.push(err.message);
+    }
+    if (result.phases.length > 0) {
+        lines.push(
+            "Phases: " +
+                result.phases.map((p) => `${p.phase}=${p.status}`).join(", ")
+        );
+    }
+    // Bracket with blank lines so the block stands apart from any streamed CLI
+    // output already in the channel.
+    return `\n${lines.join("\n")}\n`;
 }
 
 /**

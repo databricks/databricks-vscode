@@ -1,3 +1,23 @@
+# Release: v2.13.1
+
+## packages/databricks-vscode
+
+## (2026-08-12)
+
+-   Build terminal commands for the shell that runs them, fixing "Create a new Databricks project" and other terminal actions on Windows with cmd.exe (#2092) ([ebcf7c9](https://github.com/databricks/databricks-vscode/commit/ebcf7c9)) — reported in [#1822](https://github.com/databricks/databricks-vscode/issues/1822)
+-   Fix "Show Bundle Logs", "Show Logs" and "Show Error Logs" doing nothing on hosts that scope the log channel id, such as Cursor (#2093) ([a1c7e84](https://github.com/databricks/databricks-vscode/commit/a1c7e84))
+
+# Release: v2.13.0
+
+## packages/databricks-vscode
+
+## (2026-08-06)
+
+-   Add AI tools support (#2025) ([845c435](https://github.com/databricks/databricks-vscode/commit/845c435))
+-   Enable Unity Catalog (and Docs) in Databricks Remote SSH mode (#2016) ([b5e1754](https://github.com/databricks/databricks-vscode/commit/b5e1754))
+-   Enable starting SSH tunnels (#1989) ([2c7c896](https://github.com/databricks/databricks-vscode/commit/2c7c896))
+-   Update Databricks CLI to v1.11.0 (#2085) ([cdd5b8c](https://github.com/databricks/databricks-vscode/commit/cdd5b8c)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes since v1.9.0
+
 # Release: v2.12.4
 
 ## packages/databricks-vscode

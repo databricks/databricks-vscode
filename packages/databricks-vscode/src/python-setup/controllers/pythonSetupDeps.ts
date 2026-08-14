@@ -5,8 +5,12 @@ import {PackageManagerDetection} from "../../language/packageManagerDetection";
 import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
+import {openExternal} from "../../utils/urlUtils";
+import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
+import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
+import {readVenvProjectName} from "../utils/venvProjectName";
 import {
     CliRunner,
     PythonSetupPersistedState,
@@ -14,7 +18,10 @@ import {
     SetupCompute,
 } from "./PythonSetupEnvironmentSetup";
 
-type Detection = Pick<PackageManagerDetection, "primary" | "managers">;
+type Detection = Pick<
+    PackageManagerDetection,
+    "primary" | "managers" | "signals"
+>;
 
 /**
  * The compute currently attached in the connection, reduced to what compute
@@ -28,25 +35,49 @@ export interface AttachedCompute {
 }
 
 /**
+ * The outcome of classifying the attached compute. `needsServerlessVersion` is
+ * deliberately distinct from `none`: serverless IS selected in that state, only
+ * the version is missing, so the caller resolves one rather than telling the
+ * user to select compute they already selected.
+ */
+export type ComputeResolution =
+    | {status: "ok"; compute: SetupCompute}
+    | {status: "needsServerlessVersion"}
+    | {status: "none"};
+
+/**
  * Map the attached compute to a setup-local compute target. Pure so the
  * cluster/serverless/none branching is unit-testable.
  *
  * A cluster attachment wins outright (its DBR fully determines the
- * environment). A serverless session resolves to its persisted version -- the
- * one the compute picker recorded (see the serverlessVersion field); without a
- * chosen version there is nothing to provision yet, so this returns undefined
- * and the orchestrator aborts silently rather than guessing.
+ * environment), so it is checked first and a missing serverless version never
+ * matters on that path. A serverless session resolves to its persisted version
+ * when one was recorded; without it this reports `needsServerlessVersion` so the
+ * caller can resolve one, because a version-less serverless selection is
+ * reachable in normal use -- a `serverlessComputeId: auto` config enables
+ * serverless without ever opening the picker, a selection made while the feature
+ * was disabled records no version, and a persisted version outside the supported
+ * range is dropped to undefined on load.
  */
 export function resolveComputeFrom(
     compute: AttachedCompute
-): SetupCompute | undefined {
+): ComputeResolution {
     if (compute.cluster) {
-        return {kind: "cluster", clusterId: compute.cluster.id};
+        return {
+            status: "ok",
+            compute: {kind: "cluster", clusterId: compute.cluster.id},
+        };
     }
-    if (compute.serverless && compute.serverlessVersion !== undefined) {
-        return {kind: "serverless", version: compute.serverlessVersion};
+    if (compute.serverless) {
+        if (compute.serverlessVersion === undefined) {
+            return {status: "needsServerlessVersion"};
+        }
+        return {
+            status: "ok",
+            compute: {kind: "serverless", version: compute.serverlessVersion},
+        };
     }
-    return undefined;
+    return {status: "none"};
 }
 
 /**
@@ -95,6 +126,17 @@ export interface PythonSetupWiringDeps {
     isEnabled: () => boolean;
     detect: (projectRoot: string) => Promise<Detection>;
     attachedCompute: () => AttachedCompute;
+    /**
+     * Ask the user which serverless version to provision, for a serverless
+     * session that has none recorded. Returns the bare version, or undefined
+     * when the user dismisses the prompt.
+     */
+    promptServerlessVersion: () => Promise<string | undefined>;
+    /**
+     * Persist a confirmed serverless version alongside the current serverless
+     * selection, so the next run does not ask again.
+     */
+    persistServerlessVersion: (version: string) => Promise<void>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -126,8 +168,28 @@ export function makePythonSetupDeps(
         cli: wiring.cli,
         projectRoot: wiring.projectRoot,
         isVisible,
-        resolveCompute: async () =>
-            resolveComputeFrom(wiring.attachedCompute()),
+        resolveCompute: async () => {
+            const resolution = resolveComputeFrom(wiring.attachedCompute());
+            if (resolution.status !== "needsServerlessVersion") {
+                return resolution;
+            }
+            // Serverless is selected and only the version is missing, so ask for
+            // that rather than telling the user to select compute they have
+            // already selected.
+            const version = await wiring.promptServerlessVersion();
+            if (version === undefined) {
+                return {status: "cancelled"};
+            }
+            try {
+                await wiring.persistServerlessVersion(version);
+            } catch {
+                // Persistence only buys "don't ask again": if the config write
+                // fails the user has already told us the version, so run with it
+                // rather than discarding a confirmed answer. (The production
+                // wiring surfaces the failure itself.)
+            }
+            return {status: "ok", compute: {kind: "serverless", version}};
+        },
         adoptInterpreter: async (venvPath: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
                 venvInterpreterPath(venvPath),
@@ -148,21 +210,89 @@ export function makePythonSetupDeps(
             // revealing the (empty) output channel.
             await window.showWarningMessage(message);
         },
-        showError: async (message: string) => {
-            // Reveal the streamed CLI log alongside the mapped one-liner so the
-            // user can see why the run failed, not just that it did.
+        showError: async (
+            message: string,
+            detail?: string,
+            action?: PythonSetupErrorAction
+        ) => {
+            // The mapped one-liner is deliberately concise and drops the CLI's
+            // own explanation; write that detail into the channel so the log the
+            // popup points at actually contains it (under `--output json` the CLI
+            // streams little else).
+            if (detail !== undefined && detail.length > 0) {
+                wiring.log.append(detail);
+            }
+            // Reveal the output channel automatically so the full log is in
+            // front of the user when setup fails, then still raise the
+            // notification (with its jump-to-logs button) as before.
             wiring.log.show();
-            await window.showErrorMessage(message);
+            const showLogs = "Show Logs";
+            // `showErrorMessage` hands the picked value back as a bare label
+            // string, so two buttons sharing a label are indistinguishable. Drop
+            // a remediation action that reuses the reserved "Show Logs" label
+            // rather than offer an ambiguous button whose URL branch is dead.
+            const remediation =
+                action && action.label !== showLogs ? action : undefined;
+            // Lead with the remediation button (e.g. "Install uv") when one is
+            // attached, so the action the user most likely wants comes first.
+            const actions = remediation
+                ? [remediation.label, showLogs]
+                : [showLogs];
+            const picked = await window.showErrorMessage(message, ...actions);
+            if (picked === showLogs) {
+                wiring.log.show();
+            } else if (remediation && picked === remediation.label) {
+                // showError is the failure-reporting path and its one caller does
+                // not wrap it, so neither a rejected launch nor a false "could not
+                // open" result may escape here — contain both and record them.
+                try {
+                    const opened = await openExternal(remediation.url);
+                    if (!opened) {
+                        wiring.log.append(
+                            `\nCould not open ${remediation.url} in a browser.\n`
+                        );
+                    }
+                } catch (e) {
+                    wiring.log.append(
+                        `\nFailed to open ${remediation.url}: ${
+                            e instanceof Error ? e.message : String(e)
+                        }\n`
+                    );
+                }
+            }
         },
-        showSuccess: async () => {
-            await window.showInformationMessage(
-                "Python environment is set up for Databricks Connect."
-            );
+        showSuccess: async (result) => {
+            // Write the full breakdown to the log channel: in --output json
+            // mode the CLI streams little or nothing to stderr on success, so
+            // the channel would otherwise be empty. This is where the details
+            // the one-line message omits (versions, compute, backup, how to run
+            // notebooks, full warnings) live. Enrich the venv lines with the
+            // project name uv recorded in pyvenv.cfg when it can be read.
+            const projectName = result.venvPath
+                ? await readVenvProjectName(result.venvPath)
+                : undefined;
+            wiring.log.append(formatSetupLog(result, projectName));
+            // Reveal the output channel automatically so those details are in
+            // front of the user, then still raise the notification (with its
+            // "View Details" button) as before.
+            wiring.log.show();
+            // A standard (non-modal) notification, not a modal dialog: the
+            // outcome is informational, not something to interrupt the user
+            // for. A run with warnings raises a warning toast so it doesn't
+            // read as an unqualified success; the warnings are in the details.
+            const {message, isWarning} = formatSetupNotification(result);
+            const viewDetails = "View Details";
+            const choice = isWarning
+                ? await window.showWarningMessage(message, viewDetails)
+                : await window.showInformationMessage(message, viewDetails);
+            if (choice === viewDetails) {
+                wiring.log.show();
+            }
         },
         recordSetupAttempt: (attempt) =>
             wiring.telemetry.recordPythonSetupAttempt(attempt),
         recordNoCompute: () => wiring.telemetry.recordPythonSetupNoCompute(),
-        getPackageManager: async () => {
+        getDetection: async () => {
             const root = wiring.projectRoot();
             if (root === undefined) {
                 return undefined;
@@ -170,7 +300,7 @@ export function makePythonSetupDeps(
             // Same detection the gate ran for this click. It is re-run rather
             // than cached because a project's markers can change between the
             // config view rendering the entry and the user pressing it.
-            return (await wiring.detect(root)).primary;
+            return wiring.detect(root);
         },
         hasPyprojectToml: async (projectRoot: string) =>
             existsSync(path.join(projectRoot, "pyproject.toml")),

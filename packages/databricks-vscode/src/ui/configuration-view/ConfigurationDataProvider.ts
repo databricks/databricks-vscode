@@ -10,6 +10,7 @@ import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
+import {stampCopyKind} from "./copyActions";
 import {BundleTargetComponent} from "./BundleTargetComponent";
 import {AuthTypeComponent} from "./AuthTypeComponent";
 import {ClusterComponent} from "./ClusterComponent";
@@ -23,6 +24,8 @@ import {EnvironmentComponent} from "./EnvironmentComponent";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {CodeSynchronizer} from "../../sync";
+import {AiToolsComponent} from "./AiToolsComponent";
+import {AiToolsManager} from "../../aitools/AiToolsManager";
 import {PythonSetupEntry} from "./pythonSetupEntry";
 
 /**
@@ -52,10 +55,12 @@ export class ConfigurationDataProvider
         private readonly cli: CliWrapper,
         private readonly featureManager: FeatureManager,
         private readonly workspaceFolderManager: WorkspaceFolderManager,
+        private readonly aiToolsManager: AiToolsManager,
         private readonly pythonSetup?: PythonSetupEntry
     ) {
         this.components = [
             new WorkspaceFolderComponent(this.workspaceFolderManager),
+            new AiToolsComponent(this.aiToolsManager.model),
             new BundleTargetComponent(this.configModel),
             new AuthTypeComponent(
                 this.connectionManager,
@@ -100,6 +105,7 @@ export class ConfigurationDataProvider
     }
 
     getTreeItem(element: ConfigurationTreeItem): TreeItem | Thenable<TreeItem> {
+        stampCopyKind(element);
         return element;
     }
 

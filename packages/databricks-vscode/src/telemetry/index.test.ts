@@ -75,6 +75,25 @@ describe(__filename, () => {
         });
     });
 
+    it("sets context metadata with the extension mode", async () => {
+        delete process.env["DATABRICKS_VSCODE_INTEGRATION_TEST"];
+        telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata("remote"));
+        telemetry.recordEvent(Events.COMMAND_EXECUTION, {
+            command: "testCommand",
+            success: true,
+            duration: 100,
+        });
+        const [eventName, props] = capture(reporter.sendTelemetryEvent).last();
+        assert.equal(eventName, "commandExecution");
+        assert.deepEqual(props, {
+            "version": "1.0",
+            "event.command": "testCommand",
+            "event.success": "true",
+            "context.environmentType": "prod",
+            "context.mode": "remote",
+        });
+    });
+
     it("sets user metadata correctly after logged in", async () => {
         const ws = mock(DatabricksWorkspace);
         when(ws.id).thenReturn("workspace-id");

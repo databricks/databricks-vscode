@@ -1,4 +1,4 @@
-import {expect} from "chai";
+import assert from "assert";
 import {ExtensionContext, Memento} from "vscode";
 import {PythonSetupState, StateStorage} from "./StateStorage";
 
@@ -19,17 +19,19 @@ function fakeMemento(): Memento {
     } as Memento;
 }
 
-function makeStorage(): StateStorage {
+function createStorage() {
+    const globalState = fakeMemento();
+    const workspaceState = fakeMemento();
     const context = {
-        workspaceState: fakeMemento(),
-        globalState: fakeMemento(),
+        globalState,
+        workspaceState,
     } as unknown as ExtensionContext;
-    return new StateStorage(context);
+    return {storage: new StateStorage(context), globalState, workspaceState};
 }
 
 describe("StateStorage python-setup setup state", () => {
     it("round-trips the persisted setup state", async () => {
-        const storage = makeStorage();
+        const {storage} = createStorage();
         const state: PythonSetupState = {
             envKey: "serverless/serverless-v5",
             pythonVersion: "3.12",
@@ -38,19 +40,22 @@ describe("StateStorage python-setup setup state", () => {
 
         await storage.set("databricks.pythonSetup.setupState", state);
 
-        expect(storage.get("databricks.pythonSetup.setupState")).to.deep.equal(
+        assert.deepStrictEqual(
+            storage.get("databricks.pythonSetup.setupState"),
             state
         );
     });
 
     it("returns undefined before anything is persisted", () => {
-        expect(makeStorage().get("databricks.pythonSetup.setupState")).to.equal(
+        const {storage} = createStorage();
+        assert.strictEqual(
+            storage.get("databricks.pythonSetup.setupState"),
             undefined
         );
     });
 
     it("clears the state when set to undefined", async () => {
-        const storage = makeStorage();
+        const {storage} = createStorage();
         await storage.set("databricks.pythonSetup.setupState", {
             envKey: "cluster/0101",
             pythonVersion: "3.11",
@@ -59,18 +64,14 @@ describe("StateStorage python-setup setup state", () => {
 
         await storage.set("databricks.pythonSetup.setupState", undefined);
 
-        expect(storage.get("databricks.pythonSetup.setupState")).to.equal(
+        assert.strictEqual(
+            storage.get("databricks.pythonSetup.setupState"),
             undefined
         );
     });
 
     it("is stored in workspace state (per-project), not global", async () => {
-        const workspaceState = fakeMemento();
-        const globalState = fakeMemento();
-        const storage = new StateStorage({
-            workspaceState,
-            globalState,
-        } as unknown as ExtensionContext);
+        const {storage, globalState, workspaceState} = createStorage();
 
         await storage.set("databricks.pythonSetup.setupState", {
             envKey: "serverless/serverless-v5",
@@ -78,10 +79,12 @@ describe("StateStorage python-setup setup state", () => {
             timestamp: "2026-07-27T10:00:00.000Z",
         });
 
-        expect(
-            workspaceState.get("databricks.pythonSetup.setupState")
-        ).to.not.equal(undefined);
-        expect(globalState.get("databricks.pythonSetup.setupState")).to.equal(
+        assert.notStrictEqual(
+            workspaceState.get("databricks.pythonSetup.setupState"),
+            undefined
+        );
+        assert.strictEqual(
+            globalState.get("databricks.pythonSetup.setupState"),
             undefined
         );
     });
