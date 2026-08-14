@@ -77,12 +77,17 @@ describe("Bundle Init", async function () {
         assert(initTab, "Can't find a tab for project-init terminal wizard");
         await initTab.select();
 
-        // The init wizard runs inside an editor-hosted terminal. Keystrokes sent
-        // before the terminal prompt is ready land in the wrong place and desync
-        // the wizard ("Can't complete cli bundle init wizard") on the slow
-        // Windows shard. The terminal buffer text isn't reliably readable via the
-        // wdio API, but the active-tab title is — gate on the init tab being
-        // active before typing, then use longer settle waits between keystrokes.
+        // The init wizard runs inside an editor-hosted terminal. Two Windows
+        // races desync it into "Can't complete cli bundle init wizard": (1)
+        // keystrokes fired before the tab is active — or before the xterm holds
+        // keyboard focus — land in the wrong place, and (2) the Python extension
+        // can inject env-setup text into the freshly opened terminal that lands
+        // in the template *search filter* (see
+        // BundleInitWizard.bundleInitInTerminal), so a typed "default-python"
+        // appends to that text, matches no template, and the wizard stalls. The
+        // terminal buffer isn't reliably readable via the wdio API, but the
+        // active-tab title is — gate on the init tab being active, move focus
+        // into the terminal, then clear the filter before typing.
         await browser.waitUntil(
             async () => {
                 const activeTab = await editorView.getActiveTab();
@@ -95,6 +100,20 @@ describe("Bundle Init", async function () {
             }
         );
         await sleep(3000);
+
+        // Move keyboard focus into the editor-hosted terminal's input so the
+        // wizard keystrokes below aren't swallowed by the editor-tab chrome.
+        await browser.executeWorkbench((vscode) => {
+            vscode.commands.executeCommand("workbench.action.terminal.focus");
+        });
+        await sleep(1000);
+
+        // Clear any env-setup text the Python extension injected into the
+        // template search filter (a no-op when the filter is already empty) so
+        // the template name we type next matches. 50 backspaces comfortably
+        // covers a typical injected activate line.
+        await browser.keys(new Array(50).fill(Key.Backspace));
+        await sleep(1000);
 
         //select temaplate type
         await browser.keys("default-python".split(""));
