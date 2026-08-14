@@ -11,11 +11,9 @@ import {
 } from "./ConnectionCommands";
 
 /**
- * A scriptable stand-in for the compute QuickPick. Unlike a fire-on-show fake,
- * the test drives {@link accept}/{@link hide} explicitly -- because
- * `attachClusterQuickPickCommand` registers its `onDidAccept`/`onDidHide`
- * handlers only after calling `show()`, so firing them at show time would race
- * (and never resolve) the command's Promise.
+ * Scriptable stand-in for the compute QuickPick. The test drives
+ * {@link accept}/{@link hide} explicitly, since the command registers its
+ * handlers only after `show()`.
  */
 class FakeComputeQuickPick {
     title?: string;
@@ -152,8 +150,7 @@ describe(__filename, () => {
         });
 
         it("guards re-entry: a second Enter neither re-attaches nor changes the result", async () => {
-            // The `settled` flag must short-circuit a repeated accept -- otherwise
-            // a double Enter would run concurrent attaches and could resolve twice.
+            // Without the `settled` guard a double Enter would attach twice.
             const resultP = commands.attachClusterQuickPickCommand()();
             await fakePick.accept([clusterItem("c1")]);
             await fakePick.accept([clusterItem("c2")]);
@@ -174,15 +171,9 @@ describe(__filename, () => {
         });
 
         it("still returns the chosen cluster when the attach silently fails (best-effort)", async () => {
-            // attachCluster is @onError(throw:false): a failed config write
-            // surfaces its own popup and resolves without throwing, so from the
-            // picker's side it looks exactly like success. By design we still
-            // return the picked target -- it is what the user chose and all
-            // setup-local needs -- rather than dropping the selection.
-            const attach = async () => {
-                // Resolves (does not throw) even though the "attach" failed,
-                // mimicking the @onError-swallowed path.
-            };
+            // attachCluster is @onError(throw:false): a failed write resolves
+            // without throwing, so we still return the picked target by design.
+            const attach = async () => {};
             const cmds = new ConnectionCommands(
                 {} as never,
                 {
@@ -213,8 +204,7 @@ describe(__filename, () => {
         });
 
         it("resolves to undefined if an unexpected error is thrown during selection", async () => {
-            // Defense-in-depth: a throw from any step must settle the Promise
-            // (not hang) and yield no selection.
+            // A throw from any step must settle the Promise, not hang.
             const cmds = new ConnectionCommands(
                 {} as never,
                 {

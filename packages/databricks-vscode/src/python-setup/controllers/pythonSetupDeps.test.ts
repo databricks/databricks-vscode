@@ -257,17 +257,14 @@ describe("makePythonSetupDeps resolveCompute", () => {
     });
 
     it("offers the compute picker (not the version picker) when nothing is attached", async () => {
-        // Nothing selected is a missing target, not a missing detail: the flow
-        // opens the compute picker so the user can choose one -- it must never
-        // jump straight to the serverless version picker.
+        // Nothing attached opens the compute picker, never the version picker.
         let versionPrompted = 0;
         let pickerOpened = 0;
         const deps = makePythonSetupDeps(
             makeWiring({
                 promptSelectCompute: async () => {
                     pickerOpened++;
-                    // User dismisses the picker without attaching anything.
-                    return undefined;
+                    return undefined; // dismissed
                 },
                 promptServerlessVersion: async () => {
                     versionPrompted++;
@@ -276,18 +273,15 @@ describe("makePythonSetupDeps resolveCompute", () => {
             })
         );
 
-        // Dismissed with nothing attached -> still the dead-end `none`, which
-        // the orchestrator turns into the guidance message.
+        // Dismissed -> `none`, which the orchestrator turns into guidance.
         expect(await deps.resolveCompute()).to.deep.equal({status: "none"});
         expect(pickerOpened).to.equal(1);
         expect(versionPrompted).to.equal(0);
     });
 
     it("runs against the cluster the picker returns, without re-reading state", async () => {
-        // The picker returns the chosen compute directly. Re-reading it from
-        // the connection manager would race the async, network-gated cluster
-        // attach -- so `attachedCompute` deliberately stays `none` here and the
-        // flow must still resolve to the returned cluster.
+        // Uses the picker's return value; `attachedCompute` stays `none` to
+        // prove the flow doesn't re-read (which would race the attach).
         const deps = makePythonSetupDeps(
             makeWiring({
                 attachedCompute: () => ({
@@ -308,8 +302,7 @@ describe("makePythonSetupDeps resolveCompute", () => {
     });
 
     it("runs against the serverless compute the picker returns", async () => {
-        // The picker's serverless branch resolves a version before enabling, so
-        // it comes back version-complete -- no follow-up version prompt.
+        // The picker returns serverless version-complete -- no follow-up prompt.
         let versionPrompted = 0;
         const deps = makePythonSetupDeps(
             makeWiring({

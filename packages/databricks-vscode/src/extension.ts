@@ -1006,11 +1006,8 @@ export async function activate(
             // setup flow.
             persistServerlessVersion: (version) =>
                 connectionManager.enableServerless(version),
-            // Reuses the existing compute picker, which returns the compute the
-            // user chose (or undefined if dismissed). When the feature is opted
-            // in, its serverless branch also resolves the environment version,
-            // so a serverless selection comes back version-complete and setup
-            // need not re-prompt.
+            // Reuses the compute picker, which returns the chosen compute (or
+            // undefined if dismissed); its serverless branch is version-complete.
             promptSelectCompute: () =>
                 Promise.resolve(
                     commands.executeCommand<SetupCompute | undefined>(

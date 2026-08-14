@@ -38,12 +38,9 @@ import {Loggers} from "../logger";
 const {NamedLogger} = logging;
 
 /**
- * A compute target the user picked in the compute QuickPick. Aliased to the
- * `setup-local` compute shape (rather than re-declared) so python-setup can
- * consume the picker's result directly and any drift in that shape is a compile
- * error here, not a silent runtime mismatch through `executeCommand`'s unchecked
- * generic. Serverless is only ever returned version-complete (see
- * {@link ConnectionCommands.selectServerless}).
+ * A compute target picked in the QuickPick. Aliased to the `setup-local` compute
+ * shape so a drift is a compile error, not a silent mismatch through
+ * `executeCommand`'s untyped generic. Serverless is always version-complete.
  */
 export type SelectedCompute = SetupCompute;
 
@@ -159,14 +156,10 @@ export class ConnectionCommands implements Disposable {
     }
 
     /**
-     * The returned handler resolves once the picker has fully closed, to the
-     * compute the user attached -- a cluster or a version-complete serverless
-     * target -- or `undefined` when they dismissed it or picked "Create New
-     * Cluster" (which only opens the browser). Callers that just open the picker
-     * can ignore the result (they always have); returning the selection lets a
-     * caller that needs the outcome (python-setup) use it directly instead of
-     * re-reading the connection manager, whose cluster attach propagates
-     * asynchronously and would race an immediate read.
+     * Resolves once the picker closes to the attached compute, or `undefined` on
+     * dismissal / "Create New Cluster". The return lets python-setup use the
+     * selection directly rather than re-reading the connection manager (whose
+     * cluster attach is async and would race). Other callers ignore it.
      */
     attachClusterQuickPickCommand() {
         return async (title?: string): Promise<SelectedCompute | undefined> => {
@@ -229,12 +222,9 @@ export class ConnectionCommands implements Disposable {
             refreshQuickPickItems();
             quickPick.show();
 
-            // Resolve only once the picker's work is done: on accept, after the
-            // attach/enable (or browser hand-off) it triggers; on a plain hide,
-            // right away. `settled` guards both a repeated Enter (which would
-            // otherwise run concurrent attaches) and the hide handler -- which
-            // also fires when accept disposes the picker -- from resolving early,
-            // before the accept branch's awaits have settled.
+            // `settled` guards a repeated Enter and stops the hide handler
+            // (which also fires when accept disposes the picker) from resolving
+            // before the accept branch's awaits finish.
             return await new Promise<SelectedCompute | undefined>((resolve) => {
                 let settled = false;
                 quickPick.onDidAccept(async () => {
@@ -246,16 +236,13 @@ export class ConnectionCommands implements Disposable {
                     try {
                         const selectedItem = quickPick.selectedItems[0];
                         if (selectedItem === undefined) {
-                            // Accepted with nothing highlighted -- nothing to do.
+                            // Accepted with nothing highlighted.
                         } else if ("cluster" in selectedItem) {
                             const cluster = selectedItem.cluster;
-                            // Best-effort attach: attachCluster is @onError with
-                            // throw:false, so a failed config write surfaces its
-                            // own popup and does NOT throw here. We still return
-                            // the chosen target -- it is the compute the user
-                            // picked and is all setup-local needs (it takes the
-                            // id directly); the attach's persistence is a
-                            // separate concern already surfaced to the user.
+                            // Best-effort: attachCluster is @onError(throw:false),
+                            // so a failed write pops its own error but doesn't
+                            // throw. We still return the chosen target -- it's all
+                            // setup-local needs and any failure is already shown.
                             await this.connectionManager.attachCluster(
                                 cluster.id
                             );
@@ -281,14 +268,9 @@ export class ConnectionCommands implements Disposable {
                             );
                         }
                     } catch (e) {
-                        // Defense-in-depth. The attach/enable helpers are
-                        // @onError(throw:false) and surface their own failures
-                        // without throwing, so they do not reach here; this
-                        // guards an UNEXPECTED throw from another step (the
-                        // serverless version sub-picker, openExternal, or a
-                        // future non-decorated path) so it can't become an
-                        // unhandled rejection or leave the Promise pending.
-                        // `selected` stays undefined in that case.
+                        // Defense-in-depth for an unexpected throw (attach/enable
+                        // are @onError and don't throw): keep it off the unhandled
+                        // path and still settle. `selected` stays undefined.
                         NamedLogger.getOrCreate(Loggers.Extension).error(
                             "Compute picker selection failed",
                             e
@@ -319,10 +301,8 @@ export class ConnectionCommands implements Disposable {
      * picker, no compute change is made. With the feature off this is the
      * plain, unchanged serverless enable.
      *
-     * Returns the confirmed version when serverless was enabled with one, or
-     * `undefined` -- when the version picker was dismissed (no change made), or
-     * when the feature is off (serverless is enabled, but version-less). Only
-     * the feature-on, version-complete case is a compute the caller can set up.
+     * Returns the confirmed version, or `undefined` if the picker was dismissed
+     * or the feature is off (serverless enabled but version-less).
      */
     private async selectServerless(): Promise<string | undefined> {
         if (!isPythonSetupEnabled()) {
