@@ -83,6 +83,39 @@ this flow: its `explicit_command` trigger fires only from the _legacy_
 `databricks.environment.setupPythonEnv`, and the config view renders the two
 mutually exclusively. A user who sees this entry never emits that event.
 
+## Python environment adoption (VPEX)
+
+`python_env.adoption`, emitted by `pythonSetupExtensions.ts`
+(`recordPythonSetupAdoption`) and driven by
+`python-setup/controllers/PythonSetupAdoptionReporter.ts`. A once-per-session
+gauge, fired on the first `CONNECTED` transition so the attached compute is known.
+
+### Why it is emitted only when VPEX-active
+
+The event is recorded only for a project that has a uv-native setup on record
+(`databricks.pythonSetup.setupState` is present). That gate is deliberate: the
+event's mere presence is the **denominator** — one reading per session per project
+that ever completed a setup — so `venvPresent` over all such events is a true
+adoption rate, not a count without a base.
+
+### Why it is separate from `python_env.drift`
+
+Drift (from the drift detector) compares the selected compute's environment key
+against the recorded one. It never checks that the `.venv` still exists: a user who
+deletes the environment while compute is unchanged is not "drifted", yet has plainly
+stopped using the managed env. `venvPresent` measures exactly that — whether the
+managed interpreter is still on disk — which is orthogonal to drift. `venvPresent:
+false` is a real value (the env is gone), not an omitted-because-unknown field.
+
+### Why it derives no environment key
+
+An earlier plan had this event re-derive the current compute's env key in
+TypeScript to also report drift. It does not: the CLI is the authority on env keys
+(resolved via a `--dry-run`), and the drift detector already emits `python_env.drift`
+off that authoritative value. Re-deriving here would be a second, divergent source
+of truth. This event only reports the compute _kind_ (`currentTargetType`), read
+straight from the connection with no key involved.
+
 ## Privacy
 
 Only categorical/enum values and durations — no file paths, cluster names or IDs,

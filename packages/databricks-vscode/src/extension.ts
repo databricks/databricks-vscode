@@ -45,6 +45,7 @@ import {
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
+import {existsSync} from "node:fs";
 import {
     FeatureId,
     FeatureManager,
@@ -58,7 +59,9 @@ import {
     resolveComputeFrom,
 } from "./python-setup/controllers/pythonSetupDeps";
 import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDriftManager";
+import {PythonSetupAdoptionReporter} from "./python-setup/controllers/PythonSetupAdoptionReporter";
 import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
+import {venvInterpreterPath} from "./python-setup/utils/venvInterpreterPath";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
 import {
     isPythonSetupEnabled,
@@ -1147,6 +1150,49 @@ export async function activate(
         pythonSetupDrift
     );
     context.subscriptions.push(pythonSetupEntry);
+
+    // Once-per-session adoption gauge: for a project with a uv-native setup on
+    // record, whether its managed .venv still exists. Distinct from drift above
+    // (which compares compute env keys) — drift never checks that the venv is
+    // actually present. Measurement only, best-effort, and it derives no env key
+    // of its own: drift already reports env-key mismatch via python_env.drift.
+    const pythonSetupAdoption = new PythonSetupAdoptionReporter({
+        projectRoot: () => {
+            try {
+                return workspaceFolderManager.activeProjectUri.fsPath;
+            } catch {
+                return undefined;
+            }
+        },
+        // setupState is workspace-scoped (a single key), matching the drift
+        // manager's baseline; presence is what "VPEX-active" means.
+        isVpexActive: () =>
+            stateStorage.get("databricks.pythonSetup.setupState") !== undefined,
+        getTargetType: () =>
+            connectionManager.serverless
+                ? "serverless"
+                : connectionManager.cluster
+                  ? "cluster"
+                  : "none",
+        venvExists: (root) =>
+            existsSync(venvInterpreterPath(path.join(root, ".venv"))),
+        record: (report) => telemetry.recordPythonSetupAdoption(report),
+    });
+    context.subscriptions.push(
+        // Report once the connection is CONNECTED, so the compute kind is known;
+        // the reporter dedupes, so repeated transitions are safe. Firing before
+        // connect would latch a misleading "none" reading.
+        connectionManager.onDidChangeState(() => {
+            if (connectionManager.state === "CONNECTED") {
+                pythonSetupAdoption.report();
+            }
+        })
+    );
+    // Cover activation while already connected (a reload with a live session),
+    // where onDidChangeState may not fire again.
+    if (connectionManager.state === "CONNECTED") {
+        pythonSetupAdoption.report();
+    }
 
     const environmentCommands = new EnvironmentCommands(
         featureManager,
