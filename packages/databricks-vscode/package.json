@@ -490,6 +490,90 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.configuration.copyPath",
+                "title": "Copy Path",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyTarget",
+                "title": "Copy Target",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyHost",
+                "title": "Copy Host",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyMode",
+                "title": "Copy Mode",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyAuthType",
+                "title": "Copy Auth Type",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyClusterName",
+                "title": "Copy Cluster Name",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyClusterId",
+                "title": "Copy Cluster ID",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyRuntime",
+                "title": "Copy Runtime",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyCreator",
+                "title": "Copy Creator",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyState",
+                "title": "Copy State",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyAccessMode",
+                "title": "Copy Access Mode",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copySyncState",
+                "title": "Copy Sync State",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyScope",
+                "title": "Copy Scope",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyVersion",
+                "title": "Copy Version",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.environment.refresh",
                 "title": "Refresh python environment status",
                 "icon": "$(refresh)",
@@ -1130,7 +1214,77 @@
                 },
                 {
                     "command": "databricks.utils.copy",
-                    "when": "view == dabsResourceExplorerView || view == configurationView",
+                    "when": "view == dabsResourceExplorerView",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyPath",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=path$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyTarget",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=target$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyHost",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=host$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyMode",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=mode$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyAuthType",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=authType$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterName",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=clusterName$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterId",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=clusterId$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyRuntime",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=runtime$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyCreator",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=creator$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyState",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=state$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyAccessMode",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=accessMode$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copySyncState",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=syncState$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyScope",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=scope$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyVersion",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=version$/",
                     "group": "navigation_2@0"
                 },
                 {
@@ -1237,6 +1391,62 @@
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "databricks.configuration.copyPath",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyTarget",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyHost",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyMode",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyAuthType",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterName",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterId",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyRuntime",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyCreator",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyState",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyAccessMode",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copySyncState",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyScope",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyVersion",
+                    "when": "false"
+                },
                 {
                     "command": "databricks.aitools.addCursorPlugin",
                     "when": "databricks.context.aitools.showCursorPlugin && !databricks.context.remoteMode"
