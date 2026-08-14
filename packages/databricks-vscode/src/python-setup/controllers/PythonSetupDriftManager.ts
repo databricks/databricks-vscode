@@ -8,14 +8,10 @@ export interface PythonSetupDriftDeps {
     isVisible: () => Promise<boolean>;
     getPersistedEnvKey: () => string | undefined;
     /**
-     * A cheap, synchronous descriptor of the currently selected compute's
-     * IDENTITY (e.g. `"cluster:<id>:<sparkVersion>"`, `"serverless:v5"`), or
-     * `undefined` when no comparable compute is attached (nothing selected, or
-     * serverless with no chosen version). Unlike {@link resolveCurrentEnvKey}
-     * this never spawns the CLI. It lets the manager (a) skip the dry-run when a
-     * compute-change trigger fires but the identity is unchanged -- a cluster
-     * runtime-state transition rather than a switch -- and (b) clear a stale
-     * drift flag when nothing comparable is attached.
+     * Cheap, synchronous identity of the selected compute (e.g.
+     * `"cluster:<id>:<sparkVersion>"`, `"serverless:v5"`), or `undefined` when
+     * nothing comparable is attached. Never spawns the CLI. Used to skip the
+     * dry-run on a no-op compute change and to clear drift when detached.
      */
     getComputeDescriptor: () => string | undefined;
     resolveCurrentEnvKey: (
@@ -25,29 +21,22 @@ export interface PythonSetupDriftDeps {
 }
 
 /**
- * The config-view row's derived state, from the persisted setup record vs. the
- * selected compute:
- *  - `unset`   — no successful setup on record (show the initial CTA);
- *  - `ready`   — a setup is on record and the compute still matches (or drift
- *    can't be assessed — the fail-safe direction);
+ * The config-view row's derived state:
+ *  - `unset`   — no setup on record (initial CTA);
+ *  - `ready`   — a setup is on record and matches (or drift can't be assessed);
  *  - `drifted` — a setup is on record but the selected compute no longer matches.
  */
 export type PythonSetupDriftState = "unset" | "ready" | "drifted";
 
 /**
- * Watches for compute drift: when the selected compute's environment key no
- * longer matches the one recorded by the last successful setup, exposes a
- * {@link PythonSetupDriftState} (and fires `onDidChangeState`) that the
- * config-view row renders — `drifted` becomes an "out of date -- re-run setup"
- * affordance.
+ * Watches for compute drift: when the selected compute's env key no longer
+ * matches the last successful setup's, exposes a {@link PythonSetupDriftState}
+ * the config-view row renders as an "out of date — re-run setup" affordance.
  *
- * The check is deliberately passive: it runs a silent CLI `--dry-run` (no
- * progress UI, no prompt, no error surface), is gated by `isVisible` and the
- * presence of a persisted state, is debounced against rapid compute switches,
- * and treats any inability to resolve the current key as "unknown" -- never a
- * false alarm. To avoid needless dry-runs it skips a compute-change check whose
- * compute identity is unchanged (a runtime-state transition, not a switch), and
- * it clears drift outright when no comparable compute is attached.
+ * Deliberately passive and fail-safe: a silent CLI `--dry-run` (no UI), gated by
+ * `isVisible` and a persisted state, debounced against rapid switches, and any
+ * inability to resolve the current key is treated as "unknown" — never a false
+ * alarm.
  */
 export class PythonSetupDriftManager implements Disposable {
     private _drifted = false;
@@ -56,6 +45,7 @@ export class PythonSetupDriftManager implements Disposable {
     /** Compute descriptor evaluated last, to skip no-op compute-change checks. */
     private lastComputeDescriptor: string | undefined;
     private generation = 0;
+    private disposed = false;
     private debounceTimer: ReturnType<typeof setTimeout> | undefined;
     private inFlight: CancellationTokenSource | undefined;
 
@@ -68,11 +58,8 @@ export class PythonSetupDriftManager implements Disposable {
     ) {}
 
     /**
-     * The row's derived state. Persisted state is read live so it reflects the
-     * current project across window reloads: with a setup on record the row
-     * stays `ready` (or `drifted` once a mismatch is detected) instead of
-     * reverting to the initial CTA; with none it is `unset`. The mismatch flag
-     * is only ever set while a setup is on record, so ordering here is moot.
+     * The row's derived state, read live so it survives a window reload: with a
+     * setup on record the row stays `ready`/`drifted`; with none it is `unset`.
      */
     get state(): PythonSetupDriftState {
         if (this.deps.getPersistedEnvKey() === undefined) {
@@ -108,8 +95,7 @@ export class PythonSetupDriftManager implements Disposable {
         try {
             const visible = await this.deps.isVisible();
 
-            // A newer trigger started while we awaited: drop this stale result
-            // so an out-of-order early return cannot retract a fresher flag.
+            // A newer trigger (or disposal) superseded us: drop this stale result.
             if (myGeneration !== this.generation) {
                 return;
             }
@@ -123,20 +109,17 @@ export class PythonSetupDriftManager implements Disposable {
                 return;
             }
             const descriptor = this.deps.getComputeDescriptor();
-            // No comparable compute attached (detached, or serverless with no
-            // chosen version): drift is meaningless -- you cannot be drifted from
-            // nothing -- so clear any stale flag instead of leaving it set.
+            // Nothing comparable attached (detached, or serverless with no chosen
+            // version): drift is meaningless, so clear any stale flag.
             if (descriptor === undefined) {
                 this.lastComputeDescriptor = undefined;
                 this.setDrifted(false);
                 return;
             }
-            // A compute-change trigger whose resolved identity is unchanged is a
-            // runtime-state transition (e.g. a cluster going RUNNING ->
-            // TERMINATED), not a compute switch. The environment key is derived
-            // from the identity, so it cannot have changed: skip the dry-run.
-            // workspaceOpen / setupCompleted always re-evaluate -- the first
-            // check must run, and a completed setup moves the persisted baseline.
+            // A compute-change whose identity is unchanged is a runtime-state
+            // transition (e.g. RUNNING -> TERMINATED), not a switch; the env key
+            // can't have changed, so skip the dry-run. open/setupCompleted always
+            // re-evaluate.
             if (
                 trigger === "computeChange" &&
                 descriptor === this.lastComputeDescriptor
@@ -145,24 +128,24 @@ export class PythonSetupDriftManager implements Disposable {
             }
             const current = await this.deps.resolveCurrentEnvKey(source.token);
 
-            // A newer trigger started while we awaited: drop this stale result.
+            // A newer trigger (or disposal) superseded us: drop this stale result.
             if (myGeneration !== this.generation) {
                 return;
             }
-            // Could not resolve the current key -> unknown. Leave the flag as-is
-            // rather than clearing (a transient network/auth failure must not
-            // silently retract a real drift warning), and -- crucially -- do NOT
-            // record the descriptor: a transient failure must not latch this
-            // compute into the no-op skip above, or every subsequent same-compute
-            // trigger (cluster RUNNING/PENDING/TERMINATED churn, connection state
-            // events) would be skipped and the drift check would never retry
-            // until the compute actually changes, a setup completes, or a reload.
+            // Unknown current key: leave the flag as-is (a transient failure must
+            // not retract a real warning) and do NOT record the descriptor, or the
+            // no-op skip above would latch this compute and never retry.
             if (current === undefined) {
                 return;
             }
-            // Resolution was definitive, so this descriptor is now a known
-            // quantity: record it, so a later no-op compute-change with the same
-            // identity (a runtime-state transition) is skipped.
+            // Compute may have switched during the dry-run without bumping our
+            // generation (its debounce hasn't fired yet); drop the now-stale
+            // result and let the pending trigger re-evaluate.
+            if (this.deps.getComputeDescriptor() !== descriptor) {
+                return;
+            }
+            // Definitive result: record the descriptor so a later no-op
+            // compute-change with the same identity is skipped.
             this.lastComputeDescriptor = descriptor;
 
             const drifted = isDrifted(persisted, current);
@@ -180,11 +163,9 @@ export class PythonSetupDriftManager implements Disposable {
                 }
             }
         } catch {
-            // Any failure resolving the current state (e.g. isVisible or the
-            // dry-run rejecting) is treated as "unknown": stay silent and leave
-            // the drift flag untouched -- never surface UI, never a false alarm,
-            // never retract a real warning. Same fail-safe direction as the
-            // `current === undefined` branch above.
+            // Any failure (isVisible or the dry-run rejecting) is "unknown": stay
+            // silent and leave the flag untouched — never a false alarm, never
+            // retract a real warning.
         } finally {
             if (this.inFlight === source) {
                 source.dispose();
@@ -194,6 +175,9 @@ export class PythonSetupDriftManager implements Disposable {
     }
 
     private setDrifted(value: boolean): void {
+        if (this.disposed) {
+            return;
+        }
         if (!value) {
             // Reset the telemetry dedupe latch so a recurrence is reported again.
             this.lastReported = undefined;
@@ -206,6 +190,10 @@ export class PythonSetupDriftManager implements Disposable {
     }
 
     dispose(): void {
+        this.disposed = true;
+        // Invalidate any in-flight evaluation so it can't mutate state or record
+        // telemetry after disposal.
+        this.generation++;
         if (this.debounceTimer !== undefined) {
             clearTimeout(this.debounceTimer);
         }

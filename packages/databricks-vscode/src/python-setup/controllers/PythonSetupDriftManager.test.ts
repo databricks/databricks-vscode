@@ -178,6 +178,52 @@ describe("PythonSetupDriftManager", () => {
         m.dispose();
     });
 
+    it("drops the result when the compute switched during the dry-run", async () => {
+        // The selected compute can change while the dry-run is in flight (a new
+        // trigger's debounce hasn't fired, so the generation is unchanged).
+        // Committing would flash a stale badge and log a drift event for a
+        // compute that is no longer selected, so the result must be dropped.
+        let descriptor = "cluster:c1";
+        const {deps, recorded} = makeDeps({
+            getComputeDescriptor: () => descriptor,
+            resolveCurrentEnvKey: async () => {
+                descriptor = "cluster:c2"; // user switched mid-flight
+                return "dbr/15.4.x-scala2.12";
+            },
+        });
+        const m = new PythonSetupDriftManager(deps);
+        await m.evaluate("computeChange");
+        expect(m.state).to.equal("ready");
+        expect(recorded).to.have.length(0);
+        m.dispose();
+    });
+
+    it("does not mutate state or record telemetry after disposal", async () => {
+        // A resolver that ignores cancellation must not commit a result once the
+        // manager is disposed.
+        let resolveDryRun!: (v: string | undefined) => void;
+        const dryRun = new Promise<string | undefined>((r) => {
+            resolveDryRun = r;
+        });
+        const {deps, recorded} = makeDeps({
+            resolveCurrentEnvKey: () => dryRun,
+        });
+        const m = new PythonSetupDriftManager(deps);
+        let fired = 0;
+        m.onDidChangeState(() => fired++);
+
+        const pending = m.evaluate("computeChange");
+        // Flush microtasks so evaluate progresses past isVisible and is now
+        // suspended awaiting the dry-run.
+        await new Promise((r) => setTimeout(r, 0));
+        m.dispose();
+        resolveDryRun("dbr/15.4.x-scala2.12"); // resolver ignores cancellation
+        await pending;
+
+        expect(fired).to.equal(0);
+        expect(recorded).to.have.length(0);
+    });
+
     it("returns to ready when no comparable compute is attached", async () => {
         // Start drifted, then compute is detached: drift is meaningless, so the
         // state must clear back to ready rather than linger as drifted.
