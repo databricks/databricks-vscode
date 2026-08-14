@@ -143,7 +143,6 @@ export class PythonSetupDriftManager implements Disposable {
             ) {
                 return;
             }
-            this.lastComputeDescriptor = descriptor;
             const current = await this.deps.resolveCurrentEnvKey(source.token);
 
             // A newer trigger started while we awaited: drop this stale result.
@@ -152,10 +151,19 @@ export class PythonSetupDriftManager implements Disposable {
             }
             // Could not resolve the current key -> unknown. Leave the flag as-is
             // rather than clearing (a transient network/auth failure must not
-            // silently retract a real drift warning).
+            // silently retract a real drift warning), and -- crucially -- do NOT
+            // record the descriptor: a transient failure must not latch this
+            // compute into the no-op skip above, or every subsequent same-compute
+            // trigger (cluster RUNNING/PENDING/TERMINATED churn, connection state
+            // events) would be skipped and the drift check would never retry
+            // until the compute actually changes, a setup completes, or a reload.
             if (current === undefined) {
                 return;
             }
+            // Resolution was definitive, so this descriptor is now a known
+            // quantity: record it, so a later no-op compute-change with the same
+            // identity (a runtime-state transition) is skipped.
+            this.lastComputeDescriptor = descriptor;
 
             const drifted = isDrifted(persisted, current);
             this.setDrifted(drifted);

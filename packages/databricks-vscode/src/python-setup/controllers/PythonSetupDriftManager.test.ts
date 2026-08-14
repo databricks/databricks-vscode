@@ -151,6 +151,33 @@ describe("PythonSetupDriftManager", () => {
         m.dispose();
     });
 
+    it("retries the same compute after a transient resolution failure", async () => {
+        // A dry-run that comes back "unknown" (transient CLI/network failure)
+        // must NOT record the descriptor: otherwise the no-op skip above would
+        // latch this compute and every later same-identity trigger would be
+        // dropped, so a genuine drift would never be detected until the compute
+        // changed or a reload happened. The next same-descriptor check must
+        // re-run the dry-run and pick up the drift.
+        let key: string | undefined = undefined;
+        const {deps, calls} = makeDeps({
+            resolveCurrentEnvKey: async () => {
+                calls.resolve++;
+                return key;
+            },
+        });
+        const m = new PythonSetupDriftManager(deps);
+
+        await m.evaluate("computeChange"); // resolves undefined -> unknown
+        expect(calls.resolve).to.equal(1);
+        expect(m.state).to.equal("ready"); // unchanged, no false drift
+
+        key = "dbr/15.4.x-scala2.12"; // now the dry-run succeeds and shows drift
+        await m.evaluate("computeChange"); // SAME descriptor -> must not be skipped
+        expect(calls.resolve).to.equal(2);
+        expect(m.state).to.equal("drifted");
+        m.dispose();
+    });
+
     it("returns to ready when no comparable compute is attached", async () => {
         // Start drifted, then compute is detached: drift is meaningless, so the
         // state must clear back to ready rather than linger as drifted.
