@@ -12,8 +12,10 @@ import {
 } from "../models/PythonSetupResult";
 import {
     formatSetupFailureDetail,
+    getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
     NO_COMPUTE_TARGET_MESSAGE,
+    PythonSetupErrorAction,
 } from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
@@ -132,8 +134,15 @@ export interface PythonSetupSetupDeps {
      * action that reveals the setup output channel. `detail`, when given, is
      * written to that channel first (see `formatSetupFailureDetail`), so the
      * button leads to the CLI's full explanation instead of an empty log.
+     * `action`, when given, adds one more button that opens an external URL —
+     * e.g. "Install uv" pointing at uv's install guide (see
+     * `getPythonSetupErrorAction`).
      */
-    showError: (message: string, detail?: string) => Promise<void>;
+    showError: (
+        message: string,
+        detail?: string,
+        action?: PythonSetupErrorAction
+    ) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
 
@@ -375,7 +384,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             this.present(
                 this.deps.showError(
                     getPythonSetupErrorMessage(result),
-                    formatSetupFailureDetail(result)
+                    formatSetupFailureDetail(result),
+                    getPythonSetupErrorAction(result)
                 )
             );
             return;

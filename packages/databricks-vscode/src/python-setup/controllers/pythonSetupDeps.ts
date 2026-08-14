@@ -5,6 +5,8 @@ import {PackageManagerDetection} from "../../language/packageManagerDetection";
 import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
+import {openExternal} from "../../utils/urlUtils";
+import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
@@ -208,7 +210,11 @@ export function makePythonSetupDeps(
             // revealing the (empty) output channel.
             await window.showWarningMessage(message);
         },
-        showError: async (message: string, detail?: string) => {
+        showError: async (
+            message: string,
+            detail?: string,
+            action?: PythonSetupErrorAction
+        ) => {
             // The mapped one-liner is deliberately concise and drops the CLI's
             // own explanation; write that detail into the channel so the log the
             // popup points at actually contains it (under `--output json` the CLI
@@ -221,9 +227,38 @@ export function makePythonSetupDeps(
             // notification (with its jump-to-logs button) as before.
             wiring.log.show();
             const showLogs = "Show Logs";
-            const picked = await window.showErrorMessage(message, showLogs);
+            // `showErrorMessage` hands the picked value back as a bare label
+            // string, so two buttons sharing a label are indistinguishable. Drop
+            // a remediation action that reuses the reserved "Show Logs" label
+            // rather than offer an ambiguous button whose URL branch is dead.
+            const remediation =
+                action && action.label !== showLogs ? action : undefined;
+            // Lead with the remediation button (e.g. "Install uv") when one is
+            // attached, so the action the user most likely wants comes first.
+            const actions = remediation
+                ? [remediation.label, showLogs]
+                : [showLogs];
+            const picked = await window.showErrorMessage(message, ...actions);
             if (picked === showLogs) {
                 wiring.log.show();
+            } else if (remediation && picked === remediation.label) {
+                // showError is the failure-reporting path and its one caller does
+                // not wrap it, so neither a rejected launch nor a false "could not
+                // open" result may escape here — contain both and record them.
+                try {
+                    const opened = await openExternal(remediation.url);
+                    if (!opened) {
+                        wiring.log.append(
+                            `\nCould not open ${remediation.url} in a browser.\n`
+                        );
+                    }
+                } catch (e) {
+                    wiring.log.append(
+                        `\nFailed to open ${remediation.url}: ${
+                            e instanceof Error ? e.message : String(e)
+                        }\n`
+                    );
+                }
             }
         },
         showSuccess: async (result) => {

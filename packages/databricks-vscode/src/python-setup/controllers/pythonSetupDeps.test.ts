@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {Uri, window} from "vscode";
+import {env, Uri, window} from "vscode";
 import {
     makePythonSetupDeps,
     makePythonSetupVisibility,
@@ -519,6 +519,159 @@ describe("makePythonSetupDeps showError", () => {
 
         expect(appended).to.have.length(0);
         expect(shownWith[0].actions).to.contain("Show Logs");
+    });
+
+    it("offers the given action button and opens its URL when picked", async () => {
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", {
+                label: "Install uv",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            // Order matters: the remediation button leads, "Show Logs" follows.
+            expect(shownWith[0].actions).to.deep.equal([
+                "Install uv",
+                "Show Logs",
+            ]);
+            expect(opened).to.deep.equal([
+                "https://docs.astral.sh/uv/getting-started/installation/",
+            ]);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("ignores a remediation action that reuses the reserved Show Logs label", async () => {
+        // Defensive: the picked value comes back as a bare label string, so two
+        // buttons sharing "Show Logs" would be indistinguishable and the URL
+        // branch would be dead. Such an action is dropped (log-only) rather than
+        // silently mis-dispatched.
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Show Logs";
+
+            await deps.showError("uv missing", "detail", {
+                label: "Show Logs",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            // Only the single, unambiguous Show Logs button is offered...
+            expect(shownWith[0].actions).to.deep.equal(["Show Logs"]);
+            // ...and clicking it reveals the log, never opening the URL.
+            expect(opened).to.have.length(0);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("logs when the browser cannot open the remediation URL (resolves false)", async () => {
+        // env.openExternal resolves false (rather than rejecting) when VS Code
+        // cannot open the URI; that ineffective click must still be recorded.
+        const originalOpen = env.openExternal;
+        (env as unknown as {openExternal: unknown}).openExternal = async () =>
+            false;
+        const appended: string[] = [];
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({
+                    log: {append: (c) => appended.push(c), show: () => {}},
+                })
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", {
+                label: "Install uv",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            expect(appended.join("")).to.match(/could not open/i);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("does not reject when opening the remediation URL fails", async () => {
+        // The popup is the failure-reporting path; a failed browser launch must
+        // not turn it into a rejected promise (the caller does not wrap it).
+        const originalOpen = env.openExternal;
+        (env as unknown as {openExternal: unknown}).openExternal = async () => {
+            throw new Error("no browser available");
+        };
+        const appended: string[] = [];
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({
+                    log: {append: (c) => appended.push(c), show: () => {}},
+                })
+            );
+            reply = "Install uv";
+
+            // Must resolve, not throw.
+            await deps.showError("uv missing", "detail", {
+                label: "Install uv",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            // The failure is recorded to the log channel rather than swallowed
+            // silently.
+            expect(appended.join("")).to.contain("no browser available");
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("does not open the URL when the action button is not picked", async () => {
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Show Logs";
+
+            await deps.showError("uv missing", "detail", {
+                label: "Install uv",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            });
+
+            expect(opened).to.have.length(0);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
     });
 });
 
