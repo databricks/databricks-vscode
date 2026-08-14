@@ -155,6 +155,39 @@ describe(__filename, () => {
         });
     });
 
+    it("emits indexUnreachable on a blocked-index failure", () => {
+        const {telemetry, events} = makeTelemetry();
+
+        const reportResult = telemetry.recordPythonSetupAttempt({
+            packageManager: "uv",
+            targetType: "cluster",
+            mode: "default",
+            trigger: "initial",
+        });
+        reportResult({
+            outcome: "failed",
+            failurePhase: "provision",
+            errorCode: "E_PROVISION",
+            indexUnreachable: true,
+        });
+
+        expect(events[1].props["event.indexUnreachable"]).to.equal("true");
+    });
+
+    it("omits indexUnreachable when it is not reported", () => {
+        const {telemetry, events} = makeTelemetry();
+
+        const reportResult = telemetry.recordPythonSetupAttempt({
+            packageManager: "uv",
+            targetType: "cluster",
+            mode: "default",
+            trigger: "initial",
+        });
+        reportResult({outcome: "failed", failurePhase: "provision"});
+
+        expect(events[1].props).to.not.have.property("event.indexUnreachable");
+    });
+
     it("reports at most one result per attempt", () => {
         const {telemetry, events} = makeTelemetry();
 

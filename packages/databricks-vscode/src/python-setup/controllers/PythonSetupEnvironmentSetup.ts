@@ -14,6 +14,7 @@ import {
     formatSetupFailureDetail,
     getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
+    isIndexUnreachableFailure,
     NO_COMPUTE_TARGET_MESSAGE,
     PythonSetupErrorAction,
 } from "../utils/errorMessages";
@@ -379,6 +380,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
                 diskMutated: result.error?.diskMutated,
+                indexUnreachable: isIndexUnreachableFailure(result),
                 warnings: result.warnings,
             });
             this.present(
