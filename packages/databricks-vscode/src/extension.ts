@@ -1164,10 +1164,12 @@ export async function activate(
                 return undefined;
             }
         },
-        // setupState is workspace-scoped (a single key), so in a multi-root
-        // workspace this shares the drift manager's baseline limitation: another
-        // root's setup makes every root read as VPEX-active. Accepted here (see
-        // the drift follow-up); presence is what "VPEX-active" means.
+        // In a multi-root workspace the single workspace-scoped setupState key
+        // can't be pinned to the active root, so a reading could be a spurious
+        // venvPresent=false; skip rather than emit an untrustworthy one. (The
+        // drift detector shares this single-key limitation; the real fix is the
+        // deferred per-project storage schema.)
+        isAttributable: () => (workspace.workspaceFolders?.length ?? 0) <= 1,
         isVpexActive: () =>
             stateStorage.get("databricks.pythonSetup.setupState") !== undefined,
         getTargetType: () =>

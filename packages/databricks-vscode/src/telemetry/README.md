@@ -124,15 +124,15 @@ off that authoritative value. Re-deriving here would be a second, divergent sour
 of truth. This event only reports the compute _kind_ (`currentTargetType`), read
 straight from the connection with no key involved.
 
-### Known limitation: multi-root workspaces
+### Multi-root workspaces are skipped
 
-`setupState` is a single workspace-scoped key with no per-project namespacing, so
-in a multi-root workspace where one project ran setup, _every_ root reads as
-VPEX-active while `venvPresent` is checked against the **active** project's `.venv`.
-A never-set-up sibling root can therefore emit a spurious `venvPresent: false`. This
-is the same shared-baseline limitation the drift detector carries; the correct fix
-is a per-project storage schema, deferred with it. Multi-root Databricks workspaces
-are uncommon, so the skew is small.
+`setupState` is a single workspace-scoped key with no per-project namespacing, so in
+a multi-root workspace it can't be pinned to the active root: a never-set-up sibling
+root would emit a spurious `venvPresent: false` and inflate the denominator. Rather
+than record an untrustworthy reading, the gauge is **suppressed entirely** when the
+workspace has more than one root. The drift detector shares this single-key
+limitation (it still fires there); the real fix for both is a per-project storage
+schema, deferred. Multi-root Databricks workspaces are uncommon, so little is lost.
 
 ## Privacy
 

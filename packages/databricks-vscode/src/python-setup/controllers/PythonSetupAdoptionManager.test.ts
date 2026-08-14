@@ -12,6 +12,7 @@ function makeDeps(over: Partial<PythonSetupAdoptionDeps> = {}): {
     const recorded: PythonSetupAdoption[] = [];
     const deps: PythonSetupAdoptionDeps = {
         projectRoot: () => "/ws/project",
+        isAttributable: () => true,
         isVpexActive: () => true,
         getTargetType: () => "serverless",
         venvExists: () => true,
@@ -63,6 +64,22 @@ describe("PythonSetupAdoptionManager", () => {
         const {deps, recorded} = makeDeps({isVpexActive: () => false});
         new PythonSetupAdoptionManager(deps).report();
         expect(recorded).to.be.empty;
+    });
+
+    it("does not emit when attribution is ambiguous (multi-root workspace)", () => {
+        // The shared setupState key could belong to another root, so emitting
+        // here would risk a spurious venvPresent=false. It must not latch either,
+        // so the workspace becoming single-root later can still report.
+        let attributable = false;
+        const {deps, recorded} = makeDeps({
+            isAttributable: () => attributable,
+        });
+        const reporter = new PythonSetupAdoptionManager(deps);
+        reporter.report();
+        expect(recorded).to.be.empty;
+        attributable = true;
+        reporter.report();
+        expect(recorded).to.have.length(1);
     });
 
     it("re-checks VPEX-active on later calls until it can emit, then dedupes", () => {

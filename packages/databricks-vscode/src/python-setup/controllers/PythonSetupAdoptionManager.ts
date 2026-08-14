@@ -5,6 +5,15 @@ export interface PythonSetupAdoptionDeps {
     /** The active project's root, or undefined when none is resolvable. */
     projectRoot: () => string | undefined;
     /**
+     * Whether the persisted setup state can be attributed to the active project.
+     * `setupState` is a single workspace-scoped key with no per-project
+     * namespacing, so in a multi-root workspace it may belong to a sibling root:
+     * checking a different root's `.venv` against it would emit a spurious
+     * `venvPresent: false` and inflate the denominator. False there suppresses the
+     * reading rather than emit an untrustworthy one.
+     */
+    isAttributable: () => boolean;
+    /**
      * Whether a uv-native setup is on record for the workspace (the persisted
      * `databricks.pythonSetup.setupState` exists). The gauge is emitted only
      * when true, so the event's presence is the adoption-rate denominator.
@@ -46,6 +55,12 @@ export class PythonSetupAdoptionManager {
         try {
             const root = this.deps.projectRoot();
             if (root === undefined || this.reported.has(root)) {
+                return;
+            }
+            // Ambiguous attribution (multi-root workspace): the shared setupState
+            // key may describe a different root, so a reading here could be a
+            // spurious venvPresent=false. Suppress without latching.
+            if (!this.deps.isAttributable()) {
                 return;
             }
             // Not VPEX-active: no setup on record, so there is nothing to gauge.
