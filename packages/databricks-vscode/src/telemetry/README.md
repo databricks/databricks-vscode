@@ -88,9 +88,15 @@ mutually exclusively. A user who sees this entry never emits that event.
 `python_env.adoption`, emitted by `pythonSetupExtensions.ts`
 (`recordPythonSetupAdoption`) and driven by
 `python-setup/controllers/PythonSetupAdoptionManager.ts`. A once-per-session
-gauge, fired on the first `CONNECTED` transition (so the attached compute is known)
-and on setup completion (to catch a project that becomes VPEX-active mid-session);
-it dedupes per project root, so whichever fires first is the one reading.
+gauge, read on the first `CONNECTED` transition (so a compute is attached — possibly
+`none`, i.e. auth-connected with nothing selected) and deduped per project root.
+
+It is deliberately **not** fired on setup completion. A first-ever setup's state
+write is fire-and-forget and lands on a later microtask, while the setup
+controller's state event fires synchronously — so a reading taken there would still
+see the project as not-yet-VPEX-active and emit nothing. Such a session is measured
+from its next connect instead; the venv it just provisioned is already implied by a
+`python_env.setup.result` with `outcome: ok`.
 
 ### Why it is emitted only when VPEX-active
 

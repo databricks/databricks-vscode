@@ -1180,21 +1180,24 @@ export async function activate(
             existsSync(venvInterpreterPath(path.join(root, ".venv"))),
         record: (report) => telemetry.recordPythonSetupAdoption(report),
     });
-    // Report only once the connection is CONNECTED, so the compute kind is known;
-    // the manager dedupes per session, so repeated fires are safe. Firing before
-    // connect would latch a misleading "none" reading.
+    // A connect-time reading: report once the connection is CONNECTED (so the
+    // compute is attached, though it may be "none" — auth-connected with nothing
+    // selected is a real slice). The manager dedupes per session, so repeated
+    // transitions are safe; firing before connect would latch "none".
+    //
+    // Deliberately NOT fired on setup completion. A first-ever setup's state
+    // write is fire-and-forget and lands on a later microtask, but the setup
+    // controller's state event fires synchronously — so a report() there would
+    // still read the project as not-yet-VPEX-active and emit nothing. Such a
+    // session is instead measured from its next connect; its just-provisioned
+    // venv is already implied by python_env.setup.result = ok.
     const reportAdoptionIfConnected = () => {
         if (connectionManager.state === "CONNECTED") {
             pythonSetupAdoption.report();
         }
     };
     context.subscriptions.push(
-        connectionManager.onDidChangeState(reportAdoptionIfConnected),
-        // A first setup completes while already CONNECTED (no new connection
-        // transition), so without this the session that turns a project
-        // VPEX-active would never be reported — it would wait for the next
-        // reload. Mirrors the drift manager's setupCompleted trigger.
-        pythonSetupEnvironment.onDidChangeState(reportAdoptionIfConnected)
+        connectionManager.onDidChangeState(reportAdoptionIfConnected)
     );
     // Cover activation while already connected (a reload with a live session),
     // where onDidChangeState may not fire again.
