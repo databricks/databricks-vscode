@@ -87,8 +87,10 @@ mutually exclusively. A user who sees this entry never emits that event.
 
 `python_env.adoption`, emitted by `pythonSetupExtensions.ts`
 (`recordPythonSetupAdoption`) and driven by
-`python-setup/controllers/PythonSetupAdoptionReporter.ts`. A once-per-session
-gauge, fired on the first `CONNECTED` transition so the attached compute is known.
+`python-setup/controllers/PythonSetupAdoptionManager.ts`. A once-per-session
+gauge, fired on the first `CONNECTED` transition (so the attached compute is known)
+and on setup completion (to catch a project that becomes VPEX-active mid-session);
+it dedupes per project root, so whichever fires first is the one reading.
 
 ### Why it is emitted only when VPEX-active
 
@@ -115,6 +117,16 @@ TypeScript to also report drift. It does not: the CLI is the authority on env ke
 off that authoritative value. Re-deriving here would be a second, divergent source
 of truth. This event only reports the compute _kind_ (`currentTargetType`), read
 straight from the connection with no key involved.
+
+### Known limitation: multi-root workspaces
+
+`setupState` is a single workspace-scoped key with no per-project namespacing, so
+in a multi-root workspace where one project ran setup, _every_ root reads as
+VPEX-active while `venvPresent` is checked against the **active** project's `.venv`.
+A never-set-up sibling root can therefore emit a spurious `venvPresent: false`. This
+is the same shared-baseline limitation the drift detector carries; the correct fix
+is a per-project storage schema, deferred with it. Multi-root Databricks workspaces
+are uncommon, so the skew is small.
 
 ## Privacy
 

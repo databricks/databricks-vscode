@@ -59,7 +59,7 @@ import {
     resolveComputeFrom,
 } from "./python-setup/controllers/pythonSetupDeps";
 import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDriftManager";
-import {PythonSetupAdoptionReporter} from "./python-setup/controllers/PythonSetupAdoptionReporter";
+import {PythonSetupAdoptionManager} from "./python-setup/controllers/PythonSetupAdoptionManager";
 import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {venvInterpreterPath} from "./python-setup/utils/venvInterpreterPath";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
@@ -1156,7 +1156,7 @@ export async function activate(
     // (which compares compute env keys) — drift never checks that the venv is
     // actually present. Measurement only, best-effort, and it derives no env key
     // of its own: drift already reports env-key mismatch via python_env.drift.
-    const pythonSetupAdoption = new PythonSetupAdoptionReporter({
+    const pythonSetupAdoption = new PythonSetupAdoptionManager({
         projectRoot: () => {
             try {
                 return workspaceFolderManager.activeProjectUri.fsPath;
@@ -1164,8 +1164,10 @@ export async function activate(
                 return undefined;
             }
         },
-        // setupState is workspace-scoped (a single key), matching the drift
-        // manager's baseline; presence is what "VPEX-active" means.
+        // setupState is workspace-scoped (a single key), so in a multi-root
+        // workspace this shares the drift manager's baseline limitation: another
+        // root's setup makes every root read as VPEX-active. Accepted here (see
+        // the drift follow-up); presence is what "VPEX-active" means.
         isVpexActive: () =>
             stateStorage.get("databricks.pythonSetup.setupState") !== undefined,
         getTargetType: () =>
@@ -1178,21 +1180,25 @@ export async function activate(
             existsSync(venvInterpreterPath(path.join(root, ".venv"))),
         record: (report) => telemetry.recordPythonSetupAdoption(report),
     });
+    // Report only once the connection is CONNECTED, so the compute kind is known;
+    // the manager dedupes per session, so repeated fires are safe. Firing before
+    // connect would latch a misleading "none" reading.
+    const reportAdoptionIfConnected = () => {
+        if (connectionManager.state === "CONNECTED") {
+            pythonSetupAdoption.report();
+        }
+    };
     context.subscriptions.push(
-        // Report once the connection is CONNECTED, so the compute kind is known;
-        // the reporter dedupes, so repeated transitions are safe. Firing before
-        // connect would latch a misleading "none" reading.
-        connectionManager.onDidChangeState(() => {
-            if (connectionManager.state === "CONNECTED") {
-                pythonSetupAdoption.report();
-            }
-        })
+        connectionManager.onDidChangeState(reportAdoptionIfConnected),
+        // A first setup completes while already CONNECTED (no new connection
+        // transition), so without this the session that turns a project
+        // VPEX-active would never be reported — it would wait for the next
+        // reload. Mirrors the drift manager's setupCompleted trigger.
+        pythonSetupEnvironment.onDidChangeState(reportAdoptionIfConnected)
     );
     // Cover activation while already connected (a reload with a live session),
     // where onDidChangeState may not fire again.
-    if (connectionManager.state === "CONNECTED") {
-        pythonSetupAdoption.report();
-    }
+    reportAdoptionIfConnected();
 
     const environmentCommands = new EnvironmentCommands(
         featureManager,

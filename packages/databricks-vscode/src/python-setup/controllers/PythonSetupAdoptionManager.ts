@@ -29,7 +29,7 @@ export interface PythonSetupAdoptionDeps {
  * safe. Distinct from {@link PythonSetupDriftManager}, which measures compute
  * env-key drift; this measures whether the environment still exists at all.
  */
-export class PythonSetupAdoptionReporter {
+export class PythonSetupAdoptionManager {
     /** Project roots already reported this session, to emit at most once each. */
     private readonly reported = new Set<string>();
 

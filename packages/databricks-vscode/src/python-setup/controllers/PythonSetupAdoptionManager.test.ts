@@ -2,8 +2,8 @@ import {expect} from "chai";
 import {PythonSetupAdoption} from "../../telemetry/pythonSetupExtensions";
 import {
     PythonSetupAdoptionDeps,
-    PythonSetupAdoptionReporter,
-} from "./PythonSetupAdoptionReporter";
+    PythonSetupAdoptionManager,
+} from "./PythonSetupAdoptionManager";
 
 function makeDeps(over: Partial<PythonSetupAdoptionDeps> = {}): {
     deps: PythonSetupAdoptionDeps;
@@ -21,10 +21,10 @@ function makeDeps(over: Partial<PythonSetupAdoptionDeps> = {}): {
     return {deps, recorded};
 }
 
-describe("PythonSetupAdoptionReporter", () => {
+describe("PythonSetupAdoptionManager", () => {
     it("emits the adoption gauge once for a VPEX-active project", () => {
         const {deps, recorded} = makeDeps();
-        new PythonSetupAdoptionReporter(deps).report();
+        new PythonSetupAdoptionManager(deps).report();
         expect(recorded).to.deep.equal([
             {venvPresent: true, currentTargetType: "serverless"},
         ]);
@@ -32,7 +32,7 @@ describe("PythonSetupAdoptionReporter", () => {
 
     it("reports an absent venv as venvPresent=false", () => {
         const {deps, recorded} = makeDeps({venvExists: () => false});
-        new PythonSetupAdoptionReporter(deps).report();
+        new PythonSetupAdoptionManager(deps).report();
         expect(recorded).to.deep.equal([
             {venvPresent: false, currentTargetType: "serverless"},
         ]);
@@ -40,13 +40,13 @@ describe("PythonSetupAdoptionReporter", () => {
 
     it("passes through the attached compute kind, including none", () => {
         const {deps, recorded} = makeDeps({getTargetType: () => "none"});
-        new PythonSetupAdoptionReporter(deps).report();
+        new PythonSetupAdoptionManager(deps).report();
         expect(recorded[0].currentTargetType).to.equal("none");
     });
 
     it("dedupes: repeated report() calls emit at most once per session", () => {
         const {deps, recorded} = makeDeps();
-        const reporter = new PythonSetupAdoptionReporter(deps);
+        const reporter = new PythonSetupAdoptionManager(deps);
         reporter.report();
         reporter.report();
         reporter.report();
@@ -55,13 +55,13 @@ describe("PythonSetupAdoptionReporter", () => {
 
     it("does not emit when no project root is resolvable", () => {
         const {deps, recorded} = makeDeps({projectRoot: () => undefined});
-        new PythonSetupAdoptionReporter(deps).report();
+        new PythonSetupAdoptionManager(deps).report();
         expect(recorded).to.be.empty;
     });
 
     it("does not emit when the project is not VPEX-active (no setup on record)", () => {
         const {deps, recorded} = makeDeps({isVpexActive: () => false});
-        new PythonSetupAdoptionReporter(deps).report();
+        new PythonSetupAdoptionManager(deps).report();
         expect(recorded).to.be.empty;
     });
 
@@ -71,7 +71,7 @@ describe("PythonSetupAdoptionReporter", () => {
         // reported.
         let active = false;
         const {deps, recorded} = makeDeps({isVpexActive: () => active});
-        const reporter = new PythonSetupAdoptionReporter(deps);
+        const reporter = new PythonSetupAdoptionManager(deps);
         reporter.report();
         expect(recorded).to.be.empty;
         active = true;
@@ -83,7 +83,7 @@ describe("PythonSetupAdoptionReporter", () => {
     it("emits per distinct project root (multi-root)", () => {
         let root = "/ws/a";
         const {deps, recorded} = makeDeps({projectRoot: () => root});
-        const reporter = new PythonSetupAdoptionReporter(deps);
+        const reporter = new PythonSetupAdoptionManager(deps);
         reporter.report();
         root = "/ws/b";
         reporter.report();
@@ -96,7 +96,7 @@ describe("PythonSetupAdoptionReporter", () => {
                 throw new Error("fs blew up");
             },
         });
-        const reporter = new PythonSetupAdoptionReporter(deps);
+        const reporter = new PythonSetupAdoptionManager(deps);
         expect(() => reporter.report()).to.not.throw();
         expect(recorded).to.be.empty;
     });
