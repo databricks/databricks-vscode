@@ -198,6 +198,34 @@ describe("PythonSetupDriftManager", () => {
         m.dispose();
     });
 
+    it("drops the result when the setup baseline moved during the dry-run", async () => {
+        // A setup can complete mid-flight and re-provision the baseline; comparing
+        // the stale baseline against the fresh key would log a false drift event.
+        let persisted = "serverless/serverless-v4";
+        const {deps, recorded} = makeDeps({
+            getPersistedEnvKey: () => persisted,
+            resolveCurrentEnvKey: async () => {
+                persisted = "dbr/15.4.x-scala2.12"; // setup completed mid-flight
+                return "dbr/15.4.x-scala2.12";
+            },
+        });
+        const m = new PythonSetupDriftManager(deps);
+        await m.evaluate("computeChange");
+        expect(m.state).to.equal("ready");
+        expect(recorded).to.have.length(0);
+        m.dispose();
+    });
+
+    it("ignores triggers once disposed", async () => {
+        const {deps, recorded, calls} = makeDeps();
+        const m = new PythonSetupDriftManager(deps);
+        m.dispose();
+        m.check("computeChange");
+        await m.evaluate("computeChange");
+        expect(calls.resolve).to.equal(0);
+        expect(recorded).to.have.length(0);
+    });
+
     it("does not mutate state or record telemetry after disposal", async () => {
         // A resolver that ignores cancellation must not commit a result once the
         // manager is disposed.

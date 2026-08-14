@@ -70,6 +70,9 @@ export class PythonSetupDriftManager implements Disposable {
 
     /** Debounced entry point for triggers (compute change, open, setup done). */
     check(trigger: PythonSetupDriftTrigger): void {
+        if (this.disposed) {
+            return;
+        }
         if (this.debounceTimer !== undefined) {
             clearTimeout(this.debounceTimer);
         }
@@ -84,6 +87,9 @@ export class PythonSetupDriftManager implements Disposable {
      * code reaches it through the debounced {@link check}.
      */
     async evaluate(trigger: PythonSetupDriftTrigger): Promise<void> {
+        if (this.disposed) {
+            return;
+        }
         const myGeneration = ++this.generation;
 
         // Cancel any dry-run still running for a superseded trigger.
@@ -138,10 +144,16 @@ export class PythonSetupDriftManager implements Disposable {
             if (current === undefined) {
                 return;
             }
-            // Compute may have switched during the dry-run without bumping our
-            // generation (its debounce hasn't fired yet); drop the now-stale
-            // result and let the pending trigger re-evaluate.
-            if (this.deps.getComputeDescriptor() !== descriptor) {
+            // Either input can move during the dry-run without bumping our
+            // generation (a new trigger's debounce hasn't fired yet): the compute
+            // may have switched, or a completed setup may have re-provisioned the
+            // baseline. Committing a mix of stale and fresh values would flash a
+            // wrong badge and log a false drift event, so drop the result and let
+            // the pending trigger re-evaluate.
+            if (
+                this.deps.getComputeDescriptor() !== descriptor ||
+                this.deps.getPersistedEnvKey() !== persisted
+            ) {
                 return;
             }
             // Definitive result: record the descriptor so a later no-op
@@ -151,7 +163,9 @@ export class PythonSetupDriftManager implements Disposable {
             const drifted = isDrifted(persisted, current);
             this.setDrifted(drifted);
 
-            if (drifted) {
+            // `!this.disposed`: a synchronous listener of the state event above
+            // may have disposed us during the fire; don't record telemetry then.
+            if (drifted && !this.disposed) {
                 const mismatch = `${persisted}->${current}`;
                 if (this.lastReported !== mismatch) {
                     this.lastReported = mismatch;
@@ -199,6 +213,7 @@ export class PythonSetupDriftManager implements Disposable {
         }
         this.inFlight?.cancel();
         this.inFlight?.dispose();
+        this.inFlight = undefined;
         this.stateEmitter.dispose();
     }
 }
