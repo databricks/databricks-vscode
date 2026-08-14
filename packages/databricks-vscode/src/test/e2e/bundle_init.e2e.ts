@@ -103,16 +103,20 @@ describe("Bundle Init", async function () {
 
         // Move keyboard focus into the editor-hosted terminal's input so the
         // wizard keystrokes below aren't swallowed by the editor-tab chrome.
+        // Return the command so executeWorkbench awaits focus completing.
         await browser.executeWorkbench((vscode) => {
-            vscode.commands.executeCommand("workbench.action.terminal.focus");
+            return vscode.commands.executeCommand(
+                "workbench.action.terminal.focus"
+            );
         });
         await sleep(1000);
 
-        // Clear any env-setup text the Python extension injected into the
-        // template search filter (a no-op when the filter is already empty) so
-        // the template name we type next matches. 50 backspaces comfortably
-        // covers a typical injected activate line.
-        await browser.keys(new Array(50).fill(Key.Backspace));
+        // Clear the filter before typing (see above); a no-op when it's empty.
+        // Over-provision the backspaces so even a long injected activation line
+        // (a Windows venv/conda activate command with an absolute path) is
+        // fully removed rather than leaving a prefix the template name appends
+        // to.
+        await browser.keys(new Array(200).fill(Key.Backspace));
         await sleep(1000);
 
         //select temaplate type
