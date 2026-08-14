@@ -61,10 +61,10 @@ try:
 except Exception as e:
     logging.error(
         "Failed to import Databricks Connect: %s. This usually means the Python "
-        "environment is misconfigured — a common cause is a standalone 'pyspark' "
-        "package installed alongside databricks-connect, which share the pyspark "
-        "package and overwrite each other. Remove the standalone pyspark dependency "
-        "and re-run 'Set up Python environment'.", e)
+        "environment is misconfigured. A common cause is a standalone 'pyspark' "
+        "package installed alongside databricks-connect: they share the pyspark "
+        "package and overwrite each other, so if your project depends on a "
+        "standalone pyspark, remove it and re-run 'Set up Python environment'.", e)
 else:
     try:
         spark: SparkSession = DatabricksSession.builder.getOrCreate()
