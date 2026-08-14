@@ -59,6 +59,7 @@ import {
     resolveComputeFrom,
 } from "./python-setup/controllers/pythonSetupDeps";
 import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDriftManager";
+import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
 import {
     isPythonSetupEnabled,
@@ -1009,6 +1010,14 @@ export async function activate(
             // setup flow.
             persistServerlessVersion: (version) =>
                 connectionManager.enableServerless(version),
+            // Reuses the compute picker, which returns the chosen compute (or
+            // undefined if dismissed); its serverless branch is version-complete.
+            promptSelectCompute: () =>
+                Promise.resolve(
+                    commands.executeCommand<SetupCompute | undefined>(
+                        "databricks.connection.attachClusterQuickPick"
+                    )
+                ),
             setActiveInterpreter: async (interpreterPath, root) => {
                 await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
                     interpreterPath,

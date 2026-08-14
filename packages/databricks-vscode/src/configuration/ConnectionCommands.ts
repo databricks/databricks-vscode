@@ -1,5 +1,5 @@
 import {Cluster} from "../sdk-extensions";
-import {compute} from "@databricks/sdk-experimental";
+import {compute, logging} from "@databricks/sdk-experimental";
 import {
     Disposable,
     QuickPickItem,
@@ -30,7 +30,19 @@ import {
 } from "../python-setup/utils/serverlessVersionResolver";
 import {pickServerlessVersion} from "../python-setup/utils/serverlessVersionPicker";
 import {collectServerlessVersionObservations} from "../python-setup/utils/serverlessVersionObservations";
+import type {SetupCompute} from "../python-setup/controllers/PythonSetupEnvironmentSetup";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {Loggers} from "../logger";
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const {NamedLogger} = logging;
+
+/**
+ * A compute target picked in the QuickPick. Aliased to the `setup-local` compute
+ * shape so a drift is a compile error, not a silent mismatch through
+ * `executeCommand`'s untyped generic. Serverless is always version-complete.
+ */
+export type SelectedCompute = SetupCompute;
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -143,8 +155,14 @@ export class ConnectionCommands implements Disposable {
         };
     }
 
+    /**
+     * Resolves once the picker closes to the attached compute, or `undefined` on
+     * dismissal / "Create New Cluster". The return lets python-setup use the
+     * selection directly rather than re-reading the connection manager (whose
+     * cluster attach is async and would race). Other callers ignore it.
+     */
     attachClusterQuickPickCommand() {
-        return async (title?: string) => {
+        return async (title?: string): Promise<SelectedCompute | undefined> => {
             const workspaceClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
             if (!workspaceClient || !me) {
@@ -204,33 +222,73 @@ export class ConnectionCommands implements Disposable {
             refreshQuickPickItems();
             quickPick.show();
 
-            quickPick.onDidAccept(async () => {
-                const selectedItem = quickPick.selectedItems[0];
-                if ("cluster" in selectedItem) {
-                    const cluster = selectedItem.cluster;
-                    await this.connectionManager.attachCluster(cluster.id);
-                } else if (selectedItem.label === "$(cloud) Serverless") {
-                    // Dispose the compute QuickPick before opening the version
-                    // sub-picker so they don't stack visually.
-                    disposables.forEach((d) => d.dispose());
-                    await this.selectServerless();
-                    return;
-                } else {
-                    await UrlUtils.openExternal(
-                        `${
-                            (
-                                await this.connectionManager.workspaceClient
-                                    ?.apiClient?.host
-                            )?.href ?? ""
-                        }#create/cluster`
-                    );
-                }
-                disposables.forEach((d) => d.dispose());
-            });
+            // `settled` guards a repeated Enter and stops the hide handler
+            // (which also fires when accept disposes the picker) from resolving
+            // before the accept branch's awaits finish.
+            return await new Promise<SelectedCompute | undefined>((resolve) => {
+                let settled = false;
+                quickPick.onDidAccept(async () => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    let selected: SelectedCompute | undefined;
+                    try {
+                        const selectedItem = quickPick.selectedItems[0];
+                        if (selectedItem === undefined) {
+                            // Accepted with nothing highlighted.
+                        } else if ("cluster" in selectedItem) {
+                            const cluster = selectedItem.cluster;
+                            // Best-effort: attachCluster is @onError(throw:false),
+                            // so a failed write pops its own error but doesn't
+                            // throw. We still return the chosen target -- it's all
+                            // setup-local needs and any failure is already shown.
+                            await this.connectionManager.attachCluster(
+                                cluster.id
+                            );
+                            selected = {kind: "cluster", clusterId: cluster.id};
+                        } else if (
+                            selectedItem.label === "$(cloud) Serverless"
+                        ) {
+                            // Dispose the compute QuickPick before opening the
+                            // version sub-picker so they don't stack visually.
+                            disposables.forEach((d) => d.dispose());
+                            const version = await this.selectServerless();
+                            if (version !== undefined) {
+                                selected = {kind: "serverless", version};
+                            }
+                        } else {
+                            await UrlUtils.openExternal(
+                                `${
+                                    (
+                                        await this.connectionManager
+                                            .workspaceClient?.apiClient?.host
+                                    )?.href ?? ""
+                                }#create/cluster`
+                            );
+                        }
+                    } catch (e) {
+                        // Defense-in-depth for an unexpected throw (attach/enable
+                        // are @onError and don't throw): keep it off the unhandled
+                        // path and still settle. `selected` stays undefined.
+                        NamedLogger.getOrCreate(Loggers.Extension).error(
+                            "Compute picker selection failed",
+                            e
+                        );
+                    } finally {
+                        disposables.forEach((d) => d.dispose());
+                        resolve(selected);
+                    }
+                });
 
-            quickPick.onDidHide(() => {
-                disposables.forEach((d) => d.dispose());
-                quickPick.dispose();
+                quickPick.onDidHide(() => {
+                    disposables.forEach((d) => d.dispose());
+                    quickPick.dispose();
+                    if (!settled) {
+                        settled = true;
+                        resolve(undefined);
+                    }
+                });
             });
         };
     }
@@ -242,18 +300,22 @@ export class ConnectionCommands implements Disposable {
      * selection, so setup need not re-prompt. If they dismiss the version
      * picker, no compute change is made. With the feature off this is the
      * plain, unchanged serverless enable.
+     *
+     * Returns the confirmed version, or `undefined` if the picker was dismissed
+     * or the feature is off (serverless enabled but version-less).
      */
-    private async selectServerless() {
+    private async selectServerless(): Promise<string | undefined> {
         if (!isPythonSetupEnabled()) {
             await this.connectionManager.enableServerless();
-            return;
+            return undefined;
         }
         const version = await this.pickServerlessVersion();
         if (version === undefined) {
             // User dismissed the version picker -- don't switch compute.
-            return;
+            return undefined;
         }
         await this.connectionManager.enableServerless(version);
+        return version;
     }
 
     /**

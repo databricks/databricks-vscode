@@ -137,6 +137,13 @@ export interface PythonSetupWiringDeps {
      * selection, so the next run does not ask again.
      */
     persistServerlessVersion: (version: string) => Promise<void>;
+    /**
+     * Open the compute picker when nothing is attached, resolving to the chosen
+     * compute (or `undefined` if dismissed). The caller uses this return value
+     * directly, not a re-read of {@link attachedCompute}: a cluster attach
+     * propagates asynchronously, so an immediate re-read would race it.
+     */
+    promptSelectCompute: () => Promise<SetupCompute | undefined>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -170,6 +177,15 @@ export function makePythonSetupDeps(
         isVisible,
         resolveCompute: async () => {
             const resolution = resolveComputeFrom(wiring.attachedCompute());
+            if (resolution.status === "none") {
+                // Nothing attached: offer the picker inline instead of
+                // dead-ending. Use its return value (not a racy re-read);
+                // `undefined` means dismissed, so fall through to `none`.
+                const picked = await wiring.promptSelectCompute();
+                return picked === undefined
+                    ? {status: "none"}
+                    : {status: "ok", compute: picked};
+            }
             if (resolution.status !== "needsServerlessVersion") {
                 return resolution;
             }

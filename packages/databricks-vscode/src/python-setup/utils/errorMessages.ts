@@ -35,6 +35,68 @@ export const UV_INSTALL_DOCS_URL =
     "https://docs.astral.sh/uv/getting-started/installation/";
 
 /**
+ * uv's guide to configuring a package index. Single-sourced here so the popup
+ * action for a blocked index and its test point at the same page.
+ */
+export const UV_INDEX_DOCS_URL =
+    "https://docs.astral.sh/uv/configuration/indexes/";
+
+/**
+ * "Cannot reach the host" phrases in uv's error text (matched case-insensitively).
+ * TLS-interception and proxy-auth (407) are deliberately left out: they need a
+ * CA-trust / credentials fix, not a different index.
+ */
+const INDEX_CONNECTIVITY_SYMPTOMS = [
+    "connection refused",
+    "connect error", // e.g. "tcp connect error"
+    "connection reset",
+    "timed out",
+    "name resolution", // DNS: "… name resolution" (Linux)
+    "failed to lookup address", // DNS: macOS getaddrinfo phrasing
+    "dns error",
+    "network is unreachable",
+    "no route to host",
+    "could not connect",
+];
+
+/**
+ * True when an E_PROVISION failure is a blocked *package index* (pypi.org blocked,
+ * proxy needed), not a dependency conflict — both share the code, so the conflict
+ * copy would misdirect. The CLI emits no distinct code, so we read uv's message.
+ *
+ * Non-obvious choices: the index marker is the PEP 503 "/simple/" path (so a
+ * git-*named* package like /simple/gitpython/ still counts), backed by structural
+ * exclusion of git sources and direct distribution URLs — which can also carry
+ * "/simple/". E_PYTHON_INSTALL is excluded (its CPython download uses a different
+ * mirror this can't fix). Precision over recall: an unmatched phrasing falls back
+ * to the per-code copy, never wrong remediation.
+ */
+export function isIndexUnreachableFailure(result: PythonSetupResult): boolean {
+    const err = result.error;
+    if (!err || err.code !== "E_PROVISION") {
+        return false;
+    }
+    const msg = err.message?.toLowerCase() ?? "";
+    // A git source or a direct distribution URL can also "failed to fetch" and may
+    // even carry "/simple/" in their path (an org named "simple", a wheel under a
+    // /simple/ dir) — but neither is a package index, so exclude them structurally.
+    if (
+        msg.includes("git+") ||
+        msg.includes("git repository") ||
+        msg.includes(".whl") ||
+        msg.includes(".tar.")
+    ) {
+        return false;
+    }
+    // "/simple/" with the trailing slash: the real index fetch URL is always
+    // {index}/simple/{package}/ (never a name like /simplejson-… or a file).
+    if (!msg.includes("failed to fetch") || !msg.includes("/simple/")) {
+        return false;
+    }
+    return INDEX_CONNECTIVITY_SYMPTOMS.some((s) => msg.includes(s));
+}
+
+/**
  * An optional remediation button to attach to a failure popup: a label and the
  * external URL it opens. Kept alongside {@link getPythonSetupErrorMessage} so the
  * copy and its call-to-action live together.
@@ -86,24 +148,41 @@ const BASE_MESSAGE: Record<
 
 const GENERIC = "Python environment setup failed.";
 
+/**
+ * Popup copy for a blocked index, replacing E_PROVISION's misleading conflict
+ * text. Summary only — the copy-pasteable fix lives in {@link formatSetupFailureDetail}.
+ */
+const INDEX_UNREACHABLE_MESSAGE =
+    "Couldn't reach the Python package index — this often means a corporate " +
+    "network is blocking the public index (pypi.org) and a proxy is required. " +
+    "Point uv at your organization's package index (set the UV_INDEX_URL " +
+    "environment variable, or add an index-url to your pip config), then try " +
+    "again. See the logs for details.";
+
 export function getPythonSetupErrorMessage(result: PythonSetupResult): string {
     const err = result.error;
     if (!err) {
         return GENERIC;
     }
-    const base = BASE_MESSAGE[err.code]?.(result) ?? GENERIC;
+    // Checked before the per-code map: a blocked index arrives as E_PROVISION,
+    // whose generic "dependency conflict" copy points at the wrong cause.
+    const base = isIndexUnreachableFailure(result)
+        ? INDEX_UNREACHABLE_MESSAGE
+        : BASE_MESSAGE[err.code]?.(result) ?? GENERIC;
     return base + diskStateSuffix(result, err);
 }
 
 /**
- * The remediation button, if any, for a failed setup result. Only `E_UV_MISSING`
- * carries one today: the CLI could neither find nor auto-install uv, so we point
- * the user at uv's install guide. All other codes are actionable from the message
- * and logs alone, so they get no extra button.
+ * The remediation button, if any: a blocked index → uv's index-config docs, or
+ * `E_UV_MISSING` → uv's install docs. Other codes are actionable from the message
+ * and logs alone.
  */
 export function getPythonSetupErrorAction(
     result: PythonSetupResult
 ): PythonSetupErrorAction | undefined {
+    if (isIndexUnreachableFailure(result)) {
+        return {label: "Configure package index", url: UV_INDEX_DOCS_URL};
+    }
     if (result.error?.code === "E_UV_MISSING") {
         return {label: "Install uv", url: UV_INSTALL_DOCS_URL};
     }
@@ -139,6 +218,27 @@ export function formatSetupFailureDetail(
         lines.push(
             "Phases: " +
                 result.phases.map((p) => `${p.phase}=${p.status}`).join(", ")
+        );
+    }
+    // For a blocked index, follow the raw error with concrete, copy-pasteable
+    // remediation — the popup only summarises it. Kept here (not the popup) so
+    // the multi-line commands render as-is in the output channel.
+    if (isIndexUnreachableFailure(result)) {
+        lines.push(
+            "",
+            "This looks like the Python package index (pypi.org) is unreachable — " +
+                "often a corporate network that blocks it and requires a proxy. Point uv " +
+                "at your organization's package index in one of these ways, then re-run setup:",
+            "",
+            "  1. Set the UV_INDEX_URL environment variable to https://<your-proxy>/simple",
+            "       macOS/Linux:  export UV_INDEX_URL=https://<your-proxy>/simple",
+            "       Windows:      setx UV_INDEX_URL https://<your-proxy>/simple",
+            "",
+            "  2. Or add an index-url to your pip config (pip.conf, or pip.ini on Windows);",
+            "     the CLI bridges it to uv:",
+            "       [global]",
+            "       index-url = https://<your-proxy>/simple",
+            "     Use index-url (not extra-index-url) so pypi.org is replaced, not merely supplemented."
         );
     }
     // Bracket with blank lines so the block stands apart from any streamed CLI

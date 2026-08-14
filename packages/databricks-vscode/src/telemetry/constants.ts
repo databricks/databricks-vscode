@@ -498,6 +498,7 @@ export class EventTypes {
         errorCode?: PythonSetupErrorCode;
         envKey?: string;
         diskMutated?: boolean;
+        indexUnreachable?: boolean;
         warningsCount?: number;
         // A code->count histogram, not a list: JSON-stringified into a property
         // by recordEvent (numbers alone become metrics). Keys are a closed
@@ -541,6 +542,13 @@ export class EventTypes {
         diskMutated: {
             comment:
                 "Whether the failed run had already modified project files. Omitted when the CLI reported no error object",
+        },
+        indexUnreachable: {
+            comment:
+                "Whether the failure was uv being unable to reach the package index (a blocked pypi.org " +
+                "needing a proxy) rather than a dependency conflict — both arrive as E_PROVISION. Present " +
+                "on every CLI setup failure, so false is meaningful (a non-index failure, the rate's " +
+                "denominator); omitted with no CLI result and on post-CLI adopt/persist failures",
         },
         warningsCount: {
             comment:
