@@ -128,11 +128,16 @@ straight from the connection with no key involved.
 
 `setupState` is a single workspace-scoped key with no per-project namespacing, so in
 a multi-root workspace it can't be pinned to the active root: a never-set-up sibling
-root would emit a spurious `venvPresent: false` and inflate the denominator. Rather
-than record an untrustworthy reading, the gauge is **suppressed entirely** when the
-workspace has more than one root. The drift detector shares this single-key
-limitation (it still fires there); the real fix for both is a per-project storage
-schema, deferred. Multi-root Databricks workspaces are uncommon, so little is lost.
+root would emit a spurious `venvPresent: false` and inflate the denominator. So the
+gauge is skipped when the workspace has more than one root, rather than record an
+untrustworthy reading.
+
+The one-root guard is a heuristic, not proof of provenance — the key records no root,
+so a rare edge (a multi-root workspace reduced to one root mid-session, leaving the
+prior root's key) can still mis-attribute. Eliminating that needs the per-project
+storage schema, deferred (the drift detector shares the single-key limitation and
+does not even guard multi-root). Multi-root Databricks workspaces are uncommon, so
+the residual skew is negligible.
 
 ## Privacy
 
