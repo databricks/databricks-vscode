@@ -16,6 +16,7 @@ import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
+import {COPY_COMMAND_IDS} from "./ui/configuration-view/copyActions";
 import {AiToolsManager} from "./aitools/AiToolsManager";
 import {AiToolsCommands} from "./aitools/AiToolsCommands";
 import {RunCommands} from "./run/RunCommands";
@@ -465,6 +466,24 @@ export async function activate(
             }
         })
     );
+
+    // The Configuration view exposes an explicit, per-row copy action
+    // ("Copy Target", "Copy Path", …). Each titled command shares the single
+    // clipboard handler; the row's `copy=<kind>` contextValue (stamped in
+    // ConfigurationDataProvider.getTreeItem) selects which one shows. The ids
+    // are derived from COPY_KINDS (the single source of truth), hidden from the
+    // command palette (package.json commandPalette when:false), and registered
+    // WITHOUT the telemetry wrapper on purpose — copying a config value is not
+    // an event we track.
+    for (const commandId of COPY_COMMAND_IDS) {
+        context.subscriptions.push(
+            commands.registerCommand(
+                commandId,
+                utilCommands.copyToClipboardCommand(),
+                utilCommands
+            )
+        );
+    }
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();

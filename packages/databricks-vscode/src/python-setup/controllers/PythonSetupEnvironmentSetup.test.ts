@@ -621,6 +621,29 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(setup.ready).to.equal(true);
     });
 
+    it("clears the guard after the work even if the notification stays open", async () => {
+        // Model a user who leaves the success toast up (never dismisses it):
+        // showSuccess never resolves. The re-entrancy guard must release when the
+        // mutating work (CLI run + adopt + state) finishes, NOT when the toast is
+        // dismissed -- otherwise the entry stays wedged (every later click returns
+        // the still-pending promise) until the window is reloaded.
+        const cli = makeCli({resolve: SUCCESS_REAL_RUN});
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                showSuccess: () => new Promise<void>(() => {}),
+            })
+        );
+
+        // Resolves once the work is done, despite the still-open notification.
+        await setup.setup();
+        expect(cli.calls).to.have.length(1);
+
+        // A later click starts a fresh run rather than returning the wedged one.
+        await setup.setup();
+        expect(cli.calls).to.have.length(2);
+    });
+
     it("surfaces an error and stays not-ready when interpreter adoption fails", async () => {
         const shownErrors: string[] = [];
         const saved: unknown[] = [];
