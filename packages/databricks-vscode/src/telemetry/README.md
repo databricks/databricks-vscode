@@ -117,12 +117,11 @@ false` is a real value (the env is gone), not an omitted-because-unknown field.
 
 ### Why it derives no environment key
 
-An earlier plan had this event re-derive the current compute's env key in
-TypeScript to also report drift. It does not: the CLI is the authority on env keys
-(resolved via a `--dry-run`), and the drift detector already emits `python_env.drift`
-off that authoritative value. Re-deriving here would be a second, divergent source
-of truth. This event only reports the compute _kind_ (`currentTargetType`), read
-straight from the connection with no key involved.
+This event reports the compute _kind_ (`currentTargetType`) only, read straight from
+the connection — it never derives an environment key. The CLI is the authority on env
+keys (resolved via a `--dry-run`), and the drift detector already emits
+`python_env.drift` off that authoritative value; deriving a key here would be a
+second, divergent source of truth.
 
 ### Multi-root workspaces are skipped
 
