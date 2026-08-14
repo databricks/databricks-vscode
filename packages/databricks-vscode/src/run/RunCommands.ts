@@ -138,9 +138,17 @@ export class RunCommands {
         }
         // Run the setup flow, then re-check: a successful setup should let the
         // launch proceed instead of aborting and making the user re-trigger.
+        // Force a fresh check rather than reading the cache: when the setup
+        // command routes to the uv flow, it adopts the interpreter and the
+        // legacy state refreshes only on the (async) interpreter-change event,
+        // which may not have landed yet.
         await commands.executeCommand("databricks.environment.setup");
-        return (await this.featureManager.isEnabled("environment.dependencies"))
-            .available;
+        return (
+            await this.featureManager.isEnabled(
+                "environment.dependencies",
+                true
+            )
+        ).available;
     }
 
     private async isPythonEnvironmentStale(featureState: FeatureState) {
