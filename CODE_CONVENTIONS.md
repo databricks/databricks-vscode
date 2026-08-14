@@ -264,7 +264,7 @@ code cannot, then stop.
   before it starts to lie.
 - **Doc-comments state the contract and caveats, not a re-spec.** A class/function
   doc-comment should give a caller what they need and any surprising behavior (e.g.
-  `@onError(throw:false)` semantics) in a sentence or two — not restate every branch.
+  `@onError({throw: false})` semantics) in a sentence or two — not restate every branch.
   Anything visible in the signature doesn't need repeating.
 
 Generated comments trend long and explanatory, so when working AI-assisted this matters
