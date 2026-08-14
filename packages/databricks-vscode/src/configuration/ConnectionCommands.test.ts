@@ -172,5 +172,75 @@ describe(__filename, () => {
             assert.equal(await resultP, undefined);
             assert.deepEqual(attachCalls, []);
         });
+
+        it("still returns the chosen cluster when the attach silently fails (best-effort)", async () => {
+            // attachCluster is @onError(throw:false): a failed config write
+            // surfaces its own popup and resolves without throwing, so from the
+            // picker's side it looks exactly like success. By design we still
+            // return the picked target -- it is what the user chose and all
+            // setup-local needs -- rather than dropping the selection.
+            const attach = async () => {
+                // Resolves (does not throw) even though the "attach" failed,
+                // mimicking the @onError-swallowed path.
+            };
+            const cmds = new ConnectionCommands(
+                {} as never,
+                {
+                    workspaceClient: {},
+                    databricksWorkspace: {userName: "me"},
+                    attachCluster: attach,
+                    enableServerless: async () => {},
+                } as never,
+                {
+                    refresh() {},
+                    onDidChange() {
+                        return {dispose() {}};
+                    },
+                    roots: [],
+                } as never,
+                {} as never,
+                {} as never,
+                {} as never
+            );
+
+            const resultP = cmds.attachClusterQuickPickCommand()();
+            await fakePick.accept([clusterItem("c1")]);
+
+            assert.deepEqual(await resultP, {
+                kind: "cluster",
+                clusterId: "c1",
+            });
+        });
+
+        it("resolves to undefined if an unexpected error is thrown during selection", async () => {
+            // Defense-in-depth: a throw from any step must settle the Promise
+            // (not hang) and yield no selection.
+            const cmds = new ConnectionCommands(
+                {} as never,
+                {
+                    workspaceClient: {},
+                    databricksWorkspace: {userName: "me"},
+                    attachCluster: async () => {
+                        throw new Error("unexpected");
+                    },
+                    enableServerless: async () => {},
+                } as never,
+                {
+                    refresh() {},
+                    onDidChange() {
+                        return {dispose() {}};
+                    },
+                    roots: [],
+                } as never,
+                {} as never,
+                {} as never,
+                {} as never
+            );
+
+            const resultP = cmds.attachClusterQuickPickCommand()();
+            await fakePick.accept([clusterItem("c1")]);
+
+            assert.equal(await resultP, undefined);
+        });
     });
 });

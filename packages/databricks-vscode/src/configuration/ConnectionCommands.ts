@@ -249,6 +249,13 @@ export class ConnectionCommands implements Disposable {
                             // Accepted with nothing highlighted -- nothing to do.
                         } else if ("cluster" in selectedItem) {
                             const cluster = selectedItem.cluster;
+                            // Best-effort attach: attachCluster is @onError with
+                            // throw:false, so a failed config write surfaces its
+                            // own popup and does NOT throw here. We still return
+                            // the chosen target -- it is the compute the user
+                            // picked and is all setup-local needs (it takes the
+                            // id directly); the attach's persistence is a
+                            // separate concern already surfaced to the user.
                             await this.connectionManager.attachCluster(
                                 cluster.id
                             );
@@ -274,10 +281,14 @@ export class ConnectionCommands implements Disposable {
                             );
                         }
                     } catch (e) {
-                        // The attach/enable helpers surface their own failures
-                        // (they are @onError-decorated); swallow here only so a
-                        // throw can't become an unhandled rejection or leave the
-                        // picker open. `selected` stays undefined.
+                        // Defense-in-depth. The attach/enable helpers are
+                        // @onError(throw:false) and surface their own failures
+                        // without throwing, so they do not reach here; this
+                        // guards an UNEXPECTED throw from another step (the
+                        // serverless version sub-picker, openExternal, or a
+                        // future non-decorated path) so it can't become an
+                        // unhandled rejection or leave the Promise pending.
+                        // `selected` stays undefined in that case.
                         NamedLogger.getOrCreate(Loggers.Extension).error(
                             "Compute picker selection failed",
                             e
