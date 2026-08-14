@@ -2,6 +2,7 @@ import {Events, Telemetry} from ".";
 import {
     ComputeType,
     PrimaryManager,
+    PythonSetupDriftTrigger,
     PythonSetupErrorCode,
     PythonSetupFailurePhase,
     PythonSetupMode,
@@ -33,6 +34,15 @@ export interface PythonSetupAttempt {
      * Same event, one enum dimension.
      */
     trigger: PythonSetupRunTrigger;
+}
+
+/** A detected drift, reduced to the categorical fields we report. */
+export interface PythonSetupDrift {
+    trigger: PythonSetupDriftTrigger;
+    /** The recorded environment key the .venv was provisioned against. */
+    fromEnvKey: string;
+    /** The environment key the currently selected compute resolves to. */
+    toEnvKey: string;
 }
 
 /** How a setup run ended, reduced to the categorical fields we report. */
@@ -181,6 +191,13 @@ declare module "." {
          * legacy checklist and the uv-native entry mutually exclusively.
          */
         recordPythonSetupNoCompute(): void;
+
+        /**
+         * Record a detected compute drift. Emitted once per newly-detected
+         * distinct mismatch by {@link PythonSetupDriftManager}; both keys are
+         * constrained to the categorical envKey vocabulary before emission.
+         */
+        recordPythonSetupDrift(report: PythonSetupDrift): void;
     }
 }
 
@@ -262,4 +279,18 @@ Telemetry.prototype.recordPythonSetupNoCompute = function () {
     // drag the setup-time percentiles down. Recorded directly rather than via
     // start(), which always stamps an elapsed time.
     this.recordEvent(Events.PYTHON_ENV_SETUP_RESULT, {outcome: "no_compute"});
+};
+
+Telemetry.prototype.recordPythonSetupDrift = function (
+    report: PythonSetupDrift
+): void {
+    this.recordEvent(Events.PYTHON_ENV_DRIFT, {
+        trigger: report.trigger,
+        // Constrain both keys to the closed envKey vocabulary so an unexpected
+        // string can't leak high-cardinality / identifying content. The `!` is
+        // safe: categoricalEnvKey only returns undefined for undefined input, and
+        // both fields are required strings.
+        fromEnvKey: categoricalEnvKey(report.fromEnvKey)!,
+        toEnvKey: categoricalEnvKey(report.toEnvKey)!,
+    });
 };

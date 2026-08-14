@@ -75,6 +75,25 @@ describe("buildSetupLocalArgs", () => {
         });
         expect(args.slice(-2)).to.deep.equal(["--output", "json"]);
     });
+
+    it("adds --dry-run when the invocation is a dry run", () => {
+        const args = buildSetupLocalArgs({
+            mode: "default",
+            compute: {kind: "serverless", version: "5"},
+            dryRun: true,
+        });
+        expect(args).to.include("--dry-run");
+        // Still requests machine-readable output last.
+        expect(args.slice(-2)).to.deep.equal(["--output", "json"]);
+    });
+
+    it("omits --dry-run by default", () => {
+        const args = buildSetupLocalArgs({
+            mode: "default",
+            compute: {kind: "serverless", version: "5"},
+        });
+        expect(args).to.not.include("--dry-run");
+    });
 });
 
 describe("resolveCliPath", () => {
