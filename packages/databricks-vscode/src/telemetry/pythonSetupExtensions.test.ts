@@ -402,4 +402,35 @@ describe(__filename, () => {
         expect(() => reportResult({outcome: "ok"})).to.not.throw();
         expect(telemetry.isTelemetryEnabled).to.equal(false);
     });
+
+    describe("recordPythonSetupDrift", () => {
+        it("emits python_env.drift with the trigger and sanitized keys", () => {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupDrift({
+                trigger: "computeChange",
+                fromEnvKey: "serverless/serverless-v4",
+                toEnvKey: "dbr/15.4.x-scala2.12",
+            });
+            const drift = events.find((e) => e.name === "python_env.drift");
+            expect(drift, "a drift event was recorded").to.not.be.undefined;
+            expect(drift!.props["event.trigger"]).to.equal("computeChange");
+            expect(drift!.props["event.fromEnvKey"]).to.equal(
+                "serverless/serverless-v4"
+            );
+            expect(drift!.props["event.toEnvKey"]).to.equal(
+                "dbr/15.4.x-scala2.12"
+            );
+        });
+
+        it("collapses an unrecognized env key to 'other'", () => {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupDrift({
+                trigger: "workspaceOpen",
+                fromEnvKey: "serverless/serverless-v5",
+                toEnvKey: "0710-secret-cluster-id",
+            });
+            const drift = events.find((e) => e.name === "python_env.drift")!;
+            expect(drift.props["event.toEnvKey"]).to.equal("other");
+        });
+    });
 });

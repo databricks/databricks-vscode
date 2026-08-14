@@ -1313,13 +1313,13 @@
                 },
                 {
                     "command": "databricks.environment.rerunPythonEnv",
-                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.success$/",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.(success|drifted)$/",
                     "group": "inline@0",
                     "icon": "$(sync)"
                 },
                 {
                     "command": "databricks.environment.rerunPythonEnv",
-                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.success$/",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.(success|drifted)$/",
                     "group": "navigation@0",
                     "icon": "$(sync)"
                 },

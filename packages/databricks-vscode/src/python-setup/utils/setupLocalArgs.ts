@@ -13,6 +13,13 @@ import {PythonSetupMode} from "../models/PythonSetupResult";
  */
 export interface SetupLocalInvocation {
     mode: PythonSetupMode;
+    /**
+     * When true, pass `--dry-run`: the CLI resolves compute and reports the
+     * environment key without provisioning or writing to disk. Used by drift
+     * detection to read the authoritative `compute.envKey` for the selected
+     * compute.
+     */
+    dryRun?: boolean;
     compute:
         | {kind: "cluster"; clusterId: string}
         | {kind: "serverless"; version: string};
@@ -40,6 +47,9 @@ export function buildSetupLocalArgs(inv: SetupLocalInvocation): string[] {
 
     if (inv.mode === "constraints-only") {
         args.push("--constraints-only");
+    }
+    if (inv.dryRun) {
+        args.push("--dry-run");
     }
     if (inv.constraintSourceUrl) {
         args.push("--constraint-source-url", inv.constraintSourceUrl);

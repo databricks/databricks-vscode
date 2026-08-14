@@ -16,6 +16,7 @@ import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
+import {composePythonSetupEntry} from "./ui/configuration-view/pythonSetupEntry";
 import {COPY_COMMAND_IDS} from "./ui/configuration-view/copyActions";
 import {AiToolsManager} from "./aitools/AiToolsManager";
 import {AiToolsCommands} from "./aitools/AiToolsCommands";
@@ -52,7 +53,11 @@ import {
 import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
 import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
-import {makePythonSetupDeps} from "./python-setup/controllers/pythonSetupDeps";
+import {
+    makePythonSetupDeps,
+    resolveComputeFrom,
+} from "./python-setup/controllers/pythonSetupDeps";
+import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDriftManager";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
 import {
     isPythonSetupEnabled,
@@ -1033,15 +1038,106 @@ export async function activate(
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
         ),
-        // Re-run affordance on the "Python environment ready" row. Delegates to
-        // the same setup handler (re-entrancy-guarded); a distinct id lets the
-        // menu show a "Re-run Python setup" title instead of the initial one.
+        // Re-run affordance shared by the ready and out-of-sync rows. Delegates
+        // to the same (re-entrancy-guarded) setup handler; a distinct command id
+        // gives the menu a "Re-run Python setup" title and its own telemetry.
         telemetry.registerCommand(
             "databricks.environment.rerunPythonEnv",
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
         )
     );
+    // Drives the config-view row's out-of-sync state: on compute/open/setup
+    // triggers it silently resolves the selected compute's env key via a CLI
+    // dry-run and compares it against the last setup's. Fail-safe throughout
+    // (undefined => "unknown", no drift) and never surfaces UI.
+    const pythonSetupDrift = new PythonSetupDriftManager({
+        // Reuse the exact gate the row is shown under.
+        isVisible: () => pythonSetupEnvironment.isVisible(),
+        getPersistedEnvKey: () =>
+            stateStorage.get("databricks.pythonSetup.setupState")?.envKey,
+        // Cheap, synchronous compute identity (no CLI). A cluster's Spark version
+        // is included so a DBR edit re-checks while a runtime-state change
+        // (RUNNING -> TERMINATED) is skipped. undefined => nothing comparable.
+        getComputeDescriptor: () => {
+            const cluster = connectionManager.cluster;
+            if (cluster) {
+                return `cluster:${cluster.id}:${cluster.sparkVersion}`;
+            }
+            if (connectionManager.serverless) {
+                const version = connectionManager.serverlessVersion;
+                return version === undefined
+                    ? undefined
+                    : `serverless:${version}`;
+            }
+            return undefined;
+        },
+        resolveCurrentEnvKey: async (token) => {
+            // activeProjectUri throws when no project is active; degrade to
+            // "unknown" instead of rejecting into the drift check.
+            let root: string | undefined;
+            try {
+                root = workspaceFolderManager.activeProjectUri.fsPath;
+            } catch {
+                return undefined;
+            }
+            const resolution = resolveComputeFrom({
+                serverless: connectionManager.serverless,
+                cluster: connectionManager.cluster
+                    ? {id: connectionManager.cluster.id}
+                    : undefined,
+                serverlessVersion: connectionManager.serverlessVersion,
+            });
+            if (resolution.status !== "ok") {
+                return undefined;
+            }
+            try {
+                const result = await pythonSetupClient.run(
+                    {
+                        mode: "default",
+                        dryRun: true,
+                        compute: resolution.compute,
+                    },
+                    {cwd: root, token}
+                );
+                return result.compute?.envKey;
+            } catch {
+                return undefined;
+            }
+        },
+        recordDrift: (report) => telemetry.recordPythonSetupDrift(report),
+    });
+    context.subscriptions.push(
+        pythonSetupDrift,
+        // Compute target changed (cluster attach/detach/switch).
+        connectionManager.onDidChangeCluster(() =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // Serverless enable/disable and connection churn flow through state.
+        connectionManager.onDidChangeState(() =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // Re-picking the serverless version fires neither event above — it only
+        // writes the `serverlessVersion` key — so watch it directly, or a
+        // v4 -> v2 switch would silently miss drift.
+        configModel.onDidChangeKey("serverlessVersion")(async () =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // A completed setup moves the persisted baseline; re-evaluate to clear
+        // the badge promptly after a successful re-run.
+        pythonSetupEnvironment.onDidChangeState(() =>
+            pythonSetupDrift.check("setupCompleted")
+        )
+    );
+    // Evaluate once now that everything is wired.
+    pythonSetupDrift.check("workspaceOpen");
+
+    // Combine the setup controller's readiness with the drift signal.
+    const pythonSetupEntry = composePythonSetupEntry(
+        pythonSetupEnvironment,
+        pythonSetupDrift
+    );
+    context.subscriptions.push(pythonSetupEntry);
 
     const environmentCommands = new EnvironmentCommands(
         featureManager,
@@ -1162,7 +1258,7 @@ export async function activate(
         featureManager,
         workspaceFolderManager,
         aiToolsManager,
-        pythonSetupEnvironment
+        pythonSetupEntry
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,

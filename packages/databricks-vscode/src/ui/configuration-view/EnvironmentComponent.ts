@@ -8,6 +8,7 @@ import {buildPythonSetupEntry, PythonSetupEntry} from "./pythonSetupEntry";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
 const PYTHON_SETUP_COMMAND = "databricks.environment.setupPythonEnv";
+const PYTHON_SETUP_RERUN_COMMAND = "databricks.environment.rerunPythonEnv";
 const getItemContext = (key: string, available: boolean) =>
     `databricks.environment.${key}.${available ? "success" : "error"}`;
 
@@ -43,8 +44,12 @@ export class EnvironmentComponent extends BaseComponent {
         const pythonSetup = this.pythonSetup;
         if (pythonSetup && (await pythonSetup.isVisible())) {
             return buildPythonSetupEntry(
-                {ready: pythonSetup.ready},
-                PYTHON_SETUP_COMMAND
+                {
+                    ready: pythonSetup.ready,
+                    driftState: pythonSetup.driftState,
+                },
+                PYTHON_SETUP_COMMAND,
+                PYTHON_SETUP_RERUN_COMMAND
             );
         }
         const environmentState = await this.featureManager.isEnabled(
