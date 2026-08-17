@@ -466,4 +466,67 @@ describe(__filename, () => {
             expect(drift.props["event.toEnvKey"]).to.equal("other");
         });
     });
+
+    describe("recordPythonSetupAdoption", () => {
+        it("emits python_env.adoption with the gauge as boolean and compute properties", () => {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAdoption({
+                venvPresent: true,
+                currentTargetType: "serverless",
+            });
+            expect(events).to.have.length(1);
+            expect(events[0].name).to.equal("python_env.adoption");
+            expect(events[0].props).to.deep.equal({
+                "version": "1.0",
+                // A boolean lands as a "true"/"false" property, never a metric.
+                "event.venvPresent": "true",
+                "event.currentTargetType": "serverless",
+            });
+            expect(events[0].metrics).to.not.have.property("event.venvPresent");
+        });
+
+        it("records an absent venv as the boolean 'false', not an omitted field", () => {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAdoption({
+                venvPresent: false,
+                currentTargetType: "cluster",
+            });
+            // venvPresent=false is a real value (the venv is gone) — it must be
+            // emitted, not dropped like an absent optional would be.
+            expect(events[0].props["event.venvPresent"]).to.equal("false");
+            expect(events[0].props["event.currentTargetType"]).to.equal(
+                "cluster"
+            );
+        });
+
+        it("carries currentTargetType 'none' when no compute is attached", () => {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAdoption({
+                venvPresent: true,
+                currentTargetType: "none",
+            });
+            expect(events[0].props["event.currentTargetType"]).to.equal("none");
+        });
+
+        it("emits only the schema's fields, never extra ones on the caller's object", () => {
+            const {telemetry, events} = makeTelemetry();
+            // A future refactor could widen the payload or route a wider object
+            // through this seam; the transport must stay an allowlist.
+            telemetry.recordPythonSetupAdoption({
+                venvPresent: true,
+                currentTargetType: "cluster",
+                projectPath: "/Users/jane/projects/acme",
+                clusterId: "0710-142042-secretcluster",
+            } as any);
+            const serialized = JSON.stringify(events[0].props);
+            expect(serialized).to.not.contain("jane");
+            expect(serialized).to.not.contain("acme");
+            expect(serialized).to.not.contain("0710");
+            expect(Object.keys(events[0].props).sort()).to.deep.equal([
+                "event.currentTargetType",
+                "event.venvPresent",
+                "version",
+            ]);
+        });
+    });
 });

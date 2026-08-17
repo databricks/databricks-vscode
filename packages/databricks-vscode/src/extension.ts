@@ -17,6 +17,7 @@ import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
 import {composePythonSetupEntry} from "./ui/configuration-view/pythonSetupEntry";
+import {routeEnvironmentSetup} from "./language/pythonSetupRouting";
 import {COPY_COMMAND_IDS} from "./ui/configuration-view/copyActions";
 import {AiToolsManager} from "./aitools/AiToolsManager";
 import {AiToolsCommands} from "./aitools/AiToolsCommands";
@@ -45,6 +46,7 @@ import {
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
+import {existsSync} from "node:fs";
 import {
     FeatureId,
     FeatureManager,
@@ -58,7 +60,9 @@ import {
     resolveComputeFrom,
 } from "./python-setup/controllers/pythonSetupDeps";
 import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDriftManager";
+import {PythonSetupAdoptionManager} from "./python-setup/controllers/PythonSetupAdoptionManager";
 import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
+import {venvInterpreterPath} from "./python-setup/utils/venvInterpreterPath";
 import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
 import {
     isPythonSetupEnabled,
@@ -911,7 +915,10 @@ export async function activate(
                 pythonExtensionWrapper,
                 environmentDependenciesInstaller,
                 configureAutocomplete,
-                packageManagerTelemetry
+                packageManagerTelemetry,
+                // Constructed lazily (first isEnabled call is well after
+                // pythonSetupEnvironment is wired), so this reference is safe.
+                () => pythonSetupEnvironment.isVisible()
             )
     );
     // uv-native Python environment setup (python-setup). Constructed always,
@@ -1148,6 +1155,60 @@ export async function activate(
     );
     context.subscriptions.push(pythonSetupEntry);
 
+    // Once-per-session adoption gauge: for a project with a uv-native setup on
+    // record, whether its managed .venv still exists. Distinct from drift above
+    // (which compares compute env keys) — drift never checks that the venv is
+    // actually present. Measurement only, best-effort, and it derives no env key
+    // of its own: drift already reports env-key mismatch via python_env.drift.
+    const pythonSetupAdoption = new PythonSetupAdoptionManager({
+        projectRoot: () => {
+            try {
+                return workspaceFolderManager.activeProjectUri.fsPath;
+            } catch {
+                return undefined;
+            }
+        },
+        // In a multi-root workspace the single workspace-scoped setupState key
+        // can't be pinned to the active root, so a reading could be a spurious
+        // venvPresent=false; skip rather than emit an untrustworthy one. (The
+        // drift detector shares this single-key limitation; the real fix is the
+        // deferred per-project storage schema.)
+        isAttributable: () => (workspace.workspaceFolders?.length ?? 0) <= 1,
+        isVpexActive: () =>
+            stateStorage.get("databricks.pythonSetup.setupState") !== undefined,
+        getTargetType: () =>
+            connectionManager.serverless
+                ? "serverless"
+                : connectionManager.cluster
+                  ? "cluster"
+                  : "none",
+        venvExists: (root) =>
+            existsSync(venvInterpreterPath(path.join(root, ".venv"))),
+        record: (report) => telemetry.recordPythonSetupAdoption(report),
+    });
+    // A connect-time reading: report once the connection is CONNECTED (so the
+    // compute is attached, though it may be "none" — auth-connected with nothing
+    // selected is a real slice). The manager dedupes per session, so repeated
+    // transitions are safe; firing before connect would latch "none".
+    //
+    // Deliberately NOT fired on setup completion. A first-ever setup's state
+    // write is fire-and-forget and lands on a later microtask, but the setup
+    // controller's state event fires synchronously — so a report() there would
+    // still read the project as not-yet-VPEX-active and emit nothing. Such a
+    // session is instead measured from its next connect; its just-provisioned
+    // venv is already implied by python_env.setup.result = ok.
+    const reportAdoptionIfConnected = () => {
+        if (connectionManager.state === "CONNECTED") {
+            pythonSetupAdoption.report();
+        }
+    };
+    context.subscriptions.push(
+        connectionManager.onDidChangeState(reportAdoptionIfConnected)
+    );
+    // Cover activation while already connected (a reload with a live session),
+    // where onDidChangeState may not fire again.
+    reportAdoptionIfConnected();
+
     const environmentCommands = new EnvironmentCommands(
         featureManager,
         pythonExtensionWrapper,
@@ -1157,8 +1218,16 @@ export async function activate(
     context.subscriptions.push(
         telemetry.registerCommand(
             "databricks.environment.setup",
-            environmentCommands.setup,
-            environmentCommands
+            // Route to the uv-native flow when it is the active surface for the
+            // project, else the legacy checklist. Every trigger surface (status
+            // bar, config-view rows, palette, the run/debug gate) funnels
+            // through this command, so they all dispatch here.
+            (stepId?: string) =>
+                routeEnvironmentSetup(
+                    pythonSetupEnvironment,
+                    environmentCommands,
+                    stepId
+                )
         ),
         telemetry.registerCommand(
             "databricks.environment.refresh",
