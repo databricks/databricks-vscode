@@ -54,12 +54,12 @@ export const UV_RESOLUTION_DOCS_URL =
     "https://docs.astral.sh/uv/concepts/resolution/";
 
 /**
- * Databricks VS Code extension "configure your project" guide (compute-target
- * section) — for E_NO_TARGET / E_RESOLVE, where the fix is picking a valid
- * cluster or serverless compute in the Configuration view.
+ * Databricks VS Code extension "configure your project" guide, anchored at the
+ * compute-selection section — for E_NO_TARGET / E_RESOLVE, where the fix is
+ * picking a valid cluster or serverless compute in the Configuration view.
  */
 export const DATABRICKS_CONFIGURE_DOCS_URL =
-    "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#change-the-target-deployment-workspace";
+    "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs";
 
 /** Databricks Runtime release notes (supported versions) — for E_ENV_UNSUPPORTED. */
 export const DATABRICKS_RUNTIME_DOCS_URL =

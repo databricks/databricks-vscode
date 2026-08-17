@@ -1,16 +1,9 @@
 import {expect} from "chai";
 import {
-    DATABRICKS_CONFIGURE_DOCS_URL,
-    DATABRICKS_RUNTIME_DOCS_URL,
     formatSetupFailureDetail,
     getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
     isIndexUnreachableFailure,
-    UV_INDEX_DOCS_URL,
-    UV_INSTALL_DOCS_URL,
-    UV_PROJECTS_DOCS_URL,
-    UV_PYTHON_INSTALL_DOCS_URL,
-    UV_RESOLUTION_DOCS_URL,
 } from "./errorMessages";
 import {
     PythonSetupResult,
@@ -270,7 +263,7 @@ describe("getPythonSetupErrorAction", () => {
         );
         expect(action).to.deep.equal({
             label: "Install uv",
-            url: UV_INSTALL_DOCS_URL,
+            url: "https://docs.astral.sh/uv/getting-started/installation/",
         });
     });
 
@@ -280,7 +273,7 @@ describe("getPythonSetupErrorAction", () => {
         );
         expect(action).to.deep.equal({
             label: "Configure package index",
-            url: UV_INDEX_DOCS_URL,
+            url: "https://docs.astral.sh/uv/configuration/indexes/",
         });
     });
 
@@ -290,7 +283,7 @@ describe("getPythonSetupErrorAction", () => {
         expect(getPythonSetupErrorAction(failure("E_PROVISION"))).to.deep.equal(
             {
                 label: "Resolve dependency conflicts",
-                url: UV_RESOLUTION_DOCS_URL,
+                url: "https://docs.astral.sh/uv/concepts/resolution/",
             }
         );
     });
@@ -302,7 +295,7 @@ describe("getPythonSetupErrorAction", () => {
             )
         ).to.deep.equal({
             label: "Set up a uv project",
-            url: UV_PROJECTS_DOCS_URL,
+            url: "https://docs.astral.sh/uv/concepts/projects/",
         });
     });
 
@@ -311,29 +304,29 @@ describe("getPythonSetupErrorAction", () => {
             getPythonSetupErrorAction(failure("E_PYTHON_INSTALL"))
         ).to.deep.equal({
             label: "Install a Python version",
-            url: UV_PYTHON_INSTALL_DOCS_URL,
+            url: "https://docs.astral.sh/uv/guides/install-python/",
         });
     });
 
-    it("points E_NO_TARGET at the Databricks configure docs", () => {
+    it("points E_NO_TARGET at the compute-selection section of the configure docs", () => {
         expect(
             getPythonSetupErrorAction(
                 failure("E_NO_TARGET", {failurePhase: "resolve"})
             )
         ).to.deep.equal({
             label: "Configure compute",
-            url: DATABRICKS_CONFIGURE_DOCS_URL,
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs",
         });
     });
 
-    it("points E_RESOLVE at the Databricks configure docs", () => {
+    it("points E_RESOLVE at the compute-selection section of the configure docs", () => {
         expect(
             getPythonSetupErrorAction(
                 failure("E_RESOLVE", {failurePhase: "resolve"})
             )
         ).to.deep.equal({
             label: "Configure compute",
-            url: DATABRICKS_CONFIGURE_DOCS_URL,
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs",
         });
     });
 
@@ -344,7 +337,7 @@ describe("getPythonSetupErrorAction", () => {
             )
         ).to.deep.equal({
             label: "Databricks Runtime versions",
-            url: DATABRICKS_RUNTIME_DOCS_URL,
+            url: "https://docs.databricks.com/aws/en/release-notes/runtime/",
         });
     });
 
@@ -451,7 +444,9 @@ describe("formatSetupFailureDetail", () => {
         const detail = formatSetupFailureDetail(
             failure("E_NO_TARGET", {failurePhase: "resolve"})
         );
-        expect(detail).to.contain(DATABRICKS_CONFIGURE_DOCS_URL);
+        expect(detail).to.contain(
+            "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs"
+        );
         expect(detail).to.contain("Configure compute");
     });
 
@@ -459,7 +454,9 @@ describe("formatSetupFailureDetail", () => {
         const detail = formatSetupFailureDetail(
             failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
         );
-        expect(detail).to.contain(UV_INDEX_DOCS_URL);
+        expect(detail).to.contain(
+            "https://docs.astral.sh/uv/configuration/indexes/"
+        );
     });
 
     it("adds no documentation link for a message-only code", () => {

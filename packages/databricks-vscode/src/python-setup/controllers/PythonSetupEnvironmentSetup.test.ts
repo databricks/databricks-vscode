@@ -15,11 +15,7 @@ import {
     ERROR_NO_TARGET,
     ERROR_USAGE,
 } from "../models/fixtures/setupLocalResults";
-import {
-    DATABRICKS_CONFIGURE_DOCS_URL,
-    PythonSetupErrorAction,
-    UV_INSTALL_DOCS_URL,
-} from "../utils/errorMessages";
+import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     PythonSetupAttempt,
@@ -375,7 +371,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(shown).to.have.length(1);
         expect(shown[0].action).to.deep.equal({
             label: "Install uv",
-            url: UV_INSTALL_DOCS_URL,
+            url: "https://docs.astral.sh/uv/getting-started/installation/",
         });
     });
 
@@ -395,7 +391,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(shown).to.have.length(1);
         expect(shown[0].action).to.deep.equal({
             label: "Configure compute",
-            url: DATABRICKS_CONFIGURE_DOCS_URL,
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs",
         });
     });
 
