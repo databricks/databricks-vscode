@@ -17,6 +17,7 @@ import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
 import {composePythonSetupEntry} from "./ui/configuration-view/pythonSetupEntry";
+import {routeEnvironmentSetup} from "./language/pythonSetupRouting";
 import {COPY_COMMAND_IDS} from "./ui/configuration-view/copyActions";
 import {AiToolsManager} from "./aitools/AiToolsManager";
 import {AiToolsCommands} from "./aitools/AiToolsCommands";
@@ -914,7 +915,10 @@ export async function activate(
                 pythonExtensionWrapper,
                 environmentDependenciesInstaller,
                 configureAutocomplete,
-                packageManagerTelemetry
+                packageManagerTelemetry,
+                // Constructed lazily (first isEnabled call is well after
+                // pythonSetupEnvironment is wired), so this reference is safe.
+                () => pythonSetupEnvironment.isVisible()
             )
     );
     // uv-native Python environment setup (python-setup). Constructed always,
@@ -1214,8 +1218,16 @@ export async function activate(
     context.subscriptions.push(
         telemetry.registerCommand(
             "databricks.environment.setup",
-            environmentCommands.setup,
-            environmentCommands
+            // Route to the uv-native flow when it is the active surface for the
+            // project, else the legacy checklist. Every trigger surface (status
+            // bar, config-view rows, palette, the run/debug gate) funnels
+            // through this command, so they all dispatch here.
+            (stepId?: string) =>
+                routeEnvironmentSetup(
+                    pythonSetupEnvironment,
+                    environmentCommands,
+                    stepId
+                )
         ),
         telemetry.registerCommand(
             "databricks.environment.refresh",

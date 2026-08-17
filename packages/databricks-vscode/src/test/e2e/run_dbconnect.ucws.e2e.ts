@@ -16,6 +16,7 @@ import {
     getBasicBundleConfig,
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
+import {isTransientFileLockError, retryOnTransientError} from "../retry.ts";
 
 const execFile = promisify(execFileCb);
 
@@ -51,7 +52,8 @@ const DBCONNECT_VERSION_SPEC = "17.3.*";
 // tests"), so the notebook cell never runs and no output file is written. We
 // install the deps directly to remove that dependency on the flaky UI step; the
 // pip call is idempotent, so on shards that already have them it is a fast
-// no-op.
+// no-op. The install is retried on transient Windows file locks (see
+// ensureVenvHasDbConnect for why).
 async function ensureVenvHasKernelDeps(projectDir: string) {
     const python = venvPython(projectDir);
     try {
@@ -63,13 +65,27 @@ async function ensureVenvHasKernelDeps(projectDir: string) {
         return;
     }
     try {
-        const {stdout, stderr} = await execFile(python, [
-            "-m",
-            "pip",
-            "install",
-            ...KERNEL_DEPS,
-            "--disable-pip-version-check",
-        ]);
+        const {stdout, stderr} = await retryOnTransientError(
+            () =>
+                execFile(python, [
+                    "-m",
+                    "pip",
+                    "install",
+                    ...KERNEL_DEPS,
+                    "--disable-pip-version-check",
+                ]),
+            {
+                attempts: 3,
+                delayMs: 5000,
+                isTransient: isTransientFileLockError,
+                onRetry: (attempt, e) =>
+                    console.log(
+                        "kernel-deps install hit a transient Windows file " +
+                            `lock (attempt ${attempt}); retrying.`,
+                        e
+                    ),
+            }
+        );
         console.log("ensureVenvHasKernelDeps stdout:", stdout);
         if (stderr) {
             console.log("ensureVenvHasKernelDeps stderr:", stderr);
@@ -89,7 +105,11 @@ async function ensureVenvHasKernelDeps(projectDir: string) {
 // installs it directly. The `console.warn` is deliberate: it keeps a real
 // Windows UX regression discoverable in nightly logs even though the direct
 // install turns the test green. The pip call is skipped when the package is
-// already present, so healthy shards pay no reinstall cost.
+// already present, so healthy shards pay no reinstall cost. The install itself
+// is retried on the transient Windows file lock (WinError 32 "used by another
+// process"): pip has to overwrite the venv's existing numpy, and if a scanner
+// or a still-running install holds one of its files open the first attempt dies
+// mid-write, but a moment later succeeds.
 async function ensureVenvHasDbConnect(projectDir: string) {
     const python = venvPython(projectDir);
     try {
@@ -117,13 +137,27 @@ async function ensureVenvHasDbConnect(projectDir: string) {
     }
 
     try {
-        const {stdout, stderr} = await execFile(python, [
-            "-m",
-            "pip",
-            "install",
-            `databricks-connect==${DBCONNECT_VERSION_SPEC}`,
-            "--disable-pip-version-check",
-        ]);
+        const {stdout, stderr} = await retryOnTransientError(
+            () =>
+                execFile(python, [
+                    "-m",
+                    "pip",
+                    "install",
+                    `databricks-connect==${DBCONNECT_VERSION_SPEC}`,
+                    "--disable-pip-version-check",
+                ]),
+            {
+                attempts: 3,
+                delayMs: 5000,
+                isTransient: isTransientFileLockError,
+                onRetry: (attempt, e) =>
+                    console.log(
+                        "databricks-connect install hit a transient Windows " +
+                            `file lock (attempt ${attempt}); retrying.`,
+                        e
+                    ),
+            }
+        );
         console.log("ensureVenvHasDbConnect stdout:", stdout);
         if (stderr) {
             console.log("ensureVenvHasDbConnect stderr:", stderr);
