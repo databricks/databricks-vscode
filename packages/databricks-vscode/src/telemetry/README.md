@@ -83,6 +83,61 @@ this flow: its `explicit_command` trigger fires only from the _legacy_
 `databricks.environment.setupPythonEnv`, and the config view renders the two
 mutually exclusively. A user who sees this entry never emits that event.
 
+## Python environment adoption (VPEX)
+
+`python_env.adoption`, emitted by `pythonSetupExtensions.ts`
+(`recordPythonSetupAdoption`) and driven by
+`python-setup/controllers/PythonSetupAdoptionManager.ts`. A once-per-session
+gauge, read on the first `CONNECTED` transition (so a compute is attached — possibly
+`none`, i.e. auth-connected with nothing selected) and deduped per project root.
+
+It is deliberately **not** fired on setup completion. A first-ever setup's state
+write is fire-and-forget and lands on a later microtask, while the setup
+controller's state event fires synchronously — so a reading taken there would still
+see the project as not-yet-VPEX-active and emit nothing. Such a session is measured
+from its next connect instead; the venv it just provisioned is already implied by a
+`python_env.setup.result` with `outcome: ok`.
+
+### Why it is emitted only when VPEX-active
+
+The event is recorded only for a project that has a uv-native setup on record
+(`databricks.pythonSetup.setupState` is present). That gate is deliberate: the
+event's mere presence is the **denominator** — one reading per session per project
+that ever completed a setup — so `venvPresent` over all such events is a true
+adoption rate, not a count without a base.
+
+### Why it is separate from `python_env.drift`
+
+Drift (from the drift detector) compares the selected compute's environment key
+against the recorded one. It never checks that the `.venv` still exists: a user who
+deletes the environment while compute is unchanged is not "drifted", yet has plainly
+stopped using the managed env. `venvPresent` measures exactly that — whether the
+managed interpreter is still on disk — which is orthogonal to drift. `venvPresent:
+false` is a real value (the env is gone), not an omitted-because-unknown field.
+
+### Why it derives no environment key
+
+This event reports the compute _kind_ (`currentTargetType`) only, read straight from
+the connection — it never derives an environment key. The CLI is the authority on env
+keys (resolved via a `--dry-run`), and the drift detector already emits
+`python_env.drift` off that authoritative value; deriving a key here would be a
+second, divergent source of truth.
+
+### Multi-root workspaces are skipped
+
+`setupState` is a single workspace-scoped key with no per-project namespacing, so in
+a multi-root workspace it can't be pinned to the active root: a never-set-up sibling
+root would emit a spurious `venvPresent: false` and inflate the denominator. So the
+gauge is skipped when the workspace has more than one root, rather than record an
+untrustworthy reading.
+
+The one-root guard is a heuristic, not proof of provenance — the key records no root,
+so a rare edge (a multi-root workspace reduced to one root mid-session, leaving the
+prior root's key) can still mis-attribute. Eliminating that needs the per-project
+storage schema, deferred (the drift detector shares the single-key limitation and
+does not even guard multi-root). Multi-root Databricks workspaces are uncommon, so
+the residual skew is negligible.
+
 ## Privacy
 
 Only categorical/enum values and durations — no file paths, cluster names or IDs,
