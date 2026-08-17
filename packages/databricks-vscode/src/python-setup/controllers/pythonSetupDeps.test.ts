@@ -21,27 +21,16 @@ describe("makePythonSetupVisibility", () => {
         signals: [],
     };
 
-    it("is hidden when the feature flag is off, regardless of project", async () => {
-        const isVisible = makePythonSetupVisibility({
-            isEnabled: () => false,
-            detect: async () => uvDetection,
-            projectRoot: () => "/proj",
-        });
-        expect(await isVisible()).to.equal(false);
-    });
-
     it("is hidden when there is no open project", async () => {
         const isVisible = makePythonSetupVisibility({
-            isEnabled: () => true,
             detect: async () => uvDetection,
             projectRoot: () => undefined,
         });
         expect(await isVisible()).to.equal(false);
     });
 
-    it("is visible for a clean uv project when opted in", async () => {
+    it("is visible for a clean uv project", async () => {
         const isVisible = makePythonSetupVisibility({
-            isEnabled: () => true,
             detect: async () => uvDetection,
             projectRoot: () => "/proj",
         });
@@ -50,7 +39,6 @@ describe("makePythonSetupVisibility", () => {
 
     it("is hidden for a project with a competing manager", async () => {
         const isVisible = makePythonSetupVisibility({
-            isEnabled: () => true,
             detect: async () => ({
                 primary: "uv" as const,
                 managers: ["uv" as const, "pip" as const],
@@ -163,7 +151,6 @@ function makeWiring(
     return {
         cli: {run: async () => ({}) as any},
         projectRoot: () => "/proj",
-        isEnabled: () => true,
         detect: async () => ({
             primary: "uv" as const,
             managers: ["uv" as const],
@@ -451,7 +438,6 @@ describe("makePythonSetupVisibility error handling", () => {
 
     it("degrades to not-visible when detection rejects (never throws)", async () => {
         const isVisible = makePythonSetupVisibility({
-            isEnabled: () => true,
             detect: async () => {
                 throw new Error("signal collection blew up");
             },
@@ -464,7 +450,6 @@ describe("makePythonSetupVisibility error handling", () => {
 
     it("degrades to not-visible when projectRoot throws", async () => {
         const isVisible = makePythonSetupVisibility({
-            isEnabled: () => true,
             detect: async () => uvDetection,
             projectRoot: () => {
                 throw new Error("no active project folder");

@@ -115,7 +115,8 @@ describe(__filename, () => {
                 clusterModel as never,
                 {} as never,
                 {} as never,
-                {} as never
+                {} as never,
+                () => Promise.resolve(false)
             );
         });
 
@@ -129,6 +130,9 @@ describe(__filename, () => {
                 label: `cluster ${id}`,
                 cluster: {id},
             }) as unknown as QuickPickItem;
+
+        const serverlessItem = () =>
+            ({label: "$(cloud) Serverless"}) as unknown as QuickPickItem;
 
         it("resolves to the attached cluster and attaches it exactly once", async () => {
             const resultP = commands.attachClusterQuickPickCommand()();
@@ -191,7 +195,8 @@ describe(__filename, () => {
                 } as never,
                 {} as never,
                 {} as never,
-                {} as never
+                {} as never,
+                () => Promise.resolve(false)
             );
 
             const resultP = cmds.attachClusterQuickPickCommand()();
@@ -224,12 +229,50 @@ describe(__filename, () => {
                 } as never,
                 {} as never,
                 {} as never,
-                {} as never
+                {} as never,
+                () => Promise.resolve(false)
             );
 
             const resultP = cmds.attachClusterQuickPickCommand()();
             await fakePick.accept([clusterItem("c1")]);
 
+            assert.equal(await resultP, undefined);
+        });
+
+        it("keeps the plain, version-less serverless enable for a non-uv-suitable project", async () => {
+            // The pip/poetry/conda flow is unchanged at GA: selecting serverless
+            // enables it directly, with no version sub-prompt and no serverless
+            // target returned for the (inapplicable) uv setup.
+            const enableCalls: Array<string | undefined> = [];
+            const cmds = new ConnectionCommands(
+                {} as never,
+                {
+                    workspaceClient: {},
+                    databricksWorkspace: {userName: "me"},
+                    attachCluster: async () => {},
+                    enableServerless: async (version?: string) => {
+                        enableCalls.push(version);
+                    },
+                } as never,
+                {
+                    refresh() {},
+                    onDidChange() {
+                        return {dispose() {}};
+                    },
+                    roots: [],
+                } as never,
+                {} as never,
+                {} as never,
+                {} as never,
+                // Project is not uv-suitable, so the uv setup is not the active
+                // surface and no version should be requested.
+                () => Promise.resolve(false)
+            );
+
+            const resultP = cmds.attachClusterQuickPickCommand()();
+            await fakePick.accept([serverlessItem()]);
+
+            assert.deepEqual(enableCalls, [undefined]);
             assert.equal(await resultP, undefined);
         });
     });

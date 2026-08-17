@@ -58,7 +58,7 @@ field once there is a producer.
 
 A missing `pyproject.toml` only means "greenfield" for a project with no
 competing manager: pip and conda users may never have one. It is emitted only for
-`uv`/`unknown` projects — exactly the population `shouldShowPythonSetup` admits —
+`uv`/`unknown` projects — exactly the population `isUvSetupSuitable` admits —
 and for other managers the probe is not even performed.
 
 ### Why `envKey` is pattern-checked

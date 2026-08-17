@@ -47,11 +47,7 @@ import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
 import {existsSync} from "node:fs";
-import {
-    FeatureId,
-    FeatureManager,
-    PYTHON_SETUP_FEATURE_ID,
-} from "./feature-manager/FeatureManager";
+import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
 import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
@@ -63,11 +59,7 @@ import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDri
 import {PythonSetupAdoptionManager} from "./python-setup/controllers/PythonSetupAdoptionManager";
 import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {venvInterpreterPath} from "./python-setup/utils/venvInterpreterPath";
-import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
-import {
-    isPythonSetupEnabled,
-    makeServerlessVersionPrompt,
-} from "./python-setup/utils/serverlessVersionResolver";
+import {makeServerlessVersionPrompt} from "./python-setup/utils/serverlessVersionResolver";
 import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
@@ -900,13 +892,7 @@ export async function activate(
             connectionManager,
             pythonExtensionWrapper
         );
-    // python-setup ships disabled by default: the CLI's `environments
-    // setup-local` command is available only in custom CLI builds for now, so
-    // the whole flow stays hidden until a user opts in via
-    // `databricks.experiments.optInto` (see PYTHON_SETUP_FEATURE_ID).
-    const featureManager = new FeatureManager<FeatureId>([
-        PYTHON_SETUP_FEATURE_ID,
-    ]);
+    const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
         "environment.dependencies",
         () =>
@@ -921,9 +907,9 @@ export async function activate(
                 () => pythonSetupEnvironment.isVisible()
             )
     );
-    // uv-native Python environment setup (python-setup). Constructed always,
-    // but inert unless the user opts in: the detector/gate keep the entry hidden
-    // otherwise, so this changes nothing for existing users.
+    // uv-native Python environment setup (python-setup). The detector/gate keep
+    // the entry visible only for uv-suitable projects; projects driven by a
+    // competing manager (pip/poetry/conda) fall back to the legacy checklist.
     const pythonSetupDetector = new PythonSetupManagerDetector(
         async (projectRoot) =>
             collectPackageManagerSignals(
@@ -932,11 +918,7 @@ export async function activate(
             )
     );
     const pythonSetupClient = new PythonSetupCliClient(
-        () =>
-            resolveCliPath({
-                override: workspaceConfigs.pythonSetupCliPathOverride,
-                bundled: cli.cliPath,
-            }),
+        () => cli.cliPath,
         () => {
             // Overlay the extension's workspace auth onto the ambient
             // environment, so the CLI provisions against the workspace we are
@@ -958,9 +940,9 @@ export async function activate(
             };
         }
     );
-    // Created lazily on first setup output so a non-opted-in user never gets an
-    // empty "Databricks Python Environment Setup" entry in the Output dropdown
-    // (the feature is otherwise fully inert for them).
+    // Created lazily on first setup output so a user who never runs setup does
+    // not get an empty "Databricks Python Environment Setup" entry in the Output
+    // dropdown.
     let pythonSetupLogChannel: OutputChannel | undefined;
     const getPythonSetupLogChannel = () => {
         if (pythonSetupLogChannel === undefined) {
@@ -984,7 +966,6 @@ export async function activate(
                     return undefined;
                 }
             },
-            isEnabled: isPythonSetupEnabled,
             detect: (projectRoot) => pythonSetupDetector.detect(projectRoot),
             attachedCompute: () => ({
                 serverless: connectionManager.serverless,
@@ -1355,7 +1336,11 @@ export async function activate(
         clusterModel,
         configModel,
         cli,
-        workspaceFolderManager
+        workspaceFolderManager,
+        // Only prompt for a serverless environment version when the uv-native
+        // setup is the active surface for this project; a project driven by a
+        // competing manager keeps the plain, version-less serverless enable.
+        () => pythonSetupEnvironment.isVisible()
     );
 
     context.subscriptions.push(
