@@ -1,11 +1,16 @@
 import {expect} from "chai";
 import {
+    DATABRICKS_CONFIGURE_DOCS_URL,
+    DATABRICKS_RUNTIME_DOCS_URL,
     formatSetupFailureDetail,
     getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
     isIndexUnreachableFailure,
     UV_INDEX_DOCS_URL,
     UV_INSTALL_DOCS_URL,
+    UV_PROJECTS_DOCS_URL,
+    UV_PYTHON_INSTALL_DOCS_URL,
+    UV_RESOLUTION_DOCS_URL,
 } from "./errorMessages";
 import {
     PythonSetupResult,
@@ -279,10 +284,92 @@ describe("getPythonSetupErrorAction", () => {
         });
     });
 
-    it("offers no action for an ordinary E_PROVISION conflict", () => {
-        expect(getPythonSetupErrorAction(failure("E_PROVISION"))).to.equal(
-            undefined
+    it("points an ordinary E_PROVISION conflict at the uv resolution docs", () => {
+        // A genuine dependency conflict (no connectivity symptom) is distinct from
+        // a blocked index: it links to uv's resolution guide, not the index docs.
+        expect(getPythonSetupErrorAction(failure("E_PROVISION"))).to.deep.equal(
+            {
+                label: "Resolve dependency conflicts",
+                url: UV_RESOLUTION_DOCS_URL,
+            }
         );
+    });
+
+    it("points E_MANAGER_UNSUPPORTED at the uv projects docs", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_MANAGER_UNSUPPORTED", {failurePhase: "preflight"})
+            )
+        ).to.deep.equal({
+            label: "Set up a uv project",
+            url: UV_PROJECTS_DOCS_URL,
+        });
+    });
+
+    it("points E_PYTHON_INSTALL at the uv install-Python docs", () => {
+        expect(
+            getPythonSetupErrorAction(failure("E_PYTHON_INSTALL"))
+        ).to.deep.equal({
+            label: "Install a Python version",
+            url: UV_PYTHON_INSTALL_DOCS_URL,
+        });
+    });
+
+    it("points E_NO_TARGET at the Databricks configure docs", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_NO_TARGET", {failurePhase: "resolve"})
+            )
+        ).to.deep.equal({
+            label: "Configure compute",
+            url: DATABRICKS_CONFIGURE_DOCS_URL,
+        });
+    });
+
+    it("points E_RESOLVE at the Databricks configure docs", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_RESOLVE", {failurePhase: "resolve"})
+            )
+        ).to.deep.equal({
+            label: "Configure compute",
+            url: DATABRICKS_CONFIGURE_DOCS_URL,
+        });
+    });
+
+    it("points E_ENV_UNSUPPORTED at the Databricks runtime release notes", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_ENV_UNSUPPORTED", {failurePhase: "fetch"})
+            )
+        ).to.deep.equal({
+            label: "Databricks Runtime versions",
+            url: DATABRICKS_RUNTIME_DOCS_URL,
+        });
+    });
+
+    it("offers no action for E_FETCH (deliberately message-only)", () => {
+        // A generic network/cache failure has no single doc that reliably helps,
+        // so we avoid pointing the user at an unclear page.
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_FETCH", {failurePhase: "fetch"})
+            )
+        ).to.equal(undefined);
+    });
+
+    it("offers no action for codes with no clear remediation doc", () => {
+        for (const code of [
+            "E_USAGE",
+            "E_NOT_WRITABLE",
+            "E_WRITE",
+            "E_MERGE",
+            "E_VALIDATE",
+        ] as const) {
+            expect(getPythonSetupErrorAction(failure(code)), code).to.equal(
+                undefined
+            );
+        }
     });
 
     it("offers no action when the result carries no error", () => {
@@ -358,6 +445,26 @@ describe("formatSetupFailureDetail", () => {
             })
         );
         expect(detail).to.not.contain("UV_INDEX_URL");
+    });
+
+    it("appends the documentation link and its label for a code that has one", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_NO_TARGET", {failurePhase: "resolve"})
+        );
+        expect(detail).to.contain(DATABRICKS_CONFIGURE_DOCS_URL);
+        expect(detail).to.contain("Configure compute");
+    });
+
+    it("appends the uv index docs link for a blocked index", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
+        );
+        expect(detail).to.contain(UV_INDEX_DOCS_URL);
+    });
+
+    it("adds no documentation link for a message-only code", () => {
+        const detail = formatSetupFailureDetail(failure("E_USAGE"));
+        expect(detail).to.not.contain("https://");
     });
 });
 

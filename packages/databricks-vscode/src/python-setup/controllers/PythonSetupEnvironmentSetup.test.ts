@@ -13,8 +13,10 @@ import {
     SUCCESS_REAL_RUN,
     SUCCESS_REAL_RUN_WITH_WARNINGS,
     ERROR_NO_TARGET,
+    ERROR_USAGE,
 } from "../models/fixtures/setupLocalResults";
 import {
+    DATABRICKS_CONFIGURE_DOCS_URL,
     PythonSetupErrorAction,
     UV_INSTALL_DOCS_URL,
 } from "../utils/errorMessages";
@@ -377,11 +379,32 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         });
     });
 
-    it("passes no remediation action for failures other than uv-missing", async () => {
+    it("offers the mapped documentation action for a doc-linked failure", async () => {
         const shown: {action?: PythonSetupErrorAction}[] = [];
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 cli: makeCli({resolve: ERROR_NO_TARGET}),
+                showError: async (_message, _detail, action) => {
+                    shown.push({action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].action).to.deep.equal({
+            label: "Configure compute",
+            url: DATABRICKS_CONFIGURE_DOCS_URL,
+        });
+    });
+
+    it("passes no remediation action for a message-only failure", async () => {
+        // E_USAGE has no doc that reliably helps, so it surfaces the message alone.
+        const shown: {action?: PythonSetupErrorAction}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_USAGE}),
                 showError: async (_message, _detail, action) => {
                     shown.push({action});
                 },
