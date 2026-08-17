@@ -391,7 +391,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(shown).to.have.length(1);
         expect(shown[0].action).to.deep.equal({
             label: "Configure compute",
-            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs",
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster",
         });
     });
 

@@ -55,11 +55,14 @@ export const UV_RESOLUTION_DOCS_URL =
 
 /**
  * Databricks VS Code extension "configure your project" guide, anchored at the
- * compute-selection section — for E_NO_TARGET / E_RESOLVE, where the fix is
- * picking a valid cluster or serverless compute in the Configuration view.
+ * "Select compute for running code and jobs" section — for E_NO_TARGET /
+ * E_RESOLVE, where the fix is picking a valid cluster or serverless compute in
+ * the Configuration view. `#cluster` is that section's curated, stable anchor
+ * (a Databricks-authored `db-defined-anchor`), preferred over the auto-generated
+ * heading slug, which would break if the heading text changed.
  */
 export const DATABRICKS_CONFIGURE_DOCS_URL =
-    "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs";
+    "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster";
 
 /** Databricks Runtime release notes (supported versions) — for E_ENV_UNSUPPORTED. */
 export const DATABRICKS_RUNTIME_DOCS_URL =

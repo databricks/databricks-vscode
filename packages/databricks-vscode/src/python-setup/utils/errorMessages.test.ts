@@ -315,7 +315,7 @@ describe("getPythonSetupErrorAction", () => {
             )
         ).to.deep.equal({
             label: "Configure compute",
-            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs",
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster",
         });
     });
 
@@ -326,7 +326,7 @@ describe("getPythonSetupErrorAction", () => {
             )
         ).to.deep.equal({
             label: "Configure compute",
-            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs",
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster",
         });
     });
 
@@ -445,7 +445,7 @@ describe("formatSetupFailureDetail", () => {
             failure("E_NO_TARGET", {failurePhase: "resolve"})
         );
         expect(detail).to.contain(
-            "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#select-compute-for-running-code-and-jobs"
+            "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster"
         );
         expect(detail).to.contain("Configure compute");
     });
