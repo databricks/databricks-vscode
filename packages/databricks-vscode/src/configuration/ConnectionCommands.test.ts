@@ -83,15 +83,25 @@ describe(__filename, () => {
 
     describe("attachClusterQuickPick return contract", () => {
         let originalCreateQuickPick: typeof window.createQuickPick;
+        let originalShowQuickPick: typeof window.showQuickPick;
         let fakePick: FakeComputeQuickPick;
         let attachCalls: string[];
         let commands: ConnectionCommands;
+        // The serverless-version sub-picker uses window.showQuickPick (distinct
+        // from the compute picker's createQuickPick), so it is stubbed
+        // separately; each test sets what the user "picks" here.
+        let versionPick: {version: string} | undefined;
 
         beforeEach(() => {
             originalCreateQuickPick = window.createQuickPick;
             fakePick = new FakeComputeQuickPick();
             (window as unknown as {createQuickPick: unknown}).createQuickPick =
                 () => fakePick;
+
+            originalShowQuickPick = window.showQuickPick;
+            versionPick = undefined;
+            (window as unknown as {showQuickPick: unknown}).showQuickPick =
+                async () => versionPick;
 
             attachCalls = [];
             const connectionManager = {
@@ -121,6 +131,8 @@ describe(__filename, () => {
         });
 
         afterEach(() => {
+            (window as unknown as {showQuickPick: unknown}).showQuickPick =
+                originalShowQuickPick;
             (window as unknown as {createQuickPick: unknown}).createQuickPick =
                 originalCreateQuickPick;
         });
@@ -273,6 +285,60 @@ describe(__filename, () => {
             await fakePick.accept([serverlessItem()]);
 
             assert.deepEqual(enableCalls, [undefined]);
+            assert.equal(await resultP, undefined);
+        });
+
+        const makeRecordingServerlessCommands = (
+            enableCalls: Array<string | undefined>
+        ) =>
+            new ConnectionCommands(
+                {} as never,
+                {
+                    workspaceClient: {},
+                    databricksWorkspace: {userName: "me"},
+                    attachCluster: async () => {},
+                    enableServerless: async (version?: string) => {
+                        enableCalls.push(version);
+                    },
+                } as never,
+                {
+                    refresh() {},
+                    onDidChange() {
+                        return {dispose() {}};
+                    },
+                    roots: [],
+                } as never,
+                {} as never,
+                {} as never,
+                {} as never,
+                // uv-suitable project: selecting serverless resolves a version
+                // first, so the version sub-picker runs.
+                () => Promise.resolve(true)
+            );
+
+        it("prompts for a version and enables it for a uv-suitable project", async () => {
+            versionPick = {version: "5"};
+            const enableCalls: Array<string | undefined> = [];
+            const cmds = makeRecordingServerlessCommands(enableCalls);
+
+            const resultP = cmds.attachClusterQuickPickCommand()();
+            await fakePick.accept([serverlessItem()]);
+
+            // The confirmed version is enabled and returned as the serverless
+            // target for the uv setup to provision against.
+            assert.deepEqual(enableCalls, ["5"]);
+            assert.deepEqual(await resultP, {kind: "serverless", version: "5"});
+        });
+
+        it("makes no compute change when the version picker is dismissed on a uv-suitable project", async () => {
+            versionPick = undefined; // user escaped the version picker
+            const enableCalls: Array<string | undefined> = [];
+            const cmds = makeRecordingServerlessCommands(enableCalls);
+
+            const resultP = cmds.attachClusterQuickPickCommand()();
+            await fakePick.accept([serverlessItem()]);
+
+            assert.deepEqual(enableCalls, []);
             assert.equal(await resultP, undefined);
         });
     });
