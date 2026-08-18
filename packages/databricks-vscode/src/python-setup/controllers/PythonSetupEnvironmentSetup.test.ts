@@ -115,7 +115,8 @@ function makeDeps(
     return {
         cli: makeCli(),
         projectRoot: () => "/proj",
-        // Default seams model a connected serverless session that opted in.
+        // Default seams model a uv-suitable project with a connected serverless
+        // session.
         isVisible: async () => true,
         resolveCompute: async () => ({
             status: "ok",

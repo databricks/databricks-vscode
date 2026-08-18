@@ -24,10 +24,7 @@ import {
 } from "../ui/configuration-view/AuthTypeComponent";
 import {ManualLoginSource} from "../telemetry/constants";
 import {onError} from "../utils/onErrorDecorator";
-import {
-    isPythonSetupEnabled,
-    resolveServerlessVersion,
-} from "../python-setup/utils/serverlessVersionResolver";
+import {resolveServerlessVersion} from "../python-setup/utils/serverlessVersionResolver";
 import {pickServerlessVersion} from "../python-setup/utils/serverlessVersionPicker";
 import {collectServerlessVersionObservations} from "../python-setup/utils/serverlessVersionObservations";
 import type {SetupCompute} from "../python-setup/controllers/PythonSetupEnvironmentSetup";
@@ -98,7 +95,15 @@ export class ConnectionCommands implements Disposable {
         private readonly clusterModel: ClusterModel,
         private readonly configModel: ConfigModel,
         private readonly cli: CliWrapper,
-        private readonly workspaceFolderManager: WorkspaceFolderManager
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        /**
+         * Whether the uv-native Python setup is the active surface for the
+         * current project (i.e. the project is uv-suitable). Only then does
+         * enabling serverless prompt for an environment version to record for
+         * that setup; a project driven by a competing manager keeps the plain,
+         * version-less serverless enable.
+         */
+        private readonly isUvSetupVisible: () => Promise<boolean>
     ) {}
 
     /**
@@ -294,18 +299,19 @@ export class ConnectionCommands implements Disposable {
     }
 
     /**
-     * Enable serverless compute. When the uv-native python-setup feature is
-     * opted into, first ask the user to confirm the serverless environment
-     * version (ranked from the project's bundle) and persist it with the
-     * selection, so setup need not re-prompt. If they dismiss the version
-     * picker, no compute change is made. With the feature off this is the
-     * plain, unchanged serverless enable.
+     * Enable serverless compute. When the uv-native python-setup is the active
+     * surface for this project, first ask the user to confirm the serverless
+     * environment version (ranked from the project's bundle) and persist it with
+     * the selection, so setup need not re-prompt. If they dismiss the version
+     * picker, no compute change is made. For a project the uv setup does not fit
+     * (a competing manager is driving it) this is the plain, unchanged serverless
+     * enable.
      *
      * Returns the confirmed version, or `undefined` if the picker was dismissed
-     * or the feature is off (serverless enabled but version-less).
+     * or the project is not uv-suitable (serverless enabled but version-less).
      */
     private async selectServerless(): Promise<string | undefined> {
-        if (!isPythonSetupEnabled()) {
+        if (!(await this.isUvSetupVisible())) {
             await this.connectionManager.enableServerless();
             return undefined;
         }
