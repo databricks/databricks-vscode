@@ -1,6 +1,6 @@
 import {env} from "vscode";
 import assert from "assert";
-import {isCursor} from "./hostUtils";
+import {getHostCliCommand, isCursor} from "./hostUtils";
 
 describe(__filename, () => {
     let originalAppName: PropertyDescriptor | undefined;
@@ -30,5 +30,15 @@ describe(__filename, () => {
     it("is false for VS Code", () => {
         stubUriScheme("vscode");
         assert.strictEqual(isCursor(), false);
+    });
+
+    it("resolves the host CLI command to cursor in Cursor", () => {
+        stubUriScheme("cursor");
+        assert.strictEqual(getHostCliCommand(), "cursor");
+    });
+
+    it("resolves the host CLI command to code in VS Code", () => {
+        stubUriScheme("vscode");
+        assert.strictEqual(getHostCliCommand(), "code");
     });
 });
