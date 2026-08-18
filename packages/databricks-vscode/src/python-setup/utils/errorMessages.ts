@@ -41,6 +41,33 @@ export const UV_INSTALL_DOCS_URL =
 export const UV_INDEX_DOCS_URL =
     "https://docs.astral.sh/uv/configuration/indexes/";
 
+/** uv's project overview — for E_MANAGER_UNSUPPORTED (no uv project present). */
+export const UV_PROJECTS_DOCS_URL =
+    "https://docs.astral.sh/uv/concepts/projects/";
+
+/** uv's Python-version guide — for E_PYTHON_INSTALL. */
+export const UV_PYTHON_INSTALL_DOCS_URL =
+    "https://docs.astral.sh/uv/guides/install-python/";
+
+/** uv's resolution concept page — for a genuine E_PROVISION dependency conflict. */
+export const UV_RESOLUTION_DOCS_URL =
+    "https://docs.astral.sh/uv/concepts/resolution/";
+
+/**
+ * Databricks VS Code extension "configure your project" guide, anchored at the
+ * "Select compute for running code and jobs" section — for E_NO_TARGET /
+ * E_RESOLVE, where the fix is picking a valid cluster or serverless compute in
+ * the Configuration view. `#cluster` is that section's curated, stable anchor
+ * (a Databricks-authored `db-defined-anchor`), preferred over the auto-generated
+ * heading slug, which would break if the heading text changed.
+ */
+export const DATABRICKS_CONFIGURE_DOCS_URL =
+    "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster";
+
+/** Databricks Runtime release notes (supported versions) — for E_ENV_UNSUPPORTED. */
+export const DATABRICKS_RUNTIME_DOCS_URL =
+    "https://docs.databricks.com/aws/en/release-notes/runtime/";
+
 /**
  * "Cannot reach the host" phrases in uv's error text (matched case-insensitively).
  * TLS-interception and proxy-auth (407) are deliberately left out: they need a
@@ -173,20 +200,67 @@ export function getPythonSetupErrorMessage(result: PythonSetupResult): string {
 }
 
 /**
- * The remediation button, if any: a blocked index → uv's index-config docs, or
- * `E_UV_MISSING` → uv's install docs. Other codes are actionable from the message
- * and logs alone.
+ * Documentation link per error code, surfaced both as the failure popup's
+ * remediation button and — via {@link formatSetupFailureDetail} — in the output
+ * channel. Sparse by design: codes whose fix no single page reliably explains
+ * (E_USAGE, E_NOT_WRITABLE, E_WRITE, E_MERGE, E_VALIDATE, E_FETCH) are absent and
+ * get the message alone rather than a link that might misdirect.
+ *
+ * `E_UV_MISSING` lives here so every code-keyed link takes one path; the
+ * blocked-index variant of `E_PROVISION` cannot — it is told apart by the CLI's
+ * message, not its code — so it is resolved ahead of this map (see below).
+ */
+/* eslint-disable @typescript-eslint/naming-convention */
+const DOC_LINKS: Partial<Record<PythonSetupErrorCode, PythonSetupErrorAction>> =
+    {
+        E_UV_MISSING: {label: "Install uv", url: UV_INSTALL_DOCS_URL},
+        E_MANAGER_UNSUPPORTED: {
+            label: "Set up a uv project",
+            url: UV_PROJECTS_DOCS_URL,
+        },
+        E_PYTHON_INSTALL: {
+            label: "Install a Python version",
+            url: UV_PYTHON_INSTALL_DOCS_URL,
+        },
+        E_PROVISION: {
+            label: "Resolve dependency conflicts",
+            url: UV_RESOLUTION_DOCS_URL,
+        },
+        E_NO_TARGET: {
+            label: "Configure compute",
+            url: DATABRICKS_CONFIGURE_DOCS_URL,
+        },
+        E_RESOLVE: {
+            label: "Configure compute",
+            url: DATABRICKS_CONFIGURE_DOCS_URL,
+        },
+        E_ENV_UNSUPPORTED: {
+            label: "Databricks Runtime versions",
+            url: DATABRICKS_RUNTIME_DOCS_URL,
+        },
+    };
+/* eslint-enable @typescript-eslint/naming-convention */
+
+/**
+ * The remediation button / doc link for a failure, if any. A blocked index maps
+ * to uv's index-config docs; every other link is keyed by error code via
+ * {@link DOC_LINKS}. Codes absent from the map (e.g. E_USAGE, E_FETCH) are
+ * actionable from the message and logs alone.
  */
 export function getPythonSetupErrorAction(
     result: PythonSetupResult
 ): PythonSetupErrorAction | undefined {
+    const err = result.error;
+    if (!err) {
+        return undefined;
+    }
+    // A blocked package index arrives as E_PROVISION and is distinguished by the
+    // CLI's message, not its code — so resolve it before the code-keyed map,
+    // ahead of E_PROVISION's generic dependency-conflict link.
     if (isIndexUnreachableFailure(result)) {
         return {label: "Configure package index", url: UV_INDEX_DOCS_URL};
     }
-    if (result.error?.code === "E_UV_MISSING") {
-        return {label: "Install uv", url: UV_INSTALL_DOCS_URL};
-    }
-    return undefined;
+    return DOC_LINKS[err.code];
 }
 
 /**
@@ -240,6 +314,12 @@ export function formatSetupFailureDetail(
             "       index-url = https://<your-proxy>/simple",
             "     Use index-url (not extra-index-url) so pypi.org is replaced, not merely supplemented."
         );
+    }
+    // The same doc link the popup offers as a button, spelled out here so the URL
+    // is reachable from the log even after the notification is dismissed.
+    const action = getPythonSetupErrorAction(result);
+    if (action) {
+        lines.push("", `${action.label}: ${action.url}`);
     }
     // Bracket with blank lines so the block stands apart from any streamed CLI
     // output already in the channel.
