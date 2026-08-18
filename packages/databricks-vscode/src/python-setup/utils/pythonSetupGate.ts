@@ -86,25 +86,3 @@ export function isUvSetupSuitable(detection: SuitabilityDetection): boolean {
 
     return !effective.some((m) => COMPETING_MANAGERS.includes(m));
 }
-
-/**
- * Whether to surface the uv-native python-setup entry for the current project.
- *
- * Pure predicate over the feature flag and the live detection result. Shows
- * only when both hold:
- *  - the feature flag is on (the whole feature is opt-in while the CLI command
- *    ships only in custom builds), AND
- *  - the project is uv-suitable — see {@link isUvSetupSuitable}. Even a
- *    uv-primary project is excluded if it also shows poetry/conda signals, or
- *    real pip signals, so setup never fights an environment the project already
- *    depends on.
- */
-export function shouldShowPythonSetup(args: {
-    flagOn: boolean;
-    detection: SuitabilityDetection;
-}): boolean {
-    if (!args.flagOn) {
-        return false;
-    }
-    return isUvSetupSuitable(args.detection);
-}
