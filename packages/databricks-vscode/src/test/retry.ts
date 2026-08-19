@@ -48,13 +48,43 @@ export function isTransientFileLockError(error: unknown): boolean {
     );
 }
 
-// wdio `specFileRetries` count per platform. Windows-only: its e2e shards hit
-// whole-session crashes no in-test wait can recover — a VS Code window reload
-// can drop the wdio websocket ("Connection closed. Code: 1006"), so the rest of
-// the spec cascades and only a fresh session (which a retry starts) recovers.
-// Others stay at 0 so a real regression there isn't masked.
+// wdio `specFileRetries` count per platform. Windows-only, because its e2e
+// shards hit whole-session crashes no in-test wait can recover — a VS Code
+// window reload can drop the wdio websocket ("Connection closed. Code: 1006"),
+// so the rest of the spec cascades and only a fresh session (which a retry
+// starts) recovers. Note the retry fires on *any* whole-spec failure, not just
+// that crash — wdio has no retry-on-specific-error hook. A deterministic
+// regression still fails on both attempts; a *flaky* one can pass on retry, so
+// SpecRetryTracker surfaces those (see wdio.conf.ts) rather than letting them go
+// silently green. Others stay at 0 so a real regression there isn't masked.
 export function specFileRetriesForPlatform(platform: NodeJS.Platform): number {
     return platform === "win32" ? 1 : 0;
+}
+
+// Tracks e2e spec outcomes across wdio's spec-file retries so a spec that only
+// passes on a retry — an otherwise-silent flake, since wdio reports the run as
+// green — can be surfaced at the end. `record` is called once per worker-end
+// (i.e. per attempt); `recoveredSpecs` lists specs that failed at least one
+// attempt but later passed. A spec that fails every attempt is a hard failure
+// wdio already reports, so it is deliberately not listed here.
+export class SpecRetryTracker {
+    private readonly failed = new Set<string>();
+    private readonly recovered = new Set<string>();
+
+    record(spec: string, passed: boolean): void {
+        if (!passed) {
+            this.failed.add(spec);
+            this.recovered.delete(spec);
+            return;
+        }
+        if (this.failed.has(spec)) {
+            this.recovered.add(spec);
+        }
+    }
+
+    get recoveredSpecs(): string[] {
+        return [...this.recovered];
+    }
 }
 
 export async function retryOnTransientError<T>(

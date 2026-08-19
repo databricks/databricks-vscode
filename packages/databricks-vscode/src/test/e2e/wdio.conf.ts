@@ -16,7 +16,7 @@ import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
-import {specFileRetriesForPlatform} from "../retry.ts";
+import {specFileRetriesForPlatform, SpecRetryTracker} from "../retry.ts";
 
 // WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
 // NODE_OPTIONS for every worker process. wdio-vscode-service installs the
@@ -40,6 +40,12 @@ if (
 }
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
+
+// Records spec outcomes across specFileRetries (see specFileRetriesForPlatform)
+// so a spec that passes only on a retry is surfaced in onComplete rather than
+// going silently green. Lives in the launcher process, which is where the
+// onWorkerEnd/onComplete hooks run.
+const specRetryTracker = new SpecRetryTracker();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -404,8 +410,11 @@ export const config: WebdriverIO.Config = {
      * @param  {[type]} specs    specs to be run in the worker process
      * @param  {Number} retries  number of retries used
      */
-    // onWorkerEnd: function (cid, exitCode, specs, retries) {
-    // },
+    onWorkerEnd: function (cid, exitCode, specs) {
+        for (const spec of specs) {
+            specRetryTracker.record(spec, exitCode === 0);
+        }
+    },
 
     /**
      * Gets executed just before initialising the webdriver session and test framework. It allows you
@@ -649,8 +658,16 @@ export const config: WebdriverIO.Config = {
      * @param {Array.<Object>} capabilities list of capabilities details
      * @param {<Object>} results object containing test results
      */
-    // onComplete: function (exitCode, config, capabilities, results) {
-    // },
+    onComplete: function () {
+        const recovered = specRetryTracker.recoveredSpecs;
+        if (recovered.length > 0) {
+            console.log(
+                "\n⚠️  PASSED ONLY ON RETRY (flaky — investigate):\n" +
+                    recovered.map((spec) => `  - ${spec}`).join("\n") +
+                    "\n"
+            );
+        }
+    },
 
     /**
      * Gets executed when a refresh happens.
