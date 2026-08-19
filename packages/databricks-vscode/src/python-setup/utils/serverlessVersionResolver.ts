@@ -22,7 +22,7 @@ import {pickServerlessVersion} from "./serverlessVersionPicker";
  * single `undefined`.
  */
 export interface ServerlessVersionResolverDeps {
-    /** Gather raw version observations (bundle YAML, notebooks, workspace default). */
+    /** Gather raw version observations (pyproject.toml, bundle YAML, notebooks, workspace default). */
     collectObservations: () => Promise<VersionObservation[]>;
     /** Present the ranked candidates and return the confirmed bare version. */
     pick: (
@@ -32,8 +32,9 @@ export interface ServerlessVersionResolverDeps {
 
 /**
  * Resolve the serverless environment version to provision: collect the evidence
- * for what version this project should use (bundle YAML, notebooks, workspace
- * default), score it, and let the user confirm the best-ranked candidate.
+ * for what version this project should use (pyproject.toml, bundle YAML,
+ * notebooks, workspace default), score it, and let the user confirm the
+ * best-ranked candidate.
  * Returns the confirmed bare version (e.g. "5", the `--serverless-version`
  * value) or `undefined` when the user dismisses the picker.
  *

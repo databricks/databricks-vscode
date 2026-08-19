@@ -15,12 +15,6 @@ import {
     writeRootBundleConfig,
 } from "./utils/dabsFixtures.ts";
 
-// The uv-native setup entry is opt-in: it unlocks only when this feature id is
-// present in `databricks.experiments.optInto` (PYTHON_SETUP_FEATURE_ID). We set
-// it at Workspace scope from the test so it stays contained to this project's
-// folder and never reroutes another spec's "Setup python environment" command.
-const PYTHON_SETUP_FEATURE_ID = "environment.pythonSetup";
-
 // Ground-truth text the flow surfaces on success — the config-view row label
 // (persistent) and the completion toast (transient). We assert on the row.
 const READY_LABEL = "Python environment ready";
@@ -185,20 +179,7 @@ describe("Set up local Python environment (uv) on serverless", async function ()
         await workbench.getEditorView().closeAllEditors();
     });
 
-    it("should opt into uv setup and select a serverless version", async () => {
-        // Opt in at Workspace scope. `isPythonSetupEnabled()` reads this config
-        // live, so the setup command routes to the uv flow on the next click
-        // without a window reload.
-        await browser.executeWorkbench(async (vscode, featureId) => {
-            await vscode.workspace
-                .getConfiguration("databricks.experiments")
-                .update(
-                    "optInto",
-                    [featureId],
-                    vscode.ConfigurationTarget.Workspace
-                );
-        }, PYTHON_SETUP_FEATURE_ID);
-
+    it("should attach serverless and select an environment version", async () => {
         // setup-local requires uv, and the CI runners do not ship it, so preflight
         // would fail fast with E_UV_MISSING. Set the CLI's documented auto-install
         // opt-in in the extension host's env — the extension spawns setup-local
@@ -208,9 +189,9 @@ describe("Set up local Python environment (uv) on serverless", async function ()
             process.env.DATABRICKS_LOCALENV_AUTO_INSTALL_UV = "1";
         });
 
-        // Attach serverless. With the feature opted in, selecting serverless
-        // prompts for (and persists) the environment version up front, so the
-        // subsequent setup run resolves compute without re-prompting.
+        // Attach serverless. Selecting serverless prompts for (and persists) the
+        // environment version up front, so the subsequent setup run resolves
+        // compute without re-prompting.
         await executeCommandWhenAvailable("Databricks: Configure compute");
         const computeInput = await waitForQuickInput();
         await computeInput.selectQuickPick("Serverless");
@@ -223,9 +204,9 @@ describe("Set up local Python environment (uv) on serverless", async function ()
     });
 
     it("should set up the environment with uv (setup-local)", async () => {
-        // The router command; opted in + a clean (uv-suitable) project routes it
-        // to the uv flow, which shells out to `databricks environments
-        // setup-local`. Compute + version are already resolved, so no prompt.
+        // The router command; a clean (uv-suitable) project routes it to the uv
+        // flow, which shells out to `databricks environments setup-local`.
+        // Compute + version are already resolved, so no prompt.
         await executeCommandWhenAvailable(
             "Databricks: Setup python environment"
         );
