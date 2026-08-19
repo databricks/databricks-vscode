@@ -24,11 +24,15 @@ const ENVIRONMENT_VERSION_KEY = /^environment_version\s*=\s*(.*)$/;
  * Deliberately a bounded, comment-aware line scan rather than a full TOML parse
  * (the same approach as {@link ../../language/packageManagerDetection}, so no
  * TOML dependency is pulled in): it reads `environment_version` only from the
- * canonical `[tool.databricks.environment]` table the CLI writes. A key of the
- * same name in another table, or a dotted-key / inline-table spelling, is not
- * harvested -- acceptable because the paired CLI work writes the canonical block
- * form. The value's range validity is not checked here; the scorer drops
- * anything the `--serverless-version` flag would reject.
+ * canonical `[tool.databricks.environment]` table the CLI writes. Like those
+ * sibling scanners it is stateless about string context, so spellings that only
+ * a real parser would resolve are out of scope: a key of the same name in
+ * another table, a dotted-key / inline-table form, or a key that sits inside a
+ * multi-line (`"""..."""`) string or after an array-continuation line beginning
+ * with `[`. This is acceptable because the paired CLI work writes the canonical
+ * block form -- a bare `environment_version` integer under the table header.
+ * The value's range validity is not checked here; the scorer drops anything the
+ * `--serverless-version` flag would reject.
  *
  * Pure over the file contents; returns [] for undefined input or when the table
  * or key is absent.
