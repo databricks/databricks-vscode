@@ -173,14 +173,15 @@ export class SshCommands implements Disposable {
 
     @onError({popup: {prefix: "Error starting SSH tunnel."}})
     async startTunnelCommand() {
-        // Fail fast on a missing host CLI before touching auth, compute, or a
-        // terminal. `databricks ssh connect` shells out to the host command to
-        // open the remote window; when it is off PATH the connect only fails
-        // deep inside the terminal after a long wait, so pre-check it here and
-        // surface an actionable in-editor prompt instead.
-        if (!(await this.ensureHostCliOnPath())) {
-            return;
-        }
+        // `databricks ssh connect` shells out to the host command (`code`/
+        // `cursor`) to open the remote window; when it is off PATH the connect
+        // only fails deep inside the terminal after a long wait. Surface an
+        // actionable in-editor hint up front when the command looks missing.
+        // This is advisory only — the probe runs a non-interactive shell whose
+        // PATH can differ from the terminal's, so we still proceed and let the
+        // terminal report the real error rather than blocking a tunnel that
+        // would have worked.
+        await this.warnIfHostCliMissing();
         const context = await this.resolveTunnelContext();
         if (context === undefined) {
             return;
@@ -424,47 +425,61 @@ export class SshCommands implements Disposable {
     }
 
     /**
-     * Ensures the host editor's shell command (`code`/`cursor`) is on PATH,
-     * which `databricks ssh connect` needs to open the remote window. Returns
-     * true to proceed; on a miss, shows an actionable prompt whose button
-     * installs the shell command (falling back to the download page if the host
-     * does not expose the built-in installer) and returns false.
+     * When the host editor's shell command (`code`/`cursor`) looks missing from
+     * PATH — which `databricks ssh connect` needs to open the remote window —
+     * shows a non-blocking hint. The probe is advisory (its PATH can differ from
+     * the terminal's), so this never gates the tunnel; the prompt is fired and
+     * forgotten while the caller proceeds.
+     *
+     * On macOS the prompt offers the built-in "Install shell command" installer.
+     * `workbench.action.installCommandLine` is registered only on macOS, so
+     * elsewhere we point at the editor's PATH-setup docs instead of telling the
+     * user to reinstall an editor they already have.
      */
-    private async ensureHostCliOnPath(): Promise<boolean> {
+    private async warnIfHostCliMissing(): Promise<void> {
         if (await HostUtils.isHostCliOnPath()) {
-            return true;
+            return;
         }
         const cmd = HostUtils.getHostCliCommand();
+        const message =
+            `The "${cmd}" command may not be on your PATH, which the ` +
+            `Databricks SSH tunnel needs to open the remote window. If the ` +
+            `tunnel fails to open a window, add it to your PATH and try again.`;
+
+        const promptChain =
+            process.platform === "darwin"
+                ? this.promptInstallShellCommand(message)
+                : this.promptPathSetupDocs(message);
+        // The prompt outlives this call by design; make sure a rejection in the
+        // detached chain can't surface as an unhandled rejection.
+        promptChain.catch((e) => {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Failed to handle host CLI PATH prompt",
+                e
+            );
+        });
+    }
+
+    private async promptInstallShellCommand(message: string): Promise<void> {
         const install = "Install shell command";
-        window
-            .showErrorMessage(
-                `The "${cmd}" command isn't on your PATH, which the Databricks ` +
-                    `SSH tunnel needs to open the remote window. Install it, ` +
-                    `then start the tunnel again.`,
-                install
-            )
-            .then(async (choice) => {
-                if (choice !== install) {
-                    return;
-                }
-                try {
-                    // Built-in "Shell Command: Install '<cmd>' command in PATH".
-                    await commands.executeCommand(
-                        "workbench.action.installCommandLine"
-                    );
-                } catch {
-                    // Older hosts (or forks) may not register the installer;
-                    // fall back to the editor's download page.
-                    const url = HostUtils.isCursor()
-                        ? "https://cursor.com/"
-                        : "https://code.visualstudio.com/";
-                    await commands.executeCommand(
-                        "vscode.open",
-                        Uri.parse(url)
-                    );
-                }
-            });
-        return false;
+        const choice = await window.showWarningMessage(message, install);
+        if (choice !== install) {
+            return;
+        }
+        // Built-in "Shell Command: Install '<cmd>' command in PATH" (macOS only).
+        await commands.executeCommand("workbench.action.installCommandLine");
+    }
+
+    private async promptPathSetupDocs(message: string): Promise<void> {
+        const setup = "Setup instructions";
+        const choice = await window.showWarningMessage(message, setup);
+        if (choice !== setup) {
+            return;
+        }
+        const url = HostUtils.isCursor()
+            ? "https://docs.cursor.com/en/cli/installation"
+            : "https://code.visualstudio.com/docs/setup/setup-overview";
+        await commands.executeCommand("vscode.open", Uri.parse(url));
     }
 
     private async launchSshTunnel(
