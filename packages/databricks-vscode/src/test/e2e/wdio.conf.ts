@@ -9,7 +9,14 @@ import fs from "fs/promises";
 import {Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile as execFileCb} from "node:child_process";
-import {cpSync, mkdirSync, readdirSync, readFileSync, rmSync} from "node:fs";
+import {
+    cpSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+} from "node:fs";
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
@@ -18,9 +25,12 @@ import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
 import {
     specFileRetriesForPlatform,
-    SpecRetryTracker,
+    specFileRetriesDelayForPlatform,
+    shouldPreserveFailedAttemptLogs,
+    failedAttemptLogRenames,
     formatRecoveredSpecsReport,
 } from "../retry.ts";
+import {SpecRetryTracker} from "../SpecRetryTracker.ts";
 
 // WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
 // NODE_OPTIONS for every worker process. wdio-vscode-service installs the
@@ -44,6 +54,9 @@ if (
 }
 
 const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
+
+// wdio's `outputDir`; also where onWorkerEnd parks a crashed attempt's logs.
+const LOGS_DIR = "logs";
 
 // Records spec outcomes across specFileRetries (see specFileRetriesForPlatform)
 // so a spec that passes only on a retry is surfaced in onComplete rather than
@@ -233,7 +246,7 @@ export const config: WebdriverIO.Config = {
     // Level of logging verbosity: trace | debug | info | warn | error | silent
     logLevel: "debug",
 
-    outputDir: "logs",
+    outputDir: LOGS_DIR,
 
     //
     // Set specific log levels per logger
@@ -299,7 +312,7 @@ export const config: WebdriverIO.Config = {
     specFileRetries: specFileRetriesForPlatform(process.platform),
     //
     // Delay in seconds between the spec file retry attempts
-    specFileRetriesDelay: 0,
+    specFileRetriesDelay: specFileRetriesDelayForPlatform(process.platform),
     //
     // Whether or not retried specfiles should be retried immediately or deferred to the end of the queue
     specFileRetriesDeferred: true,
@@ -414,13 +427,25 @@ export const config: WebdriverIO.Config = {
      * @param  {[type]} specs    specs to be run in the worker process
      * @param  {Number} retries  number of retries used
      */
-    onWorkerEnd: function (cid, exitCode, specs) {
+    onWorkerEnd: function (cid, exitCode, specs, retries) {
         // `exitCode` is per worker, not per spec; attributing it to each entry
         // is correct only because the flat `specs` glob runs exactly one spec
         // file per worker. If specs are ever grouped, gate this on
         // `specs.length === 1` to avoid mis-flagging a passing sibling.
         for (const spec of specs) {
             specRetryTracker.record(spec, exitCode === 0);
+        }
+        // A retry reuses this cid, so wdio reopens logs/wdio-<cid>*.log with
+        // flags:"w" and truncates the crash we retried for. Park them first so
+        // the recovered-flake report still has something to point at.
+        if (shouldPreserveFailedAttemptLogs(exitCode, retries)) {
+            for (const {from, to} of failedAttemptLogRenames(LOGS_DIR, cid)) {
+                try {
+                    renameSync(from, to);
+                } catch (error) {
+                    console.error(`Could not preserve ${from}:`, error);
+                }
+            }
         }
     },
 

@@ -1,9 +1,12 @@
 import {expect} from "chai";
+import path from "node:path";
 import {
     isTransientFileLockError,
     retryOnTransientError,
     specFileRetriesForPlatform,
-    SpecRetryTracker,
+    specFileRetriesDelayForPlatform,
+    shouldPreserveFailedAttemptLogs,
+    failedAttemptLogRenames,
     formatRecoveredSpecsReport,
 } from "./retry";
 
@@ -222,48 +225,45 @@ describe("retry", () => {
         });
     });
 
-    describe("SpecRetryTracker", () => {
-        it("does not flag a spec that passes on the first attempt", () => {
-            const tracker = new SpecRetryTracker();
-            tracker.record("a.e2e.ts", true);
-            expect(tracker.recoveredSpecs).to.deep.equal([]);
+    describe("specFileRetriesDelayForPlatform", () => {
+        it("waits before a retry on Windows", () => {
+            expect(specFileRetriesDelayForPlatform("win32")).to.equal(5);
         });
 
-        it("flags a spec that fails an attempt then passes", () => {
-            const tracker = new SpecRetryTracker();
-            tracker.record("a.e2e.ts", false);
-            tracker.record("a.e2e.ts", true);
-            expect(tracker.recoveredSpecs).to.deep.equal(["a.e2e.ts"]);
+        it("does not wait on Linux or macOS", () => {
+            expect(specFileRetriesDelayForPlatform("linux")).to.equal(0);
+            expect(specFileRetriesDelayForPlatform("darwin")).to.equal(0);
+        });
+    });
+
+    describe("shouldPreserveFailedAttemptLogs", () => {
+        it("preserves when a failed attempt will be retried", () => {
+            expect(shouldPreserveFailedAttemptLogs(1, 1)).to.equal(true);
         });
 
-        it("does not flag a spec that fails every attempt (a hard failure)", () => {
-            const tracker = new SpecRetryTracker();
-            tracker.record("a.e2e.ts", false);
-            tracker.record("a.e2e.ts", false);
-            expect(tracker.recoveredSpecs).to.deep.equal([]);
+        it("does not preserve a passing attempt", () => {
+            expect(shouldPreserveFailedAttemptLogs(0, 1)).to.equal(false);
         });
 
-        // Defensive: fail→pass→fail needs three attempts, which can't happen
-        // at specFileRetries=1 (a spec runs at most twice). This guards the
-        // recovered.delete branch for any future higher retry count.
-        it("un-flags a spec that recovers then fails again", () => {
-            const tracker = new SpecRetryTracker();
-            tracker.record("a.e2e.ts", false);
-            tracker.record("a.e2e.ts", true);
-            tracker.record("a.e2e.ts", false);
-            expect(tracker.recoveredSpecs).to.deep.equal([]);
+        it("does not preserve the final failed attempt (no retries left)", () => {
+            expect(shouldPreserveFailedAttemptLogs(1, 0)).to.equal(false);
         });
+    });
 
-        it("tracks specs independently and lists each recovered one once", () => {
-            const tracker = new SpecRetryTracker();
-            tracker.record("a.e2e.ts", false);
-            tracker.record("a.e2e.ts", true);
-            tracker.record("b.e2e.ts", true);
-            tracker.record("c.e2e.ts", false);
-            tracker.record("c.e2e.ts", true);
-            expect(tracker.recoveredSpecs.sort()).to.deep.equal([
-                "a.e2e.ts",
-                "c.e2e.ts",
+    describe("failedAttemptLogRenames", () => {
+        it("parks the wdio and chromedriver logs for the worker's cid", () => {
+            expect(failedAttemptLogRenames("logs", "0-3")).to.deep.equal([
+                {
+                    from: path.join("logs", "wdio-0-3.log"),
+                    to: path.join("logs", "wdio-0-3-failed-attempt.log"),
+                },
+                {
+                    from: path.join("logs", "wdio-0-3-chromedriver.log"),
+                    to: path.join(
+                        "logs",
+                        "wdio-0-3-chromedriver-failed-attempt.log"
+                    ),
+                },
             ]);
         });
     });
@@ -291,6 +291,22 @@ describe("retry", () => {
                 "⚠️  PASSED ONLY ON RETRY (flaky — investigate):",
                 "  - a.e2e.ts",
                 "::warning::PASSED ONLY ON RETRY: a.e2e.ts",
+            ]);
+        });
+
+        it("shows the basename for an absolute path or file:// URL", () => {
+            expect(
+                formatRecoveredSpecsReport(
+                    [
+                        "file:///C:/a/eng-dev-ecosystem/ext/src/test/e2e/bundle_init.e2e.ts",
+                        "/home/runner/work/src/test/e2e/auth.e2e.ts",
+                    ],
+                    false
+                )
+            ).to.deep.equal([
+                "⚠️  PASSED ONLY ON RETRY (flaky — investigate):",
+                "  - bundle_init.e2e.ts",
+                "  - auth.e2e.ts",
             ]);
         });
     });
