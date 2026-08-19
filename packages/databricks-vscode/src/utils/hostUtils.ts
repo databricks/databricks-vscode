@@ -1,6 +1,5 @@
 import {env} from "vscode";
-import {logging} from "@databricks/sdk-experimental";
-import {isFileNotFound} from "@databricks/sdk-experimental/dist/config/execUtils";
+import {ExecUtils, logging} from "@databricks/sdk-experimental";
 import {cancellableExecFile} from "../cli/CliWrapper";
 import {Loggers} from "../logger";
 
@@ -14,21 +13,17 @@ export function isCursor(): boolean {
 
 /**
  * The name of the host editor's shell command on PATH: `cursor` in Cursor,
- * `code-insiders` in VS Code Insiders, `code` in stable VS Code. This is the
- * command the `databricks ssh connect` CLI shells out to when opening the remote
- * window (see the CLI's ideDescriptor), and is distinct from the
- * `--ide=vscode|cursor` value passed to that command.
+ * `code` otherwise. This is the command the `databricks ssh connect` CLI shells
+ * out to when opening the remote window, and it mirrors how the CLI resolves
+ * `--ide` (see getSshConnectCommand): everything non-Cursor maps to `code`.
+ *
+ * VS Code Insiders ships its shell command as `code-insiders`, but the CLI has
+ * no Insiders descriptor and always invokes `code`, so we deliberately probe
+ * `code` there too — probing `code-insiders` would check a command the CLI
+ * never calls. Real Insiders support belongs upstream in the CLI.
  */
-export function getHostCliCommand(): "code" | "code-insiders" | "cursor" {
-    if (isCursor()) {
-        return "cursor";
-    }
-    // Insiders ships its shell command as `code-insiders`, not `code`; an
-    // Insiders-only install has that on PATH.
-    if (env.uriScheme === "vscode-insiders") {
-        return "code-insiders";
-    }
-    return "code";
+export function getHostCliCommand(): "code" | "cursor" {
+    return isCursor() ? "cursor" : "code";
 }
 
 /**
@@ -52,7 +47,7 @@ export async function isHostCliOnPath(
         await exec(getHostCliCommand(), ["--version"], {shell: true});
         return true;
     } catch (e) {
-        if (isFileNotFound(e)) {
+        if (ExecUtils.isFileNotFound(e)) {
             return false;
         }
         logging.NamedLogger.getOrCreate(Loggers.Extension).error(

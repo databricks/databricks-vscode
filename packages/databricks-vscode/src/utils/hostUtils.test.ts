@@ -43,9 +43,9 @@ describe(__filename, () => {
         assert.strictEqual(getHostCliCommand(), "code");
     });
 
-    it("resolves the host CLI command to code-insiders in Insiders", () => {
+    it("resolves the host CLI command to code in Insiders (the CLI has no Insiders descriptor)", () => {
         stubUriScheme("vscode-insiders");
-        assert.strictEqual(getHostCliCommand(), "code-insiders");
+        assert.strictEqual(getHostCliCommand(), "code");
     });
 
     describe("isHostCliOnPath", () => {
