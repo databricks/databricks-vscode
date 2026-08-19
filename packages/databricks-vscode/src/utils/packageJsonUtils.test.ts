@@ -9,10 +9,12 @@ import {
     getBundledCliVersion,
     getCorrectVsixInstallString,
     getMetadata,
+    isBundledCliVersionMismatch,
     isCompatibleArchitecture,
     isEqual,
     nodeArchMap,
     nodeOsMap,
+    parseCliVersion,
     vsixArchMap,
 } from "./packageJsonUtils";
 import {EXTENSION_DEVELOPMENT} from "./developmentUtils";
@@ -116,13 +118,59 @@ describe(__filename, () => {
         });
     });
 
-    describe("bundled CLI version", () => {
-        const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
-
-        beforeEach(() => {
-            process.env[EXTENSION_DEVELOPMENT] = "true";
+    describe("parseCliVersion", () => {
+        it("reads the Version field from `databricks version --output json`", () => {
+            assert.equal(parseCliVersion('{"Version": "0.240.0"}'), "0.240.0");
         });
 
+        it("returns undefined when Version is missing", () => {
+            assert.equal(parseCliVersion('{"foo": "bar"}'), undefined);
+        });
+
+        it("returns undefined when Version is not a string", () => {
+            assert.equal(parseCliVersion('{"Version": 240}'), undefined);
+        });
+
+        it("returns undefined on malformed JSON", () => {
+            assert.equal(parseCliVersion("not json"), undefined);
+            assert.equal(parseCliVersion(""), undefined);
+        });
+    });
+
+    describe("isBundledCliVersionMismatch", () => {
+        it("flags two known versions that differ", () => {
+            assert.equal(
+                isBundledCliVersionMismatch("0.240.0", "0.241.0"),
+                true
+            );
+        });
+
+        it("is not a mismatch when the versions match", () => {
+            assert.equal(
+                isBundledCliVersionMismatch("0.240.0", "0.240.0"),
+                false
+            );
+        });
+
+        it("is not a mismatch when the actual version is unknown", () => {
+            assert.equal(
+                isBundledCliVersionMismatch(undefined, "0.240.0"),
+                false
+            );
+        });
+
+        it("is not a mismatch when the expected version is unpinned", () => {
+            assert.equal(
+                isBundledCliVersionMismatch("0.240.0", undefined),
+                false
+            );
+        });
+    });
+
+    // Logic-only checkBundledCliVersion paths that return before spawning the
+    // CLI — safe to keep in the unit suite.
+    describe("checkBundledCliVersion gating", () => {
+        const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
         afterEach(() => {
             if (originalDevFlag === undefined) {
                 delete process.env[EXTENSION_DEVELOPMENT];
@@ -131,31 +179,7 @@ describe(__filename, () => {
             }
         });
 
-        it("should read the version the bundled CLI reports", async () => {
-            assert.equal(await getBundledCliVersion(cliPath), pinnedCliVersion);
-        });
-
-        it("should accept a CLI matching the pinned version", async () => {
-            assert.ok(
-                await checkBundledCliVersion(cliPath, {
-                    packageName: "databricks",
-                    version: "2.13.0",
-                    cliVersion: pinnedCliVersion,
-                })
-            );
-        });
-
-        it("should detect a stale CLI", async () => {
-            assert.ok(
-                !(await checkBundledCliVersion(cliPath, {
-                    packageName: "databricks",
-                    version: "2.13.0",
-                    cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
-                }))
-            );
-        });
-
-        it("should not warn outside a dev checkout", async () => {
+        it("does not warn outside a dev checkout (no CLI spawn)", async () => {
             delete process.env[EXTENSION_DEVELOPMENT];
             assert.ok(
                 await checkBundledCliVersion(cliPath, {
@@ -166,7 +190,17 @@ describe(__filename, () => {
             );
         });
 
-        it("should return undefined for a missing binary", async () => {
+        it("does not warn when the pinned version is unknown", async () => {
+            process.env[EXTENSION_DEVELOPMENT] = "true";
+            assert.ok(
+                await checkBundledCliVersion("/nonexistent/databricks", {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                })
+            );
+        });
+
+        it("returns undefined for a missing binary", async () => {
             assert.equal(
                 await getBundledCliVersion(
                     path.join(__dirname, "nonexistent-databricks")
@@ -174,13 +208,49 @@ describe(__filename, () => {
                 undefined
             );
         });
+    });
 
-        it("should not warn when the pinned version is unknown", async () => {
+    // Smoke tests: these spawn the REAL bundled CLI that CI fetches at the
+    // pinned version, so they validate the `package:cli:fetch` step, not unit
+    // logic (the version parsing/compare is unit-tested above). Cold-spawning a
+    // ~50MB binary on the Windows runner exceeds the 2s mocha default, so give
+    // the suite a generous timeout — the default made this flake intermittently.
+    describe("bundled CLI (smoke — spawns the real fetched binary)", function () {
+        this.timeout(30_000);
+
+        const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
+        beforeEach(() => {
+            process.env[EXTENSION_DEVELOPMENT] = "true";
+        });
+        afterEach(() => {
+            if (originalDevFlag === undefined) {
+                delete process.env[EXTENSION_DEVELOPMENT];
+            } else {
+                process.env[EXTENSION_DEVELOPMENT] = originalDevFlag;
+            }
+        });
+
+        it("reports the pinned version", async () => {
+            assert.equal(await getBundledCliVersion(cliPath), pinnedCliVersion);
+        });
+
+        it("is accepted as matching the pinned version", async () => {
             assert.ok(
-                await checkBundledCliVersion("/nonexistent/databricks", {
+                await checkBundledCliVersion(cliPath, {
                     packageName: "databricks",
                     version: "2.13.0",
+                    cliVersion: pinnedCliVersion,
                 })
+            );
+        });
+
+        it("is flagged as stale against a different pinned version", async () => {
+            assert.ok(
+                !(await checkBundledCliVersion(cliPath, {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                    cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
+                }))
             );
         });
     });
