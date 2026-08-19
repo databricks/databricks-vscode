@@ -1,7 +1,68 @@
 import {expect} from "chai";
+import * as tmp from "tmp";
+import path from "node:path";
+import {writeFileSync} from "node:fs";
 import {collectServerlessVersionObservations} from "./serverlessVersionObservations";
 
 describe("collectServerlessVersionObservations", () => {
+    const cleanups: Array<() => void> = [];
+    afterEach(() => {
+        while (cleanups.length) {
+            cleanups.pop()!();
+        }
+    });
+
+    function tempProject(): string {
+        const dir = tmp.dirSync({unsafeCleanup: true});
+        cleanups.push(dir.removeCallback);
+        return dir.name;
+    }
+
+    it("collects a pyproject declaration alongside the bundle evidence", async () => {
+        const root = tempProject();
+        writeFileSync(
+            path.join(root, "pyproject.toml"),
+            '[tool.databricks.environment]\nenvironment_version = "3"\n'
+        );
+
+        const observations = await collectServerlessVersionObservations({
+            getValidateConfig: async () => ({
+                resources: {
+                    jobs: {
+                        /* eslint-disable-next-line @typescript-eslint/naming-convention */
+                        j: {environments: [{spec: {environment_version: "4"}}]},
+                    },
+                },
+            }),
+            projectRoot: () => root,
+        });
+
+        expect(observations).to.deep.include.members([
+            {version: "3", source: "pyproject"},
+            {version: "4", source: "bundleYaml"},
+        ]);
+    });
+
+    it("keeps the other sources when the pyproject read throws", async () => {
+        const observations = await collectServerlessVersionObservations({
+            getValidateConfig: async () => ({
+                resources: {
+                    jobs: {
+                        /* eslint-disable-next-line @typescript-eslint/naming-convention */
+                        j: {environments: [{spec: {environment_version: "4"}}]},
+                    },
+                },
+            }),
+            projectRoot: () => {
+                throw new Error("no active project");
+            },
+        });
+
+        expect(observations).to.deep.equal([
+            {version: "4", source: "bundleYaml"},
+        ]);
+    });
+
     it("collects bundle observations from the validate config", async () => {
         const observations = await collectServerlessVersionObservations({
             getValidateConfig: async () => ({
