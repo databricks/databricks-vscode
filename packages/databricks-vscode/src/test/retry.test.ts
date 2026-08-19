@@ -1,5 +1,9 @@
 import {expect} from "chai";
-import {isTransientFileLockError, retryOnTransientError} from "./retry";
+import {
+    isTransientFileLockError,
+    retryOnTransientError,
+    specFileRetriesForPlatform,
+} from "./retry";
 
 // A pip failure Node's execFile surfaces: `.message` is only "Command failed:
 // <cmd>", while the diagnostic (the WinError line) lands in `.stderr`. The
@@ -199,6 +203,20 @@ describe("retry", () => {
                 {attempt: 1, message: "fail 1"},
                 {attempt: 2, message: "fail 2"},
             ]);
+        });
+    });
+
+    describe("specFileRetriesForPlatform", () => {
+        it("retries a whole spec once on Windows", () => {
+            expect(specFileRetriesForPlatform("win32")).to.equal(1);
+        });
+
+        it("does not retry on Linux", () => {
+            expect(specFileRetriesForPlatform("linux")).to.equal(0);
+        });
+
+        it("does not retry on macOS", () => {
+            expect(specFileRetriesForPlatform("darwin")).to.equal(0);
         });
     });
 });

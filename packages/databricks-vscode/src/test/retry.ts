@@ -48,6 +48,19 @@ export function isTransientFileLockError(error: unknown): boolean {
     );
 }
 
+// How many times wdio re-runs a whole spec file that fails as a whole
+// (`specFileRetries`). Windows-only, because its e2e shards hit whole-session
+// crashes no in-test wait can recover: a VS Code window reload (e.g. opening a
+// freshly initialized bundle) can drop the wdio<->VS Code websocket with
+// "Connection closed. Code: 1006", killing the session so every remaining test
+// in the spec cascades. Only a fresh session recovers, which is exactly what a
+// spec-file retry starts. Linux/macOS stay at 0 so a real regression there
+// fails fast instead of being masked, and CI time isn't doubled on the stable
+// platforms.
+export function specFileRetriesForPlatform(platform: NodeJS.Platform): number {
+    return platform === "win32" ? 1 : 0;
+}
+
 export async function retryOnTransientError<T>(
     operation: () => Promise<T>,
     options: RetryOptions

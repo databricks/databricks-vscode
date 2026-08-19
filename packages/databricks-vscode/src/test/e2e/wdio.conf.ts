@@ -15,6 +15,7 @@ import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
+import {specFileRetriesForPlatform} from "../retry.ts";
 import {promisify} from "node:util";
 
 // WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
@@ -281,8 +282,11 @@ export const config: WebdriverIO.Config = {
     // before running any tests.
     framework: "mocha",
     //
-    // The number of times to retry the entire specfile when it fails as a whole
-    specFileRetries: 0,
+    // The number of times to retry the entire specfile when it fails as a whole.
+    // Windows-only (see specFileRetriesForPlatform): recovers the WS-1006
+    // whole-session window crashes that no in-test wait can, by re-running the
+    // spec in a fresh VS Code session.
+    specFileRetries: specFileRetriesForPlatform(process.platform),
     //
     // Delay in seconds between the spec file retry attempts
     specFileRetriesDelay: 0,
