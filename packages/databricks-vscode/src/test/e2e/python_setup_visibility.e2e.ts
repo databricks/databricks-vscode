@@ -1,10 +1,9 @@
 import * as fs from "fs/promises";
 import path from "node:path";
 import assert from "node:assert";
-import {CustomTreeSection} from "wdio-vscode-service";
 import {
     dismissNotifications,
-    getViewSection,
+    waitForConfigSurface,
     waitForLogin,
 } from "./utils/commonUtils.ts";
 import {
@@ -20,21 +19,16 @@ import {
  * manager (pip/poetry/conda) is driving it. See `isUvSetupSuitable` /
  * `makePythonSetupVisibility` / `EnvironmentComponent.getRoot`.
  *
- * This spec asserts the POSITIVE direction — a uv-suitable (clean) project
- * surfaces the top-level "Set up Python environment" row and NOT the legacy
- * "Python Environment" checklist group. That is the behaviour GA turned on and
- * that no other e2e exercises. The negative direction (a pip project stays on the
- * legacy checklist) is already covered end-to-end by `run_dbconnect.ucws.e2e.ts`
- * — it writes a `requirements.txt` and asserts the "Python Environment" group —
- * and at the unit level by `pythonSetupGate.test.ts` / `EnvironmentComponent.test.ts`.
- *
- * Kept deterministic on purpose: the fixture is uv-suitable on disk before login,
- * so the very first render of the config view (driven by the login/connection
- * refresh) evaluates the gate against the intended state — no mid-window fixture
- * flip, which `databricks.environment.refresh` would NOT reliably re-render (it
- * recomputes the legacy dependencies feature, whose emitter is change-gated, and
- * does not re-run the uv visibility gate). No compute, CLI, or uv install is
- * needed, so this runs on the cheap (non-serverless) shard.
+ * This spec covers the POSITIVE direction — a uv-suitable (clean) project surfaces
+ * the top-level "Set up Python environment" row and NOT the legacy "Python
+ * Environment" checklist group. The NEGATIVE direction (a pip project stays on the
+ * legacy checklist) is the sibling `python_setup_visibility_legacy.e2e.ts`. They
+ * are separate specs on purpose: each asserts on the FIRST config-view render of
+ * its own fixture, which is deterministic; the two states cannot share one window,
+ * because nothing re-runs the visibility gate on an in-window fixture change
+ * (`databricks.environment.refresh` recomputes only the legacy dependencies
+ * feature, whose emitter is change-gated). No compute, CLI, or uv install is
+ * needed, so both run on the cheap (non-serverless) shard.
  *
  * Note on the CI interpreter: uv-suitability also requires the active interpreter
  * not to be a plain venv (`interpreter.venv` is a substantive pip signal). That
@@ -48,48 +42,7 @@ import {
 const LEGACY_GROUP_LABEL = "Python Environment";
 const UV_SETUP_LABEL = "Set up Python environment";
 
-/**
- * Wait until the CONFIGURATION section shows `expected` as a top-level row and
- * does NOT show `forbidden`. Both surfaces are top-level rows (the uv entry is
- * promoted out of the group wrapper — see `EnvironmentComponent.getRoot`), so
- * scan the section's visible items directly rather than opening a group. Match
- * labels exactly: "Set up Python environment" and "Python Environment" would
- * otherwise overlap on a substring test.
- */
-async function waitForConfigSurface(
-    expected: string,
-    forbidden: string,
-    timeoutMs = 60_000
-) {
-    await browser.waitUntil(
-        async () => {
-            const section = (await getViewSection("CONFIGURATION")) as
-                | CustomTreeSection
-                | undefined;
-            if (!section) {
-                return false;
-            }
-            let sawExpected = false;
-            for (const item of await section.getVisibleItems()) {
-                const label = await item.getLabel();
-                if (label === forbidden) {
-                    return false;
-                }
-                if (label === expected) {
-                    sawExpected = true;
-                }
-            }
-            return sawExpected;
-        },
-        {
-            timeout: timeoutMs,
-            interval: 1000,
-            timeoutMsg: `CONFIGURATION never showed "${expected}" without "${forbidden}"`,
-        }
-    );
-}
-
-describe("Python setup entry visibility", async function () {
+describe("Python setup entry visibility (uv-suitable project)", async function () {
     let projectDir: string;
     this.timeout(6 * 60 * 1000);
 
@@ -114,7 +67,7 @@ describe("Python setup entry visibility", async function () {
         await workbench.getEditorView().closeAllEditors();
     });
 
-    it("surfaces the uv setup entry for a uv-suitable project", async () => {
+    it("surfaces the uv setup entry, not the legacy checklist", async () => {
         // Sanity-check the fixture stayed uv-suitable: a stray requirements.txt
         // would silently route the project to the legacy checklist and make the
         // assertion below misleading rather than a real gate check.

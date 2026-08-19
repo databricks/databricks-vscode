@@ -270,6 +270,48 @@ export async function waitForLogin(profileName: string) {
     );
 }
 
+/**
+ * Wait until the CONFIGURATION section shows `expected` as a top-level row and
+ * does NOT show `forbidden`. Scans the section's visible items directly (like
+ * {@link waitForLogin}), so it only sees top-level rows without expanding groups.
+ * Matches labels EXACTLY — pass full labels, since substrings can overlap (e.g.
+ * "Set up Python environment" contains "Python environment"). Treating `forbidden`
+ * as "keep polling" (not a hard failure) tolerates transient startup renders; only
+ * a persistent wrong surface fails at the timeout.
+ */
+export async function waitForConfigSurface(
+    expected: string,
+    forbidden: string,
+    timeoutMs = 60_000
+) {
+    await browser.waitUntil(
+        async () => {
+            const section = (await getViewSection("CONFIGURATION")) as
+                | CustomTreeSection
+                | undefined;
+            if (!section) {
+                return false;
+            }
+            let sawExpected = false;
+            for (const item of await section.getVisibleItems()) {
+                const label = await item.getLabel();
+                if (label === forbidden) {
+                    return false;
+                }
+                if (label === expected) {
+                    sawExpected = true;
+                }
+            }
+            return sawExpected;
+        },
+        {
+            timeout: timeoutMs,
+            interval: 1000,
+            timeoutMsg: `CONFIGURATION never showed "${expected}" without "${forbidden}"`,
+        }
+    );
+}
+
 export function getStaticResourceName(name: string) {
     return `vscode_integration_test_${name}`;
 }
