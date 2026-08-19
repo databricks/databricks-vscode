@@ -15,8 +15,8 @@ import packageJson from "../../../package.json" assert {type: "json"};
 import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
-import {specFileRetriesForPlatform} from "../retry.ts";
 import {promisify} from "node:util";
+import {specFileRetriesForPlatform} from "../retry.ts";
 
 // WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
 // NODE_OPTIONS for every worker process. wdio-vscode-service installs the
