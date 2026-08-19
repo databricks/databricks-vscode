@@ -4,6 +4,7 @@ import {
     retryOnTransientError,
     specFileRetriesForPlatform,
     SpecRetryTracker,
+    formatRecoveredSpecsReport,
 } from "./retry";
 
 // A pip failure Node's execFile surfaces: `.message` is only "Command failed:
@@ -242,6 +243,9 @@ describe("retry", () => {
             expect(tracker.recoveredSpecs).to.deep.equal([]);
         });
 
+        // Defensive: fail→pass→fail needs three attempts, which can't happen
+        // at specFileRetries=1 (a spec runs at most twice). This guards the
+        // recovered.delete branch for any future higher retry count.
         it("un-flags a spec that recovers then fails again", () => {
             const tracker = new SpecRetryTracker();
             tracker.record("a.e2e.ts", false);
@@ -260,6 +264,33 @@ describe("retry", () => {
             expect(tracker.recoveredSpecs.sort()).to.deep.equal([
                 "a.e2e.ts",
                 "c.e2e.ts",
+            ]);
+        });
+    });
+
+    describe("formatRecoveredSpecsReport", () => {
+        it("returns no lines when nothing recovered", () => {
+            expect(formatRecoveredSpecsReport([], false)).to.deep.equal([]);
+            expect(formatRecoveredSpecsReport([], true)).to.deep.equal([]);
+        });
+
+        it("lists recovered specs under a header without CI annotations", () => {
+            expect(
+                formatRecoveredSpecsReport(["a.e2e.ts", "b.e2e.ts"], false)
+            ).to.deep.equal([
+                "⚠️  PASSED ONLY ON RETRY (flaky — investigate):",
+                "  - a.e2e.ts",
+                "  - b.e2e.ts",
+            ]);
+        });
+
+        it("adds a ::warning:: workflow command per spec under GitHub Actions", () => {
+            expect(
+                formatRecoveredSpecsReport(["a.e2e.ts"], true)
+            ).to.deep.equal([
+                "⚠️  PASSED ONLY ON RETRY (flaky — investigate):",
+                "  - a.e2e.ts",
+                "::warning::PASSED ONLY ON RETRY: a.e2e.ts",
             ]);
         });
     });

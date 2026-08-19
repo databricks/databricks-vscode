@@ -87,6 +87,28 @@ export class SpecRetryTracker {
     }
 }
 
+// Formats the "passed only on retry" flake report for stdout. Under GitHub
+// Actions (`isGithubActions`) it also emits a `::warning::` workflow command per
+// spec, so a retry-recovered flake shows as a checks-UI annotation even when the
+// run is green — otherwise the warning would just scroll past in a passing log,
+// defeating the point of tracking it. Returns [] when nothing recovered.
+export function formatRecoveredSpecsReport(
+    recoveredSpecs: string[],
+    isGithubActions: boolean
+): string[] {
+    if (recoveredSpecs.length === 0) {
+        return [];
+    }
+    const lines = ["⚠️  PASSED ONLY ON RETRY (flaky — investigate):"];
+    for (const spec of recoveredSpecs) {
+        lines.push(`  - ${spec}`);
+        if (isGithubActions) {
+            lines.push(`::warning::PASSED ONLY ON RETRY: ${spec}`);
+        }
+    }
+    return lines;
+}
+
 export async function retryOnTransientError<T>(
     operation: () => Promise<T>,
     options: RetryOptions

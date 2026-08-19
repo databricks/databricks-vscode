@@ -16,7 +16,11 @@ import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
-import {specFileRetriesForPlatform, SpecRetryTracker} from "../retry.ts";
+import {
+    specFileRetriesForPlatform,
+    SpecRetryTracker,
+    formatRecoveredSpecsReport,
+} from "../retry.ts";
 
 // WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
 // NODE_OPTIONS for every worker process. wdio-vscode-service installs the
@@ -411,6 +415,10 @@ export const config: WebdriverIO.Config = {
      * @param  {Number} retries  number of retries used
      */
     onWorkerEnd: function (cid, exitCode, specs) {
+        // `exitCode` is per worker, not per spec; attributing it to each entry
+        // is correct only because the flat `specs` glob runs exactly one spec
+        // file per worker. If specs are ever grouped, gate this on
+        // `specs.length === 1` to avoid mis-flagging a passing sibling.
         for (const spec of specs) {
             specRetryTracker.record(spec, exitCode === 0);
         }
@@ -659,13 +667,12 @@ export const config: WebdriverIO.Config = {
      * @param {<Object>} results object containing test results
      */
     onComplete: function () {
-        const recovered = specRetryTracker.recoveredSpecs;
-        if (recovered.length > 0) {
-            console.log(
-                "\n⚠️  PASSED ONLY ON RETRY (flaky — investigate):\n" +
-                    recovered.map((spec) => `  - ${spec}`).join("\n") +
-                    "\n"
-            );
+        const lines = formatRecoveredSpecsReport(
+            specRetryTracker.recoveredSpecs,
+            Boolean(process.env.GITHUB_ACTIONS)
+        );
+        if (lines.length > 0) {
+            console.log("\n" + lines.join("\n") + "\n");
         }
     },
 
