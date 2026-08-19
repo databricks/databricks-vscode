@@ -138,6 +138,9 @@ function categoricalEnvKey(envKey: string | undefined): string | undefined {
  * - `W_DBCONNECT_PIN_OVERRIDDEN` — the user's databricks-connect pin is replaced.
  * - `W_DBCONNECT_PIN_DUPLICATED` — a retained databricks-connect pin now sits
  *   alongside the managed one, with no version satisfying both (needs a manual fix).
+ * - `W_DBCONNECT_CONSOLIDATED` — a conflicting databricks-connect pin outside the
+ *   managed dev group (in `[project].dependencies`, an optional-dependency extra, or
+ *   another dependency group) was removed so a single managed pin survives.
  * - `W_USER_CONSTRAINT_CONFLICT` — a user dependency is provably disjoint from an
  *   env constraint.
  *
@@ -150,6 +153,7 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
     "W_REQUIRES_PYTHON_OVERRIDDEN",
     "W_DBCONNECT_PIN_OVERRIDDEN",
     "W_DBCONNECT_PIN_DUPLICATED",
+    "W_DBCONNECT_CONSOLIDATED",
     "W_USER_CONSTRAINT_CONFLICT",
 ]);
 
