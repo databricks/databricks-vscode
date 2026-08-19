@@ -91,13 +91,6 @@ export async function getMetadata(
     };
 }
 
-/**
- * Reads the version of the CLI binary bundled at `cliPath`.
- *
- * Returns undefined when the binary is missing or its output can't be parsed —
- * callers treat that as "unknown" rather than as a mismatch, since a missing
- * binary already fails loudly elsewhere.
- */
 // Extracts the "Version" string from `databricks version --output json` stdout.
 // Returns undefined on malformed JSON or a missing/non-string field, so callers
 // treat an unreadable version the same as an absent one. Pure — unit-tested
@@ -123,6 +116,13 @@ export function isBundledCliVersionMismatch(
     );
 }
 
+/**
+ * Reads the version of the CLI binary bundled at `cliPath`.
+ *
+ * Returns undefined when the binary is missing or its output can't be parsed —
+ * callers treat that as "unknown" rather than as a mismatch, since a missing
+ * binary already fails loudly elsewhere. Both failure modes log at debug.
+ */
 export async function getBundledCliVersion(
     cliPath: string
 ): Promise<string | undefined> {
@@ -132,7 +132,14 @@ export async function getBundledCliVersion(
             "--output",
             "json",
         ]);
-        return parseCliVersion(stdout);
+        const version = parseCliVersion(stdout);
+        if (version === undefined) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                "Bundled Databricks CLI version output was unparseable",
+                {stdout}
+            );
+        }
+        return version;
     } catch (e) {
         logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
             "Failed to read the bundled Databricks CLI version",

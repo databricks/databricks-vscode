@@ -165,10 +165,18 @@ describe(__filename, () => {
                 false
             );
         });
+
+        it("is not a mismatch when both versions are unknown", () => {
+            assert.equal(
+                isBundledCliVersionMismatch(undefined, undefined),
+                false
+            );
+        });
     });
 
-    // Logic-only checkBundledCliVersion paths that return before spawning the
-    // CLI — safe to keep in the unit suite.
+    // checkBundledCliVersion paths that never launch the real bundled CLI —
+    // they hit the dev-flag / unpinned gate, or fail fast on a missing binary —
+    // so they stay fast in the unit suite.
     describe("checkBundledCliVersion gating", () => {
         const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
         afterEach(() => {
@@ -193,10 +201,13 @@ describe(__filename, () => {
         it("does not warn when the pinned version is unknown", async () => {
             process.env[EXTENSION_DEVELOPMENT] = "true";
             assert.ok(
-                await checkBundledCliVersion("/nonexistent/databricks", {
-                    packageName: "databricks",
-                    version: "2.13.0",
-                })
+                await checkBundledCliVersion(
+                    path.join(__dirname, "nonexistent-databricks"),
+                    {
+                        packageName: "databricks",
+                        version: "2.13.0",
+                    }
+                )
             );
         });
 
