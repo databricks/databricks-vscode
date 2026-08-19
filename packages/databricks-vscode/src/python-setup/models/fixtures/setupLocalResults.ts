@@ -111,11 +111,11 @@ export const SUCCESS_WITH_WARNINGS: PythonSetupResult = {
                 'the environment\'s "databricks-connect~=17.2.0"',
         },
         {
-            code: "W_DBCONNECT_PIN_DUPLICATED",
+            code: "W_DBCONNECT_CONSOLIDATED",
             message:
-                'databricks-connect "databricks-connect==15.0.0" is not rewritten ' +
-                'by the merge; the environment\'s "databricks-connect~=17.2.0" ' +
-                'sits in "dev" alongside it, and no version satisfies both',
+                'databricks-connect "databricks-connect==15.0.0" in ' +
+                "[dependency-groups].spark conflicts with the environment's " +
+                '"databricks-connect~=17.2.0" and is removed; it is managed in "dev"',
         },
         {
             code: "W_USER_CONSTRAINT_CONFLICT",
