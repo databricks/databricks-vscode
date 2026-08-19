@@ -251,11 +251,24 @@ describe("retry", () => {
     });
 
     describe("failedAttemptLogRenames", () => {
-        it("parks the wdio and chromedriver logs for the worker's cid", () => {
-            expect(failedAttemptLogRenames("logs", "0-3")).to.deep.equal([
+        // wdio names the runner log after the spec basename when a spec is
+        // present (@wdio/local-runner: `${specBaseName}-${cid}.log`), stripping
+        // only the final extension — so `bundle_init.e2e.ts` -> `bundle_init.e2e`.
+        // The chromedriver log keeps the `wdio-<cid>-` prefix (@wdio/utils).
+        it("parks the spec-named runner log and the chromedriver log", () => {
+            expect(
+                failedAttemptLogRenames(
+                    "logs",
+                    "0-3",
+                    "/x/y/bundle_init.e2e.ts"
+                )
+            ).to.deep.equal([
                 {
-                    from: path.join("logs", "wdio-0-3.log"),
-                    to: path.join("logs", "wdio-0-3-failed-attempt.log"),
+                    from: path.join("logs", "bundle_init.e2e-0-3.log"),
+                    to: path.join(
+                        "logs",
+                        "bundle_init.e2e-0-3-failed-attempt.log"
+                    ),
                 },
                 {
                     from: path.join("logs", "wdio-0-3-chromedriver.log"),
@@ -265,6 +278,16 @@ describe("retry", () => {
                     ),
                 },
             ]);
+        });
+
+        it("derives the spec basename from a file:// URL too", () => {
+            expect(
+                failedAttemptLogRenames(
+                    "logs",
+                    "0-0",
+                    "file:///C:/a/ext/src/test/e2e/auth.e2e.ts"
+                )[0].from
+            ).to.equal(path.join("logs", "auth.e2e-0-0.log"));
         });
     });
 

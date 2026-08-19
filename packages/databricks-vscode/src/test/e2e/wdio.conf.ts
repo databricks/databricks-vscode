@@ -435,11 +435,16 @@ export const config: WebdriverIO.Config = {
         for (const spec of specs) {
             specRetryTracker.record(spec, exitCode === 0);
         }
-        // A retry reuses this cid, so wdio reopens logs/wdio-<cid>*.log with
+        // A retry reuses this cid, so wdio reopens the worker's logs with
         // flags:"w" and truncates the crash we retried for. Park them first so
-        // the recovered-flake report still has something to point at.
-        if (shouldPreserveFailedAttemptLogs(exitCode, retries)) {
-            for (const {from, to} of failedAttemptLogRenames(LOGS_DIR, cid)) {
+        // the recovered-flake report still has something to point at. The runner
+        // log is named after specs[0] (see failedAttemptLogRenames).
+        if (shouldPreserveFailedAttemptLogs(exitCode, retries) && specs[0]) {
+            for (const {from, to} of failedAttemptLogRenames(
+                LOGS_DIR,
+                cid,
+                specs[0]
+            )) {
                 try {
                     renameSync(from, to);
                 } catch (error) {

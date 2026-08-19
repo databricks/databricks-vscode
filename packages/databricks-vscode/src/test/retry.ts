@@ -87,17 +87,26 @@ export function shouldPreserveFailedAttemptLogs(
 }
 
 // The per-worker log files wdio truncates on retry, paired with a stable
-// `-failed-attempt` name to rename them to before the retry reopens them. See
-// `@wdio/local-runner` (wdio-<cid>.log) and `@wdio/utils`
-// (wdio-<cid>-chromedriver.log), both opened with flags:"w".
+// `-failed-attempt` name to rename them to before the retry reopens them. The
+// runner log is named after the spec basename when a spec is present
+// (`@wdio/local-runner`: `${specBaseName}-${cid}.log`, only the final extension
+// stripped); the driver log keeps the `wdio-<cid>-` prefix (`@wdio/utils`).
+// Both are opened with flags:"w".
 export function failedAttemptLogRenames(
     outputDir: string,
-    cid: string
+    cid: string,
+    spec: string
 ): {from: string; to: string}[] {
-    return [`wdio-${cid}.log`, `wdio-${cid}-chromedriver.log`].map((name) => ({
-        from: path.join(outputDir, name),
-        to: path.join(outputDir, name.replace(/\.log$/, "-failed-attempt.log")),
-    }));
+    const specBaseName = path.basename(spec, path.extname(spec));
+    return [`${specBaseName}-${cid}.log`, `wdio-${cid}-chromedriver.log`].map(
+        (name) => ({
+            from: path.join(outputDir, name),
+            to: path.join(
+                outputDir,
+                name.replace(/\.log$/, "-failed-attempt.log")
+            ),
+        })
+    );
 }
 
 // Formats the "passed only on retry" flake report for stdout. Under GitHub
