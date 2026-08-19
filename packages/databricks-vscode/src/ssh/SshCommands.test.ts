@@ -54,10 +54,7 @@ describe(__filename, () => {
         originalIsCursor = HostUtils.isCursor;
         originalShowWarningMessage = window.showWarningMessage;
         originalExecuteCommand = commands.executeCommand;
-        originalPlatform = Object.getOwnPropertyDescriptor(
-            process,
-            "platform"
-        );
+        originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
 
         (window as any).showWarningMessage = (
             message: string,
