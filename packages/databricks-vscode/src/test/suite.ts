@@ -7,10 +7,8 @@ export async function run(): Promise<void> {
     const mocha = new Mocha({
         ui: "bdd",
         color: true,
-        // Cold CI runners (AV scan + cold FS cache) push a test's first real
-        // I/O past mocha's 2s default, flaking whichever spawn test the glob
-        // happens to run first. 5s is the repo-wide floor; tests that spawn the
-        // real CLI still set their own higher timeout (see CliWrapper.test.ts).
+        // Cold CI runners push a test's first real I/O past mocha's 2s default;
+        // 5s is the repo-wide floor. Per-suite this.timeout() still overrides it.
         timeout: 5000,
     });
 
