@@ -1,3 +1,31 @@
+# Release: v2.14.0
+
+## packages/databricks-vscode
+
+## (2026-08-20)
+
+-   Update Databricks CLI to v1.12.1 (#2109) ([b2ecb2c](https://github.com/databricks/databricks-vscode/commit/b2ecb2c)), closes [#2109](https://github.com/databricks/databricks-vscode/issues/2109)
+-   Update Databricks CLI to v1.13.0 (#2136) ([43af52d](https://github.com/databricks/databricks-vscode/commit/43af52d)), closes [#2136](https://github.com/databricks/databricks-vscode/issues/2136)
+-   test(e2e): cover uv setup-local on a serverless target (#2126) ([448157d](https://github.com/databricks/databricks-vscode/commit/448157d)), closes [#2126](https://github.com/databricks/databricks-vscode/issues/2126)
+-   test(e2e): retry a crashed Windows spec in a fresh VS Code session (#2132) ([158a9b5](https://github.com/databricks/databricks-vscode/commit/158a9b5)), closes [#2132](https://github.com/databricks/databricks-vscode/issues/2132)
+-   test(e2e): retry the dbconnect pip fallback through transient Windows file locks (#2120) ([593e81c](https://github.com/databricks/databricks-vscode/commit/593e81c)), closes [#2120](https://github.com/databricks/databricks-vscode/issues/2120)
+-   test(e2e): smoke-test the uv setup entry visibility gate (#2128) ([92ce7af](https://github.com/databricks/databricks-vscode/commit/92ce7af)), closes [#2128](https://github.com/databricks/databricks-vscode/issues/2128)
+-   test(packaging): unit-test bundled-CLI version logic, isolate the real-binary smoke test (#2134) ([f29d67e](https://github.com/databricks/databricks-vscode/commit/f29d67e)), closes [#2134](https://github.com/databricks/databricks-vscode/issues/2134)
+-   feat(configuration-view): explicit per-row Copy actions (#2115) ([fe1e4aa](https://github.com/databricks/databricks-vscode/commit/fe1e4aa)), closes [#2115](https://github.com/databricks/databricks-vscode/issues/2115)
+-   feat(python-setup): add "Install uv" button to the uv-missing error (#2113) ([f3784e1](https://github.com/databricks/databricks-vscode/commit/f3784e1)), closes [#2113](https://github.com/databricks/databricks-vscode/issues/2113)
+-   feat(python-setup): detect compute drift and offer re-run (#2110) ([6bf35f1](https://github.com/databricks/databricks-vscode/commit/6bf35f1)), closes [#2110](https://github.com/databricks/databricks-vscode/issues/2110) [databricks/environments#16](https://github.com/databricks/environments/issues/16)
+-   feat(python-setup): GA the uv-native environment setup (#2124) ([315f77d](https://github.com/databricks/databricks-vscode/commit/315f77d)), closes [#2124](https://github.com/databricks/databricks-vscode/issues/2124)
+-   feat(python-setup): guide users to a proxy when the package index is unreachable (#2116) ([36aecd6](https://github.com/databricks/databricks-vscode/commit/36aecd6)), closes [#2116](https://github.com/databricks/databricks-vscode/issues/2116) [#2113](https://github.com/databricks/databricks-vscode/issues/2113) [#2113](https://github.com/databricks/databricks-vscode/issues/2113) [#2113](https://github.com/databricks/databricks-vscode/issues/2113)
+-   feat(python-setup): link setup failures to remediation docs (#2125) ([7db24fc](https://github.com/databricks/databricks-vscode/commit/7db24fc)), closes [#2125](https://github.com/databricks/databricks-vscode/issues/2125)
+-   feat(python-setup): once-per-session env adoption telemetry (#2122) ([c170553](https://github.com/databricks/databricks-vscode/commit/c170553)), closes [#2122](https://github.com/databricks/databricks-vscode/issues/2122)
+-   feat(python-setup): open the compute picker inline when no compute is attached (#2114) ([74b150b](https://github.com/databricks/databricks-vscode/commit/74b150b)), closes [#2114](https://github.com/databricks/databricks-vscode/issues/2114)
+-   feat(python-setup): recognize the W_DBCONNECT_CONSOLIDATED warning code (#2131) ([78268a9](https://github.com/databricks/databricks-vscode/commit/78268a9)), closes [#2131](https://github.com/databricks/databricks-vscode/issues/2131)
+-   feat(python-setup): refresh setup-complete output with notebook guidance (#2107) ([0a1b70f](https://github.com/databricks/databricks-vscode/commit/0a1b70f)), closes [#2107](https://github.com/databricks/databricks-vscode/issues/2107)
+-   feat(python-setup): resolve serverless version from pyproject.toml (#2130) ([f7008b6](https://github.com/databricks/databricks-vscode/commit/f7008b6)), closes [#2130](https://github.com/databricks/databricks-vscode/issues/2130) [#2052](https://github.com/databricks/databricks-vscode/issues/2052) [#2053](https://github.com/databricks/databricks-vscode/issues/2053)
+-   feat(python-setup): route the setup command to the uv flow when active (#2118) ([5978be0](https://github.com/databricks/databricks-vscode/commit/5978be0)), closes [#2118](https://github.com/databricks/databricks-vscode/issues/2118)
+-   fix(dbconnect-run): surface Databricks Connect import failures (#2121) ([253b366](https://github.com/databricks/databricks-vscode/commit/253b366)), closes [#2121](https://github.com/databricks/databricks-vscode/issues/2121)
+-   fix(python-setup): don't let an open notification wedge the setup entry (#2112) ([c2d3325](https://github.com/databricks/databricks-vscode/commit/c2d3325)), closes [#2112](https://github.com/databricks/databricks-vscode/issues/2112)
+
 # Release: v2.13.1
 
 ## packages/databricks-vscode
