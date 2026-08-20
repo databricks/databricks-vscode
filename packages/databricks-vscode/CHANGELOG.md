@@ -4,19 +4,8 @@
 
 ## (2026-08-20)
 
--   The uv-native Python environment setup is now generally available (#2124) ([315f77d](https://github.com/databricks/databricks-vscode/commit/315f77d))
--   Route the "Set up Python environment" command to the uv flow when uv-native setup is active (#2118) ([5978be0](https://github.com/databricks/databricks-vscode/commit/5978be0))
--   Open the compute picker inline when no compute is attached during setup (#2114) ([74b150b](https://github.com/databricks/databricks-vscode/commit/74b150b))
--   Detect compute drift and offer to re-run environment setup (#2110) ([6bf35f1](https://github.com/databricks/databricks-vscode/commit/6bf35f1))
--   Add an "Install uv" button to the error shown when uv is missing (#2113) ([f3784e1](https://github.com/databricks/databricks-vscode/commit/f3784e1))
--   Guide users to configure a proxy when the package index is unreachable (#2116) ([36aecd6](https://github.com/databricks/databricks-vscode/commit/36aecd6))
--   Link Python environment setup failures to remediation docs (#2125) ([7db24fc](https://github.com/databricks/databricks-vscode/commit/7db24fc))
--   Resolve the serverless environment version from pyproject.toml (#2130) ([f7008b6](https://github.com/databricks/databricks-vscode/commit/f7008b6))
--   Recognize the W_DBCONNECT_CONSOLIDATED warning code during setup (#2131) ([78268a9](https://github.com/databricks/databricks-vscode/commit/78268a9))
--   Refresh the setup-complete output with notebook guidance (#2107) ([0a1b70f](https://github.com/databricks/databricks-vscode/commit/0a1b70f))
+-   Frictionless Python environment setup makes local Python setup for Databricks development just work. Because the extension already knows the compute you are targeting — a cluster's DBR version or a serverless environment version — it uses that single input to automatically build a local `.venv` whose Python version and package set exactly match the runtime, eliminating the classic "works locally, breaks on Databricks" mismatch. This release delivers the fully automated uv path: one click in VS Code (or the `databricks environments setup-local` CLI command) resolves the target, fetches runtime-pinned dependency artifacts, installs the correct Python, and provisions a matched environment with `databricks-connect` ready to go (#2124) ([315f77d](https://github.com/databricks/databricks-vscode/commit/315f77d))
 -   Add explicit per-row Copy actions to the configuration view (#2115) ([fe1e4aa](https://github.com/databricks/databricks-vscode/commit/fe1e4aa))
--   Surface Databricks Connect import failures when running with Databricks Connect (#2121) ([253b366](https://github.com/databricks/databricks-vscode/commit/253b366))
--   Fix an open notification wedging the Python environment setup entry (#2112) ([c2d3325](https://github.com/databricks/databricks-vscode/commit/c2d3325))
 -   Update Databricks CLI to v1.13.0 (#2136, #2109) ([43af52d](https://github.com/databricks/databricks-vscode/commit/43af52d)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes
 
 # Release: v2.13.1
