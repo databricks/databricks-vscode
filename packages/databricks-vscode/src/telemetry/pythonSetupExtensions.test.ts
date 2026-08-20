@@ -271,16 +271,17 @@ describe(__filename, () => {
                 {code: "W_REQUIRES_PYTHON_OVERRIDDEN", message: "irrelevant"},
                 {code: "W_DBCONNECT_PIN_OVERRIDDEN", message: "irrelevant"},
                 {code: "W_DBCONNECT_PIN_DUPLICATED", message: "irrelevant"},
+                {code: "W_DBCONNECT_CONSOLIDATED", message: "irrelevant"},
                 {code: "W_USER_CONSTRAINT_CONFLICT", message: "irrelevant"},
                 {code: "W_USER_CONSTRAINT_CONFLICT", message: "irrelevant"},
             ],
         });
 
         // The total is a numeric metric, not a property.
-        expect(events[1].metrics["event.warningsCount"]).to.equal(5);
+        expect(events[1].metrics["event.warningsCount"]).to.equal(6);
         expect(events[1].props).to.not.have.property("event.warningsCount");
         // The per-code counts are a JSON-stringified property (objects never
-        // become metrics), covering all four known codes with the repeated one
+        // become metrics), covering all five known codes with the repeated one
         // counted twice.
         expect(
             JSON.parse(events[1].props["event.warningCodeCounts"])
@@ -288,6 +289,7 @@ describe(__filename, () => {
             W_REQUIRES_PYTHON_OVERRIDDEN: 1,
             W_DBCONNECT_PIN_OVERRIDDEN: 1,
             W_DBCONNECT_PIN_DUPLICATED: 1,
+            W_DBCONNECT_CONSOLIDATED: 1,
             W_USER_CONSTRAINT_CONFLICT: 2,
         });
     });

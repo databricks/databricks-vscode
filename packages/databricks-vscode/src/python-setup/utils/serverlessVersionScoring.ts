@@ -16,6 +16,7 @@
 
 /** Where a candidate serverless version was observed. */
 export type VersionSource =
+    | "pyproject"
     | "bundleYaml"
     | "notebook"
     | "workspaceDefault"
@@ -36,13 +37,16 @@ export interface VersionObservation {
 }
 
 /**
- * Per-source weights, high → low: an explicit project declaration (bundle YAML)
- * is the strongest signal, a notebook's recorded environment next, the
- * workspace default weaker, and the built-in fallback weakest so it only ever
- * wins when nothing else was observed.
+ * Per-source weights, high → low: the `pyproject.toml`
+ * `[tool.databricks.environment]` declaration is the strongest signal because it
+ * is an explicit user choice (the CLI writes it during setup-local), so it must
+ * outrank the heuristics; a bundle YAML declaration next, a notebook's recorded
+ * environment after that, the workspace default weaker, and the built-in
+ * fallback weakest so it only ever wins when nothing else was observed.
  */
 export const WEIGHTS: Record<VersionSource, number> = {
     /* eslint-disable @typescript-eslint/naming-convention */
+    pyproject: 200,
     bundleYaml: 100,
     notebook: 50,
     workspaceDefault: 20,
