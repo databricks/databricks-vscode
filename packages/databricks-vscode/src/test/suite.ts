@@ -7,6 +7,7 @@ export async function run(): Promise<void> {
     const mocha = new Mocha({
         ui: "bdd",
         color: true,
+        grep: process.env.MOCHA_GREP,
     });
 
     // Add files to the test suite
