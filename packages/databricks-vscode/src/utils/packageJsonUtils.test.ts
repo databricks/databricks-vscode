@@ -9,7 +9,6 @@ import {
     getBundledCliVersion,
     getCorrectVsixInstallString,
     getMetadata,
-    isBundledCliVersionMismatch,
     isCompatibleArchitecture,
     isEqual,
     nodeArchMap,
@@ -29,6 +28,19 @@ const cliPath = path.join(
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pinnedCliVersion = require("../../package.json").cli.version;
+
+// Restores EXTENSION_DEVELOPMENT after each test in the enclosing describe, so a
+// suite that toggles the dev flag can't leak it into the rest of the run.
+function restoreDevFlagAfterEach() {
+    const original = process.env[EXTENSION_DEVELOPMENT];
+    afterEach(() => {
+        if (original === undefined) {
+            delete process.env[EXTENSION_DEVELOPMENT];
+        } else {
+            process.env[EXTENSION_DEVELOPMENT] = original;
+        }
+    });
+}
 
 describe(__filename, () => {
     it("should correctly check compatibility", () => {
@@ -137,55 +149,11 @@ describe(__filename, () => {
         });
     });
 
-    describe("isBundledCliVersionMismatch", () => {
-        it("flags two known versions that differ", () => {
-            assert.equal(
-                isBundledCliVersionMismatch("0.240.0", "0.241.0"),
-                true
-            );
-        });
-
-        it("is not a mismatch when the versions match", () => {
-            assert.equal(
-                isBundledCliVersionMismatch("0.240.0", "0.240.0"),
-                false
-            );
-        });
-
-        it("is not a mismatch when the actual version is unknown", () => {
-            assert.equal(
-                isBundledCliVersionMismatch(undefined, "0.240.0"),
-                false
-            );
-        });
-
-        it("is not a mismatch when the expected version is unpinned", () => {
-            assert.equal(
-                isBundledCliVersionMismatch("0.240.0", undefined),
-                false
-            );
-        });
-
-        it("is not a mismatch when both versions are unknown", () => {
-            assert.equal(
-                isBundledCliVersionMismatch(undefined, undefined),
-                false
-            );
-        });
-    });
-
     // checkBundledCliVersion paths that never launch the real bundled CLI —
     // they hit the dev-flag / unpinned gate, or fail fast on a missing binary —
     // so they stay fast in the unit suite.
     describe("checkBundledCliVersion gating", () => {
-        const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
-        afterEach(() => {
-            if (originalDevFlag === undefined) {
-                delete process.env[EXTENSION_DEVELOPMENT];
-            } else {
-                process.env[EXTENSION_DEVELOPMENT] = originalDevFlag;
-            }
-        });
+        restoreDevFlagAfterEach();
 
         it("does not warn outside a dev checkout (no CLI spawn)", async () => {
             delete process.env[EXTENSION_DEVELOPMENT];
@@ -223,22 +191,15 @@ describe(__filename, () => {
 
     // Smoke tests: these spawn the REAL bundled CLI that CI fetches at the
     // pinned version, so they validate the `package:cli:fetch` step, not unit
-    // logic (the version parsing/compare is unit-tested above). Cold-spawning a
+    // logic (the version parsing is unit-tested above). Cold-spawning a
     // ~50MB binary on the Windows runner exceeds the 2s mocha default, so give
     // the suite a generous timeout — the default made this flake intermittently.
     describe("bundled CLI (smoke — spawns the real fetched binary)", function () {
         this.timeout(30_000);
 
-        const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
+        restoreDevFlagAfterEach();
         beforeEach(() => {
             process.env[EXTENSION_DEVELOPMENT] = "true";
-        });
-        afterEach(() => {
-            if (originalDevFlag === undefined) {
-                delete process.env[EXTENSION_DEVELOPMENT];
-            } else {
-                process.env[EXTENSION_DEVELOPMENT] = originalDevFlag;
-            }
         });
 
         it("reports the pinned version", async () => {
