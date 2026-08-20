@@ -187,6 +187,22 @@ describe(__filename, () => {
                 undefined
             );
         });
+
+        it("does not warn when the CLI version can't be read but a version is pinned", async () => {
+            // Dev checkout with a pinned version, but the CLI is unreadable —
+            // the actual version is unknown, so we must not warn (nor throw).
+            process.env[EXTENSION_DEVELOPMENT] = "true";
+            assert.ok(
+                await checkBundledCliVersion(
+                    path.join(__dirname, "nonexistent-databricks"),
+                    {
+                        packageName: "databricks",
+                        version: "2.13.0",
+                        cliVersion: "0.240.0",
+                    }
+                )
+            );
+        });
     });
 
     // Smoke tests: these spawn the REAL bundled CLI that CI fetches at the
