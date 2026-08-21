@@ -12,6 +12,29 @@ describe("scoreServerlessVersions", () => {
         expect(ranked[0].version).to.equal("4");
     });
 
+    it("ranks a pyproject declaration above a competing bundle YAML one", () => {
+        // The explicit [tool.databricks.environment] declaration is the
+        // strongest signal, so it wins the recommended slot even when bundle
+        // YAML (the next-strongest) points elsewhere.
+        const ranked = scoreServerlessVersions([
+            {version: "3", source: "pyproject"},
+            {version: "5", source: "bundleYaml"},
+        ]);
+        expect(ranked[0].version).to.equal("3");
+        expect(ranked[0].sources).to.deep.equal(["pyproject"]);
+    });
+
+    it("merges pyproject with a matching bundle/notebook version", () => {
+        const ranked = scoreServerlessVersions([
+            {version: "4", source: "pyproject"},
+            {version: "4", source: "bundleYaml"},
+        ]);
+        const fours = ranked.filter((r) => r.version === "4");
+        expect(fours).to.have.length(1);
+        expect(fours[0].score).to.equal(WEIGHTS.pyproject + WEIGHTS.bundleYaml);
+        expect(fours[0].sources).to.have.members(["pyproject", "bundleYaml"]);
+    });
+
     it("adds weight when multiple sources agree on a version", () => {
         const ranked = scoreServerlessVersions([
             {version: "4", source: "bundleYaml"},

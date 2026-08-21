@@ -91,12 +91,20 @@ export async function getMetadata(
     };
 }
 
+// Returns undefined on unparseable output so callers treat an unreadable version
+// the same as an absent one.
+export function parseCliVersion(stdout: string): string | undefined {
+    try {
+        const version = JSON.parse(stdout)["Version"];
+        return typeof version === "string" ? version : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 /**
- * Reads the version of the CLI binary bundled at `cliPath`.
- *
- * Returns undefined when the binary is missing or its output can't be parsed —
- * callers treat that as "unknown" rather than as a mismatch, since a missing
- * binary already fails loudly elsewhere.
+ * Reads the version of the CLI binary bundled at `cliPath`, or undefined when it's
+ * missing or unreadable — callers treat that as "unknown" rather than a mismatch.
  */
 export async function getBundledCliVersion(
     cliPath: string
@@ -107,8 +115,14 @@ export async function getBundledCliVersion(
             "--output",
             "json",
         ]);
-        const version = JSON.parse(stdout)["Version"];
-        return typeof version === "string" ? version : undefined;
+        const version = parseCliVersion(stdout);
+        if (version === undefined) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                "Bundled Databricks CLI version output was unparseable",
+                {stdout: stdout.slice(0, 200)}
+            );
+        }
+        return version;
     } catch (e) {
         logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
             "Failed to read the bundled Databricks CLI version",
@@ -165,6 +179,8 @@ export async function checkBundledCliVersion(
         return true;
     }
 
+    // An unknown version (CLI unreadable) is treated as "not stale"; the gate
+    // above guarantees metaData.cliVersion is defined here.
     const actual = await getBundledCliVersion(cliPath);
     if (actual === undefined || actual === metaData.cliVersion) {
         return true;

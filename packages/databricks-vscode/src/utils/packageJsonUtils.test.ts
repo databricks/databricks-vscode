@@ -13,6 +13,7 @@ import {
     isEqual,
     nodeArchMap,
     nodeOsMap,
+    parseCliVersion,
     vsixArchMap,
 } from "./packageJsonUtils";
 import {EXTENSION_DEVELOPMENT} from "./developmentUtils";
@@ -27,6 +28,19 @@ const cliPath = path.join(
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pinnedCliVersion = require("../../package.json").cli.version;
+
+// Restores EXTENSION_DEVELOPMENT after each test in the enclosing describe, so a
+// suite that toggles the dev flag can't leak it into the rest of the run.
+function restoreDevFlagAfterEach() {
+    const original = process.env[EXTENSION_DEVELOPMENT];
+    afterEach(() => {
+        if (original === undefined) {
+            delete process.env[EXTENSION_DEVELOPMENT];
+        } else {
+            process.env[EXTENSION_DEVELOPMENT] = original;
+        }
+    });
+}
 
 describe(__filename, () => {
     it("should correctly check compatibility", () => {
@@ -116,46 +130,32 @@ describe(__filename, () => {
         });
     });
 
-    describe("bundled CLI version", () => {
-        const originalDevFlag = process.env[EXTENSION_DEVELOPMENT];
-
-        beforeEach(() => {
-            process.env[EXTENSION_DEVELOPMENT] = "true";
+    describe("parseCliVersion", () => {
+        it("reads the Version field from `databricks version --output json`", () => {
+            assert.equal(parseCliVersion('{"Version": "0.240.0"}'), "0.240.0");
         });
 
-        afterEach(() => {
-            if (originalDevFlag === undefined) {
-                delete process.env[EXTENSION_DEVELOPMENT];
-            } else {
-                process.env[EXTENSION_DEVELOPMENT] = originalDevFlag;
-            }
+        it("returns undefined when Version is missing", () => {
+            assert.equal(parseCliVersion('{"foo": "bar"}'), undefined);
         });
 
-        it("should read the version the bundled CLI reports", async () => {
-            assert.equal(await getBundledCliVersion(cliPath), pinnedCliVersion);
+        it("returns undefined when Version is not a string", () => {
+            assert.equal(parseCliVersion('{"Version": 240}'), undefined);
         });
 
-        it("should accept a CLI matching the pinned version", async () => {
-            assert.ok(
-                await checkBundledCliVersion(cliPath, {
-                    packageName: "databricks",
-                    version: "2.13.0",
-                    cliVersion: pinnedCliVersion,
-                })
-            );
+        it("returns undefined on malformed JSON", () => {
+            assert.equal(parseCliVersion("not json"), undefined);
+            assert.equal(parseCliVersion(""), undefined);
         });
+    });
 
-        it("should detect a stale CLI", async () => {
-            assert.ok(
-                !(await checkBundledCliVersion(cliPath, {
-                    packageName: "databricks",
-                    version: "2.13.0",
-                    cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
-                }))
-            );
-        });
+    // checkBundledCliVersion paths that never launch the real bundled CLI —
+    // they hit the dev-flag / unpinned gate, or fail fast on a missing binary —
+    // so they stay fast in the unit suite.
+    describe("checkBundledCliVersion gating", () => {
+        restoreDevFlagAfterEach();
 
-        it("should not warn outside a dev checkout", async () => {
+        it("does not warn outside a dev checkout (no CLI spawn)", async () => {
             delete process.env[EXTENSION_DEVELOPMENT];
             assert.ok(
                 await checkBundledCliVersion(cliPath, {
@@ -166,7 +166,20 @@ describe(__filename, () => {
             );
         });
 
-        it("should return undefined for a missing binary", async () => {
+        it("does not warn when the pinned version is unknown", async () => {
+            process.env[EXTENSION_DEVELOPMENT] = "true";
+            assert.ok(
+                await checkBundledCliVersion(
+                    path.join(__dirname, "nonexistent-databricks"),
+                    {
+                        packageName: "databricks",
+                        version: "2.13.0",
+                    }
+                )
+            );
+        });
+
+        it("returns undefined for a missing binary", async () => {
             assert.equal(
                 await getBundledCliVersion(
                     path.join(__dirname, "nonexistent-databricks")
@@ -175,12 +188,57 @@ describe(__filename, () => {
             );
         });
 
-        it("should not warn when the pinned version is unknown", async () => {
+        it("does not warn when the CLI version can't be read but a version is pinned", async () => {
+            // Dev checkout with a pinned version, but the CLI is unreadable —
+            // the actual version is unknown, so we must not warn (nor throw).
+            process.env[EXTENSION_DEVELOPMENT] = "true";
             assert.ok(
-                await checkBundledCliVersion("/nonexistent/databricks", {
+                await checkBundledCliVersion(
+                    path.join(__dirname, "nonexistent-databricks"),
+                    {
+                        packageName: "databricks",
+                        version: "2.13.0",
+                        cliVersion: "0.240.0",
+                    }
+                )
+            );
+        });
+    });
+
+    // Smoke tests: these spawn the REAL bundled CLI that CI fetches at the
+    // pinned version, so they validate the `package:cli:fetch` step, not unit
+    // logic (the version parsing is unit-tested above). Cold-spawning a
+    // ~50MB binary on the Windows runner exceeds the 2s mocha default, so give
+    // the suite a generous timeout — the default made this flake intermittently.
+    describe("bundled CLI (smoke — spawns the real fetched binary)", function () {
+        this.timeout(30_000);
+
+        restoreDevFlagAfterEach();
+        beforeEach(() => {
+            process.env[EXTENSION_DEVELOPMENT] = "true";
+        });
+
+        it("reports the pinned version", async () => {
+            assert.equal(await getBundledCliVersion(cliPath), pinnedCliVersion);
+        });
+
+        it("is accepted as matching the pinned version", async () => {
+            assert.ok(
+                await checkBundledCliVersion(cliPath, {
                     packageName: "databricks",
                     version: "2.13.0",
+                    cliVersion: pinnedCliVersion,
                 })
+            );
+        });
+
+        it("is flagged as stale against a different pinned version", async () => {
+            assert.ok(
+                !(await checkBundledCliVersion(cliPath, {
+                    packageName: "databricks",
+                    version: "2.13.0",
+                    cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
+                }))
             );
         });
     });
