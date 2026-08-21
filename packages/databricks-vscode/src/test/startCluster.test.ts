@@ -111,6 +111,9 @@ describe(__filename, function () {
         const startPromise = startCluster(instance(mockedClient), clusterId);
         await fakeTimer.runToLastAsync();
         await startPromise;
+
+        // The raced start() was attempted, and polling still reached RUNNING.
+        verifyStarted(1);
     });
 
     it("propagates a non-race start error when the cluster stays stopped", async () => {
