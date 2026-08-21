@@ -809,14 +809,17 @@ describe("makePythonSetupDeps showSuccess", () => {
         expect(warnShownWith).to.have.length(0);
     });
 
-    it("raises a warning toast when the run had warnings", async () => {
+    it("raises an info toast (never a warning) when the run had warnings", async () => {
         const deps = makePythonSetupDeps(makeWiring());
 
         await deps.showSuccess(SUCCESS_WITH_WARNINGS);
 
-        expect(warnShownWith).to.have.length(1);
-        expect(warnShownWith[0].actions).to.contain("View Details");
-        expect(infoShownWith).to.have.length(0);
+        // A successful run is informational even when it carried warnings;
+        // the warning count is in the message and the details behind it.
+        expect(infoShownWith).to.have.length(1);
+        expect(infoShownWith[0].message).to.contain("warning");
+        expect(infoShownWith[0].actions).to.contain("View Details");
+        expect(warnShownWith).to.have.length(0);
     });
 
     it("reveals the channel again when View Details is picked", async () => {

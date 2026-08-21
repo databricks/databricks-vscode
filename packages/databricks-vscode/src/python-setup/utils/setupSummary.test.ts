@@ -9,15 +9,13 @@ import {
 
 describe("formatSetupNotification", () => {
     it("is a concise, use-case-neutral one-liner with no warnings", () => {
-        const {message, isWarning} = formatSetupNotification(SUCCESS_DEFAULT);
-        expect(message).to.equal(
+        expect(formatSetupNotification(SUCCESS_DEFAULT)).to.equal(
             "Python environment ready — .venv created and selected for your " +
                 "Databricks project."
         );
-        expect(isWarning).to.equal(false);
     });
 
-    it("flags the count and marks a warning when warnings are present", () => {
+    it("flags the count in the message when warnings are present", () => {
         const warned: PythonSetupResult = {
             ...SUCCESS_DEFAULT,
             warnings: [
@@ -25,12 +23,10 @@ describe("formatSetupNotification", () => {
                 {code: "W_Y", message: "used a fallback mirror"},
             ],
         };
-        const {message, isWarning} = formatSetupNotification(warned);
-        expect(message).to.equal(
+        expect(formatSetupNotification(warned)).to.equal(
             "Python environment ready, with 2 warnings — .venv created and " +
                 "selected for your Databricks project."
         );
-        expect(isWarning).to.equal(true);
     });
 
     it("singularizes the count for one warning", () => {
@@ -38,10 +34,9 @@ describe("formatSetupNotification", () => {
             ...SUCCESS_DEFAULT,
             warnings: [{code: "W_X", message: "pinned an older wheel"}],
         };
-        const {message, isWarning} = formatSetupNotification(warned);
+        const message = formatSetupNotification(warned);
         expect(message).to.contain("with 1 warning —");
         expect(message).to.not.contain("1 warnings");
-        expect(isWarning).to.equal(true);
     });
 });
 
