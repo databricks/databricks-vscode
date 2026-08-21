@@ -15,7 +15,7 @@
  */
 
 /** How long each leading phase is shown before advancing, in ms. */
-const LEADING_PHASE_MS = 1500;
+const LEADING_PHASE_MS = 3500;
 
 /**
  * The fast leading phases, in the order the CLI runs them. They complete almost
@@ -24,25 +24,29 @@ const LEADING_PHASE_MS = 1500;
  * CLI's own spinner labels for the same phases.
  */
 const LEADING_PHASES: readonly string[] = [
-    "Checking prerequisites…",
-    "Resolving your Databricks compute…",
-    "Fetching matching versions and constraints…",
-    "Updating pyproject.toml…",
+    "checking prerequisites…",
+    "resolving your Databricks compute…",
+    "fetching matching versions and constraints…",
+    "updating pyproject.toml…",
 ];
 
 /** How long each provision sub-step is shown before rotating, in ms. */
 const PROVISION_ROTATE_MS = 6000;
 
 /**
- * The real sub-steps uv performs during the dominant `provision` phase
- * (installing Python, then downloading and syncing dependencies), in order.
- * This is where the cold-run minutes go, so the line dwells here and rotates
- * through these until the run ends rather than guessing when provision finishes.
+ * The real sub-steps uv performs during the dominant `provision` phase, roughly
+ * in the order they happen (install Python, create the venv, resolve, download,
+ * build/install, sync). This is where the cold-run minutes go, so the line
+ * dwells here and rotates through these until the run ends rather than guessing
+ * when provision finishes.
  */
 const PROVISION_STEPS: readonly string[] = [
-    "Installing the matching Python version…",
-    "Downloading databricks-connect and dependencies…",
-    "Resolving and syncing packages with uv…",
+    "installing the matching Python version…",
+    "creating the virtual environment…",
+    "resolving the dependency graph…",
+    "downloading databricks-connect and dependencies…",
+    "building and installing packages with uv…",
+    "syncing your project's dependencies…",
 ];
 
 const LEADING_TOTAL_MS = LEADING_PHASES.length * LEADING_PHASE_MS;

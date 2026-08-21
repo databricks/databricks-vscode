@@ -39,57 +39,61 @@ describe("formatElapsed", () => {
 
 describe("setupProgressPhase", () => {
     it("walks the fast leading phases in order", () => {
-        expect(setupProgressPhase(0)).to.equal("Checking prerequisites…");
-        expect(setupProgressPhase(1499)).to.equal("Checking prerequisites…");
-        expect(setupProgressPhase(1500)).to.equal(
-            "Resolving your Databricks compute…"
+        expect(setupProgressPhase(0)).to.equal("checking prerequisites…");
+        expect(setupProgressPhase(3499)).to.equal("checking prerequisites…");
+        expect(setupProgressPhase(3500)).to.equal(
+            "resolving your Databricks compute…"
         );
-        expect(setupProgressPhase(3000)).to.equal(
-            "Fetching matching versions and constraints…"
+        expect(setupProgressPhase(7000)).to.equal(
+            "fetching matching versions and constraints…"
         );
-        expect(setupProgressPhase(4500)).to.equal("Updating pyproject.toml…");
-        expect(setupProgressPhase(5999)).to.equal("Updating pyproject.toml…");
+        expect(setupProgressPhase(10500)).to.equal("updating pyproject.toml…");
+        expect(setupProgressPhase(13999)).to.equal("updating pyproject.toml…");
     });
 
     it("enters the provision loop after the leading phases", () => {
-        expect(setupProgressPhase(6000)).to.equal(
-            "Installing the matching Python version…"
+        expect(setupProgressPhase(14000)).to.equal(
+            "installing the matching Python version…"
         );
     });
 
     it("rotates the real provision sub-steps while provisioning", () => {
-        expect(setupProgressPhase(12000)).to.equal(
-            "Downloading databricks-connect and dependencies…"
+        expect(setupProgressPhase(20000)).to.equal(
+            "creating the virtual environment…"
         );
-        expect(setupProgressPhase(18000)).to.equal(
-            "Resolving and syncing packages with uv…"
+        expect(setupProgressPhase(26000)).to.equal(
+            "resolving the dependency graph…"
+        );
+        expect(setupProgressPhase(32000)).to.equal(
+            "downloading databricks-connect and dependencies…"
         );
     });
 
     it("loops the provision sub-steps indefinitely", () => {
-        // Same message as the first provision step, one full rotation later.
-        expect(setupProgressPhase(24000)).to.equal(setupProgressPhase(6000));
-        expect(setupProgressPhase(24000)).to.equal(
-            "Installing the matching Python version…"
+        // Same message as the first provision step, one full rotation (six
+        // 6s steps = 36s) later.
+        expect(setupProgressPhase(50000)).to.equal(setupProgressPhase(14000));
+        expect(setupProgressPhase(50000)).to.equal(
+            "installing the matching Python version…"
         );
     });
 
     it("clamps negative input to the first phase", () => {
-        expect(setupProgressPhase(-1000)).to.equal("Checking prerequisites…");
+        expect(setupProgressPhase(-1000)).to.equal("checking prerequisites…");
     });
 
     it("clamps non-finite input to the first phase", () => {
-        expect(setupProgressPhase(NaN)).to.equal("Checking prerequisites…");
+        expect(setupProgressPhase(NaN)).to.equal("checking prerequisites…");
     });
 });
 
 describe("setupProgressMessage", () => {
     it("appends the elapsed counter to the current phase", () => {
         expect(setupProgressMessage(0)).to.equal(
-            "Checking prerequisites… (0:00)"
+            "checking prerequisites… (0:00)"
         );
         expect(setupProgressMessage(72000)).to.equal(
-            "Resolving and syncing packages with uv… (1:12)"
+            "downloading databricks-connect and dependencies… (1:12)"
         );
     });
 });
@@ -126,7 +130,7 @@ describe("withElapsedProgress", () => {
             () => new Promise<void>(() => {}), // never settles
             fakeTimers().timers
         );
-        expect(messages).to.deep.equal(["Checking prerequisites… (0:00)"]);
+        expect(messages).to.deep.equal(["checking prerequisites… (0:00)"]);
     });
 
     it("re-reports the current phase and elapsed on each tick", async () => {
@@ -147,7 +151,7 @@ describe("withElapsedProgress", () => {
         finish("ok");
         await done;
 
-        expect(messages[0]).to.equal("Checking prerequisites… (0:00)");
+        expect(messages[0]).to.equal("checking prerequisites… (0:00)");
         expect(messages[1]).to.equal(setupProgressMessage(7000));
     });
 
