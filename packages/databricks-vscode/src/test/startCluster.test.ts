@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import {ApiClient, Time, TimeUnits, compute} from "@databricks/sdk-experimental";
-import {startCluster, ClusterStartError} from "./startCluster";
 import * as assert from "node:assert";
 import {mock, when, instance, anything, objectContaining, verify} from "ts-mockito";
 import FakeTimers from "@sinonjs/fake-timers";
+import {startCluster, ClusterStartError} from "./startCluster";
 
 describe(__filename, function () {
     this.timeout(new Time(10, TimeUnits.minutes).toMillSeconds().value);
@@ -97,8 +97,8 @@ describe(__filename, function () {
     });
 
     it("tolerates a concurrent start race on the shared cluster", async () => {
-        // Initial TERMINATED -> our start() races a sibling and throws ->
-        // the cluster is already coming up (PENDING) -> RUNNING.
+        // Initial TERMINATED -> our start() races a sibling and throws -> the
+        // re-check finds it already coming up (PENDING) -> RUNNING.
         whenGet().thenResolve(
             details("TERMINATED"),
             details("PENDING"),
@@ -111,5 +111,35 @@ describe(__filename, function () {
         const startPromise = startCluster(instance(mockedClient), clusterId);
         await fakeTimer.runToLastAsync();
         await startPromise;
+    });
+
+    it("propagates a non-race start error when the cluster stays stopped", async () => {
+        // start() fails and the re-check shows the cluster still stopped, so the
+        // original (actionable) error surfaces rather than being masked.
+        whenGet().thenResolve(details("TERMINATED"), details("TERMINATED"));
+        whenStart().thenReject(new Error("permission denied"));
+
+        const startPromise = startCluster(instance(mockedClient), clusterId);
+        const rejection = assert.rejects(
+            startPromise,
+            (e: Error) => /permission denied/.test(e.message)
+        );
+        await fakeTimer.runToLastAsync();
+        await rejection;
+    });
+
+    it("waits for a TERMINATING cluster to stop, then starts it", async () => {
+        whenGet().thenResolve(
+            details("TERMINATING"),
+            details("TERMINATED"),
+            details("RUNNING")
+        );
+        whenStart().thenResolve({});
+
+        const startPromise = startCluster(instance(mockedClient), clusterId);
+        await fakeTimer.runToLastAsync();
+        await startPromise;
+
+        verifyStarted(1);
     });
 });

@@ -59,19 +59,23 @@ export async function startCluster(
         cluster.state === "ERROR" ||
         cluster.state === "UNKNOWN"
     ) {
-        // The cluster is shared across ~40 shards: a sibling may have already
-        // issued the start, racing this call into an "unexpected state" error.
-        // Swallow it and let the poll below decide — a genuine failure lands the
-        // cluster back in a terminal state, which the poll treats as fatal, so
-        // this does not mask permanent failures.
         try {
             await clusterApi.start({cluster_id: clusterId});
         } catch (e) {
-            console.log(
-                `clusters.start on shared cluster ${clusterId}: ${
-                    e instanceof Error ? e.message : String(e)
-                }`
-            );
+            // The cluster is shared across ~40 shards, so a sibling may have
+            // already started it, racing this call into an error. Re-check: if
+            // it's now coming up we merely raced, so poll below; if it's still
+            // stopped the start genuinely failed (auth, permissions, bad
+            // request), so surface that actionable error rather than mask it.
+            cluster = await clusterApi.get({cluster_id: clusterId});
+            log(cluster);
+            if (
+                cluster.state === "TERMINATED" ||
+                cluster.state === "ERROR" ||
+                cluster.state === "UNKNOWN"
+            ) {
+                throw e;
+            }
         }
     }
 
@@ -93,7 +97,9 @@ export async function startCluster(
                         `Cluster ${clusterId} failed to start (${
                             cluster.state
                         }): ${JSON.stringify(
-                            cluster.state_message ?? cluster.termination_reason
+                            cluster.state_message ??
+                                cluster.termination_reason ??
+                                "unknown reason"
                         )}`
                     );
                 default:
