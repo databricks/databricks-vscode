@@ -271,16 +271,17 @@ describe(__filename, () => {
                 {code: "W_REQUIRES_PYTHON_OVERRIDDEN", message: "irrelevant"},
                 {code: "W_DBCONNECT_PIN_OVERRIDDEN", message: "irrelevant"},
                 {code: "W_DBCONNECT_PIN_DUPLICATED", message: "irrelevant"},
+                {code: "W_DBCONNECT_CONSOLIDATED", message: "irrelevant"},
                 {code: "W_USER_CONSTRAINT_CONFLICT", message: "irrelevant"},
                 {code: "W_USER_CONSTRAINT_CONFLICT", message: "irrelevant"},
             ],
         });
 
         // The total is a numeric metric, not a property.
-        expect(events[1].metrics["event.warningsCount"]).to.equal(5);
+        expect(events[1].metrics["event.warningsCount"]).to.equal(6);
         expect(events[1].props).to.not.have.property("event.warningsCount");
         // The per-code counts are a JSON-stringified property (objects never
-        // become metrics), covering all four known codes with the repeated one
+        // become metrics), covering all five known codes with the repeated one
         // counted twice.
         expect(
             JSON.parse(events[1].props["event.warningCodeCounts"])
@@ -288,6 +289,7 @@ describe(__filename, () => {
             W_REQUIRES_PYTHON_OVERRIDDEN: 1,
             W_DBCONNECT_PIN_OVERRIDDEN: 1,
             W_DBCONNECT_PIN_DUPLICATED: 1,
+            W_DBCONNECT_CONSOLIDATED: 1,
             W_USER_CONSTRAINT_CONFLICT: 2,
         });
     });
@@ -464,6 +466,69 @@ describe(__filename, () => {
             });
             const drift = events.find((e) => e.name === "python_env.drift")!;
             expect(drift.props["event.toEnvKey"]).to.equal("other");
+        });
+    });
+
+    describe("recordPythonSetupAdoption", () => {
+        it("emits python_env.adoption with the gauge as boolean and compute properties", () => {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAdoption({
+                venvPresent: true,
+                currentTargetType: "serverless",
+            });
+            expect(events).to.have.length(1);
+            expect(events[0].name).to.equal("python_env.adoption");
+            expect(events[0].props).to.deep.equal({
+                "version": "1.0",
+                // A boolean lands as a "true"/"false" property, never a metric.
+                "event.venvPresent": "true",
+                "event.currentTargetType": "serverless",
+            });
+            expect(events[0].metrics).to.not.have.property("event.venvPresent");
+        });
+
+        it("records an absent venv as the boolean 'false', not an omitted field", () => {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAdoption({
+                venvPresent: false,
+                currentTargetType: "cluster",
+            });
+            // venvPresent=false is a real value (the venv is gone) — it must be
+            // emitted, not dropped like an absent optional would be.
+            expect(events[0].props["event.venvPresent"]).to.equal("false");
+            expect(events[0].props["event.currentTargetType"]).to.equal(
+                "cluster"
+            );
+        });
+
+        it("carries currentTargetType 'none' when no compute is attached", () => {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAdoption({
+                venvPresent: true,
+                currentTargetType: "none",
+            });
+            expect(events[0].props["event.currentTargetType"]).to.equal("none");
+        });
+
+        it("emits only the schema's fields, never extra ones on the caller's object", () => {
+            const {telemetry, events} = makeTelemetry();
+            // A future refactor could widen the payload or route a wider object
+            // through this seam; the transport must stay an allowlist.
+            telemetry.recordPythonSetupAdoption({
+                venvPresent: true,
+                currentTargetType: "cluster",
+                projectPath: "/Users/jane/projects/acme",
+                clusterId: "0710-142042-secretcluster",
+            } as any);
+            const serialized = JSON.stringify(events[0].props);
+            expect(serialized).to.not.contain("jane");
+            expect(serialized).to.not.contain("acme");
+            expect(serialized).to.not.contain("0710");
+            expect(Object.keys(events[0].props).sort()).to.deep.equal([
+                "event.currentTargetType",
+                "event.venvPresent",
+                "version",
+            ]);
         });
     });
 });

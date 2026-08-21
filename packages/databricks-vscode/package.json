@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.13.1",
+    "version": "2.14.0",
     "engines": {
         "vscode": "^1.86.0",
         "node": ">=22.0"
@@ -1797,23 +1797,16 @@
                         "items": {
                             "enum": [
                                 "views.cluster",
-                                "views.workspace",
-                                "environment.pythonSetup"
+                                "views.workspace"
                             ],
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
-                                "Show workspace browser in the explorer.",
-                                "Enable the uv-native one-click Python environment setup for Databricks Connect."
+                                "Show workspace browser in the explorer."
                             ],
                             "type": "string"
                         },
                         "uniqueItems": true,
                         "description": "Opt into experimental features."
-                    },
-                    "databricks.experiments.cliPathOverride": {
-                        "type": "string",
-                        "default": "",
-                        "description": "Absolute path to a custom Databricks CLI that provides `environments setup-local`. Temporary experimental setting used while the command ships only in custom CLI builds; leave empty to use the bundled CLI. Will be removed once the command is generally available."
                     },
                     "databricks.wsfs.rearrangeCells": {
                         "type": "boolean",
@@ -1854,7 +1847,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.12.1"
+        "version": "1.13.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
@@ -1904,10 +1897,11 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^3.0.3",
         "highlight.js": "^11.10.0",
-        "lodash": "^4.17.21",
+        "lodash": "^4.18.1",
         "markdown-it": "^14.2.0",
-        "minimatch": "^10.0.1",
-        "shell-quote": "^1.8.4",
+        "minimatch": "^10.2.3",
+        "shell-env": "^4.0.3",
+        "shell-quote": "^1.9.0",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
         "yaml": "^2.8.3"

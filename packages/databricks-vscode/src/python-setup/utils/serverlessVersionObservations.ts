@@ -1,6 +1,7 @@
 import {VersionObservation} from "./serverlessVersionScoring";
 import {collectBundleServerlessVersions} from "./bundleServerlessVersions";
 import {collectProjectNotebookVersions} from "./projectNotebookVersions";
+import {collectProjectPyprojectVersion} from "./pyprojectServerlessVersion";
 
 /**
  * Where the version evidence comes from. Injected so collection stays testable
@@ -15,10 +16,10 @@ export interface ServerlessVersionObservationDeps {
 }
 
 /**
- * Gather serverless-version evidence from the project's local sources (bundle
- * config + notebooks). Each source is collected independently and guarded, so
- * one failing source never blocks the other or the flow that asked for it; the
- * scorer merges and de-dupes across sources.
+ * Gather serverless-version evidence from the project's local sources
+ * (`pyproject.toml`, bundle config, notebooks). Each source is collected
+ * independently and guarded, so one failing source never blocks the others or
+ * the flow that asked for it; the scorer merges and de-dupes across sources.
  *
  * The scorer also defines a `workspaceDefault` source, which is not collected
  * here: it would come from the workspace's default base environment, and the SDK
@@ -28,7 +29,18 @@ export interface ServerlessVersionObservationDeps {
 export async function collectServerlessVersionObservations(
     deps: ServerlessVersionObservationDeps
 ): Promise<VersionObservation[]> {
-    const [bundle, notebooks] = await Promise.all([
+    const [pyproject, bundle, notebooks] = await Promise.all([
+        (async () => {
+            try {
+                const root = deps.projectRoot();
+                if (root === undefined) {
+                    return [] as VersionObservation[];
+                }
+                return await collectProjectPyprojectVersion(root);
+            } catch {
+                return [] as VersionObservation[];
+            }
+        })(),
         (async () => {
             try {
                 return collectBundleServerlessVersions(
@@ -52,5 +64,5 @@ export async function collectServerlessVersionObservations(
             }
         })(),
     ]);
-    return [...bundle, ...notebooks];
+    return [...pyproject, ...bundle, ...notebooks];
 }

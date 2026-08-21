@@ -28,6 +28,7 @@ export enum Events {
     PYTHON_ENV_SETUP_ATTEMPT = "python_env.setup.attempt",
     PYTHON_ENV_SETUP_RESULT = "python_env.setup.result",
     PYTHON_ENV_DRIFT = "python_env.drift",
+    PYTHON_ENV_ADOPTION = "python_env.adoption",
     AITOOLS_INSTALL = "aitoolsInstall",
     AITOOLS_UPDATE = "aitoolsUpdate",
     AITOOLS_UNINSTALL = "aitoolsUninstall",
@@ -592,6 +593,28 @@ export class EventTypes {
             comment:
                 "The environment key the currently selected compute resolves to, same closed " +
                 'vocabulary as fromEnvKey (else "other")',
+        },
+    };
+    [Events.PYTHON_ENV_ADOPTION]: EventType<{
+        venvPresent: boolean;
+        currentTargetType: TargetCompute;
+    }> = {
+        comment:
+            "A once-per-session adoption gauge for a project that has a uv-native Python setup on " +
+            "record (databricks.pythonSetup.setupState is present). Emitted only in that case, so " +
+            "its mere presence is a per-session denominator of VPEX-managed projects; it then " +
+            "reports whether the managed environment is still in place. Distinct from " +
+            "python_env.drift, which compares compute env keys — this reports whether the .venv " +
+            "still physically exists, which drift never checks. Categorical/boolean data only.",
+        venvPresent: {
+            comment:
+                "Whether the project's managed .venv interpreter still exists on disk. False means " +
+                "the environment was provisioned once but is now gone (deleted or never restored)",
+        },
+        currentTargetType: {
+            comment:
+                "The compute kind attached when the session check ran (cluster | serverless | " +
+                "none), so adoption can be sliced by compute. No cluster IDs or names",
         },
     };
 }

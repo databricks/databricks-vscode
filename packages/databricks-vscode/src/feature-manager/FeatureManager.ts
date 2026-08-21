@@ -8,23 +8,7 @@ import {Loggers} from "../logger";
 
 export type FeatureEnableAction = (...args: any[]) => Promise<void>;
 
-/**
- * Feature id for the uv-native Python environment setup (python-setup).
- *
- * This exact string is the single source of truth used in two coupled places,
- * and they must stay identical or the feature can never unlock:
- *  - the {@link FeatureManager} `disabledFeatures` entry that hides it by
- *    default (see extension.ts), and
- *  - the value a user adds to `databricks.experiments.optInto` to opt in
- *    (see the enum in package.json), which {@link FeatureManager} matches
- *    verbatim against the disabled id to decide whether to unlock.
- * Exporting it as a constant keeps those two from drifting apart.
- */
-export const PYTHON_SETUP_FEATURE_ID = "environment.pythonSetup";
-
-export type FeatureId =
-    | "environment.dependencies"
-    | typeof PYTHON_SETUP_FEATURE_ID;
+export type FeatureId = "environment.dependencies";
 
 export interface FeatureState {
     available: boolean;

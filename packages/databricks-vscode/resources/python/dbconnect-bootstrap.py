@@ -45,17 +45,35 @@ db_globals = {}
 from databricks.sdk.runtime import dbutils  # noqa: E402
 db_globals['dbutils'] = dbutils
 
-# "table", "sc", "sqlContext" are missing
+# "table", "sc", "sqlContext" are missing.
+#
+# The import and the session build are handled separately on purpose. A failure to
+# import Databricks Connect (or pyspark) means the Python environment itself is
+# broken and the user's own script will hit the same error, so it is surfaced. The
+# most common cause is a standalone "pyspark" package installed alongside
+# databricks-connect: the two share the pyspark namespace and overwrite each other,
+# and the resulting Java/protobuf error otherwise gives no hint at the cause. A
+# failure to *build* the session (no configured compute, auth) is left quiet — many
+# scripts create their own session and never touch the injected one.
 try:
     from pyspark.sql import functions as udf, SparkSession
     from databricks.connect import DatabricksSession
-    spark: SparkSession = DatabricksSession.builder.getOrCreate()
-    sql = spark.sql
-    db_globals['spark'] = spark
-    db_globals['sql'] = sql
-    db_globals['udf'] = udf
 except Exception as e:
-    logging.debug(f"Failed to create DatabricksSession: {e}")
+    logging.error(
+        "Failed to import Databricks Connect: %s. This usually means the Python "
+        "environment is misconfigured. A common cause is a standalone 'pyspark' "
+        "package installed alongside databricks-connect: they share the pyspark "
+        "package and overwrite each other, so if your project depends on a "
+        "standalone pyspark, remove it and re-run 'Set up Python environment'.", e)
+else:
+    try:
+        spark: SparkSession = DatabricksSession.builder.getOrCreate()
+        sql = spark.sql
+        db_globals['spark'] = spark
+        db_globals['sql'] = sql
+        db_globals['udf'] = udf
+    except Exception as e:
+        logging.debug(f"Failed to create DatabricksSession: {e}")
 
 # We do this to prevent importing widgets implementation prematurely
 # The widget import should prompt users to use the implementation

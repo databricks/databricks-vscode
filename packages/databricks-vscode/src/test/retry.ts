@@ -3,6 +3,8 @@
 // unit build, so a colocated unit test only runs when the module lives outside
 // it; the e2e specs import it via an explicit `.ts` extension.
 
+import path from "node:path";
+
 export interface RetryOptions {
     // Total number of tries, including the first (so `attempts: 3` == 1 try + 2
     // retries).
@@ -46,6 +48,90 @@ export function isTransientFileLockError(error: unknown): boolean {
     return /being used by another process|WinError 32\b/i.test(
         parts.join("\n")
     );
+}
+
+// wdio `specFileRetries` count per platform. Windows-only, because its e2e
+// shards hit whole-session crashes no in-test wait can recover — a VS Code
+// window reload can drop the wdio websocket ("Connection closed. Code: 1006"),
+// so the rest of the spec cascades and only a fresh session (which a retry
+// starts) recovers. Note the retry fires on *any* whole-spec failure, not just
+// that crash — wdio has no retry-on-specific-error hook. A deterministic
+// regression still fails on both attempts; a *flaky* one can pass on retry, so
+// SpecRetryTracker surfaces those (see wdio.conf.ts) rather than letting them go
+// silently green. Others stay at 0 so a real regression there isn't masked.
+export function specFileRetriesForPlatform(platform: NodeJS.Platform): number {
+    return platform === "win32" ? 1 : 0;
+}
+
+// Seconds wdio waits before a spec-file retry (`specFileRetriesDelay`), per
+// platform. Windows-only, non-zero: the retry relaunches VS Code and reinstalls
+// the extension into the shared extensions dir while the crashed Electron and
+// its chromedriver are still exiting — the same Windows file-lock territory
+// isTransientFileLockError guards. A short pause lets them release first; it
+// costs nothing on the stable platforms (0) and only ever runs after a failure.
+export function specFileRetriesDelayForPlatform(
+    platform: NodeJS.Platform
+): number {
+    return platform === "win32" ? 5 : 0;
+}
+
+// A retry reuses the failed worker's cid, so wdio reopens `wdio-<cid>.log` (and
+// the driver log) with flags:"w" and truncates the very crash we retried for.
+// True when a failed attempt is about to be requeued, i.e. worth parking those
+// logs first (wdio passes `retries` > 0 in that case).
+export function shouldPreserveFailedAttemptLogs(
+    exitCode: number,
+    retries: number
+): boolean {
+    return exitCode !== 0 && retries > 0;
+}
+
+// The per-worker log files wdio truncates on retry, paired with a stable
+// `-failed-attempt` name to rename them to before the retry reopens them. The
+// runner log is named after the spec basename when a spec is present
+// (`@wdio/local-runner`: `${specBaseName}-${cid}.log`, only the final extension
+// stripped); the driver log keeps the `wdio-<cid>-` prefix (`@wdio/utils`).
+// Both are opened with flags:"w".
+export function failedAttemptLogRenames(
+    outputDir: string,
+    cid: string,
+    spec: string
+): {from: string; to: string}[] {
+    const specBaseName = path.basename(spec, path.extname(spec));
+    return [`${specBaseName}-${cid}.log`, `wdio-${cid}-chromedriver.log`].map(
+        (name) => ({
+            from: path.join(outputDir, name),
+            to: path.join(
+                outputDir,
+                name.replace(/\.log$/, "-failed-attempt.log")
+            ),
+        })
+    );
+}
+
+// Formats the "passed only on retry" flake report for stdout. Under GitHub
+// Actions (`isGithubActions`) it also emits a `::warning::` workflow command per
+// spec, so a retry-recovered flake shows as a checks-UI annotation even when the
+// run is green — otherwise the warning would just scroll past in a passing log,
+// defeating the point of tracking it. Returns [] when nothing recovered.
+export function formatRecoveredSpecsReport(
+    recoveredSpecs: string[],
+    isGithubActions: boolean
+): string[] {
+    if (recoveredSpecs.length === 0) {
+        return [];
+    }
+    const lines = ["⚠️  PASSED ONLY ON RETRY (flaky — investigate):"];
+    for (const spec of recoveredSpecs) {
+        // wdio hands us an absolute path / file:// URL; the basename reads
+        // better and is enough to identify the spec. Split on both separators.
+        const name = spec.split(/[\\/]/).pop() ?? spec;
+        lines.push(`  - ${name}`);
+        if (isGithubActions) {
+            lines.push(`::warning::PASSED ONLY ON RETRY: ${name}`);
+        }
+    }
+    return lines;
 }
 
 export async function retryOnTransientError<T>(

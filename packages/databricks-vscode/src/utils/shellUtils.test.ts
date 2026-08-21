@@ -563,8 +563,8 @@ describe("shellUtils", () => {
         }
 
         describe("cmd", function () {
-            // Each case spawns cmd.exe and writes a temp file, so the 2s default
-            // is too tight on a loaded Windows runner.
+            // Each case spawns cmd.exe and writes a temp file, so the default
+            // timeout is too tight on a loaded Windows runner.
             this.timeout(60_000);
 
             const cmdIt = onWindows ? it : it.skip;

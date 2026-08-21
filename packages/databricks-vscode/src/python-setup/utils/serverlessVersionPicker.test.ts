@@ -35,6 +35,14 @@ describe("buildVersionPickItems", () => {
         expect(items[1].version).to.equal("4");
     });
 
+    it("names pyproject.toml as the provenance of a pyproject-sourced version", () => {
+        const items = buildVersionPickItems([
+            {version: "4", score: 200, sources: ["pyproject"]},
+        ]);
+
+        expect(items[0].description).to.match(/pyproject\.toml/i);
+    });
+
     it("handles a fallback-only list", () => {
         const items = buildVersionPickItems([
             {version: "5", score: 1, sources: ["fallback"]},
