@@ -31,6 +31,7 @@ import {
     formatRecoveredSpecsReport,
 } from "../retry.ts";
 import {SpecRetryTracker} from "../SpecRetryTracker.ts";
+import {startCluster} from "../startCluster.ts";
 
 // WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
 // NODE_OPTIONS for every worker process. wdio-vscode-service installs the
@@ -381,7 +382,10 @@ export const config: WebdriverIO.Config = {
             await fs.mkdir(WORKSPACE_PATH, {recursive: true});
 
             const client = getWorkspaceClient(config);
-            await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
+            await startCluster(
+                client.apiClient,
+                process.env["TEST_DEFAULT_CLUSTER_ID"]
+            );
 
             process.env.DATABRICKS_HOST = config.host!;
             process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
@@ -739,46 +743,3 @@ function getWorkspaceClient(config: Config) {
     return client;
 }
 
-async function startCluster(
-    workspaceClient: WorkspaceClient,
-    clusterId: string,
-    attempt = 0
-) {
-    console.log(`Cluster ID: ${clusterId}`);
-    if (attempt > 100) {
-        throw new Error("Failed to start the cluster: too many attempts");
-    }
-    const cluster = await workspaceClient.clusters.get({
-        cluster_id: clusterId,
-    });
-    console.log(`Cluster State: ${cluster.state}`);
-    switch (cluster.state) {
-        case "RUNNING":
-            console.log("Cluster is already running");
-            break;
-        case "TERMINATED":
-        case "ERROR":
-        case "UNKNOWN":
-            console.log("Starting the cluster...");
-            await (
-                await workspaceClient.clusters.start({
-                    cluster_id: clusterId,
-                })
-            ).wait({
-                onProgress: async (state) => {
-                    console.log(`Cluster state: ${state.state}`);
-                },
-            });
-            break;
-        case "PENDING":
-        case "RESIZING":
-        case "TERMINATING":
-        case "RESTARTING":
-            console.log("Waiting and retrying...");
-            await sleep(10000);
-            await startCluster(workspaceClient, clusterId, attempt + 1);
-            break;
-        default:
-            throw new Error(`Unknown cluster state: ${cluster.state}`);
-    }
-}
