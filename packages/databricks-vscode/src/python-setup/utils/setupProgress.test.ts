@@ -163,6 +163,7 @@ describe("withElapsedProgress", () => {
             fake.timers
         );
         expect(result).to.equal("done");
+        expect(fake.started()).to.equal(1);
         expect(fake.allCleared()).to.equal(true);
     });
 
@@ -176,18 +177,20 @@ describe("withElapsedProgress", () => {
             fake.timers
         ).catch((e) => e as Error);
         expect((err as Error).message).to.equal("boom");
+        expect(fake.started()).to.equal(1);
         expect(fake.allCleared()).to.equal(true);
     });
 
     it("stops the ticker when the work throws synchronously", async () => {
         const fake = fakeTimers();
-        await withElapsedProgress(
+        const err = await withElapsedProgress(
             {report: () => {}},
             () => {
                 throw new Error("sync");
             },
             fake.timers
-        ).catch(() => {});
+        ).catch((e) => e as Error);
+        expect((err as Error).message).to.equal("sync");
         expect(fake.started()).to.equal(1);
         expect(fake.allCleared()).to.equal(true);
     });
