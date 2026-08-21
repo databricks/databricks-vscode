@@ -6,12 +6,7 @@ import path from "node:path";
 import {fileURLToPath} from "url";
 import assert from "assert";
 import fs from "fs/promises";
-import {
-    Config,
-    Time,
-    TimeUnits,
-    WorkspaceClient,
-} from "@databricks/sdk-experimental";
+import {Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile as execFileCb} from "node:child_process";
 import {
@@ -36,7 +31,7 @@ import {
     formatRecoveredSpecsReport,
 } from "../retry.ts";
 import {SpecRetryTracker} from "../SpecRetryTracker.ts";
-import {Cluster} from "../../sdk-extensions/Cluster.ts";
+import {startCluster} from "../startCluster.ts";
 
 // WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
 // NODE_OPTIONS for every worker process. wdio-vscode-service installs the
@@ -387,7 +382,10 @@ export const config: WebdriverIO.Config = {
             await fs.mkdir(WORKSPACE_PATH, {recursive: true});
 
             const client = getWorkspaceClient(config);
-            await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
+            await startCluster(
+                client.apiClient,
+                process.env["TEST_DEFAULT_CLUSTER_ID"]
+            );
 
             process.env.DATABRICKS_HOST = config.host!;
             process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
@@ -745,26 +743,3 @@ function getWorkspaceClient(config: Config) {
     return client;
 }
 
-// The e2e shards share one test cluster, warmed up here in onPrepare (before
-// any spec/session — a throw here aborts the whole shard and specFileRetries
-// can't recover it). Reuse the production Cluster.start(): it polls a stopped
-// cluster to RUNNING and fails fast on TERMINATED/ERROR with the
-// termination_reason. Its default timeout is the SDK's ~20min, but the shared
-// cluster's cloud node placement has been seen taking ~1h, so pass 60min (the
-// e2e job has no timeout-minutes, so GitHub's 6h default bounds it).
-const CLUSTER_START_TIMEOUT = new Time(60, TimeUnits.minutes);
-
-async function startCluster(
-    workspaceClient: WorkspaceClient,
-    clusterId: string
-) {
-    const cluster = await Cluster.fromClusterId(
-        workspaceClient.apiClient,
-        clusterId
-    );
-    await cluster.start(
-        undefined,
-        (state) => console.log(`Cluster ${clusterId} state: ${state}`),
-        CLUSTER_START_TIMEOUT
-    );
-}

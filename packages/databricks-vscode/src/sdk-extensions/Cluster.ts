@@ -196,8 +196,7 @@ export class Cluster {
 
     async start(
         token?: CancellationToken,
-        onProgress: (state: compute.State) => void = () => {},
-        timeout: Time = retries.DEFAULT_MAX_TIMEOUT
+        onProgress: (state: compute.State) => void = () => {}
     ) {
         await this.refresh();
         onProgress(this.state);
@@ -242,7 +241,6 @@ export class Cluster {
 
         this._canExecute = undefined;
         await retry({
-            timeout,
             fn: async () => {
                 if (token?.isCancellationRequested) {
                     return;
