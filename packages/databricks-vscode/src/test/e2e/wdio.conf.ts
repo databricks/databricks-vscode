@@ -739,46 +739,70 @@ function getWorkspaceClient(config: Config) {
     return client;
 }
 
+// All e2e shards share one test cluster and warm it up here, in onPrepare,
+// before any spec (or even any wdio session) runs — so specFileRetries can't
+// recover a failure at this stage; if this throws, the whole shard aborts.
+// Cloud-side node placement can be slow: we've seen the shared cluster take
+// ~1h to reach RUNNING after an UNEXPECTED_LAUNCH_FAILURE ("Timeout while
+// placing nodes") that Databricks then retried internally. The old fixed
+// budget (100 attempts x 10s ~= 17min) gave up long before that, failing many
+// shards on transient slowness. Poll against a single generous deadline
+// instead (the e2e job itself has no timeout, so 60min is well within it), and
+// log state_message so the cloud-side reason is visible directly in CI.
+const CLUSTER_START_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
+const CLUSTER_POLL_INTERVAL_MS = 10_000;
+
 async function startCluster(
     workspaceClient: WorkspaceClient,
-    clusterId: string,
-    attempt = 0
+    clusterId: string
 ) {
     console.log(`Cluster ID: ${clusterId}`);
-    if (attempt > 100) {
-        throw new Error("Failed to start the cluster: too many attempts");
-    }
-    const cluster = await workspaceClient.clusters.get({
-        cluster_id: clusterId,
-    });
-    console.log(`Cluster State: ${cluster.state}`);
-    switch (cluster.state) {
-        case "RUNNING":
-            console.log("Cluster is already running");
-            break;
-        case "TERMINATED":
-        case "ERROR":
-        case "UNKNOWN":
-            console.log("Starting the cluster...");
-            await (
-                await workspaceClient.clusters.start({
-                    cluster_id: clusterId,
-                })
-            ).wait({
-                onProgress: async (state) => {
-                    console.log(`Cluster state: ${state.state}`);
-                },
-            });
-            break;
-        case "PENDING":
-        case "RESIZING":
-        case "TERMINATING":
-        case "RESTARTING":
-            console.log("Waiting and retrying...");
-            await sleep(10000);
-            await startCluster(workspaceClient, clusterId, attempt + 1);
-            break;
-        default:
-            throw new Error(`Unknown cluster state: ${cluster.state}`);
+    const deadline = Date.now() + CLUSTER_START_TIMEOUT_MS;
+    for (;;) {
+        const cluster = await workspaceClient.clusters.get({
+            cluster_id: clusterId,
+        });
+        const stateMessage = cluster.state_message
+            ? ` - ${cluster.state_message}`
+            : "";
+        console.log(`Cluster State: ${cluster.state}${stateMessage}`);
+        switch (cluster.state) {
+            case "RUNNING":
+                console.log("Cluster is running");
+                return;
+            case "TERMINATED":
+            case "ERROR":
+            case "UNKNOWN":
+                // Kick off a start, then keep polling below until it reaches
+                // RUNNING. We deliberately don't use the SDK waiter so this
+                // deadline is the single source of truth for how long we wait.
+                console.log("Starting the cluster...");
+                try {
+                    await workspaceClient.clusters.start({
+                        cluster_id: clusterId,
+                    });
+                } catch (e) {
+                    // The cluster is shared: a concurrent shard may have already
+                    // issued the start, racing this call into an "unexpected
+                    // state" error. Keep polling - it's coming up regardless.
+                    console.log(`clusters.start failed, continuing to poll: ${e}`);
+                }
+                break;
+            case "PENDING":
+            case "RESIZING":
+            case "TERMINATING":
+            case "RESTARTING":
+                console.log("Waiting and retrying...");
+                break;
+            default:
+                throw new Error(`Unknown cluster state: ${cluster.state}`);
+        }
+        if (Date.now() >= deadline) {
+            const timeoutMin = CLUSTER_START_TIMEOUT_MS / 60_000;
+            throw new Error(
+                `Failed to start the cluster within ${timeoutMin} min; last state ${cluster.state}${stateMessage}`
+            );
+        }
+        await sleep(CLUSTER_POLL_INTERVAL_MS);
     }
 }
