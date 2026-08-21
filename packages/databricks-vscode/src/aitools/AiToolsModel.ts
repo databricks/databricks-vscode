@@ -18,6 +18,12 @@ export interface AiToolsAgentStatus {
     id: string;
     type: "plugin" | "skills-only";
     detected: boolean;
+    /**
+     * Whether the agent can be installed at project scope. Agents that only
+     * support global scope (e.g. Cursor, Codex CLI) report `false`; the install
+     * picker disables them when the chosen scope is `project`.
+     */
+    supportsProjectScope: boolean;
     version?: string;
     /**
      * True when a managed agent received only the raw skills rather than the

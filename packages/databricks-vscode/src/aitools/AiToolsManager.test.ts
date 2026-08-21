@@ -876,6 +876,7 @@ describe(__filename, () => {
                         display_name: "Claude Code",
                         managed: true,
                         detected: true,
+                        supports_project_scope: true,
                         installed: {
                             project: {
                                 version: "1.2.0",
@@ -889,6 +890,7 @@ describe(__filename, () => {
                         display_name: "Codex",
                         managed: true,
                         detected: true,
+                        supports_project_scope: false,
                         installed: {
                             project: {
                                 version: "1.2.0",
@@ -902,6 +904,7 @@ describe(__filename, () => {
                         display_name: "Windsurf",
                         managed: false,
                         detected: true,
+                        supports_project_scope: true,
                         installed: {
                             project: {
                                 version: "1.2.0",
@@ -923,6 +926,10 @@ describe(__filename, () => {
         assert.strictEqual(agents[1].skillsOnly, false);
         // Unmanaged agents are never flagged, even when delivered as skills.
         assert.strictEqual(agents[2].skillsOnly, false);
+        // supports_project_scope is mapped straight through per agent.
+        assert.strictEqual(agents[0].supportsProjectScope, true);
+        assert.strictEqual(agents[1].supportsProjectScope, false);
+        assert.strictEqual(agents[2].supportsProjectScope, true);
     });
 
     it("clears the version when nothing is installed", async () => {

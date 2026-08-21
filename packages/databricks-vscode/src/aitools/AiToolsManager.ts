@@ -82,6 +82,7 @@ function computeAgentsStatuses(
         id: agent.name,
         type: agent.managed ? "plugin" : "skills-only",
         detected: agent.detected,
+        supportsProjectScope: agent.supports_project_scope,
         version: agent.installed[scope]?.version,
         skillsOnly:
             agent.managed && agent.installed[scope]?.delivery === "skills",

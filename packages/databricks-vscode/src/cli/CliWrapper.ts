@@ -194,6 +194,8 @@ export interface AiToolsAgent {
     display_name: string;
     managed: boolean;
     detected: boolean;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    supports_project_scope: boolean;
     installed: Partial<Record<AiToolsScope, AiToolsAgentInstallation>>;
 }
 

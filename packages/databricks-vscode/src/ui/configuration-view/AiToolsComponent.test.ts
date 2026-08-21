@@ -51,6 +51,7 @@ function agent(
         displayName,
         type: version !== undefined ? "plugin" : "skills-only",
         detected: version !== undefined,
+        supportsProjectScope: true,
         version,
         skillsOnly,
     };

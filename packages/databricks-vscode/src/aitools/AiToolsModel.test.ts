@@ -7,6 +7,7 @@ function agent(id: string, version?: string): AiToolsAgentStatus {
         displayName: id,
         type: version !== undefined ? "plugin" : "skills-only",
         detected: version !== undefined,
+        supportsProjectScope: true,
         version,
     };
 }

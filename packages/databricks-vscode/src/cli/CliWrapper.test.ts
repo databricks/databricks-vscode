@@ -96,6 +96,7 @@ describe(__filename, function () {
             assert.ok(typeof agent.display_name === "string");
             assert.ok(typeof agent.managed === "boolean");
             assert.ok(typeof agent.detected === "boolean");
+            assert.ok(typeof agent.supports_project_scope === "boolean");
             assert.ok(typeof agent.installed === "object");
         } finally {
             await rm(tmpDir, {recursive: true, force: true});
