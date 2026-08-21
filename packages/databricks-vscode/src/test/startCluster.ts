@@ -33,6 +33,13 @@ export async function startCluster(
             }`
         );
 
+    // One deadline across both the shutdown wait and the start poll, so a slow
+    // TERMINATING phase can't hand the poll a fresh full timeout and let the
+    // total exceed the caller's bound.
+    const deadline = Date.now() + timeout.toMillSeconds().value;
+    const remaining = () =>
+        new Time(Math.max(0, deadline - Date.now()), TimeUnits.milliseconds);
+
     let cluster = await clusterApi.get({cluster_id: clusterId});
     log(cluster);
     if (cluster.state === "RUNNING") {
@@ -42,7 +49,7 @@ export async function startCluster(
     // If it's shutting down, wait for that to finish before restarting it.
     if (cluster.state === "TERMINATING") {
         await retry<void>({
-            timeout,
+            timeout: remaining(),
             retryPolicy: new retries.LinearRetryPolicy(POLL_INTERVAL),
             fn: async () => {
                 cluster = await clusterApi.get({cluster_id: clusterId});
@@ -83,7 +90,7 @@ export async function startCluster(
     // failure (the start was already issued), so fail fast with the cloud-side
     // reason instead of burning the whole timeout.
     await retry<void>({
-        timeout,
+        timeout: remaining(),
         retryPolicy: new retries.LinearRetryPolicy(POLL_INTERVAL),
         fn: async () => {
             cluster = await clusterApi.get({cluster_id: clusterId});
@@ -93,6 +100,7 @@ export async function startCluster(
                     return;
                 case "TERMINATED":
                 case "ERROR":
+                case "UNKNOWN":
                     throw new ClusterStartError(
                         `Cluster ${clusterId} failed to start (${
                             cluster.state

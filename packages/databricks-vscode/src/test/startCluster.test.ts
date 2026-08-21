@@ -142,4 +142,22 @@ describe(__filename, function () {
 
         verifyStarted(1);
     });
+
+    it("fails fast when the cluster is UNKNOWN after start", async () => {
+        whenGet().thenResolve(
+            details("TERMINATED"),
+            details("UNKNOWN", {state_message: "lost the cluster"})
+        );
+        whenStart().thenResolve({});
+
+        const startPromise = startCluster(instance(mockedClient), clusterId);
+        const rejection = assert.rejects(
+            startPromise,
+            (e: Error) =>
+                e instanceof ClusterStartError &&
+                /lost the cluster/.test(e.message)
+        );
+        await fakeTimer.runToLastAsync();
+        await rejection;
+    });
 });
