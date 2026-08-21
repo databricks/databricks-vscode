@@ -8,7 +8,7 @@ import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {openExternal} from "../../utils/urlUtils";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {isUvSetupSuitable} from "../utils/pythonSetupGate";
-import {setupProgressMessage} from "../utils/setupProgress";
+import {withElapsedProgress} from "../utils/setupProgress";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {readVenvProjectName} from "../utils/venvProjectName";
@@ -333,26 +333,14 @@ export function makePythonSetupDeps(
                         title,
                         cancellable: true,
                     },
-                    (progress, token) => {
+                    (progress, token) =>
                         // The CLI streams no progress under `--output json`, so
                         // narrate the run from elapsed time instead of leaving the
                         // notification mute for the ~minute-plus it takes (see
-                        // setupProgress). Tick once a second and stop when the work
-                        // settles, however it settles.
-                        const start = Date.now();
-                        const report = () =>
-                            progress.report({
-                                message: setupProgressMessage(
-                                    Date.now() - start
-                                ),
-                            });
-                        report();
-                        const ticker = setInterval(report, 1000);
-                        return task(
-                            (chunk) => wiring.log.append(chunk),
-                            token
-                        ).finally(() => clearInterval(ticker));
-                    }
+                        // setupProgress).
+                        withElapsedProgress(progress, () =>
+                            task((chunk) => wiring.log.append(chunk), token)
+                        )
                 )
             ),
     };

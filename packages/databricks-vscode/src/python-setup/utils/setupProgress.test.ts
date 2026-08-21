@@ -1,8 +1,10 @@
 import {expect} from "chai";
 import {
     formatElapsed,
+    ProgressTimers,
     setupProgressMessage,
     setupProgressPhase,
+    withElapsedProgress,
 } from "./setupProgress";
 
 describe("formatElapsed", () => {
@@ -27,6 +29,11 @@ describe("formatElapsed", () => {
 
     it("clamps negative input to 0:00", () => {
         expect(formatElapsed(-5000)).to.equal("0:00");
+    });
+
+    it("clamps non-finite input to 0:00", () => {
+        expect(formatElapsed(NaN)).to.equal("0:00");
+        expect(formatElapsed(Infinity)).to.equal("0:00");
     });
 });
 
@@ -70,6 +77,10 @@ describe("setupProgressPhase", () => {
     it("clamps negative input to the first phase", () => {
         expect(setupProgressPhase(-1000)).to.equal("Checking prerequisites…");
     });
+
+    it("clamps non-finite input to the first phase", () => {
+        expect(setupProgressPhase(NaN)).to.equal("Checking prerequisites…");
+    });
 });
 
 describe("setupProgressMessage", () => {
@@ -80,5 +91,100 @@ describe("setupProgressMessage", () => {
         expect(setupProgressMessage(72000)).to.equal(
             "Resolving and syncing packages with uv… (1:12)"
         );
+    });
+});
+
+/** A controllable clock + interval, so ticking and cleanup are deterministic. */
+function fakeTimers() {
+    let now = 0;
+    const intervals: {cb: () => void; cleared: boolean}[] = [];
+    const timers: ProgressTimers = {
+        now: () => now,
+        setInterval: (cb) => {
+            const handle = {cb, cleared: false};
+            intervals.push(handle);
+            return handle;
+        },
+        clearInterval: (handle) => {
+            (handle as {cleared: boolean}).cleared = true;
+        },
+    };
+    return {
+        timers,
+        setNow: (value: number) => (now = value),
+        tick: () => intervals.forEach((h) => !h.cleared && h.cb()),
+        started: () => intervals.length,
+        allCleared: () => intervals.every((h) => h.cleared),
+    };
+}
+
+describe("withElapsedProgress", () => {
+    it("reports the opening line synchronously", () => {
+        const messages: string[] = [];
+        void withElapsedProgress(
+            {report: (v) => messages.push(v.message)},
+            () => new Promise<void>(() => {}), // never settles
+            fakeTimers().timers
+        );
+        expect(messages).to.deep.equal(["Checking prerequisites… (0:00)"]);
+    });
+
+    it("re-reports the current phase and elapsed on each tick", async () => {
+        const fake = fakeTimers();
+        const messages: string[] = [];
+        let finish!: (v: string) => void;
+        const done = withElapsedProgress(
+            {report: (v) => messages.push(v.message)},
+            () => new Promise<string>((res) => (finish = res)),
+            fake.timers
+        );
+
+        // `work` is deferred one microtask (Promise.resolve().then), so let it
+        // start before driving the clock and settling it.
+        await Promise.resolve();
+        fake.setNow(7000);
+        fake.tick();
+        finish("ok");
+        await done;
+
+        expect(messages[0]).to.equal("Checking prerequisites… (0:00)");
+        expect(messages[1]).to.equal(setupProgressMessage(7000));
+    });
+
+    it("resolves with the work's value and stops the ticker", async () => {
+        const fake = fakeTimers();
+        const result = await withElapsedProgress(
+            {report: () => {}},
+            async () => "done",
+            fake.timers
+        );
+        expect(result).to.equal("done");
+        expect(fake.allCleared()).to.equal(true);
+    });
+
+    it("stops the ticker when the work rejects", async () => {
+        const fake = fakeTimers();
+        const err = await withElapsedProgress(
+            {report: () => {}},
+            async () => {
+                throw new Error("boom");
+            },
+            fake.timers
+        ).catch((e) => e as Error);
+        expect((err as Error).message).to.equal("boom");
+        expect(fake.allCleared()).to.equal(true);
+    });
+
+    it("stops the ticker when the work throws synchronously", async () => {
+        const fake = fakeTimers();
+        await withElapsedProgress(
+            {report: () => {}},
+            () => {
+                throw new Error("sync");
+            },
+            fake.timers
+        ).catch(() => {});
+        expect(fake.started()).to.equal(1);
+        expect(fake.allCleared()).to.equal(true);
     });
 });
