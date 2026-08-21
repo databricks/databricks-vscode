@@ -107,6 +107,47 @@ describe(__filename, function () {
         ).never();
     });
 
+    it("start accepts a caller-provided timeout and polls to RUNNING", async () => {
+        when(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/get",
+                    method: "GET",
+                }),
+                anything()
+            )
+        ).thenResolve(
+            {...testClusterDetails, state: "TERMINATED"},
+            {...testClusterDetails, state: "TERMINATED"},
+            {...testClusterDetails, state: "PENDING"},
+            {...testClusterDetails, state: "RUNNING"}
+        );
+        when(
+            mockedClient.request(
+                objectContaining({
+                    path: "/api/2.1/clusters/start",
+                    method: "POST",
+                }),
+                anything()
+            )
+        ).thenResolve({});
+
+        await mockedCluster.refresh();
+        assert.equal(mockedCluster.state, "TERMINATED");
+
+        // Third arg is the new caller-provided timeout: start() must accept it
+        // and still poll a stopped cluster through to RUNNING.
+        const startPromise = mockedCluster.start(
+            undefined,
+            () => {},
+            new Time(60, TimeUnits.minutes)
+        );
+        await fakeTimer.runToLastAsync();
+        await startPromise;
+
+        assert.equal(mockedCluster.state, "RUNNING");
+    });
+
     it("should terminate cluster", async () => {
         when(
             mockedClient.request(
