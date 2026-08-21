@@ -1900,6 +1900,7 @@
         "lodash": "^4.17.21",
         "markdown-it": "^14.2.0",
         "minimatch": "^10.0.1",
+        "shell-env": "^4.0.3",
         "shell-quote": "^1.8.4",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
