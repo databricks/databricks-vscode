@@ -1,3 +1,19 @@
+# Release: v2.14.1
+
+## packages/databricks-vscode
+
+## (2026-08-21)
+
+-   test: set a 5s repo-wide unit-suite timeout floor (#2135) ([fbafbbe](https://github.com/databricks/databricks-vscode/commit/fbafbbe)), closes [#2135](https://github.com/databricks/databricks-vscode/issues/2135) [#2134](https://github.com/databricks/databricks-vscode/issues/2134)
+-   test(e2e): defeat template-filter pollution in the bundle_init wizard (#2123) ([5a57498](https://github.com/databricks/databricks-vscode/commit/5a57498)), closes [#2123](https://github.com/databricks/databricks-vscode/issues/2123) [#2034](https://github.com/databricks/databricks-vscode/issues/2034)
+-   feat(python-setup): narrate live progress during environment setup (#2139) ([f606d0a](https://github.com/databricks/databricks-vscode/commit/f606d0a)), closes [#2139](https://github.com/databricks/databricks-vscode/issues/2139)
+-   feat(ssh): pre-check the host CLI before starting the SSH tunnel (#2127) ([5af58f2](https://github.com/databricks/databricks-vscode/commit/5af58f2)), closes [#2127](https://github.com/databricks/databricks-vscode/issues/2127) [1#diff-c1b4d8aeff4272f092f04f6ffbccb9c3d97f0f96c549d129b915dc1f9d2aba57](https://github.com/1/issues/diff-c1b4d8aeff4272f092f04f6ffbccb9c3d97f0f96c549d129b915dc1f9d2aba57)
+-   chore(deps): bump lodash from 4.17.21 to 4.18.1 (#2047) ([ab55ac4](https://github.com/databricks/databricks-vscode/commit/ab55ac4)), closes [#2047](https://github.com/databricks/databricks-vscode/issues/2047) [/redirect.github.com/lodash/lodash/issues/6167#issuecomment-4165269769](https://github.com//redirect.github.com/lodash/lodash/issues/6167/issues/issuecomment-4165269769) [lodash/lodash#6167](https://github.com/lodash/lodash/issues/6167) [#6099](https://github.com/databricks/databricks-vscode/issues/6099) [#6115](https://github.com/databricks/databricks-vscode/issues/6115) [#6090](https://github.com/databricks/databricks-vscode/issues/6090) [#6177](https://github.com/databricks/databricks-vscode/issues/6177) [#6170](https://github.com/databricks/databricks-vscode/issues/6170) [#6165](https://github.com/databricks/databricks-vscode/issues/6165) [#6161](https://github.com/databricks/databricks-vscode/issues/6161) [#6153](https://github.com/databricks/databricks-vscode/issues/6153) [#6137](https://github.com/databricks/databricks-vscode/issues/6137)
+-   chore(deps): bump minimatch from 10.0.1 to 10.2.3 (#2059) ([80fef83](https://github.com/databricks/databricks-vscode/commit/80fef83)), closes [#2059](https://github.com/databricks/databricks-vscode/issues/2059)
+-   chore(deps): bump shell-quote from 1.8.4 to 1.9.0 (#2041) ([59c1dbb](https://github.com/databricks/databricks-vscode/commit/59c1dbb)), closes [#2041](https://github.com/databricks/databricks-vscode/issues/2041)
+-   Avoid duplicate profile section creation in .databrickscfg during OAuth setup (#2133) ([6e1c472](https://github.com/databricks/databricks-vscode/commit/6e1c472)), closes [#2133](https://github.com/databricks/databricks-vscode/issues/2133) [#2129](https://github.com/databricks/databricks-vscode/issues/2129)
+-   fix(python-setup): show an info toast on a successful setup that had warnings (#2138) ([2acdc44](https://github.com/databricks/databricks-vscode/commit/2acdc44)), closes [#2138](https://github.com/databricks/databricks-vscode/issues/2138)
+
 # Release: v2.14.0
 
 ## packages/databricks-vscode
