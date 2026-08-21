@@ -100,16 +100,24 @@ export async function startCluster(
                     return;
                 case "TERMINATED":
                 case "ERROR":
-                case "UNKNOWN":
+                case "UNKNOWN": {
+                    // state_message is a string; termination_reason is an
+                    // object — stringify only the latter so a plain message
+                    // isn't wrapped in quotes.
+                    const reason =
+                        cluster.state_message ??
+                        cluster.termination_reason ??
+                        "unknown reason";
                     throw new ClusterStartError(
                         `Cluster ${clusterId} failed to start (${
                             cluster.state
-                        }): ${JSON.stringify(
-                            cluster.state_message ??
-                                cluster.termination_reason ??
-                                "unknown reason"
-                        )}`
+                        }): ${
+                            typeof reason === "string"
+                                ? reason
+                                : JSON.stringify(reason)
+                        }`
                     );
+                }
                 default:
                     throw new retries.RetriableError();
             }
