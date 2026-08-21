@@ -1,5 +1,14 @@
 import {expect} from "chai";
-import {isTransientFileLockError, retryOnTransientError} from "./retry";
+import path from "node:path";
+import {
+    isTransientFileLockError,
+    retryOnTransientError,
+    specFileRetriesForPlatform,
+    specFileRetriesDelayForPlatform,
+    shouldPreserveFailedAttemptLogs,
+    failedAttemptLogRenames,
+    formatRecoveredSpecsReport,
+} from "./retry";
 
 // A pip failure Node's execFile surfaces: `.message` is only "Command failed:
 // <cmd>", while the diagnostic (the WinError line) lands in `.stderr`. The
@@ -198,6 +207,129 @@ describe("retry", () => {
             expect(seen).to.deep.equal([
                 {attempt: 1, message: "fail 1"},
                 {attempt: 2, message: "fail 2"},
+            ]);
+        });
+    });
+
+    describe("specFileRetriesForPlatform", () => {
+        it("retries a whole spec once on Windows", () => {
+            expect(specFileRetriesForPlatform("win32")).to.equal(1);
+        });
+
+        it("does not retry on Linux", () => {
+            expect(specFileRetriesForPlatform("linux")).to.equal(0);
+        });
+
+        it("does not retry on macOS", () => {
+            expect(specFileRetriesForPlatform("darwin")).to.equal(0);
+        });
+    });
+
+    describe("specFileRetriesDelayForPlatform", () => {
+        it("waits before a retry on Windows", () => {
+            expect(specFileRetriesDelayForPlatform("win32")).to.equal(5);
+        });
+
+        it("does not wait on Linux or macOS", () => {
+            expect(specFileRetriesDelayForPlatform("linux")).to.equal(0);
+            expect(specFileRetriesDelayForPlatform("darwin")).to.equal(0);
+        });
+    });
+
+    describe("shouldPreserveFailedAttemptLogs", () => {
+        it("preserves when a failed attempt will be retried", () => {
+            expect(shouldPreserveFailedAttemptLogs(1, 1)).to.equal(true);
+        });
+
+        it("does not preserve a passing attempt", () => {
+            expect(shouldPreserveFailedAttemptLogs(0, 1)).to.equal(false);
+        });
+
+        it("does not preserve the final failed attempt (no retries left)", () => {
+            expect(shouldPreserveFailedAttemptLogs(1, 0)).to.equal(false);
+        });
+    });
+
+    describe("failedAttemptLogRenames", () => {
+        // wdio names the runner log after the spec basename when a spec is
+        // present (@wdio/local-runner: `${specBaseName}-${cid}.log`), stripping
+        // only the final extension — so `bundle_init.e2e.ts` -> `bundle_init.e2e`.
+        // The chromedriver log keeps the `wdio-<cid>-` prefix (@wdio/utils).
+        it("parks the spec-named runner log and the chromedriver log", () => {
+            expect(
+                failedAttemptLogRenames(
+                    "logs",
+                    "0-3",
+                    "/x/y/bundle_init.e2e.ts"
+                )
+            ).to.deep.equal([
+                {
+                    from: path.join("logs", "bundle_init.e2e-0-3.log"),
+                    to: path.join(
+                        "logs",
+                        "bundle_init.e2e-0-3-failed-attempt.log"
+                    ),
+                },
+                {
+                    from: path.join("logs", "wdio-0-3-chromedriver.log"),
+                    to: path.join(
+                        "logs",
+                        "wdio-0-3-chromedriver-failed-attempt.log"
+                    ),
+                },
+            ]);
+        });
+
+        it("derives the spec basename from a file:// URL too", () => {
+            expect(
+                failedAttemptLogRenames(
+                    "logs",
+                    "0-0",
+                    "file:///C:/a/ext/src/test/e2e/auth.e2e.ts"
+                )[0].from
+            ).to.equal(path.join("logs", "auth.e2e-0-0.log"));
+        });
+    });
+
+    describe("formatRecoveredSpecsReport", () => {
+        it("returns no lines when nothing recovered", () => {
+            expect(formatRecoveredSpecsReport([], false)).to.deep.equal([]);
+            expect(formatRecoveredSpecsReport([], true)).to.deep.equal([]);
+        });
+
+        it("lists recovered specs under a header without CI annotations", () => {
+            expect(
+                formatRecoveredSpecsReport(["a.e2e.ts", "b.e2e.ts"], false)
+            ).to.deep.equal([
+                "⚠️  PASSED ONLY ON RETRY (flaky — investigate):",
+                "  - a.e2e.ts",
+                "  - b.e2e.ts",
+            ]);
+        });
+
+        it("adds a ::warning:: workflow command per spec under GitHub Actions", () => {
+            expect(
+                formatRecoveredSpecsReport(["a.e2e.ts"], true)
+            ).to.deep.equal([
+                "⚠️  PASSED ONLY ON RETRY (flaky — investigate):",
+                "  - a.e2e.ts",
+                "::warning::PASSED ONLY ON RETRY: a.e2e.ts",
+            ]);
+        });
+
+        it("shows the basename for an absolute path or file:// URL", () => {
+            expect(
+                formatRecoveredSpecsReport(
+                    [
+                        "file:///C:/a/eng-dev-ecosystem/ext/src/test/e2e/bundle_init.e2e.ts",
+                        "/home/runner/work/src/test/e2e/auth.e2e.ts",
+                    ],
+                    false
+                )
+            ).to.deep.equal([
+                "⚠️  PASSED ONLY ON RETRY (flaky — investigate):",
+                "  - bundle_init.e2e.ts",
+                "  - auth.e2e.ts",
             ]);
         });
     });

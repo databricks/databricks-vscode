@@ -290,13 +290,15 @@ export function makePythonSetupDeps(
             wiring.log.show();
             // A standard (non-modal) notification, not a modal dialog: the
             // outcome is informational, not something to interrupt the user
-            // for. A run with warnings raises a warning toast so it doesn't
-            // read as an unqualified success; the warnings are in the details.
-            const {message, isWarning} = formatSetupNotification(result);
+            // for. This path runs only on a successful setup, so it stays an
+            // info toast even when the run carried warnings — the count is in
+            // the message and the warnings themselves are in the details.
+            const message = formatSetupNotification(result);
             const viewDetails = "View Details";
-            const choice = isWarning
-                ? await window.showWarningMessage(message, viewDetails)
-                : await window.showInformationMessage(message, viewDetails);
+            const choice = await window.showInformationMessage(
+                message,
+                viewDetails
+            );
             if (choice === viewDetails) {
                 wiring.log.show();
             }
