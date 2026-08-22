@@ -420,17 +420,30 @@ export async function openFile(fileName: string) {
     });
 }
 
-export async function executeCommandWhenAvailable(command: string) {
+export async function executeCommandWhenAvailable(
+    command: string,
+    timeoutMs = 60_000
+) {
     const workbench = await driver.getWorkbench();
-    return browser.waitUntil(async () => {
-        try {
-            await workbench.executeQuickPick(command);
-            return true;
-        } catch (e) {
-            console.log(`Failed to execute ${command}:`, e);
-            return false;
+    // Each failed attempt spends several seconds in the quick pick before
+    // throwing "Command not found", so the default 10s waitforTimeout only
+    // allows two tries. That is not enough on the Windows shard, where the
+    // extension can still be activating when the test starts.
+    return browser.waitUntil(
+        async () => {
+            try {
+                await workbench.executeQuickPick(command);
+                return true;
+            } catch (e) {
+                console.log(`Failed to execute ${command}:`, e);
+                return false;
+            }
+        },
+        {
+            timeout: timeoutMs,
+            timeoutMsg: `Command "${command}" did not become available`,
         }
-    });
+    );
 }
 
 export async function waitForNotification(

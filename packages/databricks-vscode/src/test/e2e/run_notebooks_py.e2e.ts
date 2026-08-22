@@ -17,7 +17,9 @@ import {
 // likely because the tests open webviews which are heavy on resources.
 describe("Run py notebooks", async function () {
     let projectDir: string;
-    this.timeout(3 * 60 * 1000);
+    // See the matching comment in run_notebooks_ipynb.e2e.ts: the same waits
+    // apply here, so this suite needs the same larger per-test budget.
+    this.timeout(6 * 60 * 1000);
 
     before(async () => {
         assert(process.env.WORKSPACE_PATH);
