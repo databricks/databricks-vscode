@@ -8,6 +8,7 @@ import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {openExternal} from "../../utils/urlUtils";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {isUvSetupSuitable} from "../utils/pythonSetupGate";
+import {withElapsedProgress} from "../utils/setupProgress";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {readVenvProjectName} from "../utils/venvProjectName";
@@ -332,8 +333,14 @@ export function makePythonSetupDeps(
                         title,
                         cancellable: true,
                     },
-                    (_progress, token) =>
-                        task((chunk) => wiring.log.append(chunk), token)
+                    (progress, token) =>
+                        // The CLI streams no progress under `--output json`, so
+                        // narrate the run from elapsed time instead of leaving the
+                        // notification mute for the ~minute-plus it takes (see
+                        // setupProgress).
+                        withElapsedProgress(progress, () =>
+                            task((chunk) => wiring.log.append(chunk), token)
+                        )
                 )
             ),
     };
