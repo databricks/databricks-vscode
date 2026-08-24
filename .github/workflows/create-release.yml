@@ -41,7 +41,7 @@ jobs:
           tmpfile=$(mktemp /tmp/commit-message.XXXXX)
           cat $CHANGELOG_FILE | awk 'BEGIN{C=0} $0 ~ /^# Release: v.*/ && C==1{C=2} $0 ~ /^# Release: v'"$RELEASE_VERSION"'.*/{C=1} C==1 {print $0}' > $tmpfile
           cat $tmpfile >> $GITHUB_STEP_SUMMARY
-          gh release create release-v$RELEASE_VERSION ${{ steps.download.outputs.download-path }}/databricks*/*.vsix \
+          gh release create release-v$RELEASE_VERSION ${{ steps.download.outputs.download-path }}/databricks*.vsix \
               -d --target main -t "$TITLE" -F $tmpfile
 
         env:
