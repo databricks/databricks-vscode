@@ -265,27 +265,78 @@ describe("cliProcess.run", () => {
         expect(result.cancelled).to.equal(true);
     });
 
-    it("settles promptly on cancel even if the process never closes", async () => {
-        // A child that ignores termination and never emits "close". The run must
-        // still settle (as cancelled) rather than hang forever waiting on close.
-        const neverClosingSpawn: SpawnFn = (() => {
-            const child: any = new EventEmitter();
-            child.stdout = new EventEmitter();
-            child.stderr = new EventEmitter();
-            child.stdin = {end: () => {}};
-            child.pid = 4242;
-            child.kill = () => {}; // ignores the signal, never closes
-            return child;
-        }) as unknown as SpawnFn;
+    // A child that ignores the graceful SIGTERM (its `kill` does nothing) but
+    // exposes a `forceClose` we invoke to simulate SIGKILL taking effect.
+    function ignoresSigtermSpawn(): {spawn: SpawnFn; forceClose: () => void} {
+        const child: any = new EventEmitter();
+        child.stdout = new EventEmitter();
+        child.stderr = new EventEmitter();
+        child.stdin = {end: () => {}};
+        child.pid = 4242;
+        child.kill = () => {}; // ignores the graceful signal, never closes
+        return {
+            spawn: (() => child) as unknown as SpawnFn,
+            forceClose: () => child.emit("close", null),
+        };
+    }
+
+    it("escalates to a force kill when the graceful terminate is ignored, then settles on close", async () => {
+        const {spawn, forceClose} = ignoresSigtermSpawn();
         const {token} = nextTickToken();
-        let terminated = false;
+        let softTerminated = false;
+        let forceTerminated = false;
         const result = await run("/fake/cli", [], {
             token,
-            spawnFn: neverClosingSpawn,
-            terminateFn: () => (terminated = true),
+            spawnFn: spawn,
+            killGraceMs: 5,
+            terminateFn: () => (softTerminated = true),
+            forceTerminateFn: () => {
+                forceTerminated = true;
+                forceClose(); // SIGKILL lands: the process finally closes
+            },
+        });
+        expect(softTerminated).to.equal(true);
+        expect(forceTerminated).to.equal(true);
+        expect(result.cancelled).to.equal(true);
+    });
+
+    it("does not escalate to a force kill when the graceful terminate closes the process", async () => {
+        const {token} = nextTickToken();
+        let forceTerminated = false;
+        const result = await run("/fake/cli", [], {
+            token,
+            spawnFn: hangingSpawn, // its kill() emits "close"
+            killGraceMs: 5,
+            terminateFn: (child) => (child as any).kill(),
+            forceTerminateFn: () => (forceTerminated = true),
         });
         expect(result.cancelled).to.equal(true);
-        expect(terminated).to.equal(true);
+        expect(forceTerminated).to.equal(false);
+    });
+
+    it("disposes the cancellation subscription even when the token fires synchronously", async () => {
+        // A token whose callback runs synchronously during subscription: the run
+        // can settle before the subscription handle is even assigned, so the
+        // disposal must still happen.
+        let disposed = false;
+        const syncToken = {
+            isCancellationRequested: false,
+            onCancellationRequested: (cb: () => void) => {
+                cb();
+                return {
+                    dispose() {
+                        disposed = true;
+                    },
+                };
+            },
+        };
+        const result = await run("/fake/cli", [], {
+            token: syncToken,
+            spawnFn: hangingSpawn,
+            terminateFn: (child) => (child as any).kill(),
+        });
+        expect(result.cancelled).to.equal(true);
+        expect(disposed).to.equal(true);
     });
 
     it("terminates the process tree when a stdout stream error occurs", async () => {
@@ -378,6 +429,12 @@ describe("terminateProcessTree", () => {
         terminateProcessTree(child, prims);
         expect(calls.groupKill).to.deep.equal([[-4321, "SIGTERM"]]);
         expect(calls.directKill).to.be.empty;
+    });
+
+    it("signals the process group with the given signal (SIGKILL escalation)", () => {
+        const {calls, prims, child} = harness("linux");
+        terminateProcessTree(child, prims, "SIGKILL");
+        expect(calls.groupKill).to.deep.equal([[-4321, "SIGKILL"]]);
     });
 
     it("falls back to a direct child kill when the group is already gone", () => {

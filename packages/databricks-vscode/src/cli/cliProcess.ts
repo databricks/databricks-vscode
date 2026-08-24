@@ -62,15 +62,16 @@ const realTerminatePrimitives: TerminatePrimitives = {
 /**
  * Kill the whole process tree, injectable primitives and all. On Windows a
  * plain `SIGTERM` doesn't reach a CLI spawned via `cmd.exe`, so force-kill the
- * tree with `taskkill /T /F`; on POSIX the child is a process-group leader
- * (spawned detached), so signalling the negated pid tears down the whole group
- * — including any grandchild a direct-child `SIGTERM` would orphan (e.g.
- * `terraform`, `uv`) — with a fallback to a direct kill if the group is
- * already gone.
+ * tree with `taskkill /T /F` (always forceful — `signal` is moot there); on
+ * POSIX the child is a process-group leader (spawned detached), so signalling
+ * the negated pid tears down the whole group — including any grandchild a
+ * direct-child signal would orphan (e.g. `terraform`, `uv`) — with a fallback
+ * to a direct kill if the group is already gone.
  */
 export function terminateProcessTree(
     child: ChildProcessWithoutNullStreams,
-    prims: TerminatePrimitives = realTerminatePrimitives
+    prims: TerminatePrimitives = realTerminatePrimitives,
+    signal: NodeJS.Signals = "SIGTERM"
 ): void {
     const pid = child.pid;
     if (prims.platform === "win32") {
@@ -80,16 +81,28 @@ export function terminateProcessTree(
         }
     } else if (pid) {
         try {
-            prims.kill(-pid, "SIGTERM");
+            prims.kill(-pid, signal);
             return;
         } catch {
             // Group already gone / not a leader — fall through to a direct kill.
         }
     }
-    child.kill("SIGTERM");
+    child.kill(signal);
 }
 
+/** Graceful terminate (SIGTERM) — the first attempt on cancellation. */
 const defaultTerminate: TerminateFn = (child) => terminateProcessTree(child);
+
+/** Forceful terminate (SIGKILL) — the escalation when the graceful one is ignored. */
+const defaultForceTerminate: TerminateFn = (child) =>
+    terminateProcessTree(child, realTerminatePrimitives, "SIGKILL");
+
+/**
+ * How long to wait after the graceful `SIGTERM` before escalating to `SIGKILL`
+ * on cancellation. Bounds how long a cancel can take when a child ignores the
+ * first signal, so the run always settles.
+ */
+const DEFAULT_KILL_GRACE_MS = 5000;
 
 /**
  * Escape a command for a shell we hand it to. On Windows we route through
@@ -159,10 +172,17 @@ export interface CliRunOptions {
     onStdout?: (chunk: string) => void;
     /** Receives decoded stderr chunks as they arrive (e.g. the "Show Logs" channel). */
     onStderr?: (chunk: string) => void;
+    /**
+     * Grace period (ms) between the graceful `SIGTERM` on cancel and the
+     * `SIGKILL` escalation. Defaults to {@link DEFAULT_KILL_GRACE_MS}.
+     */
+    killGraceMs?: number;
     /** Injectable spawn seam (defaults to Node's `spawn`). */
     spawnFn?: SpawnFn;
-    /** Injectable process-tree terminator (defaults to killing the whole tree). */
+    /** Injectable graceful process-tree terminator (SIGTERM; the first attempt). */
     terminateFn?: TerminateFn;
+    /** Injectable forceful process-tree terminator (SIGKILL; the escalation). */
+    forceTerminateFn?: TerminateFn;
 }
 
 /**
@@ -184,6 +204,8 @@ export function run(
 ): Promise<CliRunResult> {
     const spawnFn = options.spawnFn ?? (nodeSpawn as unknown as SpawnFn);
     const terminateFn = options.terminateFn ?? defaultTerminate;
+    const forceTerminateFn = options.forceTerminateFn ?? defaultForceTerminate;
+    const killGraceMs = options.killGraceMs ?? DEFAULT_KILL_GRACE_MS;
     const {
         cmd,
         args: spawnArgs,
@@ -225,24 +247,28 @@ export function run(
         const stderrStreamDecoder = new StringDecoder("utf8");
         let settled = false;
         let cancelled = false;
-        // Declared before `finish` (which disposes it) so a token that fires
+        // Declared before `finish` (which touches them) so a token that fires
         // synchronously on subscription can't hit a temporal-dead-zone error.
         let cancelSub: {dispose(): void} | undefined;
+        let forceKillTimer: NodeJS.Timeout | undefined;
 
         const finish = (fn: () => void) => {
             if (settled) {
                 return;
             }
             settled = true;
+            if (forceKillTimer) {
+                clearTimeout(forceKillTimer);
+            }
             cancelSub?.dispose();
             fn();
         };
 
         // Best-effort terminate that can never throw out of an event handler
         // (e.g. the child is already gone).
-        const safeTerminate = () => {
+        const safeTerminate = (fn: TerminateFn) => {
             try {
-                terminateFn(child);
+                fn(child);
             } catch {
                 // ignore
             }
@@ -274,15 +300,24 @@ export function run(
 
         const requestCancel = () => {
             cancelled = true;
-            safeTerminate();
-            // Settle immediately as cancelled rather than waiting for "close":
-            // a process that ignores the signal (or a failed taskkill) must not
-            // leave the operation pending forever. The tree has been signalled;
-            // any late "close" is ignored once settled.
-            settleResult(null);
+            // Graceful first, then escalate: signal the tree with SIGTERM and
+            // wait for "close" (so the result reflects a confirmed teardown, and
+            // the capture listeners stop when the process actually exits). If the
+            // child ignores SIGTERM within the grace window, force-kill the tree
+            // with SIGKILL — which it cannot ignore — so the run always settles
+            // and never leaves a detached CLI alive after the caller moves on.
+            safeTerminate(terminateFn);
+            if (!settled) {
+                forceKillTimer = setTimeout(() => {
+                    if (!settled) {
+                        safeTerminate(forceTerminateFn);
+                    }
+                }, killGraceMs);
+                // Don't let the grace timer keep the event loop (or the test
+                // runner) alive on its own.
+                forceKillTimer.unref?.();
+            }
         };
-        cancelSub = options.token?.onCancellationRequested(requestCancel);
-
         child.stdout.on("data", (b: Buffer) => {
             stdoutChunks.push(b);
             if (options.onStdout) {
@@ -309,7 +344,7 @@ export function run(
         // keeps running (and mutating state) after the caller sees a failure.
         const rejectFromStreamError = (err: Error) =>
             finish(() => {
-                safeTerminate();
+                safeTerminate(terminateFn);
                 reject(err);
             });
         child.stdout.on("error", rejectFromStreamError);
@@ -319,5 +354,16 @@ export function run(
         child.on("error", (err: Error) => finish(() => reject(err)));
 
         child.on("close", (code) => settleResult(code));
+
+        // Subscribe only after the child listeners (especially "close") are
+        // attached: an already-cancelled token can fire `requestCancel`
+        // synchronously here, and its terminate may make the child close at
+        // once — which would be missed if "close" weren't wired up yet.
+        cancelSub = options.token?.onCancellationRequested(requestCancel);
+        // If the token fired synchronously, the run already settled before
+        // `cancelSub` was assigned, so `finish` couldn't dispose it — do so now.
+        if (settled) {
+            cancelSub?.dispose();
+        }
     });
 }
