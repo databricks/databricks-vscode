@@ -11,7 +11,6 @@ import {
     CliWrapper,
     ProcessError,
     getSshConnectCommand,
-    waitForProcess,
 } from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
@@ -23,8 +22,6 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {isMatch} from "lodash";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {writeFileSync} from "fs";
-import {ChildProcess, ChildProcessWithoutNullStreams} from "child_process";
-import {Readable} from "stream";
 
 const execFile = promisify(execFileCb);
 // Mirror CliWrapper.cliPath: the bundled binary is `databricks.exe` on Windows.
@@ -494,31 +491,6 @@ describe("cancellableExecFile closeStdin", () => {
             tokenSource.dispose();
             await settled;
         }
-    });
-});
-
-describe("waitForProcess", () => {
-    it("should return correctly formatted stdout and stderr", async () => {
-        const process = new ChildProcess();
-        const stdoutChunks = [`{"hello": "wor`, `ld"}`];
-        const stderrChunks = [`{"error": "no`, `oo"}`];
-        process.stdout = new Readable({
-            read() {
-                this.push(stdoutChunks.shift());
-            },
-        });
-        process.stderr = new Readable({
-            read() {
-                this.push(stderrChunks.shift());
-            },
-        });
-        const waitPromise = waitForProcess(
-            process as ChildProcessWithoutNullStreams
-        );
-        process.emit("close", 0);
-        const {stdout, stderr} = await waitPromise;
-        assert.equal(stdout, `{"hello": "world"}`);
-        assert.equal(stderr, `{"error": "nooo"}`);
     });
 });
 
