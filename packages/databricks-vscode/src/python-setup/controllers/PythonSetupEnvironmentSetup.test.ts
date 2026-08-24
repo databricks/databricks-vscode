@@ -11,8 +11,11 @@ import {
 import {PythonSetupResult} from "../models/PythonSetupResult";
 import {
     SUCCESS_REAL_RUN,
+    SUCCESS_REAL_RUN_WITH_WARNINGS,
     ERROR_NO_TARGET,
+    ERROR_USAGE,
 } from "../models/fixtures/setupLocalResults";
+import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     PythonSetupAttempt,
@@ -112,7 +115,8 @@ function makeDeps(
     return {
         cli: makeCli(),
         projectRoot: () => "/proj",
-        // Default seams model a connected serverless session that opted in.
+        // Default seams model a uv-suitable project with a connected serverless
+        // session.
         isVisible: async () => true,
         resolveCompute: async () => ({
             status: "ok",
@@ -308,6 +312,106 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(shownErrors[0]).to.contain(
             "Select a cluster or serverless compute"
         );
+    });
+
+    it("passes the CLI's raw failure detail to the log, not just the popup copy", async () => {
+        const shown: {message: string; detail?: string}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_NO_TARGET}),
+                showError: async (message, detail) => {
+                    shown.push({message, detail});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        // The popup stays the concise mapped copy (no raw CLI flag noise)...
+        expect(shown[0].message).to.not.contain("--serverless-version");
+        // ...while the detail carries the CLI's own explanation plus the
+        // phase/code, so the "Show Logs" button leads somewhere useful.
+        expect(shown[0].detail).to.contain("No compute target is selected");
+        expect(shown[0].detail).to.contain("E_NO_TARGET");
+    });
+
+    it("offers an Install uv action when the CLI reports uv is missing", async () => {
+        const shown: {
+            message: string;
+            action?: PythonSetupErrorAction;
+        }[] = [];
+        const uvMissing: PythonSetupResult = {
+            schemaVersion: 1,
+            command: "environments setup-local",
+            ok: false,
+            mode: "default",
+            dryRun: false,
+            greenfield: false,
+            phases: [],
+            warnings: [],
+            durationMs: 0,
+            error: {
+                code: "E_UV_MISSING",
+                failurePhase: "preflight",
+                message: "uv not found on PATH",
+                diskMutated: false,
+            },
+        };
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: uvMissing}),
+                showError: async (message, _detail, action) => {
+                    shown.push({message, action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].action).to.deep.equal({
+            label: "Install uv",
+            url: "https://docs.astral.sh/uv/getting-started/installation/",
+        });
+    });
+
+    it("offers the mapped documentation action for a doc-linked failure", async () => {
+        const shown: {action?: PythonSetupErrorAction}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_NO_TARGET}),
+                showError: async (_message, _detail, action) => {
+                    shown.push({action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].action).to.deep.equal({
+            label: "Configure compute",
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster",
+        });
+    });
+
+    it("passes no remediation action for a message-only failure", async () => {
+        // E_USAGE has no doc that reliably helps, so it surfaces the message alone.
+        const shown: {action?: PythonSetupErrorAction}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_USAGE}),
+                showError: async (_message, _detail, action) => {
+                    shown.push({action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].action).to.equal(undefined);
     });
 
     it("surfaces the raw error message when the CLI run rejects", async () => {
@@ -537,6 +641,29 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(setup.ready).to.equal(true);
     });
 
+    it("clears the guard after the work even if the notification stays open", async () => {
+        // Model a user who leaves the success toast up (never dismisses it):
+        // showSuccess never resolves. The re-entrancy guard must release when the
+        // mutating work (CLI run + adopt + state) finishes, NOT when the toast is
+        // dismissed -- otherwise the entry stays wedged (every later click returns
+        // the still-pending promise) until the window is reloaded.
+        const cli = makeCli({resolve: SUCCESS_REAL_RUN});
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                showSuccess: () => new Promise<void>(() => {}),
+            })
+        );
+
+        // Resolves once the work is done, despite the still-open notification.
+        await setup.setup();
+        expect(cli.calls).to.have.length(1);
+
+        // A later click starts a fresh run rather than returning the wedged one.
+        await setup.setup();
+        expect(cli.calls).to.have.length(2);
+    });
+
     it("surfaces an error and stays not-ready when interpreter adoption fails", async () => {
         const shownErrors: string[] = [];
         const saved: unknown[] = [];
@@ -590,10 +717,59 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 mode: "default",
                 // hasPyprojectToml defaults to true, so this is not greenfield.
                 isGreenfield: false,
+                // First run for the project: not yet ready.
+                trigger: "initial",
             },
         ]);
         expect(telemetry.results).to.deep.equal([
-            {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},
+            {
+                outcome: "ok",
+                envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN.warnings,
+            },
+        ]);
+    });
+
+    it("threads the CLI's merge warnings into the ok result", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                cli: makeCli({resolve: SUCCESS_REAL_RUN_WITH_WARNINGS}),
+            })
+        );
+
+        await setup.setup();
+
+        // The report carries the CLI's warnings verbatim; the count and the
+        // categorical histogram are derived in the telemetry layer, not here.
+        expect(telemetry.results).to.deep.equal([
+            {
+                outcome: "ok",
+                envKey: SUCCESS_REAL_RUN_WITH_WARNINGS.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN_WITH_WARNINGS.warnings,
+            },
+        ]);
+    });
+
+    it("labels a run over an already-ready project as a rerun", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                getDetection: async () => detection("uv", ["uv"]),
+            })
+        );
+
+        // First run provisions the env and marks the project ready.
+        await setup.setup();
+        expect(setup.ready).to.equal(true);
+        // Second run over the same (now ready) project is a re-run.
+        await setup.setup();
+
+        expect(telemetry.attempts.map((a) => a.trigger)).to.deep.equal([
+            "initial",
+            "rerun",
         ]);
     });
 
@@ -716,8 +892,43 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 errorCode: ERROR_NO_TARGET.error!.code,
                 envKey: ERROR_NO_TARGET.compute?.envKey,
                 diskMutated: ERROR_NO_TARGET.error!.diskMutated,
+                // E_NO_TARGET is not one of the package-fetching phases.
+                indexUnreachable: false,
+                warnings: ERROR_NO_TARGET.warnings,
             },
         ]);
+    });
+
+    it("flags indexUnreachable when uv cannot reach the package index", async () => {
+        const telemetry = makeTelemetryRecorder();
+        // A provision failure whose message is uv's connection-refused signature
+        // (blocked pypi.org needing a proxy), not a dependency conflict.
+        const blockedIndex: PythonSetupResult = {
+            ...ERROR_NO_TARGET,
+            phases: [
+                {phase: "preflight", status: "ok"},
+                {phase: "resolve", status: "ok"},
+                {phase: "fetch", status: "ok"},
+                {phase: "merge", status: "ok"},
+                {phase: "provision", status: "error"},
+                {phase: "validate", status: "pending"},
+            ],
+            error: {
+                code: "E_PROVISION",
+                failurePhase: "provision",
+                message:
+                    "error: Failed to fetch: `https://pypi.org/simple/ipykernel/`\n" +
+                    "  Caused by: tcp connect error: Connection refused (os error 61)",
+                diskMutated: false,
+            },
+        };
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({...telemetry, cli: makeCli({resolve: blockedIndex})})
+        );
+
+        await setup.setup();
+
+        expect(telemetry.results[0].indexUnreachable).to.equal(true);
     });
 
     it('reports the synthetic "adopt" phase when interpreter adoption fails', async () => {
@@ -740,6 +951,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 outcome: "failed",
                 failurePhase: "adopt",
                 envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN.warnings,
             },
         ]);
     });
@@ -902,6 +1114,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN.warnings,
             },
         ]);
     });
@@ -999,7 +1212,11 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         // the same way), and this project has a pyproject.toml.
         expect(telemetry.attempts[0].isGreenfield).to.equal(false);
         expect(telemetry.results).to.deep.equal([
-            {outcome: "ok", envKey: SUCCESS_REAL_RUN.compute!.envKey},
+            {
+                outcome: "ok",
+                envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                warnings: SUCCESS_REAL_RUN.warnings,
+            },
         ]);
     });
 });

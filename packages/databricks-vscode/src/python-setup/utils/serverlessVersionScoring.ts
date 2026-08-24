@@ -16,6 +16,7 @@
 
 /** Where a candidate serverless version was observed. */
 export type VersionSource =
+    | "pyproject"
     | "bundleYaml"
     | "notebook"
     | "workspaceDefault"
@@ -36,13 +37,16 @@ export interface VersionObservation {
 }
 
 /**
- * Per-source weights, high → low: an explicit project declaration (bundle YAML)
- * is the strongest signal, a notebook's recorded environment next, the
- * workspace default weaker, and the built-in fallback weakest so it only ever
- * wins when nothing else was observed.
+ * Per-source weights, high → low: the `pyproject.toml`
+ * `[tool.databricks.environment]` declaration is the strongest signal because it
+ * is an explicit user choice (the CLI writes it during setup-local), so it must
+ * outrank the heuristics; a bundle YAML declaration next, a notebook's recorded
+ * environment after that, the workspace default weaker, and the built-in
+ * fallback weakest so it only ever wins when nothing else was observed.
  */
 export const WEIGHTS: Record<VersionSource, number> = {
     /* eslint-disable @typescript-eslint/naming-convention */
+    pyproject: 200,
     bundleYaml: 100,
     notebook: 50,
     workspaceDefault: 20,
@@ -90,9 +94,17 @@ function versionNumber(v: string): number {
 
 /**
  * Rank candidate versions by total weight (desc), breaking ties by higher
- * numeric version. The {@link FALLBACK_VERSION} is always included as a
- * candidate; if it coincides with an observed version the two are merged into a
- * single, better-corroborated row rather than duplicated.
+ * numeric version.
+ *
+ * Every version in the supported range [{@link MIN_SUPPORTED_VERSION},
+ * {@link MAX_SUPPORTED_VERSION}] is always offered as a candidate, so lower
+ * versions the project never used stay reachable in the picker rather than
+ * being silently unavailable. Versions with no backing observation keep a score
+ * of 0 (and no sources), so they sort below any observed candidate. The
+ * {@link FALLBACK_VERSION} additionally carries the `fallback` source, so it
+ * wins when nothing else was observed; if it coincides with an observed version
+ * the two are merged into a single, better-corroborated row rather than
+ * duplicated.
  */
 export function scoreServerlessVersions(
     observations: VersionObservation[]
@@ -106,6 +118,12 @@ export function scoreServerlessVersions(
     ];
 
     const byVersion = new Map<string, ScoredVersion>();
+    // Seed the whole supported range at score 0 so every version the CLI
+    // accepts is offered, even ones this project has never observed.
+    for (let n = MIN_SUPPORTED_VERSION; n <= MAX_SUPPORTED_VERSION; n++) {
+        const version = String(n);
+        byVersion.set(version, {version, score: 0, sources: []});
+    }
     for (const {version, source} of all) {
         const entry = byVersion.get(version) ?? {
             version,

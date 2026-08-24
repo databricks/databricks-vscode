@@ -1,5 +1,10 @@
 import {expect} from "chai";
-import {getPythonSetupErrorMessage} from "./errorMessages";
+import {
+    formatSetupFailureDetail,
+    getPythonSetupErrorAction,
+    getPythonSetupErrorMessage,
+    isIndexUnreachableFailure,
+} from "./errorMessages";
 import {
     PythonSetupResult,
     PythonSetupErrorCode,
@@ -8,6 +13,16 @@ import {
     ERROR_NO_TARGET,
     ERROR_USAGE,
 } from "../models/fixtures/setupLocalResults";
+
+/**
+ * A uv "package index unreachable" error message, mirroring the real CLI text a
+ * locked-down corporate machine produces when pypi.org is blocked (see the
+ * `os error 61` / connection-refused signature).
+ */
+const INDEX_UNREACHABLE_CLI_MSG =
+    "Using CPython 3.12.8\n" +
+    "error: Failed to fetch: `https://pypi.org/simple/ipykernel/`\n" +
+    "  Caused by: tcp connect error: Connection refused (os error 61)";
 
 /** Build a minimal failed result carrying a specific error. */
 function failure(
@@ -70,6 +85,45 @@ describe("getPythonSetupErrorMessage", () => {
         expect(getPythonSetupErrorMessage(failure("E_PROVISION"))).to.match(
             /resolve|dependenc/i
         );
+    });
+
+    it("maps a blocked-index E_PROVISION to proxy guidance, not a conflict message", () => {
+        const msg = getPythonSetupErrorMessage(
+            failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
+        );
+        expect(msg).to.match(/package index|pypi\.org/i);
+        expect(msg).to.match(/UV_INDEX_URL|pip\.conf|proxy/i);
+        // Must NOT claim a dependency conflict, which would misdirect the user.
+        expect(msg).to.not.match(/conflict|version conflict/i);
+    });
+
+    it("does NOT give index/proxy guidance for an E_PYTHON_INSTALL download failure", () => {
+        // uv fetches a managed CPython build from a different mirror
+        // (UV_PYTHON_INSTALL_MIRROR), which UV_INDEX_URL / pip index-url cannot
+        // fix — so this keeps the plain Python-install message.
+        const msg = getPythonSetupErrorMessage(
+            failure("E_PYTHON_INSTALL", {
+                message:
+                    "error: Failed to download `cpython-3.12.8`\n" +
+                    "  Caused by: tcp connect error: Connection refused (os error 61)",
+            })
+        );
+        expect(msg).to.not.match(/UV_INDEX_URL|pip\.conf|package index/i);
+        expect(msg).to.match(/python version/i);
+    });
+
+    it("keeps the dependency-conflict message when E_PROVISION is a real conflict", () => {
+        // A resolution conflict has no connectivity symptom, so it must not be
+        // mistaken for a blocked index.
+        const msg = getPythonSetupErrorMessage(
+            failure("E_PROVISION", {
+                message:
+                    "error: No solution found when resolving dependencies: " +
+                    "x==1 depends on y<2, but the runtime requires y==2",
+            })
+        );
+        expect(msg).to.match(/resolve|dependenc/i);
+        expect(msg).to.not.match(/UV_INDEX_URL|pip\.conf/i);
     });
 
     it("maps E_FETCH to an offline/unreachable message", () => {
@@ -199,5 +253,392 @@ describe("getPythonSetupErrorMessage", () => {
 
         const usage = getPythonSetupErrorMessage(ERROR_USAGE);
         expect(usage).to.be.a("string").and.not.be.empty;
+    });
+});
+
+describe("getPythonSetupErrorAction", () => {
+    it("offers an Install uv action pointing at the uv docs for E_UV_MISSING", () => {
+        const action = getPythonSetupErrorAction(
+            failure("E_UV_MISSING", {failurePhase: "preflight"})
+        );
+        expect(action).to.deep.equal({
+            label: "Install uv",
+            url: "https://docs.astral.sh/uv/getting-started/installation/",
+        });
+    });
+
+    it("offers a Configure package index action for a blocked index", () => {
+        const action = getPythonSetupErrorAction(
+            failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
+        );
+        expect(action).to.deep.equal({
+            label: "Configure package index",
+            url: "https://docs.astral.sh/uv/configuration/indexes/",
+        });
+    });
+
+    it("points an ordinary E_PROVISION conflict at the uv resolution docs", () => {
+        // A genuine dependency conflict (no connectivity symptom) is distinct from
+        // a blocked index: it links to uv's resolution guide, not the index docs.
+        expect(getPythonSetupErrorAction(failure("E_PROVISION"))).to.deep.equal(
+            {
+                label: "Resolve dependency conflicts",
+                url: "https://docs.astral.sh/uv/concepts/resolution/",
+            }
+        );
+    });
+
+    it("points E_MANAGER_UNSUPPORTED at the uv projects docs", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_MANAGER_UNSUPPORTED", {failurePhase: "preflight"})
+            )
+        ).to.deep.equal({
+            label: "Set up a uv project",
+            url: "https://docs.astral.sh/uv/concepts/projects/",
+        });
+    });
+
+    it("points E_PYTHON_INSTALL at the uv install-Python docs", () => {
+        expect(
+            getPythonSetupErrorAction(failure("E_PYTHON_INSTALL"))
+        ).to.deep.equal({
+            label: "Install a Python version",
+            url: "https://docs.astral.sh/uv/guides/install-python/",
+        });
+    });
+
+    it("points E_NO_TARGET at the compute-selection section of the configure docs", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_NO_TARGET", {failurePhase: "resolve"})
+            )
+        ).to.deep.equal({
+            label: "Configure compute",
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster",
+        });
+    });
+
+    it("points E_RESOLVE at the compute-selection section of the configure docs", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_RESOLVE", {failurePhase: "resolve"})
+            )
+        ).to.deep.equal({
+            label: "Configure compute",
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster",
+        });
+    });
+
+    it("points E_ENV_UNSUPPORTED at the Databricks runtime release notes", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_ENV_UNSUPPORTED", {failurePhase: "fetch"})
+            )
+        ).to.deep.equal({
+            label: "Databricks Runtime versions",
+            url: "https://docs.databricks.com/aws/en/release-notes/runtime/",
+        });
+    });
+
+    it("offers no action for E_FETCH (deliberately message-only)", () => {
+        // A generic network/cache failure has no single doc that reliably helps,
+        // so we avoid pointing the user at an unclear page.
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_FETCH", {failurePhase: "fetch"})
+            )
+        ).to.equal(undefined);
+    });
+
+    it("offers no action for codes with no clear remediation doc", () => {
+        for (const code of [
+            "E_USAGE",
+            "E_NOT_WRITABLE",
+            "E_WRITE",
+            "E_MERGE",
+            "E_VALIDATE",
+        ] as const) {
+            expect(getPythonSetupErrorAction(failure(code)), code).to.equal(
+                undefined
+            );
+        }
+    });
+
+    it("offers no action when the result carries no error", () => {
+        const ok = failure("E_UV_MISSING");
+        ok.error = null;
+        expect(getPythonSetupErrorAction(ok)).to.equal(undefined);
+    });
+});
+
+describe("formatSetupFailureDetail", () => {
+    it("names the failing phase and error code", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {failurePhase: "provision"})
+        );
+        expect(detail).to.contain("provision");
+        expect(detail).to.contain("E_PROVISION");
+    });
+
+    it("includes the raw CLI message (the detail the friendly copy drops)", () => {
+        // This is the whole point: the uv conflict text lives in error.message,
+        // which the mapped popup copy discards. It must reach the log channel.
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {
+                message:
+                    "x==1 depends on y<2, but the runtime requires y==2 (conflict)",
+            })
+        );
+        expect(detail).to.contain("x==1 depends on y<2");
+        expect(detail).to.contain("conflict");
+    });
+
+    it("lists the per-phase statuses so the break point is visible", () => {
+        const detail = formatSetupFailureDetail(
+            failure(
+                "E_PROVISION",
+                {failurePhase: "provision"},
+                {
+                    phases: [
+                        {phase: "preflight", status: "ok"},
+                        {phase: "resolve", status: "ok"},
+                        {phase: "provision", status: "error"},
+                    ],
+                }
+            )
+        );
+        expect(detail).to.contain("preflight");
+        expect(detail).to.contain("resolve");
+        expect(detail).to.match(/provision.*error/);
+    });
+
+    it("returns undefined when the result carries no error (nothing to log)", () => {
+        const ok = failure("E_PROVISION");
+        ok.error = null;
+        expect(formatSetupFailureDetail(ok)).to.equal(undefined);
+    });
+
+    it("appends copy-pasteable proxy remediation for a blocked index", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
+        );
+        // Still carries the raw CLI error …
+        expect(detail).to.contain("Connection refused");
+        // … plus both remediation paths.
+        expect(detail).to.contain("UV_INDEX_URL");
+        expect(detail).to.contain("index-url");
+        expect(detail).to.contain("extra-index-url");
+    });
+
+    it("adds no remediation block for a non-connectivity E_PROVISION", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {
+                message: "No solution found when resolving dependencies",
+            })
+        );
+        expect(detail).to.not.contain("UV_INDEX_URL");
+    });
+
+    it("appends the documentation link and its label for a code that has one", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_NO_TARGET", {failurePhase: "resolve"})
+        );
+        expect(detail).to.contain(
+            "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster"
+        );
+        expect(detail).to.contain("Configure compute");
+    });
+
+    it("appends the uv index docs link for a blocked index", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
+        );
+        expect(detail).to.contain(
+            "https://docs.astral.sh/uv/configuration/indexes/"
+        );
+    });
+
+    it("adds no documentation link for a message-only code", () => {
+        const detail = formatSetupFailureDetail(failure("E_USAGE"));
+        expect(detail).to.not.contain("https://");
+    });
+});
+
+describe("isIndexUnreachableFailure", () => {
+    it("is true for E_PROVISION with a connection-refused message", () => {
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
+            )
+        ).to.equal(true);
+    });
+
+    it("is true for a DNS/name-resolution failure fetching the index", () => {
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to fetch: `https://pypi.org/simple/foo/`\n" +
+                        "  Caused by: failed to lookup address information: " +
+                        "Temporary failure in name resolution",
+                })
+            )
+        ).to.equal(true);
+    });
+
+    it("is true for the macOS getaddrinfo DNS phrasing (failed to lookup address)", () => {
+        // macOS wording lacks "name resolution"; the "failed to lookup address"
+        // symptom is what catches it.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to fetch: `https://pypi.org/simple/foo/`\n" +
+                        "  Caused by: failed to lookup address information: " +
+                        "nodename nor servname provided, or not known",
+                })
+            )
+        ).to.equal(true);
+    });
+
+    it("is false for a genuine dependency conflict (no connectivity symptom)", () => {
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message: "No solution found when resolving dependencies",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false for E_PYTHON_INSTALL (a CPython download, not an index fetch)", () => {
+        // Scoped to E_PROVISION: the managed-Python download uses a different
+        // mirror that the index/proxy guidance cannot fix.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PYTHON_INSTALL", {
+                    message: INDEX_UNREACHABLE_CLI_MSG,
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false for codes outside the provision phase", () => {
+        // Even with a connectivity-looking message, E_FETCH (constraints repo)
+        // keeps its own mapping — this predicate scopes to E_PROVISION.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_FETCH", {message: INDEX_UNREACHABLE_CLI_MSG})
+            )
+        ).to.equal(false);
+    });
+
+    it("is true for a git-NAMED package on a blocked index (not a git source)", () => {
+        // The failing index URL contains "git" (the package `gitpython`), but it
+        // is a /simple/ index fetch — must still be detected. Guards against a
+        // naive bare-"git" exclusion.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to fetch: `https://pypi.org/simple/gitpython/`\n" +
+                        "  Caused by: tcp connect error: Connection refused (os error 61)",
+                })
+            )
+        ).to.equal(true);
+    });
+
+    it("is false for a git-dependency source fetch (no /simple index path)", () => {
+        // uv prefixes git-clone errors with "failed to fetch" too, but there is no
+        // /simple index path — the fix is unrelated to the package index.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to fetch git repository " +
+                        "`git+https://github.com/acme/pkg`\n" +
+                        "  Caused by: tcp connect error: Connection refused",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false for a direct wheel/URL dependency fetch (no /simple index path)", () => {
+        // A `pkg @ https://host/pkg.whl` fetch failing to connect is not a package
+        // index, so the index/proxy guidance would be wrong.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to fetch: `https://host.example/pkg-1.0-py3-none-any.whl`\n" +
+                        "  Caused by: tcp connect error: Connection refused",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false when 'simple' only appears in a name, not the /simple/ index path", () => {
+        // Guards the trailing slash: a git source or wheel whose path contains
+        // "simple" (e.g. simple-salesforce) must not be read as an index fetch.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to fetch git repository " +
+                        "`git+https://github.com/simple-salesforce/simple-salesforce`\n" +
+                        "  Caused by: tcp connect error: Connection refused",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false for a git source even when its path contains /simple/ (org named 'simple')", () => {
+        // Structural exclusion: git+ / "git repository" wins over a /simple/ that
+        // happens to be a path segment of the git URL.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to fetch git repository " +
+                        "`git+https://github.com/simple/foo`\n" +
+                        "  Caused by: tcp connect error: Connection refused",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false for a direct wheel hosted under a /simple/ path", () => {
+        // Structural exclusion: a distribution file (.whl) is not an index listing,
+        // even when served from a /simple/ directory.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to fetch: `https://host.example/simple/pkg-1.0-py3-none-any.whl`\n" +
+                        "  Caused by: tcp connect error: Connection refused",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false for a connectivity symptom without an index-fetch context", () => {
+        // A build backend's own stderr ("timed out") with no "failed to fetch"
+        // is not a blocked index.
+        expect(
+            isIndexUnreachableFailure(
+                failure("E_PROVISION", {
+                    message:
+                        "error: Failed to build `foo==1.0`\n" +
+                        "  Caused by: the build backend timed out",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false when there is no error object", () => {
+        const ok = failure("E_PROVISION");
+        ok.error = null;
+        expect(isIndexUnreachableFailure(ok)).to.equal(false);
     });
 });

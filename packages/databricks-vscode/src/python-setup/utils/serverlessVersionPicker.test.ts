@@ -19,16 +19,28 @@ describe("buildVersionPickItems", () => {
         expect(items[1].picked).to.equal(false);
     });
 
-    it("labels each item with the bare version and only stars the picked one", () => {
+    it("labels each item with the vN display form and only stars the picked one", () => {
         const items = buildVersionPickItems([
             {version: "5", score: 100, sources: ["bundleYaml"]},
             {version: "4", score: 50, sources: ["notebook"]},
         ]);
 
-        // The picked item is visually marked; others are the plain version.
-        expect(items[0].label).to.contain("5");
+        // Labels use the `vN` form (matching the CLI/docs/compute picker); the
+        // picked item is additionally starred, others are just `vN`.
+        expect(items[0].label).to.contain("v5");
         expect(items[0].label).to.not.equal(items[0].version);
-        expect(items[1].label).to.equal("4");
+        expect(items[1].label).to.equal("v4");
+        // The forwarded payload stays the bare integer, not the display form.
+        expect(items[0].version).to.equal("5");
+        expect(items[1].version).to.equal("4");
+    });
+
+    it("names pyproject.toml as the provenance of a pyproject-sourced version", () => {
+        const items = buildVersionPickItems([
+            {version: "4", score: 200, sources: ["pyproject"]},
+        ]);
+
+        expect(items[0].description).to.match(/pyproject\.toml/i);
     });
 
     it("handles a fallback-only list", () => {

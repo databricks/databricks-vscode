@@ -7,8 +7,8 @@ import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
 import {FeatureManager, FeatureState} from "../feature-manager/FeatureManager";
 import {
-    escapeExecutableForTerminal,
-    escapePathArgument,
+    escapeExecutableForUnknownShell,
+    escapePathArgumentForUnknownShell,
 } from "../utils/shellUtils";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
@@ -138,9 +138,17 @@ export class RunCommands {
         }
         // Run the setup flow, then re-check: a successful setup should let the
         // launch proceed instead of aborting and making the user re-trigger.
+        // Force a fresh check rather than reading the cache: when the setup
+        // command routes to the uv flow, it adopts the interpreter and the
+        // legacy state refreshes only on the (async) interpreter-change event,
+        // which may not have landed yet.
         await commands.executeCommand("databricks.environment.setup");
-        return (await this.featureManager.isEnabled("environment.dependencies"))
-            .available;
+        return (
+            await this.featureManager.isEnabled(
+                "environment.dependencies",
+                true
+            )
+        ).available;
     }
 
     private async isPythonEnvironmentStale(featureState: FeatureState) {
@@ -244,10 +252,15 @@ export class RunCommands {
             path.join("resources", "python", "dbconnect-bootstrap.py")
         );
         terminal.show();
+        // This reuses whatever terminal is focused, so we can't know which shell
+        // will parse the line — hence the unknown-shell quoting rather than the
+        // per-dialect helpers used where we create the terminal ourselves.
         terminal.sendText(
-            `${escapeExecutableForTerminal(executable)} ${escapePathArgument(
+            `${escapeExecutableForUnknownShell(
+                executable
+            )} ${escapePathArgumentForUnknownShell(
                 bootstrapPath
-            )} ${escapePathArgument(targetResource.fsPath)}`
+            )} ${escapePathArgumentForUnknownShell(targetResource.fsPath)}`
         );
 
         this.telemetry.recordEvent(Events.DBCONNECT_RUN, {

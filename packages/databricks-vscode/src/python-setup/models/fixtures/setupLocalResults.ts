@@ -60,6 +60,80 @@ export const SUCCESS_DEFAULT: PythonSetupResult = {
     durationMs: 0,
 };
 
+/**
+ * merge-warnings-json: default mode, --dry-run, over an *existing* project whose
+ * pins conflict with the environment's. Mirrors the CLI golden
+ * (acceptance/localenv/merge-warnings-json) verbatim, including the repeated
+ * W_USER_CONSTRAINT_CONFLICT. The golden redacts durationMs as `[DURATION_MS]`;
+ * a representative non-zero value stands in here (the extension never reads it).
+ */
+export const SUCCESS_WITH_WARNINGS: PythonSetupResult = {
+    schemaVersion: 1,
+    command: "environments setup-local",
+    ok: true,
+    mode: "default",
+    dryRun: true,
+    compute: {
+        source: "serverless",
+        serverlessVersion: "v4",
+        envKey: "serverless/serverless-v4",
+    },
+    resolved: {
+        pythonVersion: "3.12",
+        dbconnectVersion: "17.2.0",
+        artifactSource: "network",
+    },
+    greenfield: false,
+    plan: {
+        wouldWrite: "[TEST_TMP_DIR]/pyproject.toml",
+        wouldBackup: "[TEST_TMP_DIR]/pyproject.toml.bak",
+        wouldInstallPython: "3.12",
+        diff: "--- pyproject.toml\n+++ pyproject.toml.new\n",
+    },
+    phases: [
+        {phase: "preflight", status: "ok"},
+        {phase: "resolve", status: "ok"},
+        {phase: "fetch", status: "ok"},
+        {phase: "merge", status: "ok"},
+        {phase: "provision", status: "ok"},
+        {phase: "validate", status: "ok"},
+    ],
+    warnings: [
+        {
+            code: "W_REQUIRES_PYTHON_OVERRIDDEN",
+            message:
+                'requires-python ">=3.10" is replaced by the environment\'s ">=3.12"',
+        },
+        {
+            code: "W_DBCONNECT_PIN_OVERRIDDEN",
+            message:
+                'databricks-connect "databricks-connect~=16.0.0" is replaced by ' +
+                'the environment\'s "databricks-connect~=17.2.0"',
+        },
+        {
+            code: "W_DBCONNECT_CONSOLIDATED",
+            message:
+                'databricks-connect "databricks-connect==15.0.0" in ' +
+                "[dependency-groups].spark conflicts with the environment's " +
+                '"databricks-connect~=17.2.0" and is removed; it is managed in "dev"',
+        },
+        {
+            code: "W_USER_CONSTRAINT_CONFLICT",
+            message:
+                'dependency "pyarrow==21.0.0" conflicts with the environment ' +
+                'constraint "pyarrow<19"',
+        },
+        {
+            code: "W_USER_CONSTRAINT_CONFLICT",
+            message:
+                'dependency "pandas==4.0.0" conflicts with the environment ' +
+                'constraint "pandas<3"',
+        },
+    ],
+    error: null,
+    durationMs: 1234,
+};
+
 /** constraints-only: note `resolved` omits `dbconnectVersion`. */
 export const SUCCESS_CONSTRAINTS_ONLY: PythonSetupResult = {
     schemaVersion: 1,
@@ -188,4 +262,34 @@ export const SUCCESS_REAL_RUN: PythonSetupResult = {
     warnings: [],
     error: null,
     durationMs: 0,
+};
+
+/**
+ * Synthesized real run over an existing project that merges cleanly except for a
+ * couple of pin conflicts: {@link SUCCESS_REAL_RUN} plus the merge warnings a
+ * consumer counts. Exercises the ok path threading `result.warnings` into the
+ * setup-result event (no committed CLI golden runs a real provision).
+ */
+export const SUCCESS_REAL_RUN_WITH_WARNINGS: PythonSetupResult = {
+    ...SUCCESS_REAL_RUN,
+    warnings: [
+        {
+            code: "W_DBCONNECT_PIN_OVERRIDDEN",
+            message:
+                'databricks-connect "databricks-connect~=16.0.0" is replaced by ' +
+                'the environment\'s "databricks-connect~=17.2.0"',
+        },
+        {
+            code: "W_USER_CONSTRAINT_CONFLICT",
+            message:
+                'dependency "pyarrow==21.0.0" conflicts with the environment ' +
+                'constraint "pyarrow<19"',
+        },
+        {
+            code: "W_USER_CONSTRAINT_CONFLICT",
+            message:
+                'dependency "pandas==4.0.0" conflicts with the environment ' +
+                'constraint "pandas<3"',
+        },
+    ],
 };

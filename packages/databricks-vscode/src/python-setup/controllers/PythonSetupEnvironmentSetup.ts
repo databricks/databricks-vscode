@@ -1,4 +1,6 @@
 import {Disposable, Event, EventEmitter} from "vscode";
+import {logging} from "@databricks/sdk-experimental";
+import {Loggers} from "../../logger";
 import {
     CancellationLike,
     PythonSetupCancelledError,
@@ -9,8 +11,12 @@ import {
     PythonSetupResult,
 } from "../models/PythonSetupResult";
 import {
+    formatSetupFailureDetail,
+    getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
+    isIndexUnreachableFailure,
     NO_COMPUTE_TARGET_MESSAGE,
+    PythonSetupErrorAction,
 } from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
@@ -90,9 +96,9 @@ export interface PythonSetupSetupDeps {
 
     /**
      * Whether the uv-native setup should run for the current project. The
-     * extension wires this to the opt-in flag AND the package-manager gate
-     * (`shouldShowPythonSetup` over a live `detect`), so it is false unless the
-     * feature is enabled for a clean uv/greenfield project.
+     * extension wires this to the package-manager gate (`isUvSetupSuitable` over
+     * a live `detect`), so it is false unless the project is a clean
+     * uv/greenfield one with no competing manager.
      */
     isVisible: () => Promise<boolean>;
 
@@ -119,13 +125,25 @@ export interface PythonSetupSetupDeps {
 
     /**
      * A plain user-facing notification for pre-flight guidance (e.g. no compute
-     * attached), where no CLI ran. Unlike {@link showError} it does not reveal
-     * the output channel — there is no log to show.
+     * attached), where no CLI ran. Unlike {@link showError} it offers no log
+     * affordance — there is no log to show.
      */
     notify: (message: string) => Promise<void>;
 
-    /** Shows the mapped, user-facing copy — not raw CLI text. */
-    showError: (message: string) => Promise<void>;
+    /**
+     * Shows the mapped, user-facing copy — not raw CLI text — with a "Show Logs"
+     * action that reveals the setup output channel. `detail`, when given, is
+     * written to that channel first (see `formatSetupFailureDetail`), so the
+     * button leads to the CLI's full explanation instead of an empty log.
+     * `action`, when given, adds one more button that opens an external URL —
+     * e.g. "Install uv" pointing at uv's install guide (see
+     * `getPythonSetupErrorAction`).
+     */
+    showError: (
+        message: string,
+        detail?: string,
+        action?: PythonSetupErrorAction
+    ) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
 
@@ -248,7 +266,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
 
     setup(): Promise<void> {
         // Re-entrancy guard: coalesce concurrent callers onto the running run
-        // rather than spawning a second project-mutating CLI process.
+        // rather than spawning a second project-mutating CLI process. The guard
+        // releases when the run's *work* settles; the terminal notification is
+        // presented via {@link present} (fire-and-forget), so a toast left open
+        // never wedges the entry -- see that method.
         if (this.inFlight) {
             return this.inFlight;
         }
@@ -257,6 +278,29 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         });
         this.inFlight = run;
         return run;
+    }
+
+    /**
+     * Present a terminal user notification without blocking the run. The
+     * re-entrancy guard in {@link setup} must release when the mutating work
+     * (CLI run, interpreter adoption, state write) finishes -- NOT when the user
+     * dismisses the toast. `showError`/`showSuccess`/`notify` each await
+     * `window.show*Message`, which stays pending until the toast is acted on, so
+     * awaiting them inside the guarded run wedged the entry: every later click
+     * returned the still-pending promise until the window was reloaded.
+     * A rejection must not become an unhandled rejection or fail the (already
+     * finished) setup, but it is not silently discarded: `showSuccess`/
+     * `showError` do real work before the toast (reading the venv project name,
+     * formatting the log, writing the output channel), so a throw there is a
+     * genuine bug worth a debug-level trace.
+     */
+    private present(notification: Promise<void>): void {
+        void notification.catch((e) =>
+            logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                "Failed to present python-setup notification",
+                e
+            )
+        );
     }
 
     private async runSetup(): Promise<void> {
@@ -292,7 +336,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             } catch {
                 // Measurement must never break the flow it measures.
             }
-            await this.deps.notify(NO_COMPUTE_TARGET_MESSAGE);
+            this.present(this.deps.notify(NO_COMPUTE_TARGET_MESSAGE));
             return;
         }
         const compute = resolved.compute;
@@ -325,7 +369,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // result object exists, hence `not_started` rather than `failed`:
             // there is no phase or error code to attribute the break to.
             reportResult({outcome: "not_started"});
-            await this.deps.showError((e as Error).message);
+            this.present(this.deps.showError((e as Error).message));
             return;
         }
 
@@ -336,8 +380,16 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
                 diskMutated: result.error?.diskMutated,
+                indexUnreachable: isIndexUnreachableFailure(result),
+                warnings: result.warnings,
             });
-            await this.deps.showError(getPythonSetupErrorMessage(result));
+            this.present(
+                this.deps.showError(
+                    getPythonSetupErrorMessage(result),
+                    formatSetupFailureDetail(result),
+                    getPythonSetupErrorAction(result)
+                )
+            );
             return;
         }
 
@@ -357,8 +409,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 outcome: "failed",
                 failurePhase: "adopt",
                 envKey: result.compute.envKey,
+                warnings: result.warnings,
             });
-            await this.deps.showError((e as Error).message);
+            this.present(this.deps.showError((e as Error).message));
             return;
         }
 
@@ -379,16 +432,22 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
+                warnings: result.warnings,
             });
             throw e;
         }
 
-        // Reported before `showSuccess` on purpose: that awaits the user
-        // dismissing a toast, and folding think-time into `duration` would wreck
-        // the setup-time metric this event exists to measure.
-        reportResult({outcome: "ok", envKey: result.compute.envKey});
+        // Report before presenting success: `duration` should measure the
+        // setup work, not the time the toast sits on screen. `present` is
+        // fire-and-forget, so the run settles here and the re-entrancy guard
+        // releases regardless of whether the user dismisses the notification.
+        reportResult({
+            outcome: "ok",
+            envKey: result.compute.envKey,
+            warnings: result.warnings,
+        });
 
-        await this.deps.showSuccess(result);
+        this.present(this.deps.showSuccess(result));
     }
 
     /**
@@ -442,6 +501,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                     compute.kind === "serverless" ? compute.version : undefined,
                 mode: invocation.mode,
                 isGreenfield,
+                // A run against a project already marked ready this session is a
+                // re-run (the ready row's Re-run button / row click); anything
+                // else is the first setup. Derived from state, not the command,
+                // so every entry point labels the same event correctly.
+                trigger: this.readyRoots.has(projectRoot) ? "rerun" : "initial",
             });
             return (report) => {
                 try {

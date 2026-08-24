@@ -16,6 +16,9 @@ import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
+import {composePythonSetupEntry} from "./ui/configuration-view/pythonSetupEntry";
+import {routeEnvironmentSetup} from "./language/pythonSetupRouting";
+import {COPY_COMMAND_IDS} from "./ui/configuration-view/copyActions";
 import {AiToolsManager} from "./aitools/AiToolsManager";
 import {AiToolsCommands} from "./aitools/AiToolsCommands";
 import {RunCommands} from "./run/RunCommands";
@@ -43,20 +46,20 @@ import {
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
-import {
-    FeatureId,
-    FeatureManager,
-    PYTHON_SETUP_FEATURE_ID,
-} from "./feature-manager/FeatureManager";
+import {existsSync} from "node:fs";
+import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
 import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
-import {makePythonSetupDeps} from "./python-setup/controllers/pythonSetupDeps";
-import {resolveCliPath} from "./python-setup/utils/setupLocalArgs";
 import {
-    isPythonSetupEnabled,
-    makeServerlessVersionPrompt,
-} from "./python-setup/utils/serverlessVersionResolver";
+    makePythonSetupDeps,
+    resolveComputeFrom,
+} from "./python-setup/controllers/pythonSetupDeps";
+import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDriftManager";
+import {PythonSetupAdoptionManager} from "./python-setup/controllers/PythonSetupAdoptionManager";
+import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
+import {venvInterpreterPath} from "./python-setup/utils/venvInterpreterPath";
+import {makeServerlessVersionPrompt} from "./python-setup/utils/serverlessVersionResolver";
 import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
 import {MsPythonExtensionWrapper} from "./language/MsPythonExtensionWrapper";
@@ -275,8 +278,17 @@ export async function activate(
         return undefined;
     }
 
+    // Mode is fully determined by the ambient env vars, so decide it once here
+    // and bake it into the context metadata (rather than re-setting it later).
+    const isRemoteSshMode =
+        process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
+        Boolean(process.env["DATABRICKS_VIRTUAL_ENV"]);
+
     const telemetry = Telemetry.createDefault();
-    telemetry.setMetadata(Metadata.CONTEXT, getContextMetadata());
+    telemetry.setMetadata(
+        Metadata.CONTEXT,
+        getContextMetadata(isRemoteSshMode ? "remote" : "normal")
+    );
 
     const loggerManager = new LoggerManager(context);
     if (workspaceConfigs.loggingEnabled) {
@@ -294,6 +306,10 @@ export async function activate(
     }
 
     const cli = new CliWrapper(context, loggerManager, cliLogFilePath);
+
+    // Surfaces a stale bundled CLI in dev checkouts. Not awaited: it only warns,
+    // and activation shouldn't wait on spawning the CLI to find out.
+    void PackageJsonUtils.checkBundledCliVersion(cli.cliPath, packageMetadata);
 
     // Loggers
     context.subscriptions.push(
@@ -386,9 +402,6 @@ export async function activate(
     // Non-blocking so it doesn't delay activation. Skipped in Remote SSH mode,
     // where the AI tools commands are gated off (see the remote-mode branch
     // below) so there is nothing to initialize.
-    const isRemoteSshMode =
-        process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
-        Boolean(process.env["DATABRICKS_VIRTUAL_ENV"]);
     if (!isRemoteSshMode) {
         aiToolsCommands.initializeCommand()();
     }
@@ -455,6 +468,24 @@ export async function activate(
             }
         })
     );
+
+    // The Configuration view exposes an explicit, per-row copy action
+    // ("Copy Target", "Copy Path", …). Each titled command shares the single
+    // clipboard handler; the row's `copy=<kind>` contextValue (stamped in
+    // ConfigurationDataProvider.getTreeItem) selects which one shows. The ids
+    // are derived from COPY_KINDS (the single source of truth), hidden from the
+    // command palette (package.json commandPalette when:false), and registered
+    // WITHOUT the telemetry wrapper on purpose — copying a config value is not
+    // an event we track.
+    for (const commandId of COPY_COMMAND_IDS) {
+        context.subscriptions.push(
+            commands.registerCommand(
+                commandId,
+                utilCommands.copyToClipboardCommand(),
+                utilCommands
+            )
+        );
+    }
 
     // Add the databricks binary to the PATH environment variable in terminals
     context.environmentVariableCollection.clear();
@@ -619,6 +650,7 @@ export async function activate(
         connectRemote();
 
         customWhenContext.setActivated(true);
+        telemetry.recordEvent(Events.EXTENSION_ACTIVATION);
         return;
     }
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
@@ -860,13 +892,7 @@ export async function activate(
             connectionManager,
             pythonExtensionWrapper
         );
-    // python-setup ships disabled by default: the CLI's `environments
-    // setup-local` command is available only in custom CLI builds for now, so
-    // the whole flow stays hidden until a user opts in via
-    // `databricks.experiments.optInto` (see PYTHON_SETUP_FEATURE_ID).
-    const featureManager = new FeatureManager<FeatureId>([
-        PYTHON_SETUP_FEATURE_ID,
-    ]);
+    const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
         "environment.dependencies",
         () =>
@@ -875,12 +901,15 @@ export async function activate(
                 pythonExtensionWrapper,
                 environmentDependenciesInstaller,
                 configureAutocomplete,
-                packageManagerTelemetry
+                packageManagerTelemetry,
+                // Constructed lazily (first isEnabled call is well after
+                // pythonSetupEnvironment is wired), so this reference is safe.
+                () => pythonSetupEnvironment.isVisible()
             )
     );
-    // uv-native Python environment setup (python-setup). Constructed always,
-    // but inert unless the user opts in: the detector/gate keep the entry hidden
-    // otherwise, so this changes nothing for existing users.
+    // uv-native Python environment setup (python-setup). The detector/gate keep
+    // the entry visible only for uv-suitable projects; projects driven by a
+    // competing manager (pip/poetry/conda) fall back to the legacy checklist.
     const pythonSetupDetector = new PythonSetupManagerDetector(
         async (projectRoot) =>
             collectPackageManagerSignals(
@@ -889,11 +918,7 @@ export async function activate(
             )
     );
     const pythonSetupClient = new PythonSetupCliClient(
-        () =>
-            resolveCliPath({
-                override: workspaceConfigs.pythonSetupCliPathOverride,
-                bundled: cli.cliPath,
-            }),
+        () => cli.cliPath,
         () => {
             // Overlay the extension's workspace auth onto the ambient
             // environment, so the CLI provisions against the workspace we are
@@ -915,9 +940,9 @@ export async function activate(
             };
         }
     );
-    // Created lazily on first setup output so a non-opted-in user never gets an
-    // empty "Databricks Python Environment Setup" entry in the Output dropdown
-    // (the feature is otherwise fully inert for them).
+    // Created lazily on first setup output so a user who never runs setup does
+    // not get an empty "Databricks Python Environment Setup" entry in the Output
+    // dropdown.
     let pythonSetupLogChannel: OutputChannel | undefined;
     const getPythonSetupLogChannel = () => {
         if (pythonSetupLogChannel === undefined) {
@@ -941,7 +966,6 @@ export async function activate(
                     return undefined;
                 }
             },
-            isEnabled: isPythonSetupEnabled,
             detect: (projectRoot) => pythonSetupDetector.detect(projectRoot),
             attachedCompute: () => ({
                 serverless: connectionManager.serverless,
@@ -970,6 +994,14 @@ export async function activate(
             // setup flow.
             persistServerlessVersion: (version) =>
                 connectionManager.enableServerless(version),
+            // Reuses the compute picker, which returns the chosen compute (or
+            // undefined if dismissed); its serverless branch is version-complete.
+            promptSelectCompute: () =>
+                Promise.resolve(
+                    commands.executeCommand<SetupCompute | undefined>(
+                        "databricks.connection.attachClusterQuickPick"
+                    )
+                ),
             setActiveInterpreter: async (interpreterPath, root) => {
                 await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
                     interpreterPath,
@@ -1002,8 +1034,161 @@ export async function activate(
             "databricks.environment.setupPythonEnv",
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
+        ),
+        // Re-run affordance shared by the ready and out-of-sync rows. Delegates
+        // to the same (re-entrancy-guarded) setup handler; a distinct command id
+        // gives the menu a "Re-run Python setup" title and its own telemetry.
+        telemetry.registerCommand(
+            "databricks.environment.rerunPythonEnv",
+            pythonSetupEnvironment.setup,
+            pythonSetupEnvironment
         )
     );
+    // Drives the config-view row's out-of-sync state: on compute/open/setup
+    // triggers it silently resolves the selected compute's env key via a CLI
+    // dry-run and compares it against the last setup's. Fail-safe throughout
+    // (undefined => "unknown", no drift) and never surfaces UI.
+    const pythonSetupDrift = new PythonSetupDriftManager({
+        // Reuse the exact gate the row is shown under.
+        isVisible: () => pythonSetupEnvironment.isVisible(),
+        getPersistedEnvKey: () =>
+            stateStorage.get("databricks.pythonSetup.setupState")?.envKey,
+        // Cheap, synchronous compute identity (no CLI). A cluster's Spark version
+        // is included so a DBR edit re-checks while a runtime-state change
+        // (RUNNING -> TERMINATED) is skipped. undefined => nothing comparable.
+        getComputeDescriptor: () => {
+            const cluster = connectionManager.cluster;
+            if (cluster) {
+                return `cluster:${cluster.id}:${cluster.sparkVersion}`;
+            }
+            if (connectionManager.serverless) {
+                const version = connectionManager.serverlessVersion;
+                return version === undefined
+                    ? undefined
+                    : `serverless:${version}`;
+            }
+            return undefined;
+        },
+        resolveCurrentEnvKey: async (token) => {
+            // activeProjectUri throws when no project is active; degrade to
+            // "unknown" instead of rejecting into the drift check.
+            let root: string | undefined;
+            try {
+                root = workspaceFolderManager.activeProjectUri.fsPath;
+            } catch {
+                return undefined;
+            }
+            const resolution = resolveComputeFrom({
+                serverless: connectionManager.serverless,
+                cluster: connectionManager.cluster
+                    ? {id: connectionManager.cluster.id}
+                    : undefined,
+                serverlessVersion: connectionManager.serverlessVersion,
+            });
+            if (resolution.status !== "ok") {
+                return undefined;
+            }
+            try {
+                const result = await pythonSetupClient.run(
+                    {
+                        mode: "default",
+                        dryRun: true,
+                        compute: resolution.compute,
+                    },
+                    {cwd: root, token}
+                );
+                return result.compute?.envKey;
+            } catch {
+                return undefined;
+            }
+        },
+        recordDrift: (report) => telemetry.recordPythonSetupDrift(report),
+    });
+    context.subscriptions.push(
+        pythonSetupDrift,
+        // Compute target changed (cluster attach/detach/switch).
+        connectionManager.onDidChangeCluster(() =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // Serverless enable/disable and connection churn flow through state.
+        connectionManager.onDidChangeState(() =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // Re-picking the serverless version fires neither event above — it only
+        // writes the `serverlessVersion` key — so watch it directly, or a
+        // v4 -> v2 switch would silently miss drift.
+        configModel.onDidChangeKey("serverlessVersion")(async () =>
+            pythonSetupDrift.check("computeChange")
+        ),
+        // A completed setup moves the persisted baseline; re-evaluate to clear
+        // the badge promptly after a successful re-run.
+        pythonSetupEnvironment.onDidChangeState(() =>
+            pythonSetupDrift.check("setupCompleted")
+        )
+    );
+    // Evaluate once now that everything is wired.
+    pythonSetupDrift.check("workspaceOpen");
+
+    // Combine the setup controller's readiness with the drift signal.
+    const pythonSetupEntry = composePythonSetupEntry(
+        pythonSetupEnvironment,
+        pythonSetupDrift
+    );
+    context.subscriptions.push(pythonSetupEntry);
+
+    // Once-per-session adoption gauge: for a project with a uv-native setup on
+    // record, whether its managed .venv still exists. Distinct from drift above
+    // (which compares compute env keys) — drift never checks that the venv is
+    // actually present. Measurement only, best-effort, and it derives no env key
+    // of its own: drift already reports env-key mismatch via python_env.drift.
+    const pythonSetupAdoption = new PythonSetupAdoptionManager({
+        projectRoot: () => {
+            try {
+                return workspaceFolderManager.activeProjectUri.fsPath;
+            } catch {
+                return undefined;
+            }
+        },
+        // In a multi-root workspace the single workspace-scoped setupState key
+        // can't be pinned to the active root, so a reading could be a spurious
+        // venvPresent=false; skip rather than emit an untrustworthy one. (The
+        // drift detector shares this single-key limitation; the real fix is the
+        // deferred per-project storage schema.)
+        isAttributable: () => (workspace.workspaceFolders?.length ?? 0) <= 1,
+        isVpexActive: () =>
+            stateStorage.get("databricks.pythonSetup.setupState") !== undefined,
+        getTargetType: () =>
+            connectionManager.serverless
+                ? "serverless"
+                : connectionManager.cluster
+                  ? "cluster"
+                  : "none",
+        venvExists: (root) =>
+            existsSync(venvInterpreterPath(path.join(root, ".venv"))),
+        record: (report) => telemetry.recordPythonSetupAdoption(report),
+    });
+    // A connect-time reading: report once the connection is CONNECTED (so the
+    // compute is attached, though it may be "none" — auth-connected with nothing
+    // selected is a real slice). The manager dedupes per session, so repeated
+    // transitions are safe; firing before connect would latch "none".
+    //
+    // Deliberately NOT fired on setup completion. A first-ever setup's state
+    // write is fire-and-forget and lands on a later microtask, but the setup
+    // controller's state event fires synchronously — so a report() there would
+    // still read the project as not-yet-VPEX-active and emit nothing. Such a
+    // session is instead measured from its next connect; its just-provisioned
+    // venv is already implied by python_env.setup.result = ok.
+    const reportAdoptionIfConnected = () => {
+        if (connectionManager.state === "CONNECTED") {
+            pythonSetupAdoption.report();
+        }
+    };
+    context.subscriptions.push(
+        connectionManager.onDidChangeState(reportAdoptionIfConnected)
+    );
+    // Cover activation while already connected (a reload with a live session),
+    // where onDidChangeState may not fire again.
+    reportAdoptionIfConnected();
 
     const environmentCommands = new EnvironmentCommands(
         featureManager,
@@ -1014,8 +1199,16 @@ export async function activate(
     context.subscriptions.push(
         telemetry.registerCommand(
             "databricks.environment.setup",
-            environmentCommands.setup,
-            environmentCommands
+            // Route to the uv-native flow when it is the active surface for the
+            // project, else the legacy checklist. Every trigger surface (status
+            // bar, config-view rows, palette, the run/debug gate) funnels
+            // through this command, so they all dispatch here.
+            (stepId?: string) =>
+                routeEnvironmentSetup(
+                    pythonSetupEnvironment,
+                    environmentCommands,
+                    stepId
+                )
         ),
         telemetry.registerCommand(
             "databricks.environment.refresh",
@@ -1124,7 +1317,7 @@ export async function activate(
         featureManager,
         workspaceFolderManager,
         aiToolsManager,
-        pythonSetupEnvironment
+        pythonSetupEntry
     );
     const configurationView = window.createTreeView("configurationView", {
         treeDataProvider: configurationDataProvider,
@@ -1143,7 +1336,11 @@ export async function activate(
         clusterModel,
         configModel,
         cli,
-        workspaceFolderManager
+        workspaceFolderManager,
+        // Only prompt for a serverless environment version when the uv-native
+        // setup is the active surface for this project; a project driven by a
+        // competing manager keeps the plain, version-less serverless enable.
+        () => pythonSetupEnvironment.isVisible()
     );
 
     context.subscriptions.push(

@@ -12,6 +12,29 @@ describe("scoreServerlessVersions", () => {
         expect(ranked[0].version).to.equal("4");
     });
 
+    it("ranks a pyproject declaration above a competing bundle YAML one", () => {
+        // The explicit [tool.databricks.environment] declaration is the
+        // strongest signal, so it wins the recommended slot even when bundle
+        // YAML (the next-strongest) points elsewhere.
+        const ranked = scoreServerlessVersions([
+            {version: "3", source: "pyproject"},
+            {version: "5", source: "bundleYaml"},
+        ]);
+        expect(ranked[0].version).to.equal("3");
+        expect(ranked[0].sources).to.deep.equal(["pyproject"]);
+    });
+
+    it("merges pyproject with a matching bundle/notebook version", () => {
+        const ranked = scoreServerlessVersions([
+            {version: "4", source: "pyproject"},
+            {version: "4", source: "bundleYaml"},
+        ]);
+        const fours = ranked.filter((r) => r.version === "4");
+        expect(fours).to.have.length(1);
+        expect(fours[0].score).to.equal(WEIGHTS.pyproject + WEIGHTS.bundleYaml);
+        expect(fours[0].sources).to.have.members(["pyproject", "bundleYaml"]);
+    });
+
     it("adds weight when multiple sources agree on a version", () => {
         const ranked = scoreServerlessVersions([
             {version: "4", source: "bundleYaml"},
@@ -45,9 +68,30 @@ describe("scoreServerlessVersions", () => {
 
     it("always includes the fallback candidate, even with no observations", () => {
         const ranked = scoreServerlessVersions([]);
-        expect(ranked).to.have.length(1);
+        // The fallback outranks the seeded (unobserved, score 0) versions.
         expect(ranked[0].version).to.equal("5");
         expect(ranked[0].sources).to.deep.equal(["fallback"]);
+    });
+
+    it("offers every supported version, scoring unobserved ones 0", () => {
+        // Only v4 is observed, but the full v1..v5 range must still be
+        // reachable so a user can pick a lower version the project never used.
+        const ranked = scoreServerlessVersions([
+            {version: "4", source: "bundleYaml"},
+        ]);
+        expect(ranked.map((r) => r.version)).to.have.members([
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+        ]);
+        // Unobserved versions carry no sources and a score of 0.
+        const v2 = ranked.find((r) => r.version === "2")!;
+        expect(v2.score).to.equal(0);
+        expect(v2.sources).to.deep.equal([]);
+        // The observed version still ranks above the unobserved ones.
+        expect(ranked[0].version).to.equal("4");
     });
 
     it("merges the fallback into a matching observed version instead of duplicating it", () => {
@@ -82,7 +126,8 @@ describe("scoreServerlessVersions", () => {
         const fives = ranked.filter((r) => r.version === "5");
         expect(ranked.map((r) => r.version)).to.not.include("v5");
         expect(fives).to.have.length(1);
-        // "v5" was dropped, so "5" is corroborated only by the fallback.
+        // "v5" was dropped, so "5" is corroborated only by the fallback (the
+        // bundleYaml source never applied).
         expect(fives[0].sources).to.deep.equal(["fallback"]);
     });
 
@@ -99,10 +144,15 @@ describe("scoreServerlessVersions", () => {
             {version: "+5", source: "notebook"},
             {version: " 5", source: "workspaceDefault"},
         ]);
-        // Everything invalid is filtered; only the fallback survives.
-        expect(ranked).to.have.length(1);
+        // Every invalid observation is dropped, so no version carries a source
+        // other than the fallback. (The full v1..v5 range is still offered at
+        // score 0 -- see the full-range test above.)
         expect(ranked[0].version).to.equal("5");
         expect(ranked[0].sources).to.deep.equal(["fallback"]);
+        const withSources = ranked.filter((r) => r.sources.length > 0);
+        expect(withSources).to.deep.equal([
+            {version: "5", score: WEIGHTS.fallback, sources: ["fallback"]},
+        ]);
     });
 
     it("keeps every version at the supported boundaries (1 and 5)", () => {

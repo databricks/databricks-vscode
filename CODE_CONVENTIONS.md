@@ -241,6 +241,37 @@ per-event markdown ([`telemetry.instructions.md`][vsctel]). Our `EventTypes`
 
 ---
 
+## 4b. Comments — concise and useful
+
+Comments are written for a human who is skimming, and humans skip walls of text.
+Every comment competes with the code for attention — earn it: say the one thing the
+code cannot, then stop.
+
+- **If the code is self-explanatory, don't comment it.** The best comment is often the
+  one you didn't write. Reach for a comment only when the code genuinely can't speak for
+  itself; a comment on obvious code is pure maintenance cost with no reader payoff.
+- **Explain _why_, never _what_.** The code already states what it does; a comment that
+  narrates the next line (`// increment i`) is noise. One that records a non-obvious
+  reason, constraint, or hazard is worth reading. (Same rule as 4a, applied inline.)
+- **Shorter than the code it guards.** If explaining one line takes a paragraph, the
+  reader gave up before your point. Trim to the load-bearing sentence.
+- **A comment is not a fix for a bad name.** If a variable or function needs several
+  lines to explain, rename or restructure it. A good name carries the explanation for
+  free and can't drift out of sync with the code.
+- **Comments rot — minimize the surface.** They aren't compiled or tested, so they go
+  stale silently as code changes. The fewer you keep, and the more they describe durable
+  _intent_ rather than current mechanics, the longer they stay true. Delete a comment
+  before it starts to lie.
+- **Doc-comments state the contract and caveats, not a re-spec.** A class/function
+  doc-comment should give a caller what they need and any surprising behavior (e.g.
+  `@onError({throw: false})` semantics) in a sentence or two — not restate every branch.
+  Anything visible in the signature doesn't need repeating.
+
+Generated comments trend long and explanatory, so when working AI-assisted this matters
+more, not less: trim to what a busy reviewer actually needs before committing.
+
+---
+
 ## 5. Go through the adapter layer (`vscode-objs/`)
 
 Don't call raw VS Code globals for state, config, or context. Use these seams so
@@ -345,6 +376,12 @@ The choices that affect how you write:
 - `(x) => …` — always parenthesize arrow params.
 - Trailing commas where ES5 allows.
 - Prefer `===` / `!==` and always use curly braces (`curly`).
+- **Windows too — don't hard-code POSIX paths.** The extension ships on Windows as
+  well as macOS/Linux, so any path or executable — in code _and_ in user-facing
+  text — must account for the platform. A venv interpreter is `.venv/bin/python` on
+  macOS/Linux but `.venv\Scripts\python.exe` on Windows. Build paths with `path`
+  (or a helper like `venvInterpreterPath`) instead of concatenating POSIX literals,
+  and when a message quotes a concrete path, pick it per `process.platform`.
 
 ---
 

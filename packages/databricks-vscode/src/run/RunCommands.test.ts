@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import {commands, ExtensionContext, Uri} from "vscode";
-import {anything, instance, mock, verify, when} from "ts-mockito";
+import {instance, mock, verify, when} from "ts-mockito";
 import {RunCommands} from "./RunCommands";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
@@ -119,10 +119,16 @@ describe(__filename, () => {
             ).never();
         });
 
-        it("should not re-verify when the feature is unavailable", async () => {
-            when(featureManagerMock.isEnabled(anything())).thenResolve(
-                featureState(false, undefined)
-            );
+        it("should not run the staleness re-check when the feature is unavailable", async () => {
+            // Unavailable on the first (cached) check, so the staleness re-check
+            // is skipped; setup runs and the forced post-setup check still
+            // reports unavailable, so the launch aborts.
+            when(
+                featureManagerMock.isEnabled("environment.dependencies")
+            ).thenResolve(featureState(false, undefined));
+            when(
+                featureManagerMock.isEnabled("environment.dependencies", true)
+            ).thenResolve(featureState(false, undefined));
             when(pythonExtensionMock.getPythonExecutable()).thenResolve(
                 undefined
             );
@@ -134,12 +140,6 @@ describe(__filename, () => {
             try {
                 const result = await runCommands["checkDbconnectEnabled"]();
                 assert.strictEqual(result, false);
-                verify(
-                    featureManagerMock.isEnabled(
-                        "environment.dependencies",
-                        true
-                    )
-                ).never();
             } finally {
                 registration.dispose();
             }
@@ -147,13 +147,14 @@ describe(__filename, () => {
 
         it("should proceed after a successful in-flow setup", async () => {
             // Unavailable on the first check; the setup flow fixes it, so the
-            // re-check after setup reports available and the launch proceeds.
+            // forced re-check after setup reports available and the launch
+            // proceeds.
             when(
                 featureManagerMock.isEnabled("environment.dependencies")
-            ).thenResolve(
-                featureState(false, undefined),
-                featureState(true, "/project/.venv/bin/python")
-            );
+            ).thenResolve(featureState(false, undefined));
+            when(
+                featureManagerMock.isEnabled("environment.dependencies", true)
+            ).thenResolve(featureState(true, "/project/.venv/bin/python"));
             const registration = commands.registerCommand(
                 "databricks.environment.setup",
                 () => undefined

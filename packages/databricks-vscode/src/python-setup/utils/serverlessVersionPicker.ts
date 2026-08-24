@@ -12,12 +12,22 @@ export interface VersionPickItem {
 /** Human-readable provenance labels (the enum keys are internal jargon). */
 const SOURCE_LABELS: Record<VersionSource, string> = {
     /* eslint-disable @typescript-eslint/naming-convention */
+    pyproject: "pyproject.toml",
     bundleYaml: "bundle config",
     notebook: "notebook metadata",
     workspaceDefault: "workspace default",
     fallback: "default",
     /* eslint-enable @typescript-eslint/naming-convention */
 };
+
+/**
+ * Render a bare version for display in the `vN` form the CLI, compute picker and
+ * docs all use (e.g. "5" -> "v5"). Display-only: the item's `version` field
+ * stays the bare integer the `--serverless-version` flag expects.
+ */
+function displayVersion(version: string): string {
+    return `v${version}`;
+}
 
 function describeSources(sources: VersionSource[]): string {
     const labels = sources.map((s) => SOURCE_LABELS[s]);
@@ -37,8 +47,9 @@ function describeSources(sources: VersionSource[]): string {
  * starred. (`picked` is also set for completeness, but note `showQuickPick`
  * only honours it in multi-select mode -- see {@link pickServerlessVersion} --
  * so in this single-select picker the star and ordering are what actually
- * signal the recommendation.) Every row carries its bare `version` for the
- * caller to forward to the CLI, and a `description` summarising where the
+ * signal the recommendation.) Each row's `label` is the `vN` display form (see
+ * {@link displayVersion}), while its `version` field stays the bare integer for
+ * the caller to forward to the CLI, plus a `description` summarising where the
  * version came from.
  */
 export function buildVersionPickItems(
@@ -46,8 +57,9 @@ export function buildVersionPickItems(
 ): VersionPickItem[] {
     return ranked.map((r, i) => {
         const picked = i === 0;
+        const label = displayVersion(r.version);
         return {
-            label: picked ? `$(star-full) ${r.version}` : r.version,
+            label: picked ? `$(star-full) ${label}` : label,
             description: describeSources(r.sources),
             version: r.version,
             picked,
@@ -71,7 +83,7 @@ export async function pickServerlessVersion(
     }
     const selected = await window.showQuickPick(items, {
         title: "Select serverless environment version",
-        placeHolder: `Recommended: ${items[0].version}`,
+        placeHolder: `Recommended: ${displayVersion(items[0].version)}`,
     });
     return selected?.version;
 }

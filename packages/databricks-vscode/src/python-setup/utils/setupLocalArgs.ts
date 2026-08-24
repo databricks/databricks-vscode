@@ -13,6 +13,13 @@ import {PythonSetupMode} from "../models/PythonSetupResult";
  */
 export interface SetupLocalInvocation {
     mode: PythonSetupMode;
+    /**
+     * When true, pass `--dry-run`: the CLI resolves compute and reports the
+     * environment key without provisioning or writing to disk. Used by drift
+     * detection to read the authoritative `compute.envKey` for the selected
+     * compute.
+     */
+    dryRun?: boolean;
     compute:
         | {kind: "cluster"; clusterId: string}
         | {kind: "serverless"; version: string};
@@ -41,6 +48,9 @@ export function buildSetupLocalArgs(inv: SetupLocalInvocation): string[] {
     if (inv.mode === "constraints-only") {
         args.push("--constraints-only");
     }
+    if (inv.dryRun) {
+        args.push("--dry-run");
+    }
     if (inv.constraintSourceUrl) {
         args.push("--constraint-source-url", inv.constraintSourceUrl);
     }
@@ -48,21 +58,4 @@ export function buildSetupLocalArgs(inv: SetupLocalInvocation): string[] {
     // Always request the machine-readable result last.
     args.push("--output", "json");
     return args;
-}
-
-/**
- * Resolve which `databricks` binary to run: a non-empty override wins,
- * otherwise the bundled CLI path. The override exists only while the
- * `setup-local` command is not yet in the bundled CLI (see the
- * `databricks.experiments.cliPathOverride` setting); this function stays pure —
- * the config value is read by the caller and passed in.
- */
-export function resolveCliPath(args: {
-    override: string | undefined;
-    bundled: string;
-}): string {
-    // The override comes from a VS Code setting, so it may be undefined when
-    // unset — coalesce before trimming so this stays a total function.
-    const override = (args.override ?? "").trim();
-    return override.length > 0 ? override : args.bundled;
 }

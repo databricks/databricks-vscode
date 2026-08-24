@@ -8,6 +8,7 @@ import {buildPythonSetupEntry, PythonSetupEntry} from "./pythonSetupEntry";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
 const PYTHON_SETUP_COMMAND = "databricks.environment.setupPythonEnv";
+const PYTHON_SETUP_RERUN_COMMAND = "databricks.environment.rerunPythonEnv";
 const getItemContext = (key: string, available: boolean) =>
     `databricks.environment.${key}.${available ? "success" : "error"}`;
 
@@ -36,6 +37,21 @@ export class EnvironmentComponent extends BaseComponent {
     }
 
     public async getRoot(): Promise<ConfigurationTreeItem[]> {
+        // With the uv-native setup, the group would hold a single child, so
+        // promote that entry to the top level and drop the empty wrapper. The
+        // legacy checklist keeps its "Python Environment" group, which nests
+        // multiple step rows.
+        const pythonSetup = this.pythonSetup;
+        if (pythonSetup && (await pythonSetup.isVisible())) {
+            return buildPythonSetupEntry(
+                {
+                    ready: pythonSetup.ready,
+                    driftState: pythonSetup.driftState,
+                },
+                PYTHON_SETUP_COMMAND,
+                PYTHON_SETUP_RERUN_COMMAND
+            );
+        }
         const environmentState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );
@@ -75,16 +91,9 @@ export class EnvironmentComponent extends BaseComponent {
         if (parent.id !== ENVIRONMENT_COMPONENT_ID) {
             return [];
         }
-        // The uv-native setup and the legacy pip checklist are mutually
-        // exclusive: when the python-setup entry is visible (opted-in + a
-        // clean uv/greenfield project), show only it and skip the checklist.
-        const pythonSetup = this.pythonSetup;
-        if (pythonSetup && (await pythonSetup.isVisible())) {
-            return buildPythonSetupEntry(
-                {ready: pythonSetup.ready},
-                PYTHON_SETUP_COMMAND
-            );
-        }
+        // Only the legacy checklist nests under the "Python Environment" group.
+        // The uv-native entry (mutually exclusive with the checklist) is a
+        // top-level row instead — see getRoot — so it never reaches here.
         const environmentState = await this.featureManager.isEnabled(
             "environment.dependencies"
         );

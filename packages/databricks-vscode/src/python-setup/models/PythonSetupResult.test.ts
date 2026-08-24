@@ -8,6 +8,7 @@ import {
     SUCCESS_DEFAULT,
     SUCCESS_CONSTRAINTS_ONLY,
     SUCCESS_REAL_RUN,
+    SUCCESS_WITH_WARNINGS,
     ERROR_NO_TARGET,
     ERROR_USAGE,
 } from "./fixtures/setupLocalResults";
@@ -65,6 +66,35 @@ describe("parsePythonSetupResult", () => {
         expect(r.ok).to.equal(false);
         expect(r.error?.code).to.equal("E_USAGE");
         expect(r.error?.failurePhase).to.equal("preflight");
+    });
+
+    it("parses merge warnings, preserving codes and order (incl. repeats)", () => {
+        const r = parsePythonSetupResult(asStdout(SUCCESS_WITH_WARNINGS));
+        expect(r.ok).to.equal(true);
+        expect(r.warnings.map((w) => w.code)).to.deep.equal([
+            "W_REQUIRES_PYTHON_OVERRIDDEN",
+            "W_DBCONNECT_PIN_OVERRIDDEN",
+            "W_DBCONNECT_CONSOLIDATED",
+            "W_USER_CONSTRAINT_CONFLICT",
+            "W_USER_CONSTRAINT_CONFLICT",
+        ]);
+    });
+
+    it("normalizes a missing `warnings` key to an empty array", () => {
+        // An older/variant CLI that omits `warnings` must not read as
+        // undefined: the telemetry layer would then mis-record a real merge as
+        // "no result produced" instead of a clean merge (warningsCount 0).
+        const {warnings, ...withoutWarnings} = SUCCESS_REAL_RUN;
+        void warnings;
+        const r = parsePythonSetupResult(asStdout(withoutWarnings));
+        expect(r.warnings).to.deep.equal([]);
+    });
+
+    it("normalizes a null `warnings` value to an empty array", () => {
+        const r = parsePythonSetupResult(
+            asStdout({...SUCCESS_REAL_RUN, warnings: null})
+        );
+        expect(r.warnings).to.deep.equal([]);
     });
 
     it("throws PythonSetupParseError on non-JSON stdout", () => {

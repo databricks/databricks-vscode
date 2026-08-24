@@ -2,11 +2,15 @@ import {Events, Telemetry} from ".";
 import {
     ComputeType,
     PrimaryManager,
+    PythonSetupDriftTrigger,
     PythonSetupErrorCode,
     PythonSetupFailurePhase,
     PythonSetupMode,
     PythonSetupOutcome,
+    PythonSetupRunTrigger,
+    TargetCompute,
 } from "./constants";
+import {PythonSetupWarning} from "../python-setup/models/PythonSetupResult";
 
 /**
  * What a starting setup run is about to do. Everything here is known before the
@@ -25,6 +29,33 @@ export interface PythonSetupAttempt {
      * `pyproject.toml` says nothing about greenfield-ness.
      */
     isGreenfield?: boolean;
+    /**
+     * Whether this is the first setup for the project this session or a re-run
+     * over an environment already provisioned this session (session-scoped).
+     * Same event, one enum dimension.
+     */
+    trigger: PythonSetupRunTrigger;
+}
+
+/** A detected drift, reduced to the categorical fields we report. */
+export interface PythonSetupDrift {
+    trigger: PythonSetupDriftTrigger;
+    /** The recorded environment key the .venv was provisioned against. */
+    fromEnvKey: string;
+    /** The environment key the currently selected compute resolves to. */
+    toEnvKey: string;
+}
+
+/**
+ * A once-per-session adoption reading for a project with a Python setup on
+ * record: whether the managed environment is still in place, and the compute
+ * kind attached when the reading was taken. Both categorical/boolean.
+ */
+export interface PythonSetupAdoption {
+    /** Whether the project's managed `.venv` interpreter still exists on disk. */
+    venvPresent: boolean;
+    /** The compute kind attached at the time of the reading. */
+    currentTargetType: TargetCompute;
 }
 
 /** How a setup run ended, reduced to the categorical fields we report. */
@@ -34,6 +65,22 @@ export interface PythonSetupOutcomeReport {
     errorCode?: PythonSetupErrorCode;
     envKey?: string;
     diskMutated?: boolean;
+    /**
+     * Blocked package index vs. a genuine dependency conflict — both arrive as
+     * `E_PROVISION`, so this splits them to gauge how often proxies bite. Set on
+     * every CLI setup failure (`false` is meaningful — the rate's denominator);
+     * omitted with no CLI result and on post-CLI adopt/persist failures.
+     */
+    indexUnreachable?: boolean;
+    /**
+     * The CLI's merge-phase warnings, verbatim from the result. Present whenever
+     * the CLI produced a result (so `[]` reads as "a run happened with no
+     * warnings"); absent when no result exists (cancelled / not_started /
+     * no_compute). Passed raw — the count and the categorical per-code histogram
+     * are derived at emission (see {@link warningCodeCounts}), the same split as
+     * {@link categoricalEnvKey}.
+     */
+    warnings?: PythonSetupWarning[];
 }
 
 /** Reports the outcome of the run whose attempt returned it. */
@@ -82,6 +129,57 @@ function categoricalEnvKey(envKey: string | undefined): string | undefined {
         : UNRECOGNISED_ENV_KEY;
 }
 
+/**
+ * The CLI's closed set of merge-phase warning codes (see `libs/localenv/result.go`).
+ * All are emitted from the merge phase, where an existing project's pins can
+ * conflict with the environment's managed pins:
+ *
+ * - `W_REQUIRES_PYTHON_OVERRIDDEN` — the user's `requires-python` is replaced.
+ * - `W_DBCONNECT_PIN_OVERRIDDEN` — the user's databricks-connect pin is replaced.
+ * - `W_DBCONNECT_PIN_DUPLICATED` — a retained databricks-connect pin now sits
+ *   alongside the managed one, with no version satisfying both (needs a manual fix).
+ * - `W_DBCONNECT_CONSOLIDATED` — a conflicting databricks-connect pin outside the
+ *   managed dev group (in `[project].dependencies`, an optional-dependency extra, or
+ *   another dependency group) was removed so a single managed pin survives.
+ * - `W_USER_CONSTRAINT_CONFLICT` — a user dependency is provably disjoint from an
+ *   env constraint.
+ *
+ * Held as a set so an unknown code (schema drift, or a code added CLI-side before
+ * this list is updated) collapses to {@link UNRECOGNISED_WARNING_CODE} rather than
+ * silently minting a new histogram bucket -- the same closed-vocabulary discipline
+ * {@link categoricalEnvKey} applies to the env key.
+ */
+const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
+    "W_REQUIRES_PYTHON_OVERRIDDEN",
+    "W_DBCONNECT_PIN_OVERRIDDEN",
+    "W_DBCONNECT_PIN_DUPLICATED",
+    "W_DBCONNECT_CONSOLIDATED",
+    "W_USER_CONSTRAINT_CONFLICT",
+]);
+
+/** Bucket for a warning code outside {@link KNOWN_WARNING_CODES}. */
+const UNRECOGNISED_WARNING_CODE = "other";
+
+/**
+ * Reduce the CLI's warnings to a per-code count, collapsing unknown codes to
+ * `other`. The result is a bounded, categorical histogram (at most one bucket per
+ * known code, plus `other`) — never the free-form warning messages, which carry
+ * package names and version specifiers. Returns an empty object for no warnings,
+ * so the caller can decide whether to emit the field at all.
+ */
+function warningCodeCounts(
+    warnings: PythonSetupWarning[]
+): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const {code} of warnings) {
+        const bucket = KNOWN_WARNING_CODES.has(code)
+            ? code
+            : UNRECOGNISED_WARNING_CODE;
+        counts[bucket] = (counts[bucket] ?? 0) + 1;
+    }
+    return counts;
+}
+
 declare module "." {
     interface Telemetry {
         /**
@@ -117,6 +215,22 @@ declare module "." {
          * legacy checklist and the uv-native entry mutually exclusively.
          */
         recordPythonSetupNoCompute(): void;
+
+        /**
+         * Record a detected compute drift. Emitted once per newly-detected
+         * distinct mismatch by {@link PythonSetupDriftManager}; both keys are
+         * constrained to the categorical envKey vocabulary before emission.
+         */
+        recordPythonSetupDrift(report: PythonSetupDrift): void;
+
+        /**
+         * Record the once-per-session adoption gauge for a project with a Python
+         * setup on record: whether its managed `.venv` still exists and the
+         * compute kind attached at the time. Emitted only when the project is
+         * VPEX-active (a setup state is persisted), so the event's presence is
+         * itself the adoption-rate denominator.
+         */
+        recordPythonSetupAdoption(report: PythonSetupAdoption): void;
     }
 }
 
@@ -137,6 +251,7 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
         packageManager: attempt.packageManager,
         targetType: attempt.targetType,
         mode: attempt.mode,
+        trigger: attempt.trigger,
         ...(attempt.serverlessVersion !== undefined
             ? {serverlessVersion: attempt.serverlessVersion}
             : {}),
@@ -170,6 +285,27 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
             ...(report.diskMutated !== undefined
                 ? {diskMutated: report.diskMutated}
                 : {}),
+            ...(report.indexUnreachable !== undefined
+                ? {indexUnreachable: report.indexUnreachable}
+                : {}),
+            // A present `warnings` array means the CLI produced a result, so the
+            // count is meaningful even at 0 (a clean merge) -- unlike the omitted
+            // fields above, 0 is a value, not "unknown". The per-code histogram is
+            // a categorical map JSON-stringified by recordEvent (objects go to
+            // properties); it is omitted when empty so a no-warning run does not
+            // carry a "{}" string.
+            ...(report.warnings !== undefined
+                ? {
+                      warningsCount: report.warnings.length,
+                      ...(report.warnings.length > 0
+                          ? {
+                                warningCodeCounts: warningCodeCounts(
+                                    report.warnings
+                                ),
+                            }
+                          : {}),
+                  }
+                : {}),
         });
     };
 };
@@ -179,4 +315,31 @@ Telemetry.prototype.recordPythonSetupNoCompute = function () {
     // drag the setup-time percentiles down. Recorded directly rather than via
     // start(), which always stamps an elapsed time.
     this.recordEvent(Events.PYTHON_ENV_SETUP_RESULT, {outcome: "no_compute"});
+};
+
+Telemetry.prototype.recordPythonSetupDrift = function (
+    report: PythonSetupDrift
+): void {
+    this.recordEvent(Events.PYTHON_ENV_DRIFT, {
+        trigger: report.trigger,
+        // Constrain both keys to the closed envKey vocabulary so an unexpected
+        // string can't leak high-cardinality / identifying content. The `!` is
+        // safe: categoricalEnvKey only returns undefined for undefined input, and
+        // both fields are required strings.
+        fromEnvKey: categoricalEnvKey(report.fromEnvKey)!,
+        toEnvKey: categoricalEnvKey(report.toEnvKey)!,
+    });
+};
+
+Telemetry.prototype.recordPythonSetupAdoption = function (
+    report: PythonSetupAdoption
+): void {
+    // Named explicitly (not spread) for the same allowlist reason as the emitters
+    // above. Both fields are required, so there is no optional to spread: a
+    // boolean becomes a "true"/"false" property and the categorical target type a
+    // property, per recordEvent's serialization.
+    this.recordEvent(Events.PYTHON_ENV_ADOPTION, {
+        venvPresent: report.venvPresent,
+        currentTargetType: report.currentTargetType,
+    });
 };

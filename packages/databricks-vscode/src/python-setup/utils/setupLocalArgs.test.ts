@@ -1,9 +1,5 @@
 import {expect} from "chai";
-import {
-    buildSetupLocalArgs,
-    resolveCliPath,
-    SetupLocalInvocation,
-} from "./setupLocalArgs";
+import {buildSetupLocalArgs, SetupLocalInvocation} from "./setupLocalArgs";
 
 describe("buildSetupLocalArgs", () => {
     it("builds a default serverless invocation with JSON output", () => {
@@ -75,26 +71,23 @@ describe("buildSetupLocalArgs", () => {
         });
         expect(args.slice(-2)).to.deep.equal(["--output", "json"]);
     });
-});
 
-describe("resolveCliPath", () => {
-    it("prefers a non-empty override", () => {
-        expect(
-            resolveCliPath({override: "/custom/databricks", bundled: "/b"})
-        ).to.equal("/custom/databricks");
+    it("adds --dry-run when the invocation is a dry run", () => {
+        const args = buildSetupLocalArgs({
+            mode: "default",
+            compute: {kind: "serverless", version: "5"},
+            dryRun: true,
+        });
+        expect(args).to.include("--dry-run");
+        // Still requests machine-readable output last.
+        expect(args.slice(-2)).to.deep.equal(["--output", "json"]);
     });
 
-    it("trims whitespace and falls back to bundled for a blank override", () => {
-        expect(resolveCliPath({override: "   ", bundled: "/b"})).to.equal("/b");
-    });
-
-    it("falls back to bundled for an empty override", () => {
-        expect(resolveCliPath({override: "", bundled: "/b"})).to.equal("/b");
-    });
-
-    it("falls back to bundled for an undefined override (unset setting)", () => {
-        expect(resolveCliPath({override: undefined, bundled: "/b"})).to.equal(
-            "/b"
-        );
+    it("omits --dry-run by default", () => {
+        const args = buildSetupLocalArgs({
+            mode: "default",
+            compute: {kind: "serverless", version: "5"},
+        });
+        expect(args).to.not.include("--dry-run");
     });
 });
