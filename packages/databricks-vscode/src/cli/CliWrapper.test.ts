@@ -492,6 +492,30 @@ describe("cancellableExecFile closeStdin", () => {
             await settled;
         }
     });
+
+    // On a non-zero exit the thrown error must mirror Node's `execFile`
+    // rejection: stderr in `.message` (the profile parser greps it) plus
+    // numeric `.code` and `.stderr`/`.stdout` (what the SDK's `isFileNotFound`
+    // inspects). Regression guard for the spawn-based reimplementation.
+    it("throws a Node-execFile-shaped error on a non-zero exit", async () => {
+        let caught: any;
+        try {
+            await cancellableExecFile(process.execPath, [
+                "-e",
+                "process.stderr.write('cannot parse config file'); process.stdout.write('partial'); process.exit(3);",
+            ]);
+        } catch (e) {
+            caught = e;
+        }
+        assert.ok(caught, "expected a rejection on non-zero exit");
+        assert.strictEqual(caught.code, 3);
+        assert.strictEqual(caught.stderr, "cannot parse config file");
+        assert.strictEqual(caught.stdout, "partial");
+        assert.ok(
+            caught.message.includes("cannot parse config file"),
+            "stderr must be in the error message for the profile-parse checks"
+        );
+    });
 });
 
 describe("ProcessError.showErrorMessage", () => {

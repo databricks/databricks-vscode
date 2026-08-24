@@ -225,20 +225,9 @@ export function run(
         const stderrStreamDecoder = new StringDecoder("utf8");
         let settled = false;
         let cancelled = false;
-
-        const requestCancel = () => {
-            cancelled = true;
-            // Best-effort terminate; the "close"/"error" handler still fires and
-            // settles the promise, so cancellation never leaves it hanging.
-            // Guard against terminate throwing (e.g. the child is already gone)
-            // so it can't escape this callback.
-            try {
-                terminateFn(child);
-            } catch {
-                // ignore — the process-exit handler will settle the promise
-            }
-        };
-        const cancelSub = options.token?.onCancellationRequested(requestCancel);
+        // Declared before `finish` (which disposes it) so a token that fires
+        // synchronously on subscription can't hit a temporal-dead-zone error.
+        let cancelSub: {dispose(): void} | undefined;
 
         const finish = (fn: () => void) => {
             if (settled) {
@@ -248,6 +237,51 @@ export function run(
             cancelSub?.dispose();
             fn();
         };
+
+        // Best-effort terminate that can never throw out of an event handler
+        // (e.g. the child is already gone).
+        const safeTerminate = () => {
+            try {
+                terminateFn(child);
+            } catch {
+                // ignore
+            }
+        };
+
+        const settleResult = (exitCode: number | null) =>
+            finish(() => {
+                // Flush any partial trailing byte each streaming decoder held
+                // back, so the callbacks don't miss the final fragment.
+                if (options.onStdout) {
+                    const tail = stdoutStreamDecoder.end();
+                    if (tail) {
+                        options.onStdout(tail);
+                    }
+                }
+                if (options.onStderr) {
+                    const tail = stderrStreamDecoder.end();
+                    if (tail) {
+                        options.onStderr(tail);
+                    }
+                }
+                resolve({
+                    stdout: Buffer.concat(stdoutChunks).toString("utf8"),
+                    stderr: Buffer.concat(stderrChunks).toString("utf8"),
+                    exitCode,
+                    cancelled,
+                });
+            });
+
+        const requestCancel = () => {
+            cancelled = true;
+            safeTerminate();
+            // Settle immediately as cancelled rather than waiting for "close":
+            // a process that ignores the signal (or a failed taskkill) must not
+            // leave the operation pending forever. The tree has been signalled;
+            // any late "close" is ignored once settled.
+            settleResult(null);
+        };
+        cancelSub = options.token?.onCancellationRequested(requestCancel);
 
         child.stdout.on("data", (b: Buffer) => {
             stdoutChunks.push(b);
@@ -270,34 +304,20 @@ export function run(
 
         // A stream-level error (e.g. EPIPE) would otherwise be an unhandled
         // "error" event, which Node throws as an uncaught exception in the
-        // extension host. Route it through finish() like any other failure.
-        child.stdout.on("error", (err: Error) => finish(() => reject(err)));
-        child.stderr.on("error", (err: Error) => finish(() => reject(err)));
+        // extension host. The child is live here, and POSIX children are
+        // detached, so terminate the whole tree before rejecting — otherwise it
+        // keeps running (and mutating state) after the caller sees a failure.
+        const rejectFromStreamError = (err: Error) =>
+            finish(() => {
+                safeTerminate();
+                reject(err);
+            });
+        child.stdout.on("error", rejectFromStreamError);
+        child.stderr.on("error", rejectFromStreamError);
+        // A spawn-level "error" (e.g. ENOENT) means no process is running, so
+        // there is nothing to terminate.
         child.on("error", (err: Error) => finish(() => reject(err)));
 
-        child.on("close", (code) =>
-            finish(() => {
-                // Flush any partial trailing byte each streaming decoder held
-                // back, so the callbacks don't miss the final fragment.
-                if (options.onStdout) {
-                    const tail = stdoutStreamDecoder.end();
-                    if (tail) {
-                        options.onStdout(tail);
-                    }
-                }
-                if (options.onStderr) {
-                    const tail = stderrStreamDecoder.end();
-                    if (tail) {
-                        options.onStderr(tail);
-                    }
-                }
-                resolve({
-                    stdout: Buffer.concat(stdoutChunks).toString("utf8"),
-                    stderr: Buffer.concat(stderrChunks).toString("utf8"),
-                    exitCode: code,
-                    cancelled,
-                });
-            })
-        );
+        child.on("close", (code) => settleResult(code));
     });
 }

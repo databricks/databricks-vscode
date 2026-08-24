@@ -264,6 +264,58 @@ describe("cliProcess.run", () => {
         });
         expect(result.cancelled).to.equal(true);
     });
+
+    it("settles promptly on cancel even if the process never closes", async () => {
+        // A child that ignores termination and never emits "close". The run must
+        // still settle (as cancelled) rather than hang forever waiting on close.
+        const neverClosingSpawn: SpawnFn = (() => {
+            const child: any = new EventEmitter();
+            child.stdout = new EventEmitter();
+            child.stderr = new EventEmitter();
+            child.stdin = {end: () => {}};
+            child.pid = 4242;
+            child.kill = () => {}; // ignores the signal, never closes
+            return child;
+        }) as unknown as SpawnFn;
+        const {token} = nextTickToken();
+        let terminated = false;
+        const result = await run("/fake/cli", [], {
+            token,
+            spawnFn: neverClosingSpawn,
+            terminateFn: () => (terminated = true),
+        });
+        expect(result.cancelled).to.equal(true);
+        expect(terminated).to.equal(true);
+    });
+
+    it("terminates the process tree when a stdout stream error occurs", async () => {
+        // stdout errors mid-run (e.g. EPIPE). Because POSIX children are spawned
+        // detached, rejecting without killing would orphan the tree, so the
+        // terminator must run before the rejection.
+        let terminated = false;
+        const erroringSpawn: SpawnFn = (() => {
+            const child: any = new EventEmitter();
+            child.stdout = new EventEmitter();
+            child.stderr = new EventEmitter();
+            child.stdin = {end: () => {}};
+            child.pid = 99;
+            child.kill = () => {};
+            setImmediate(() => child.stdout.emit("error", new Error("EPIPE")));
+            return child;
+        }) as unknown as SpawnFn;
+        let threw = false;
+        try {
+            await run("/fake/cli", [], {
+                spawnFn: erroringSpawn,
+                terminateFn: () => (terminated = true),
+            });
+        } catch (e) {
+            threw = true;
+            expect((e as Error).message).to.contain("EPIPE");
+        }
+        expect(threw).to.equal(true);
+        expect(terminated).to.equal(true);
+    });
 });
 
 describe("cliProcess.getEscapedCommandAndArgs", () => {
