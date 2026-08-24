@@ -31,6 +31,12 @@ updates:
       # floor is deliberately raised. See PR #1988.
       - dependency-name: "@types/node"
         versions: [">=23"]
+      # TypeScript 7 is the native-compiler rewrite; it removes the
+      # `moduleResolution: node10` our shared tsconfig_base uses, so moving to it
+      # is a deliberate migration, not a drop-in bump. Stay on 6.x for now.
+      # See PRs #1995, #1993.
+      - dependency-name: "typescript"
+        versions: [">=7"]
   - package-ecosystem: "npm"
     directory: "/packages/databricks-vscode-types"
     ignore:
@@ -40,6 +46,11 @@ updates:
       # See PR #1933.
       - dependency-name: "@types/vscode"
         versions: [">=1.87"]
+      # TypeScript 7 removes `moduleResolution: node10` (see tsconfig_base); moving
+      # to it is a deliberate migration, not a drop-in bump. Stay on 6.x for now.
+      # See PR #1993.
+      - dependency-name: "typescript"
+        versions: [">=7"]
     schedule:
       interval: "daily"
   - package-ecosystem: github-actions
