@@ -24,7 +24,7 @@ import {FileUtils, UrlUtils} from "../utils";
 import {AuthType as SdkAuthType} from "@databricks/sdk-experimental";
 import {randomUUID} from "crypto";
 import ini from "ini";
-import {appendFile, copyFile} from "fs/promises";
+import {appendFile, copyFile, readFile} from "fs/promises";
 import path from "path";
 import os from "os";
 import {createFile} from "fs-extra";
@@ -392,6 +392,19 @@ export async function saveNewProfile(
         window.showInformationMessage(
             `Created a new .databrickscfg file at ${configFilePath}`
         );
+    }
+
+    // The Databricks CLI's `auth login --profile <name>` (run during the auth
+    // check for databricks-cli/OAuth profiles) already persists the profile
+    // section itself. Appending our own copy on top of that would create a
+    // second [<name>] section, which is invalid for configparser/SDK consumers
+    // and fails with DuplicateSectionError (databricks-vscode#2129). If the CLI
+    // already wrote the section, reuse it instead of appending a duplicate.
+    if (shouldBackup) {
+        const existing = ini.parse(await readFile(configFilePath, "utf-8"));
+        if (Object.prototype.hasOwnProperty.call(existing, profileName)) {
+            return await ProfileAuthProvider.from(profileName, cli, true);
+        }
     }
 
     const profile: any = {};

@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.13.1",
+    "version": "2.14.1",
     "engines": {
         "vscode": "^1.86.0",
         "node": ">=22.0"
@@ -1797,23 +1797,16 @@
                         "items": {
                             "enum": [
                                 "views.cluster",
-                                "views.workspace",
-                                "environment.pythonSetup"
+                                "views.workspace"
                             ],
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
-                                "Show workspace browser in the explorer.",
-                                "Enable the uv-native one-click Python environment setup for Databricks Connect."
+                                "Show workspace browser in the explorer."
                             ],
                             "type": "string"
                         },
                         "uniqueItems": true,
                         "description": "Opt into experimental features."
-                    },
-                    "databricks.experiments.cliPathOverride": {
-                        "type": "string",
-                        "default": "",
-                        "description": "Absolute path to a custom Databricks CLI that provides `environments setup-local`. Temporary experimental setting used while the command ships only in custom CLI builds; leave empty to use the bundled CLI. Will be removed once the command is generally available."
                     },
                     "databricks.wsfs.rearrangeCells": {
                         "type": "boolean",
@@ -1854,7 +1847,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.12.1"
+        "version": "1.13.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
@@ -1873,7 +1866,7 @@
         "package:bundle-schema:write": "yarn package:cli:fetch && ts-node ./scripts/writeBundleSchema.ts ./bin/databricks ./src/bundle/BundleSchema.ts",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
-        "package:copy-markdown-it": "cp ./node_modules/markdown-it/dist/markdown-it.min.js ./out/markdown-it.min.js",
+        "package:copy-markdown-it": "cp ./node_modules/markdown-it/dist/browser/markdown-it.umd.min.js ./out/markdown-it.min.js",
         "package:copy-highlight": "esbuild ./node_modules/highlight.js/lib/common.js --bundle --format=iife --global-name=hljs --outfile=out/highlight.min.js --minify",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
@@ -1904,10 +1897,11 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^3.0.3",
         "highlight.js": "^11.10.0",
-        "lodash": "^4.17.21",
-        "markdown-it": "^14.2.0",
-        "minimatch": "^10.0.1",
-        "shell-quote": "^1.8.4",
+        "lodash": "^4.18.1",
+        "markdown-it": "^15.0.0",
+        "minimatch": "^10.2.3",
+        "shell-env": "^4.0.3",
+        "shell-quote": "^1.9.0",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
         "yaml": "^2.8.3"
@@ -1944,7 +1938,7 @@
         "mocha": "^11.7.6",
         "nyc": "^18.0.0",
         "prettier": "^3.1.1",
-        "quicktype-core": "^23.0.0",
+        "quicktype-core": "^26.0.0",
         "tmp-promise": "^3.0.3",
         "ts-mocha": "^11.1.0",
         "ts-mockito": "^2.6.1",

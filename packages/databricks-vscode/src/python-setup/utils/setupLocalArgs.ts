@@ -59,20 +59,3 @@ export function buildSetupLocalArgs(inv: SetupLocalInvocation): string[] {
     args.push("--output", "json");
     return args;
 }
-
-/**
- * Resolve which `databricks` binary to run: a non-empty override wins,
- * otherwise the bundled CLI path. The override exists only while the
- * `setup-local` command is not yet in the bundled CLI (see the
- * `databricks.experiments.cliPathOverride` setting); this function stays pure —
- * the config value is read by the caller and passed in.
- */
-export function resolveCliPath(args: {
-    override: string | undefined;
-    bundled: string;
-}): string {
-    // The override comes from a VS Code setting, so it may be undefined when
-    // unset — coalesce before trimming so this stays a total function.
-    const override = (args.override ?? "").trim();
-    return override.length > 0 ? override : args.bundled;
-}

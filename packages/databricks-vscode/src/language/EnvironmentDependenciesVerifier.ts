@@ -20,7 +20,12 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly installer: EnvironmentDependenciesInstaller,
         private readonly configureAutocomplete: ConfigureAutocomplete,
-        private readonly packageManagerTelemetry: PackageManagerTelemetry
+        private readonly packageManagerTelemetry: PackageManagerTelemetry,
+        // Whether the uv-native flow is the active surface for this project. When
+        // it is, this legacy checklist stays evaluated (other consumers read its
+        // state) but must not auto-prompt, or the user gets both flows' prompts.
+        // Defaults to "never active" so the legacy construction is unchanged.
+        private readonly isUvActive: () => Promise<boolean> = async () => false
     ) {
         super([
             "checkCluster",
@@ -43,14 +48,10 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                     await this.checkWorkspaceHasUc();
                 }
             }, this),
-            this.pythonExtension.onDidChangePythonExecutable(async () => {
-                await this.checkPythonEnvironment();
-                const depsCheck = await this.checkEnvironmentDependencies();
-                if (!depsCheck.available && depsCheck.action) {
-                    await depsCheck.action(true);
-                }
-                await this.checkBuiltins();
-            }, this),
+            this.pythonExtension.onDidChangePythonExecutable(
+                () => this.onInterpreterChanged(),
+                this
+            ),
             this.installer.onDidTryInstallation(async () => {
                 await this.checkEnvironmentDependencies();
                 await this.checkBuiltins();
@@ -59,6 +60,22 @@ export class EnvironmentDependenciesVerifier extends MultiStepAccessVerifier {
                 await this.checkBuiltins();
             })
         );
+    }
+
+    private async onInterpreterChanged() {
+        await this.checkPythonEnvironment();
+        const depsCheck = await this.checkEnvironmentDependencies();
+        // Suppress the legacy auto-install prompt when the uv-native flow owns
+        // this project — it drives its own setup, so a second prompt here is a
+        // duplicate.
+        if (
+            !depsCheck.available &&
+            depsCheck.action &&
+            !(await this.isUvActive())
+        ) {
+            await depsCheck.action(true);
+        }
+        await this.checkBuiltins();
     }
 
     promptForAttachingCluster(msg: string) {

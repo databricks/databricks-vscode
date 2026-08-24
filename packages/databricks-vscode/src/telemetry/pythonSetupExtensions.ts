@@ -8,6 +8,7 @@ import {
     PythonSetupMode,
     PythonSetupOutcome,
     PythonSetupRunTrigger,
+    TargetCompute,
 } from "./constants";
 import {PythonSetupWarning} from "../python-setup/models/PythonSetupResult";
 
@@ -45,6 +46,18 @@ export interface PythonSetupDrift {
     toEnvKey: string;
 }
 
+/**
+ * A once-per-session adoption reading for a project with a Python setup on
+ * record: whether the managed environment is still in place, and the compute
+ * kind attached when the reading was taken. Both categorical/boolean.
+ */
+export interface PythonSetupAdoption {
+    /** Whether the project's managed `.venv` interpreter still exists on disk. */
+    venvPresent: boolean;
+    /** The compute kind attached at the time of the reading. */
+    currentTargetType: TargetCompute;
+}
+
 /** How a setup run ended, reduced to the categorical fields we report. */
 export interface PythonSetupOutcomeReport {
     outcome: PythonSetupOutcome;
@@ -52,6 +65,13 @@ export interface PythonSetupOutcomeReport {
     errorCode?: PythonSetupErrorCode;
     envKey?: string;
     diskMutated?: boolean;
+    /**
+     * Blocked package index vs. a genuine dependency conflict — both arrive as
+     * `E_PROVISION`, so this splits them to gauge how often proxies bite. Set on
+     * every CLI setup failure (`false` is meaningful — the rate's denominator);
+     * omitted with no CLI result and on post-CLI adopt/persist failures.
+     */
+    indexUnreachable?: boolean;
     /**
      * The CLI's merge-phase warnings, verbatim from the result. Present whenever
      * the CLI produced a result (so `[]` reads as "a run happened with no
@@ -118,6 +138,9 @@ function categoricalEnvKey(envKey: string | undefined): string | undefined {
  * - `W_DBCONNECT_PIN_OVERRIDDEN` — the user's databricks-connect pin is replaced.
  * - `W_DBCONNECT_PIN_DUPLICATED` — a retained databricks-connect pin now sits
  *   alongside the managed one, with no version satisfying both (needs a manual fix).
+ * - `W_DBCONNECT_CONSOLIDATED` — a conflicting databricks-connect pin outside the
+ *   managed dev group (in `[project].dependencies`, an optional-dependency extra, or
+ *   another dependency group) was removed so a single managed pin survives.
  * - `W_USER_CONSTRAINT_CONFLICT` — a user dependency is provably disjoint from an
  *   env constraint.
  *
@@ -130,6 +153,7 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
     "W_REQUIRES_PYTHON_OVERRIDDEN",
     "W_DBCONNECT_PIN_OVERRIDDEN",
     "W_DBCONNECT_PIN_DUPLICATED",
+    "W_DBCONNECT_CONSOLIDATED",
     "W_USER_CONSTRAINT_CONFLICT",
 ]);
 
@@ -198,6 +222,15 @@ declare module "." {
          * constrained to the categorical envKey vocabulary before emission.
          */
         recordPythonSetupDrift(report: PythonSetupDrift): void;
+
+        /**
+         * Record the once-per-session adoption gauge for a project with a Python
+         * setup on record: whether its managed `.venv` still exists and the
+         * compute kind attached at the time. Emitted only when the project is
+         * VPEX-active (a setup state is persisted), so the event's presence is
+         * itself the adoption-rate denominator.
+         */
+        recordPythonSetupAdoption(report: PythonSetupAdoption): void;
     }
 }
 
@@ -252,6 +285,9 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
             ...(report.diskMutated !== undefined
                 ? {diskMutated: report.diskMutated}
                 : {}),
+            ...(report.indexUnreachable !== undefined
+                ? {indexUnreachable: report.indexUnreachable}
+                : {}),
             // A present `warnings` array means the CLI produced a result, so the
             // count is meaningful even at 0 (a clean merge) -- unlike the omitted
             // fields above, 0 is a value, not "unknown". The per-code histogram is
@@ -292,5 +328,18 @@ Telemetry.prototype.recordPythonSetupDrift = function (
         // both fields are required strings.
         fromEnvKey: categoricalEnvKey(report.fromEnvKey)!,
         toEnvKey: categoricalEnvKey(report.toEnvKey)!,
+    });
+};
+
+Telemetry.prototype.recordPythonSetupAdoption = function (
+    report: PythonSetupAdoption
+): void {
+    // Named explicitly (not spread) for the same allowlist reason as the emitters
+    // above. Both fields are required, so there is no optional to spread: a
+    // boolean becomes a "true"/"false" property and the categorical target type a
+    // property, per recordEvent's serialization.
+    this.recordEvent(Events.PYTHON_ENV_ADOPTION, {
+        venvPresent: report.venvPresent,
+        currentTargetType: report.currentTargetType,
     });
 };

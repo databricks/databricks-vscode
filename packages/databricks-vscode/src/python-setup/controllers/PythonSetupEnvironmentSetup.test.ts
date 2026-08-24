@@ -13,11 +13,9 @@ import {
     SUCCESS_REAL_RUN,
     SUCCESS_REAL_RUN_WITH_WARNINGS,
     ERROR_NO_TARGET,
+    ERROR_USAGE,
 } from "../models/fixtures/setupLocalResults";
-import {
-    PythonSetupErrorAction,
-    UV_INSTALL_DOCS_URL,
-} from "../utils/errorMessages";
+import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     PythonSetupAttempt,
@@ -117,7 +115,8 @@ function makeDeps(
     return {
         cli: makeCli(),
         projectRoot: () => "/proj",
-        // Default seams model a connected serverless session that opted in.
+        // Default seams model a uv-suitable project with a connected serverless
+        // session.
         isVisible: async () => true,
         resolveCompute: async () => ({
             status: "ok",
@@ -373,15 +372,36 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(shown).to.have.length(1);
         expect(shown[0].action).to.deep.equal({
             label: "Install uv",
-            url: UV_INSTALL_DOCS_URL,
+            url: "https://docs.astral.sh/uv/getting-started/installation/",
         });
     });
 
-    it("passes no remediation action for failures other than uv-missing", async () => {
+    it("offers the mapped documentation action for a doc-linked failure", async () => {
         const shown: {action?: PythonSetupErrorAction}[] = [];
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 cli: makeCli({resolve: ERROR_NO_TARGET}),
+                showError: async (_message, _detail, action) => {
+                    shown.push({action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].action).to.deep.equal({
+            label: "Configure compute",
+            url: "https://docs.databricks.com/aws/en/dev-tools/vscode-ext/configure#cluster",
+        });
+    });
+
+    it("passes no remediation action for a message-only failure", async () => {
+        // E_USAGE has no doc that reliably helps, so it surfaces the message alone.
+        const shown: {action?: PythonSetupErrorAction}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_USAGE}),
                 showError: async (_message, _detail, action) => {
                     shown.push({action});
                 },
@@ -872,9 +892,43 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 errorCode: ERROR_NO_TARGET.error!.code,
                 envKey: ERROR_NO_TARGET.compute?.envKey,
                 diskMutated: ERROR_NO_TARGET.error!.diskMutated,
+                // E_NO_TARGET is not one of the package-fetching phases.
+                indexUnreachable: false,
                 warnings: ERROR_NO_TARGET.warnings,
             },
         ]);
+    });
+
+    it("flags indexUnreachable when uv cannot reach the package index", async () => {
+        const telemetry = makeTelemetryRecorder();
+        // A provision failure whose message is uv's connection-refused signature
+        // (blocked pypi.org needing a proxy), not a dependency conflict.
+        const blockedIndex: PythonSetupResult = {
+            ...ERROR_NO_TARGET,
+            phases: [
+                {phase: "preflight", status: "ok"},
+                {phase: "resolve", status: "ok"},
+                {phase: "fetch", status: "ok"},
+                {phase: "merge", status: "ok"},
+                {phase: "provision", status: "error"},
+                {phase: "validate", status: "pending"},
+            ],
+            error: {
+                code: "E_PROVISION",
+                failurePhase: "provision",
+                message:
+                    "error: Failed to fetch: `https://pypi.org/simple/ipykernel/`\n" +
+                    "  Caused by: tcp connect error: Connection refused (os error 61)",
+                diskMutated: false,
+            },
+        };
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({...telemetry, cli: makeCli({resolve: blockedIndex})})
+        );
+
+        await setup.setup();
+
+        expect(telemetry.results[0].indexUnreachable).to.equal(true);
     });
 
     it('reports the synthetic "adopt" phase when interpreter adoption fails', async () => {

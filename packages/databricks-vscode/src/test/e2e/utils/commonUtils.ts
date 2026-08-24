@@ -270,14 +270,52 @@ export async function waitForLogin(profileName: string) {
     );
 }
 
+/**
+ * Wait until the CONFIGURATION section shows `expected` as a top-level row and not
+ * `forbidden`. Labels match exactly (substrings overlap, e.g. "Set up Python
+ * environment" contains "Python environment"). A `forbidden` hit keeps polling, so
+ * transient startup renders self-heal — only a persistent wrong surface times out.
+ */
+export async function waitForConfigSurface(
+    expected: string,
+    forbidden: string,
+    timeoutMs = 60_000
+) {
+    await browser.waitUntil(
+        async () => {
+            const section = (await getViewSection("CONFIGURATION")) as
+                | CustomTreeSection
+                | undefined;
+            if (!section) {
+                return false;
+            }
+            let sawExpected = false;
+            for (const item of await section.getVisibleItems()) {
+                const label = await item.getLabel();
+                if (label === forbidden) {
+                    return false;
+                }
+                if (label === expected) {
+                    sawExpected = true;
+                }
+            }
+            return sawExpected;
+        },
+        {
+            timeout: timeoutMs,
+            interval: 1000,
+            timeoutMsg: `CONFIGURATION never showed "${expected}" without "${forbidden}"`,
+        }
+    );
+}
+
 export function getStaticResourceName(name: string) {
     return `vscode_integration_test_${name}`;
 }
 
 export function getUniqueResourceName(name?: string) {
-    const uniqueName = name
-        ? `${randomUUID().slice(0, 8)}_${name}`
-        : randomUUID().slice(0, 8);
+    const uniquePart = `${Date.now()}_${randomUUID().slice(0, 8)}`;
+    const uniqueName = name ? `${uniquePart}_${name}` : uniquePart;
     return getStaticResourceName(uniqueName);
 }
 

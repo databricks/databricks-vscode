@@ -74,7 +74,7 @@ describe("parsePythonSetupResult", () => {
         expect(r.warnings.map((w) => w.code)).to.deep.equal([
             "W_REQUIRES_PYTHON_OVERRIDDEN",
             "W_DBCONNECT_PIN_OVERRIDDEN",
-            "W_DBCONNECT_PIN_DUPLICATED",
+            "W_DBCONNECT_CONSOLIDATED",
             "W_USER_CONSTRAINT_CONFLICT",
             "W_USER_CONSTRAINT_CONFLICT",
         ]);

@@ -8,6 +8,9 @@ export async function run(): Promise<void> {
         ui: "bdd",
         color: true,
         grep: process.env.MOCHA_GREP,
+        // Cold CI runners push a test's first real I/O past mocha's 2s default;
+        // 5s is the repo-wide floor. Per-suite this.timeout() still overrides it.
+        timeout: 5000,
     });
 
     // Add files to the test suite

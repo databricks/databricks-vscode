@@ -12,6 +12,7 @@ export interface VersionPickItem {
 /** Human-readable provenance labels (the enum keys are internal jargon). */
 const SOURCE_LABELS: Record<VersionSource, string> = {
     /* eslint-disable @typescript-eslint/naming-convention */
+    pyproject: "pyproject.toml",
     bundleYaml: "bundle config",
     notebook: "notebook metadata",
     workspaceDefault: "workspace default",

@@ -14,6 +14,7 @@ import {
     formatSetupFailureDetail,
     getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
+    isIndexUnreachableFailure,
     NO_COMPUTE_TARGET_MESSAGE,
     PythonSetupErrorAction,
 } from "../utils/errorMessages";
@@ -95,9 +96,9 @@ export interface PythonSetupSetupDeps {
 
     /**
      * Whether the uv-native setup should run for the current project. The
-     * extension wires this to the opt-in flag AND the package-manager gate
-     * (`shouldShowPythonSetup` over a live `detect`), so it is false unless the
-     * feature is enabled for a clean uv/greenfield project.
+     * extension wires this to the package-manager gate (`isUvSetupSuitable` over
+     * a live `detect`), so it is false unless the project is a clean
+     * uv/greenfield one with no competing manager.
      */
     isVisible: () => Promise<boolean>;
 
@@ -379,6 +380,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
                 diskMutated: result.error?.diskMutated,
+                indexUnreachable: isIndexUnreachableFailure(result),
                 warnings: result.warnings,
             });
             this.present(

@@ -7,7 +7,8 @@ import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {openExternal} from "../../utils/urlUtils";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
-import {shouldShowPythonSetup} from "../utils/pythonSetupGate";
+import {isUvSetupSuitable} from "../utils/pythonSetupGate";
+import {withElapsedProgress} from "../utils/setupProgress";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {readVenvProjectName} from "../utils/venvProjectName";
@@ -81,10 +82,11 @@ export function resolveComputeFrom(
 }
 
 /**
- * Build the visibility gate for the config-view entry: the feature must be
- * opted into (flag on) AND the active project must be one the uv-native setup
- * fits (a clean uv/greenfield project, no competing manager -- see
- * {@link shouldShowPythonSetup}).
+ * Build the visibility gate for the config-view entry: the active project must
+ * be one the uv-native setup fits (a clean uv/greenfield project, no competing
+ * manager -- see {@link isUvSetupSuitable}). This same predicate decides whether
+ * the uv flow is the active surface for the project, so a project that isn't
+ * uv-suitable falls back to the legacy checklist instead.
  *
  * The gate is rendered on the config-view path, so it must never throw: any
  * failure (a rejecting `projectRoot`/`detect`) degrades to `false` so the
@@ -94,21 +96,17 @@ export function resolveComputeFrom(
  * shows the entry -- an unclassifiable project is treated as safe to offer.
  */
 export function makePythonSetupVisibility(deps: {
-    isEnabled: () => boolean;
     detect: (projectRoot: string) => Promise<Detection>;
     projectRoot: () => string | undefined;
 }): () => Promise<boolean> {
     return async () => {
         try {
-            if (!deps.isEnabled()) {
-                return false;
-            }
             const root = deps.projectRoot();
             if (root === undefined) {
                 return false;
             }
             const detection = await deps.detect(root);
-            return shouldShowPythonSetup({flagOn: true, detection});
+            return isUvSetupSuitable(detection);
         } catch {
             return false;
         }
@@ -123,7 +121,6 @@ export function makePythonSetupVisibility(deps: {
 export interface PythonSetupWiringDeps {
     cli: CliRunner;
     projectRoot: () => string | undefined;
-    isEnabled: () => boolean;
     detect: (projectRoot: string) => Promise<Detection>;
     attachedCompute: () => AttachedCompute;
     /**
@@ -137,6 +134,13 @@ export interface PythonSetupWiringDeps {
      * selection, so the next run does not ask again.
      */
     persistServerlessVersion: (version: string) => Promise<void>;
+    /**
+     * Open the compute picker when nothing is attached, resolving to the chosen
+     * compute (or `undefined` if dismissed). The caller uses this return value
+     * directly, not a re-read of {@link attachedCompute}: a cluster attach
+     * propagates asynchronously, so an immediate re-read would race it.
+     */
+    promptSelectCompute: () => Promise<SetupCompute | undefined>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -170,6 +174,15 @@ export function makePythonSetupDeps(
         isVisible,
         resolveCompute: async () => {
             const resolution = resolveComputeFrom(wiring.attachedCompute());
+            if (resolution.status === "none") {
+                // Nothing attached: offer the picker inline instead of
+                // dead-ending. Use its return value (not a racy re-read);
+                // `undefined` means dismissed, so fall through to `none`.
+                const picked = await wiring.promptSelectCompute();
+                return picked === undefined
+                    ? {status: "none"}
+                    : {status: "ok", compute: picked};
+            }
             if (resolution.status !== "needsServerlessVersion") {
                 return resolution;
             }
@@ -278,13 +291,15 @@ export function makePythonSetupDeps(
             wiring.log.show();
             // A standard (non-modal) notification, not a modal dialog: the
             // outcome is informational, not something to interrupt the user
-            // for. A run with warnings raises a warning toast so it doesn't
-            // read as an unqualified success; the warnings are in the details.
-            const {message, isWarning} = formatSetupNotification(result);
+            // for. This path runs only on a successful setup, so it stays an
+            // info toast even when the run carried warnings — the count is in
+            // the message and the warnings themselves are in the details.
+            const message = formatSetupNotification(result);
             const viewDetails = "View Details";
-            const choice = isWarning
-                ? await window.showWarningMessage(message, viewDetails)
-                : await window.showInformationMessage(message, viewDetails);
+            const choice = await window.showInformationMessage(
+                message,
+                viewDetails
+            );
             if (choice === viewDetails) {
                 wiring.log.show();
             }
@@ -318,8 +333,14 @@ export function makePythonSetupDeps(
                         title,
                         cancellable: true,
                     },
-                    (_progress, token) =>
-                        task((chunk) => wiring.log.append(chunk), token)
+                    (progress, token) =>
+                        // The CLI streams no progress under `--output json`, so
+                        // narrate the run from elapsed time instead of leaving the
+                        // notification mute for the ~minute-plus it takes (see
+                        // setupProgress).
+                        withElapsedProgress(progress, () =>
+                            task((chunk) => wiring.log.append(chunk), token)
+                        )
                 )
             ),
     };
