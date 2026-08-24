@@ -35,7 +35,7 @@ jobs:
         run: |
           REPO=databricks/databricks-vscode
           if gh release view "$TAG" --repo "$REPO" &>/dev/null; then
-            gh release upload "$TAG" --repo "$REPO" --clobber packages/databricks-vscode/databricks*/*.vsix
+            gh release upload "$TAG" --repo "$REPO" --clobber packages/databricks-vscode/databricks*.vsix
           else
             gh release create "$TAG" \
               --repo "$REPO" \
@@ -43,5 +43,5 @@ jobs:
               --prerelease \
               --target "${{ github.sha }}" \
               --notes "Nightly build from ${{ github.ref_name }}" \
-              packages/databricks-vscode/databricks*/*.vsix
+              packages/databricks-vscode/databricks*.vsix
           fi
