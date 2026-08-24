@@ -53,9 +53,12 @@ const realTerminatePrimitives: TerminatePrimitives = {
     platform: process.platform,
     kill: (pid, signal) => process.kill(pid, signal),
     spawnHelper: (command, args) => {
-        // Swallow the async spawn error (e.g. taskkill not on PATH) so it can't
-        // become an uncaught exception in the extension host during cancel.
-        nodeSpawn(command, args).on("error", () => {});
+        // Fire-and-forget: unref so the helper can't keep the event loop alive,
+        // and swallow the async spawn error (e.g. taskkill not on PATH) so it
+        // can't become an uncaught exception in the extension host during cancel.
+        const helper = nodeSpawn(command, args);
+        helper.unref();
+        helper.on("error", () => {});
     },
 };
 
