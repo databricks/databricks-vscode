@@ -8,6 +8,7 @@ import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {openExternal} from "../../utils/urlUtils";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {isUvSetupSuitable} from "../utils/pythonSetupGate";
+import {withElapsedProgress} from "../utils/setupProgress";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {readVenvProjectName} from "../utils/venvProjectName";
@@ -290,13 +291,15 @@ export function makePythonSetupDeps(
             wiring.log.show();
             // A standard (non-modal) notification, not a modal dialog: the
             // outcome is informational, not something to interrupt the user
-            // for. A run with warnings raises a warning toast so it doesn't
-            // read as an unqualified success; the warnings are in the details.
-            const {message, isWarning} = formatSetupNotification(result);
+            // for. This path runs only on a successful setup, so it stays an
+            // info toast even when the run carried warnings — the count is in
+            // the message and the warnings themselves are in the details.
+            const message = formatSetupNotification(result);
             const viewDetails = "View Details";
-            const choice = isWarning
-                ? await window.showWarningMessage(message, viewDetails)
-                : await window.showInformationMessage(message, viewDetails);
+            const choice = await window.showInformationMessage(
+                message,
+                viewDetails
+            );
             if (choice === viewDetails) {
                 wiring.log.show();
             }
@@ -330,8 +333,14 @@ export function makePythonSetupDeps(
                         title,
                         cancellable: true,
                     },
-                    (_progress, token) =>
-                        task((chunk) => wiring.log.append(chunk), token)
+                    (progress, token) =>
+                        // The CLI streams no progress under `--output json`, so
+                        // narrate the run from elapsed time instead of leaving the
+                        // notification mute for the ~minute-plus it takes (see
+                        // setupProgress).
+                        withElapsedProgress(progress, () =>
+                            task((chunk) => wiring.log.append(chunk), token)
+                        )
                 )
             ),
     };

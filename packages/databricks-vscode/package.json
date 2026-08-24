@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.14.0",
+    "version": "2.14.1",
     "engines": {
         "vscode": "^1.86.0",
         "node": ">=22.0"
@@ -1866,7 +1866,7 @@
         "package:bundle-schema:write": "yarn package:cli:fetch && ts-node ./scripts/writeBundleSchema.ts ./bin/databricks ./src/bundle/BundleSchema.ts",
         "package:compile": "yarn run esbuild:base",
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
-        "package:copy-markdown-it": "cp ./node_modules/markdown-it/dist/markdown-it.min.js ./out/markdown-it.min.js",
+        "package:copy-markdown-it": "cp ./node_modules/markdown-it/dist/browser/markdown-it.umd.min.js ./out/markdown-it.min.js",
         "package:copy-highlight": "esbuild ./node_modules/highlight.js/lib/common.js --bundle --format=iife --global-name=hljs --outfile=out/highlight.min.js --minify",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
@@ -1897,10 +1897,11 @@
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^3.0.3",
         "highlight.js": "^11.10.0",
-        "lodash": "^4.17.21",
-        "markdown-it": "^14.2.0",
-        "minimatch": "^10.0.1",
-        "shell-quote": "^1.8.4",
+        "lodash": "^4.18.1",
+        "markdown-it": "^15.0.0",
+        "minimatch": "^10.2.3",
+        "shell-env": "^4.0.3",
+        "shell-quote": "^1.9.0",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
         "yaml": "^2.8.3"
