@@ -29,6 +29,7 @@ export enum Events {
     PYTHON_ENV_SETUP_RESULT = "python_env.setup.result",
     PYTHON_ENV_DRIFT = "python_env.drift",
     PYTHON_ENV_ADOPTION = "python_env.adoption",
+    PYTHON_ENV_DBCONNECT_INSTALL = "python_env.dbconnect_install",
     AITOOLS_INSTALL = "aitoolsInstall",
     AITOOLS_UPDATE = "aitoolsUpdate",
     AITOOLS_UNINSTALL = "aitoolsUninstall",
@@ -154,6 +155,17 @@ export type PythonSetupFailurePhase =
     | PythonSetupPhaseName
     | "adopt"
     | "persist";
+
+/**
+ * How the legacy (pre-VPEX) databricks-connect install ended.
+ *
+ * Only `ok` / `failed`: the install itself is not user-cancellable once it
+ * starts (the prompts that a user can abandon run *before* `install()`), so a
+ * `cancelled` value would never be emitted. Deliberately a distinct, minimal
+ * vocabulary from {@link PythonSetupOutcome} — the legacy flow is its own
+ * event, not a variant of the uv-native result.
+ */
+export type DbConnectInstallOutcome = "ok" | "failed";
 
 /** How a drift check was triggered. */
 export type PythonSetupDriftTrigger =
@@ -616,6 +628,25 @@ export class EventTypes {
                 "The compute kind attached when the session check ran (cluster | serverless | " +
                 "none), so adoption can be sliced by compute. No cluster IDs or names",
         },
+    };
+    [Events.PYTHON_ENV_DBCONNECT_INSTALL]: EventType<
+        {
+            outcome: DbConnectInstallOutcome;
+        } & DurationMeasurement
+    > = {
+        comment:
+            "The outcome of a legacy (pre-VPEX) databricks-connect install run — the old " +
+            "environment-setup flow driven by EnvironmentDependenciesInstaller.install(). Its own " +
+            "event (not python_env.setup.result) so the legacy and uv-native flows stay cleanly " +
+            "separable in analysis. Categorical/numeric data only — no versions, paths, or names.",
+        outcome: {
+            comment:
+                "ok if the databricks-connect (and nbformat) install completed, failed if it threw",
+        },
+        // Measured by the extension around the install itself, so it is the pip
+        // work only — it excludes the prompts (interpreter/version) the user
+        // answers before install() runs.
+        ...getDurationProperty(),
     };
 }
 
