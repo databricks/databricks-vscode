@@ -274,11 +274,12 @@ describe(__filename, () => {
             agentPick.selectedItems.map((i) => i.label),
             ["Claude Code", "Codex CLI"]
         );
-        // Detected agents carry a "Detected" hint.
+        // Detected agents carry a "Detected" hint; the undetected one is
+        // annotated inline with why it can't be selected.
         const detectedHints = agentPick.items.map((i) => i.description);
         assert.deepStrictEqual(detectedHints, [
             "Detected",
-            undefined,
+            "Not detected",
             "Detected",
         ]);
     });
@@ -301,9 +302,10 @@ describe(__filename, () => {
             agentPick.selectedItems.map((i) => i.label),
             ["Cursor"]
         );
-        // Cursor is labelled as the plugin rather than a detected skills install.
+        // Cursor is labelled as the plugin rather than a detected skills
+        // install; the undetected Claude row is annotated inline instead.
         const hints = agentPick.items.map((i) => i.description);
-        assert.deepStrictEqual(hints, [undefined, "Databricks plugin"]);
+        assert.deepStrictEqual(hints, ["Not detected", "Databricks plugin"]);
 
         const [, , agents] = capture(mockManager.install).last();
         assert.deepStrictEqual(agents, [CURSOR_AGENT_ID]);
@@ -359,7 +361,7 @@ describe(__filename, () => {
             (i) => (i as any).agentId === "gemini"
         )!;
         assert.strictEqual((gemini as any).disabled, true);
-        assert.match((gemini as any).detail, /Not detected on this machine/i);
+        assert.strictEqual(gemini.description, "Not detected");
 
         // Only the detected agent survives the selection.
         const [, , agents] = capture(mockManager.install).last();
@@ -383,10 +385,7 @@ describe(__filename, () => {
             (i) => (i as any).agentId === "codex"
         )!;
         assert.strictEqual((codex as any).disabled, true);
-        assert.match(
-            (codex as any).detail,
-            /Not available for project installs/i
-        );
+        assert.strictEqual(codex.description, "Only supports global scope");
 
         const [, , agents] = capture(mockManager.install).last();
         assert.deepStrictEqual(agents, ["claude-code"]);

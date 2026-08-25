@@ -1,5 +1,9 @@
 import assert from "assert";
-import {AiToolsAgentStatus, AiToolsModel} from "./AiToolsModel";
+import {
+    AiToolsAgentStatus,
+    AiToolsModel,
+    agentInstallBlockReason,
+} from "./AiToolsModel";
 
 function agent(id: string, version?: string): AiToolsAgentStatus {
     return {
@@ -75,5 +79,56 @@ describe(__filename, () => {
         // The emitter is disposed; listeners no longer receive events.
         model.update({updateStatus: "error"});
         assert.strictEqual(fired, 0);
+    });
+
+    describe("agentInstallBlockReason", () => {
+        function statusAgent(
+            detected: boolean,
+            supportsProjectScope: boolean
+        ): AiToolsAgentStatus {
+            return {
+                id: "codex",
+                displayName: "Codex CLI",
+                type: "plugin",
+                detected,
+                supportsProjectScope,
+            };
+        }
+
+        it("blocks an undetected agent regardless of scope", () => {
+            assert.strictEqual(
+                agentInstallBlockReason(statusAgent(false, true), "global"),
+                "notDetected"
+            );
+            assert.strictEqual(
+                agentInstallBlockReason(statusAgent(false, true), "project"),
+                "notDetected"
+            );
+        });
+
+        it("blocks a detected, scope-unsupported agent at project scope", () => {
+            assert.strictEqual(
+                agentInstallBlockReason(statusAgent(true, false), "project"),
+                "scopeUnsupported"
+            );
+        });
+
+        it("does not block a scope-unsupported agent at global scope", () => {
+            assert.strictEqual(
+                agentInstallBlockReason(statusAgent(true, false), "global"),
+                undefined
+            );
+        });
+
+        it("does not block a detected, scope-supported agent", () => {
+            assert.strictEqual(
+                agentInstallBlockReason(statusAgent(true, true), "project"),
+                undefined
+            );
+            assert.strictEqual(
+                agentInstallBlockReason(statusAgent(true, true), "global"),
+                undefined
+            );
+        });
     });
 });

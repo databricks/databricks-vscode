@@ -33,6 +33,27 @@ export interface AiToolsAgentStatus {
     skillsOnly?: boolean;
 }
 
+export type AgentInstallBlockReason = "notDetected" | "scopeUnsupported";
+
+/**
+ * Why an agent can't be installed at `scope`, or undefined if it can. Shared by
+ * the install picker ({@link AiToolsAgentStatus} in AiToolsCommands) and the
+ * Agents tree so both surfaces stay in lockstep. `supportsProjectScope` only
+ * gates the `project` scope; not-detected is checked first.
+ */
+export function agentInstallBlockReason(
+    agent: AiToolsAgentStatus,
+    scope: AiToolsScope
+): AgentInstallBlockReason | undefined {
+    if (!agent.detected) {
+        return "notDetected";
+    }
+    if (scope === "project" && !agent.supportsProjectScope) {
+        return "scopeUnsupported";
+    }
+    return undefined;
+}
+
 export interface AiToolsState {
     installLocation: AiToolsInstallLocation;
     updateStatus: AiToolsUpdateStatus;

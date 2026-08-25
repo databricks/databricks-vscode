@@ -7,7 +7,7 @@ import {
 } from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import {AiToolsManager, CURSOR_AGENT_ID} from "./AiToolsManager";
-import {AiToolsAgentStatus} from "./AiToolsModel";
+import {AiToolsAgentStatus, agentInstallBlockReason} from "./AiToolsModel";
 import {AiToolsScope, ProcessError} from "../cli/CliWrapper";
 import {AiToolsInstallSource} from "../telemetry/constants";
 import {HostUtils} from "../utils";
@@ -40,7 +40,7 @@ export function describeAgent(
     agent: AiToolsAgentStatus,
     scope: AiToolsScope,
     isCursorPlugin: boolean
-): {description?: string; detail?: string; disabled: boolean; picked: boolean} {
+): {description?: string; disabled: boolean; picked: boolean} {
     if (isCursorPlugin) {
         return {
             description: "Databricks plugin",
@@ -48,16 +48,17 @@ export function describeAgent(
             picked: true,
         };
     }
-    if (!agent.detected) {
+    const reason = agentInstallBlockReason(agent, scope);
+    if (reason === "notDetected") {
         return {
-            detail: "$(warning) Not detected on this machine",
+            description: "Not detected",
             disabled: true,
             picked: false,
         };
     }
-    if (scope === "project" && !agent.supportsProjectScope) {
+    if (reason === "scopeUnsupported") {
         return {
-            detail: "$(warning) Not available for project installs — only supports global scope",
+            description: "Only supports global scope",
             disabled: true,
             picked: false,
         };
@@ -299,7 +300,7 @@ export class AiToolsCommands implements Disposable {
         const items: AgentQuickPickItem[] = agents.map(
             (agent: AiToolsAgentStatus) => {
                 const isCursorPlugin = inCursor && agent.id === CURSOR_AGENT_ID;
-                const {description, detail, disabled, picked} = describeAgent(
+                const {description, disabled, picked} = describeAgent(
                     agent,
                     scope,
                     isCursorPlugin
@@ -307,7 +308,6 @@ export class AiToolsCommands implements Disposable {
                 return {
                     label: agent.displayName,
                     description,
-                    detail,
                     agentId: agent.id,
                     disabled,
                     picked,
