@@ -205,7 +205,7 @@ export function run(
     args: string[],
     options: CliRunOptions = {}
 ): Promise<CliRunResult> {
-    const spawnFn = options.spawnFn ?? (nodeSpawn as unknown as SpawnFn);
+    const spawnFn = options.spawnFn ?? nodeSpawn;
     const terminateFn = options.terminateFn ?? defaultTerminate;
     const forceTerminateFn = options.forceTerminateFn ?? defaultForceTerminate;
     const killGraceMs = options.killGraceMs ?? DEFAULT_KILL_GRACE_MS;
@@ -231,7 +231,7 @@ export function run(
                 windowsVerbatimArguments,
             });
         } catch (e) {
-            reject(e as Error);
+            reject(e);
             return;
         }
 
