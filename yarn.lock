@@ -2079,16 +2079,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vscode/test-electron@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@vscode/test-electron@npm:3.0.0"
+"@vscode/test-electron@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@vscode/test-electron@npm:3.1.0"
   dependencies:
     http-proxy-agent: ^7.0.2
     https-proxy-agent: ^7.0.5
     jszip: ^3.10.1
     ora: ^8.1.0
     semver: ^7.6.2
-  checksum: 644182d4cb5f69afd03c68d9e61c8e654c6de39acb1822ada18e89fd717e000756b03ff036e892b15ce9de845103c063478903904791ad13273ad67701c5e612
+  checksum: 39ac3edc476204d04c2123cd5600803255ff5a1c1c07a34cfad0df2f2fa9ed87ab5bfd71d21a0974cc6aacf4a5335c4240bb0462f4291d47f01c7d0019e7ca24
   languageName: node
   linkType: hard
 
@@ -4023,7 +4023,7 @@ __metadata:
     "@typescript-eslint/utils": ^8.62.0
     "@vscode/debugadapter": ^1.64.0
     "@vscode/extension-telemetry": ^1.5.2
-    "@vscode/test-electron": ^3.0.0
+    "@vscode/test-electron": ^3.1.0
     "@vscode/webview-ui-toolkit": ^1.4.0
     "@wdio/cli": ^9.29.0
     "@wdio/local-runner": ^9.29.0
