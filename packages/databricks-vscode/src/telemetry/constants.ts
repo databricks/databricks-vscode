@@ -350,7 +350,7 @@ export class EventTypes {
             "Surfaced the deprecation warning for the Terraform bundle deployment engine. Recorded once per surfacing (at most once per session per workspace, until the user opts out), so the count tracks how many users still have bundles on the Terraform engine.",
         action: {
             comment:
-                "What the user did with the warning: 'guide' opened the migration guide, 'hidden' chose \"Don't show again\" (persisted opt-out for the workspace), 'dismissed' closed it without either.",
+                "What the user did with the warning: 'guide' chose to open the migration guide, 'hidden' chose \"Don't show again\" (persisted opt-out for the workspace), 'dismissed' closed it without either.",
         },
     };
     [Events.AITOOLS_INSTALL]: EventType<

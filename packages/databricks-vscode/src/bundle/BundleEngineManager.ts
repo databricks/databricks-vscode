@@ -16,7 +16,7 @@ export const DONT_SHOW_AGAIN_LABEL = "Don't show again";
 const HIDE_WARNING_KEY = "databricks.bundle.hideTerraformEngineWarning";
 
 const WARNING_MESSAGE =
-    "This project uses the Terraform deployment engine, which is deprecated " +
+    "This bundle uses the Terraform deployment engine, which is deprecated " +
     "and will stop working in a future Databricks CLI version. Migrate to the " +
     "direct deployment engine.";
 
