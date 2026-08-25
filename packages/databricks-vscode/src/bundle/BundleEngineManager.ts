@@ -13,6 +13,8 @@ export const DIRECT_ENGINE_DOCS_URL =
 export const READ_MIGRATION_GUIDE_LABEL = "Read migration guide";
 export const DONT_SHOW_AGAIN_LABEL = "Don't show again";
 
+const HIDE_WARNING_KEY = "databricks.bundle.hideTerraformEngineWarning";
+
 const WARNING_MESSAGE =
     "This project uses the Terraform deployment engine, which is deprecated " +
     "and will stop working in a future Databricks CLI version. Migrate to the " +
@@ -22,6 +24,11 @@ const WARNING_MESSAGE =
  * The prompting surface {@link BundleEngineManager} needs, behind one seam so
  * the logic is unit-testable. The real implementation delegates to `window` /
  * `env`.
+ *
+ * This is a Manager that renders `window.*` itself (via the seam) rather than
+ * delegating to a Commands/Component, since the warning is reactive to validate
+ * state with no command trigger — matching the existing
+ * {@link BundlePipelinesManager}, which surfaces its warnings the same way.
  */
 export interface BundleEnginePrompter {
     showWarningMessage: (typeof window)["showWarningMessage"];
@@ -29,15 +36,14 @@ export interface BundleEnginePrompter {
 }
 
 /**
- * Warns once, when a bundle's validate output reports the deprecated Terraform
+ * Warns when a bundle's validate output reports the deprecated Terraform
  * deployment engine, offering a link to the migration guide. Shows at most once
- * per session per project; "Don't show again" persists the opt-out for the
+ * per session per workspace; "Don't show again" persists the opt-out for the
  * workspace via {@link StateStorage}.
  */
 export class BundleEngineManager implements Disposable {
     private disposables: Disposable[] = [];
     private warned = false;
-    private checking = false;
 
     constructor(
         private readonly bundleValidateModel: BundleValidateModel,
@@ -59,27 +65,17 @@ export class BundleEngineManager implements Disposable {
     }
 
     private async checkEngine(): Promise<void> {
-        if (this.warned || this.checking) {
+        if (this.warned || this.stateStorage.get(HIDE_WARNING_KEY)) {
             return;
         }
-        if (
-            this.stateStorage.get(
-                "databricks.bundle.hideTerraformEngineWarning"
-            )
-        ) {
+        const engine = await this.bundleValidateModel.get("engine");
+        // Re-check `warned` after the await: a concurrent validate change may
+        // have shown the warning while we were reading the engine.
+        if (engine !== "terraform" || this.warned) {
             return;
         }
-        this.checking = true;
-        try {
-            const engine = await this.bundleValidateModel.get("engine");
-            if (engine !== "terraform") {
-                return;
-            }
-            this.warned = true;
-            await this.warn();
-        } finally {
-            this.checking = false;
-        }
+        this.warned = true;
+        await this.warn();
     }
 
     private async warn(): Promise<void> {
@@ -95,10 +91,7 @@ export class BundleEngineManager implements Disposable {
             await this.prompter.openExternal(Uri.parse(DIRECT_ENGINE_DOCS_URL));
         } else if (choice === DONT_SHOW_AGAIN_LABEL) {
             action = "hidden";
-            await this.stateStorage.set(
-                "databricks.bundle.hideTerraformEngineWarning",
-                true
-            );
+            await this.stateStorage.set(HIDE_WARNING_KEY, true);
         }
 
         this.telemetry.recordEvent(Events.BUNDLE_TERRAFORM_ENGINE_WARNING, {

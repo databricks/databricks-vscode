@@ -31,6 +31,9 @@ const HIDE_KEY = "databricks.bundle.hideTerraformEngineWarning";
 class FakeValidateModel {
     private listeners: Array<() => unknown> = [];
     public engine: string | undefined;
+    // When non-empty, successive get() calls consume this queue instead of
+    // `engine` — used to script the value seen by concurrent invocations.
+    public engines: Array<string | undefined> = [];
 
     onDidChange(cb: () => unknown): Disposable {
         this.listeners.push(cb);
@@ -38,13 +41,20 @@ class FakeValidateModel {
     }
 
     async get(): Promise<string | undefined> {
-        return this.engine;
+        return this.engines.length > 0 ? this.engines.shift() : this.engine;
     }
 
     async fire(): Promise<void> {
         for (const cb of this.listeners) {
             await cb();
         }
+    }
+
+    // Invoke the listener twice without awaiting between, so the second call
+    // runs while the first is still awaiting get() — the concurrency the
+    // manager must tolerate.
+    async fireConcurrentTwice(): Promise<void> {
+        await Promise.all(this.listeners.flatMap((cb) => [cb(), cb()]));
     }
 }
 
@@ -149,6 +159,18 @@ describe("BundleEngineManager", () => {
         await fakeModel.fire();
         await fakeModel.fire();
         await fakeModel.fire();
+
+        assert.strictEqual(shownCount(), 1);
+    });
+
+    it("still warns once when a concurrent validate resolves to terraform", async () => {
+        const {prompter, shownCount} = makePrompter(undefined);
+        build(prompter);
+        // First invocation reads "direct", the concurrent second reads
+        // "terraform"; the terraform transition must not be dropped.
+        fakeModel.engines = ["direct", "terraform"];
+
+        await fakeModel.fireConcurrentTwice();
 
         assert.strictEqual(shownCount(), 1);
     });
