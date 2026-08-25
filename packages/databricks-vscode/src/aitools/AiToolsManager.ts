@@ -82,7 +82,9 @@ function computeAgentsStatuses(
         id: agent.name,
         type: agent.managed ? "plugin" : "skills-only",
         detected: agent.detected,
-        supportsProjectScope: agent.supports_project_scope,
+        // A stale/older CLI may omit this field; treat its absence as
+        // "supported" so we don't wrongly block every agent at project scope.
+        supportsProjectScope: agent.supports_project_scope ?? true,
         version: agent.installed[scope]?.version,
         skillsOnly:
             agent.managed && agent.installed[scope]?.delivery === "skills",

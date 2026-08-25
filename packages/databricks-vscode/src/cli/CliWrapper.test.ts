@@ -96,7 +96,12 @@ describe(__filename, function () {
             assert.ok(typeof agent.display_name === "string");
             assert.ok(typeof agent.managed === "boolean");
             assert.ok(typeof agent.detected === "boolean");
-            assert.ok(typeof agent.supports_project_scope === "boolean");
+            // Optional: older CLIs omit it, and callers default absence to
+            // "supported" (see computeAgentsStatuses).
+            assert.ok(
+                agent.supports_project_scope === undefined ||
+                    typeof agent.supports_project_scope === "boolean"
+            );
             assert.ok(typeof agent.installed === "object");
         } finally {
             await rm(tmpDir, {recursive: true, force: true});

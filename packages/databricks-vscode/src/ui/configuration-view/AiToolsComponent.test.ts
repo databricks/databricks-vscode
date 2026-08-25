@@ -453,7 +453,7 @@ describe(__filename, () => {
                 id: "AITOOLS.agents",
             });
             assert.strictEqual((row.iconPath as ThemeIcon).id, "circle-slash");
-            assert.strictEqual(row.description, "Global scope only");
+            assert.strictEqual(row.description, "Only supports global scope");
             assert.strictEqual(
                 row.contextValue,
                 "databricks.configuration.aitools.agent.blocked"

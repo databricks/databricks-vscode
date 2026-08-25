@@ -37,9 +37,10 @@ export type AgentInstallBlockReason = "notDetected" | "scopeUnsupported";
 
 /**
  * Why an agent can't be installed at `scope`, or undefined if it can. Shared by
- * the install picker ({@link AiToolsAgentStatus} in AiToolsCommands) and the
- * Agents tree so both surfaces stay in lockstep. `supportsProjectScope` only
- * gates the `project` scope; not-detected is checked first.
+ * the install picker (`describeAgent` in AiToolsCommands) and the Agents tree
+ * (`describeAgentRow` in AiToolsComponent) so both surfaces stay in lockstep.
+ * `supportsProjectScope` only gates the `project` scope; not-detected is checked
+ * first.
  */
 export function agentInstallBlockReason(
     agent: AiToolsAgentStatus,

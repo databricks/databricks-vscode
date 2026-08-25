@@ -932,6 +932,33 @@ describe(__filename, () => {
         assert.strictEqual(agents[2].supportsProjectScope, true);
     });
 
+    it("defaults supportsProjectScope to true when the CLI omits it", async () => {
+        // A stale/older CLI doesn't emit supports_project_scope; absence must
+        // map to "supported" so we don't wrongly block project-scope installs.
+        const {manager, mockCli} = setup({project: loadSuccess});
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult(
+                [],
+                [
+                    {
+                        name: "claude-code",
+                        display_name: "Claude Code",
+                        managed: true,
+                        detected: true,
+                        installed: {},
+                    } as AiToolsAgent,
+                ]
+            )
+        );
+        await manager.detectInstall();
+        await manager.resolveInstalled();
+
+        assert.strictEqual(
+            manager.model.state.agents[0].supportsProjectScope,
+            true
+        );
+    });
+
     it("clears the version when nothing is installed", async () => {
         const loaders: ScopeLoaders = {project: loadSuccess};
         const {manager, mockCli} = setup(loaders);

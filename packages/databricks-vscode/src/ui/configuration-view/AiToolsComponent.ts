@@ -85,7 +85,7 @@ function describeAgentRow(
     }
     if (reason === "scopeUnsupported") {
         return {
-            description: "Global scope only",
+            description: "Only supports global scope",
             tooltip:
                 "Only supports global-scope installs. Re-run “Install AI tools” and choose Global scope to add it.",
             iconPath: blockedIcon(),
