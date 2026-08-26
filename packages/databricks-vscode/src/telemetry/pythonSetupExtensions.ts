@@ -73,6 +73,13 @@ export interface PythonSetupOutcomeReport {
      */
     indexUnreachable?: boolean;
     /**
+     * Whether a "Report this problem" affordance was surfaced for this failure.
+     * Meaningful on every post-preflight failure (`false` is the offer rate's
+     * denominator); omitted for non-failures and the never-report-worthy
+     * preflight/local/network codes.
+     */
+    reportOffered?: boolean;
+    /**
      * The CLI's merge-phase warnings, verbatim from the result. Present whenever
      * the CLI produced a result (so `[]` reads as "a run happened with no
      * warnings"); absent when no result exists (cancelled / not_started /
@@ -287,6 +294,9 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
                 : {}),
             ...(report.indexUnreachable !== undefined
                 ? {indexUnreachable: report.indexUnreachable}
+                : {}),
+            ...(report.reportOffered !== undefined
+                ? {reportOffered: report.reportOffered}
                 : {}),
             // A present `warnings` array means the CLI produced a result, so the
             // count is meaningful even at 0 (a clean merge) -- unlike the omitted

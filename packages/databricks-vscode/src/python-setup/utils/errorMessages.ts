@@ -274,9 +274,13 @@ export function getPythonSetupErrorAction(
  *
  * Returns `undefined` when the result carries no error, i.e. there is nothing to
  * add to the log.
+ *
+ * `reportLink`, when given, is a "Report this problem" link mirrored into the log
+ * so it outlives the dismissed notification — see the report-issue helpers.
  */
 export function formatSetupFailureDetail(
-    result: PythonSetupResult
+    result: PythonSetupResult,
+    reportLink?: PythonSetupErrorAction
 ): string | undefined {
     const err = result.error;
     if (!err) {
@@ -320,6 +324,12 @@ export function formatSetupFailureDetail(
     const action = getPythonSetupErrorAction(result);
     if (action) {
         lines.push("", `${action.label}: ${action.url}`);
+    }
+    // The report link is mirrored here too (a bare new-issue URL, not the popup's
+    // long pre-filled deep-link) so it survives the notification being dismissed.
+    // It is additive to the doc link above: a report-worthy code can carry both.
+    if (reportLink) {
+        lines.push("", `${reportLink.label}: ${reportLink.url}`);
     }
     // Bracket with blank lines so the block stands apart from any streamed CLI
     // output already in the channel.

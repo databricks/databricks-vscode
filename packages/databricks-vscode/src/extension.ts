@@ -1025,6 +1025,11 @@ export async function activate(
                 append: (chunk) => getPythonSetupLogChannel().append(chunk),
                 show: () => getPythonSetupLogChannel().show(true),
             },
+            reportEnvironment: {
+                extensionVersion: packageMetadata.version,
+                cliVersion: packageMetadata.cliVersion,
+                platform: process.platform,
+            },
             telemetry,
         })
     );

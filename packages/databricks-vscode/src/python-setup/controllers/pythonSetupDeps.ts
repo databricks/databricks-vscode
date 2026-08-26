@@ -7,6 +7,7 @@ import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {openExternal} from "../../utils/urlUtils";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
+import {ReportEnvironment} from "../utils/reportSetupIssue";
 import {isUvSetupSuitable} from "../utils/pythonSetupGate";
 import {withElapsedProgress} from "../utils/setupProgress";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
@@ -154,6 +155,12 @@ export interface PythonSetupWiringDeps {
         append: (chunk: string) => void;
         show: () => void;
     };
+    /**
+     * Static build context stamped into a "Report this problem" issue body
+     * (extension/CLI versions, OS). The per-run package manager is merged in by
+     * the orchestrator.
+     */
+    reportEnvironment: ReportEnvironment;
     /** Records the setup attempt/result events. */
     telemetry: Telemetry;
 }
@@ -304,6 +311,7 @@ export function makePythonSetupDeps(
                 wiring.log.show();
             }
         },
+        reportEnvironment: wiring.reportEnvironment,
         recordSetupAttempt: (attempt) =>
             wiring.telemetry.recordPythonSetupAttempt(attempt),
         recordNoCompute: () => wiring.telemetry.recordPythonSetupNoCompute(),

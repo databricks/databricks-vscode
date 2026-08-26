@@ -419,6 +419,21 @@ describe("formatSetupFailureDetail", () => {
         expect(formatSetupFailureDetail(ok)).to.equal(undefined);
     });
 
+    it("mirrors the report link into the log when one is provided", () => {
+        const detail = formatSetupFailureDetail(failure("E_MERGE"), {
+            label: "Report this problem",
+            url: "https://github.com/databricks/databricks-vscode/issues/new",
+        });
+        expect(detail).to.contain(
+            "Report this problem: https://github.com/databricks/databricks-vscode/issues/new"
+        );
+    });
+
+    it("omits the report line when no report link is given", () => {
+        const detail = formatSetupFailureDetail(failure("E_MERGE"));
+        expect(detail).to.not.contain("Report this problem");
+    });
+
     it("appends copy-pasteable proxy remediation for a blocked index", () => {
         const detail = formatSetupFailureDetail(
             failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})

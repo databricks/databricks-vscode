@@ -167,6 +167,11 @@ function makeWiring(
         setActiveInterpreter: async () => {},
         persistSetupState: () => {},
         log: {append: () => {}, show: () => {}},
+        reportEnvironment: {
+            extensionVersion: "2.14.1",
+            cliVersion: "1.13.0",
+            platform: "darwin",
+        },
         // A reporter-less client: recordEvent short-circuits, so the setup
         // events are inert here (they have their own tests).
         telemetry: new Telemetry(undefined),
