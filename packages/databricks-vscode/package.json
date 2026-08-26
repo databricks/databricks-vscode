@@ -1823,6 +1823,19 @@
                         "default": "17.3",
                         "markdownDescription": "Default `databricks-connect` version for serverless compute. Determines required Python version and suggested package version. Minimum supported value is `15.4`."
                     },
+                    "databricks.python.environmentSetup": {
+                        "type": "string",
+                        "enum": [
+                            "auto",
+                            "manual"
+                        ],
+                        "enumDescriptions": [
+                            "Automatically set up a uv-managed Python environment matched to your Databricks compute for suitable uv projects.",
+                            "Never run automated Python environment setup; use your own interpreter and environment (for example an existing `.venv` with `databricks-connect`) as-is."
+                        ],
+                        "default": "auto",
+                        "markdownDescription": "Controls the extension's automated Python environment setup for uv projects. `auto` (default) offers and runs uv-native setup (`databricks environments setup-local`) for suitable projects. `manual` disables it entirely so your existing interpreter/environment is used as-is — useful when your network blocks `raw.githubusercontent.com`, which the automated setup requires to fetch runtime constraints."
+                    },
                     "databricks.ipythonDir": {
                         "type": "string",
                         "description": "Absolute path to a directory for storing IPython files. Defaults to IPYTHONDIR environment variable (if set) or ~/.ipython."

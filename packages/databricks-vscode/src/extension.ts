@@ -976,6 +976,7 @@ export async function activate(
                 }
             },
             detect: (projectRoot) => pythonSetupDetector.detect(projectRoot),
+            setupMode: () => workspaceConfigs.pythonEnvironmentSetup,
             attachedCompute: () => ({
                 serverless: connectionManager.serverless,
                 cluster: connectionManager.cluster

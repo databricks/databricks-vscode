@@ -1,6 +1,13 @@
 import {ConfigurationTarget, workspace} from "vscode";
 import {Time, TimeUnits} from "@databricks/sdk-experimental";
 
+/**
+ * How the extension provisions the local Python environment. `auto` runs the
+ * uv-native setup (`databricks environments setup-local`) for suitable projects;
+ * `manual` disables it so an existing interpreter/environment is used as-is.
+ */
+export type PythonEnvironmentSetupMode = "auto" | "manual";
+
 export const workspaceConfigs = {
     get maxFieldLength() {
         return (
@@ -129,6 +136,17 @@ export const workspaceConfigs = {
                 .getConfiguration("databricks")
                 .get<string>("connect.serverlessDbconnectVersion") ?? "17.3"
         );
+    },
+
+    // Any value other than "manual" (unset, "auto", or an unexpected string)
+    // resolves to "auto" so the default and malformed configs both keep the
+    // automated setup — the historical behavior.
+    get pythonEnvironmentSetup(): PythonEnvironmentSetupMode {
+        return workspace
+            .getConfiguration("databricks")
+            .get<string>("python.environmentSetup") === "manual"
+            ? "manual"
+            : "auto";
     },
 
     get bundleRemoteStateRefreshInterval(): number {

@@ -167,8 +167,9 @@ const BASE_MESSAGE: Record<
         );
     },
     E_FETCH: () =>
-        "Could not reach the environment constraints repository and no local cache is available. " +
-        "Check your network connection and try again.",
+        "Could not reach the runtime constraints on raw.githubusercontent.com, and no local cache is available. " +
+        'If your network blocks it, allowlist that host — or set "databricks.python.environmentSetup" to ' +
+        '"manual" to skip automated setup and use your existing environment.',
     E_WRITE: () => "Failed to write pyproject.toml.",
     E_MERGE: () =>
         "Failed to merge the runtime constraints into your existing pyproject.toml.",
@@ -326,6 +327,22 @@ export function formatSetupFailureDetail(
             "       [global]",
             "       index-url = https://<your-proxy>/simple",
             "     Use index-url (not extra-index-url) so pypi.org is replaced, not merely supplemented."
+        );
+    }
+    // E_FETCH means the published runtime constraints (on GitHub) were
+    // unreachable and nothing was cached — most often a corporate network that
+    // blocks raw.githubusercontent.com. Spell out both fixes here; the popup only
+    // summarises them.
+    if (err.code === "E_FETCH") {
+        lines.push(
+            "",
+            "Automated setup downloads runtime constraints from raw.githubusercontent.com " +
+                "(the databricks/environments repository), which your network appears to block. " +
+                "You have two options:",
+            "",
+            "  1. Ask your network admin to allowlist raw.githubusercontent.com, then re-run setup.",
+            '  2. Or skip automated setup and manage the environment yourself: set the "databricks.python.environmentSetup" ' +
+                'setting to "manual". The extension then uses your existing interpreter/.venv (with its databricks-connect) as-is.'
         );
     }
     // A genuine E_PROVISION conflict gets no report button (it is usually the

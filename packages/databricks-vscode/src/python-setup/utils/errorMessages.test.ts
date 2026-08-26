@@ -132,6 +132,18 @@ describe("getPythonSetupErrorMessage", () => {
         );
     });
 
+    it("E_FETCH names the GitHub Raw host and the manual-mode escape hatch", () => {
+        // The regression from issue #2149: a network that blocks GitHub Raw
+        // dead-ends here, so the message must name the host to allowlist and the
+        // setting that skips automated setup entirely.
+        const msg = getPythonSetupErrorMessage(
+            failure("E_FETCH", {failurePhase: "fetch"})
+        );
+        expect(msg).to.contain("raw.githubusercontent.com");
+        expect(msg).to.contain("databricks.python.environmentSetup");
+        expect(msg).to.match(/manual/i);
+    });
+
     it("maps E_VALIDATE to a mismatch message", () => {
         expect(getPythonSetupErrorMessage(failure("E_VALIDATE"))).to.match(
             /match|mismatch/i
@@ -444,6 +456,22 @@ describe("formatSetupFailureDetail", () => {
         expect(detail).to.contain("UV_INDEX_URL");
         expect(detail).to.contain("index-url");
         expect(detail).to.contain("extra-index-url");
+    });
+
+    it("spells out the allowlist + manual-mode fixes for E_FETCH", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_FETCH", {failurePhase: "fetch"})
+        );
+        expect(detail).to.contain("raw.githubusercontent.com");
+        expect(detail).to.contain("allowlist");
+        expect(detail).to.contain("databricks.python.environmentSetup");
+        expect(detail).to.match(/manual/i);
+    });
+
+    it("adds no E_FETCH remediation block for another code", () => {
+        const detail = formatSetupFailureDetail(failure("E_MERGE"));
+        expect(detail).to.not.contain("raw.githubusercontent.com");
+        expect(detail).to.not.contain("databricks.python.environmentSetup");
     });
 
     it("adds no remediation block for a non-connectivity E_PROVISION", () => {

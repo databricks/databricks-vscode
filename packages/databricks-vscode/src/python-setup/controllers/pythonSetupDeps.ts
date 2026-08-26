@@ -5,6 +5,7 @@ import {PackageManagerDetection} from "../../language/packageManagerDetection";
 import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
+import type {PythonEnvironmentSetupMode} from "../../vscode-objs/WorkspaceConfigs";
 import {openExternal} from "../../utils/urlUtils";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {ReportEnvironment} from "../utils/reportSetupIssue";
@@ -95,13 +96,24 @@ export function resolveComputeFrom(
  * empty. Note the classification itself still fails *open*: `detect` maps a
  * signal-collection failure to `unknown`/`[]`, which reads as greenfield and so
  * shows the entry -- an unclassifiable project is treated as safe to offer.
+ *
+ * `setupMode` is the user's opt-out: `manual` hides the uv flow outright (before
+ * any detection), so a valid existing interpreter is used as-is and no project
+ * ever needs to reach `raw.githubusercontent.com` for runtime constraints. This
+ * is the single gate every entry point reads (config view, the setup command's
+ * routing, and the serverless-version prompt), so honoring it here covers them
+ * all.
  */
 export function makePythonSetupVisibility(deps: {
     detect: (projectRoot: string) => Promise<Detection>;
     projectRoot: () => string | undefined;
+    setupMode: () => PythonEnvironmentSetupMode;
 }): () => Promise<boolean> {
     return async () => {
         try {
+            if (deps.setupMode() === "manual") {
+                return false;
+            }
             const root = deps.projectRoot();
             if (root === undefined) {
                 return false;
@@ -123,6 +135,11 @@ export interface PythonSetupWiringDeps {
     cli: CliRunner;
     projectRoot: () => string | undefined;
     detect: (projectRoot: string) => Promise<Detection>;
+    /**
+     * The user's `databricks.python.environmentSetup` choice. `manual` opts the
+     * project out of uv-native setup entirely (see {@link makePythonSetupVisibility}).
+     */
+    setupMode: () => PythonEnvironmentSetupMode;
     attachedCompute: () => AttachedCompute;
     /**
      * Ask the user which serverless version to provision, for a serverless

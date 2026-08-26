@@ -25,6 +25,7 @@ describe("makePythonSetupVisibility", () => {
         const isVisible = makePythonSetupVisibility({
             detect: async () => uvDetection,
             projectRoot: () => undefined,
+            setupMode: () => "auto",
         });
         expect(await isVisible()).to.equal(false);
     });
@@ -33,6 +34,7 @@ describe("makePythonSetupVisibility", () => {
         const isVisible = makePythonSetupVisibility({
             detect: async () => uvDetection,
             projectRoot: () => "/proj",
+            setupMode: () => "auto",
         });
         expect(await isVisible()).to.equal(true);
     });
@@ -45,8 +47,26 @@ describe("makePythonSetupVisibility", () => {
                 signals: ["requirements.txt" as const],
             }),
             projectRoot: () => "/proj",
+            setupMode: () => "auto",
         });
         expect(await isVisible()).to.equal(false);
+    });
+
+    it("is hidden for a clean uv project when setup mode is manual", async () => {
+        // The user's opt-out: `manual` disables uv-native setup outright, so a
+        // valid existing environment is used as-is and no fetch to GitHub is
+        // needed. It short-circuits before detection even runs.
+        let detected = false;
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => {
+                detected = true;
+                return uvDetection;
+            },
+            projectRoot: () => "/proj",
+            setupMode: () => "manual",
+        });
+        expect(await isVisible()).to.equal(false);
+        expect(detected).to.equal(false);
     });
 });
 
@@ -156,6 +176,7 @@ function makeWiring(
             managers: ["uv" as const],
             signals: [],
         }),
+        setupMode: () => "auto",
         attachedCompute: () => ({
             serverless: false,
             cluster: undefined,
@@ -447,6 +468,7 @@ describe("makePythonSetupVisibility error handling", () => {
                 throw new Error("signal collection blew up");
             },
             projectRoot: () => "/proj",
+            setupMode: () => "auto",
         });
         // Must resolve false, not reject: a throwing gate would blank the
         // Environment section instead of showing the legacy checklist.
@@ -458,6 +480,18 @@ describe("makePythonSetupVisibility error handling", () => {
             detect: async () => uvDetection,
             projectRoot: () => {
                 throw new Error("no active project folder");
+            },
+            setupMode: () => "auto",
+        });
+        expect(await isVisible()).to.equal(false);
+    });
+
+    it("degrades to not-visible when the setup-mode read throws", async () => {
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => uvDetection,
+            projectRoot: () => "/proj",
+            setupMode: () => {
+                throw new Error("config read blew up");
             },
         });
         expect(await isVisible()).to.equal(false);
