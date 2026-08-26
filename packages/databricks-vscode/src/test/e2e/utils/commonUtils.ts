@@ -314,9 +314,8 @@ export function getStaticResourceName(name: string) {
 }
 
 export function getUniqueResourceName(name?: string) {
-    const uniqueName = name
-        ? `${randomUUID().slice(0, 8)}_${name}`
-        : randomUUID().slice(0, 8);
+    const uniquePart = `${Date.now()}_${randomUUID().slice(0, 8)}`;
+    const uniqueName = name ? `${uniquePart}_${name}` : uniquePart;
     return getStaticResourceName(uniqueName);
 }
 

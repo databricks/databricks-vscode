@@ -1,3 +1,14 @@
+# Release: v2.14.1
+
+## packages/databricks-vscode
+
+## (2026-08-21)
+
+-   Narrate live progress during Python environment setup (#2139) ([f606d0a](https://github.com/databricks/databricks-vscode/commit/f606d0a))
+-   Pre-check the host CLI before starting the SSH tunnel (#2127) ([5af58f2](https://github.com/databricks/databricks-vscode/commit/5af58f2))
+-   Show an info toast on a successful Python environment setup that had warnings (#2138) ([2acdc44](https://github.com/databricks/databricks-vscode/commit/2acdc44))
+-   Avoid duplicate profile section creation in `.databrickscfg` during OAuth setup (#2133) ([6e1c472](https://github.com/databricks/databricks-vscode/commit/6e1c472))
+
 # Release: v2.14.0
 
 ## packages/databricks-vscode
