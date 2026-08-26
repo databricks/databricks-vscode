@@ -2,7 +2,13 @@ import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {CURSOR_AGENT_ID} from "../../aitools/AiToolsManager";
-import {AiToolsModel, AiToolsUpdateStatus} from "../../aitools/AiToolsModel";
+import {
+    AiToolsAgentStatus,
+    AiToolsModel,
+    AiToolsUpdateStatus,
+    agentInstallBlockReason,
+} from "../../aitools/AiToolsModel";
+import {AiToolsScope} from "../../cli/CliWrapper";
 import {HostUtils} from "../../utils";
 
 const TREE_ICON_ID = "AITOOLS";
@@ -13,6 +19,11 @@ function getTreeIconId(key: string) {
 
 function robotIcon(color: "blue" | "green") {
     return new ThemeIcon("hubot", new ThemeColor(`charts.${color}`));
+}
+
+/** Muted icon for an agent that can't be installed at the current scope. */
+function blockedIcon() {
+    return new ThemeIcon("circle-slash", new ThemeColor("disabledForeground"));
 }
 
 function getContextValue(key: string) {
@@ -27,6 +38,66 @@ function getContextValue(key: string) {
  */
 function isHiddenAgent(agentId: string): boolean {
     return agentId === CURSOR_AGENT_ID && HostUtils.isCursor();
+}
+
+/**
+ * Map an agent to its Agents-list row presentation for the current install
+ * scope, folding in the three states:
+ *  - installed: green check + version (annotated "skills only" when a managed
+ *    agent only received the raw skills);
+ *  - blocked: a muted icon + short reason (not detected / scope unsupported),
+ *    explained in the tooltip, with no install affordance;
+ *  - installable: "Not installed" with the inline install button / clickable
+ *    row (see the `agent.notInstalled` context value in package.json).
+ *
+ * The blocked decision is shared with the install picker via
+ * {@link agentInstallBlockReason} so the two surfaces stay in lockstep.
+ */
+function describeAgentRow(
+    agent: AiToolsAgentStatus,
+    installLocation: AiToolsScope
+): {
+    description: string;
+    tooltip?: string;
+    iconPath?: ThemeIcon;
+    contextValue: string;
+    installable: boolean;
+} {
+    if (agent.version !== undefined) {
+        return {
+            description: agent.skillsOnly
+                ? `${agent.version} (skills only)`
+                : agent.version,
+            iconPath: new ThemeIcon("check", new ThemeColor("charts.green")),
+            contextValue: getContextValue("agent.installed"),
+            installable: false,
+        };
+    }
+    const reason = agentInstallBlockReason(agent, installLocation);
+    if (reason === "notDetected") {
+        return {
+            description: "Not detected",
+            tooltip: `${agent.displayName} was not detected on this machine.`,
+            iconPath: blockedIcon(),
+            contextValue: getContextValue("agent.blocked"),
+            installable: false,
+        };
+    }
+    if (reason === "scopeUnsupported") {
+        return {
+            description: "Only supports global scope",
+            tooltip:
+                "Only supports global-scope installs. Re-run “Install AI tools” and choose Global scope to add it.",
+            iconPath: blockedIcon(),
+            contextValue: getContextValue("agent.blocked"),
+            installable: false,
+        };
+    }
+    return {
+        description: "Not installed",
+        contextValue: getContextValue("agent.notInstalled"),
+        installable: true,
+    };
 }
 
 export class AiToolsComponent extends BaseComponent {
@@ -168,41 +239,36 @@ export class AiToolsComponent extends BaseComponent {
                 .filter((agent) => !isHiddenAgent(agent.id))
                 .map((agent) => {
                     const id = getTreeIconId(`agent.${agent.id}`);
-                    const installed = agent.version !== undefined;
-                    // A managed agent that only received the raw skills (not the
-                    // managed plugin) is annotated so the distinction is visible.
-                    const description = installed
-                        ? agent.skillsOnly
-                            ? `${agent.version} (skills only)`
-                            : agent.version
-                        : "Not installed";
+                    const {
+                        description,
+                        tooltip,
+                        iconPath,
+                        contextValue,
+                        installable,
+                    } = describeAgentRow(agent, installLocation);
                     return {
                         label: agent.displayName,
                         id,
                         description,
-                        // A green check marks installed agents; uninstalled ones
+                        tooltip,
+                        // A green check marks installed agents; installable ones
                         // get an inline install button (see package.json
-                        // view/item/context) keyed on this context value, and
-                        // clicking the row installs the agent too.
-                        contextValue: getContextValue(
-                            installed ? "agent.installed" : "agent.notInstalled"
-                        ),
-                        iconPath: installed
-                            ? new ThemeIcon(
-                                  "check",
-                                  new ThemeColor("charts.green")
-                              )
-                            : undefined,
-                        command: installed
-                            ? undefined
-                            : {
+                        // view/item/context) keyed on the `agent.notInstalled`
+                        // context value, and clicking the row installs the agent
+                        // too. Blocked rows use `agent.blocked`, which that
+                        // when-clause doesn't match, so they get no button.
+                        contextValue,
+                        iconPath,
+                        command: installable
+                            ? {
                                   title: "Install AI tools for this agent",
                                   command: "databricks.aitools.installAgent",
                                   // The handler recovers the agent id from the
                                   // node id; pass the node explicitly so a click
                                   // and the inline button behave identically.
                                   arguments: [{id}],
-                              },
+                              }
+                            : undefined,
                         collapsibleState: TreeItemCollapsibleState.None,
                     };
                 });

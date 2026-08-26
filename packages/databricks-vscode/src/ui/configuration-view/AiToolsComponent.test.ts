@@ -44,13 +44,19 @@ function agent(
     id: string,
     displayName: string,
     version?: string,
-    skillsOnly?: boolean
+    skillsOnly?: boolean,
+    // Detection and scope support are independent of install state; default
+    // `detected` to "installed implies detected" and full scope support so
+    // existing installed-agent fixtures are unaffected. Uninstalled fixtures
+    // that should render as installable must pass `detected: true`.
+    opts: {detected?: boolean; supportsProjectScope?: boolean} = {}
 ): AiToolsAgentStatus {
     return {
         id,
         displayName,
         type: version !== undefined ? "plugin" : "skills-only",
-        detected: version !== undefined,
+        detected: opts.detected ?? version !== undefined,
+        supportsProjectScope: opts.supportsProjectScope ?? true,
         version,
         skillsOnly,
     };
@@ -275,7 +281,10 @@ describe(__filename, () => {
                 undefined,
                 [
                     agent("claude", "Claude Code", "1.2.0"),
-                    agent("cursor", "Cursor"),
+                    // Detected + scope-supported, so it renders as installable.
+                    agent("cursor", "Cursor", undefined, undefined, {
+                        detected: true,
+                    }),
                 ]
             );
             const rows = await getChildrenOf(model, {
@@ -354,7 +363,11 @@ describe(__filename, () => {
                 "upToDate",
                 "0.2.9",
                 undefined,
-                [agent("codex", "Codex CLI")]
+                [
+                    agent("codex", "Codex CLI", undefined, undefined, {
+                        detected: true,
+                    }),
+                ]
             );
             const [row] = await getChildrenOf(model, {
                 label: "Agents",
@@ -373,7 +386,11 @@ describe(__filename, () => {
                 "upToDate",
                 "0.2.9",
                 undefined,
-                [agent("codex", "Codex CLI")]
+                [
+                    agent("codex", "Codex CLI", undefined, undefined, {
+                        detected: true,
+                    }),
+                ]
             );
             const [row] = await getChildrenOf(model, {
                 label: "Agents",
@@ -388,6 +405,91 @@ describe(__filename, () => {
             assert.deepStrictEqual(row.command?.arguments, [
                 {id: "AITOOLS.agent.codex"},
             ]);
+        });
+
+        it("blocks an undetected uninstalled agent with a muted icon and no install", async () => {
+            const model = createModel(
+                "global",
+                "upToDate",
+                "0.2.9",
+                undefined,
+                [
+                    agent("gemini", "Gemini CLI", undefined, undefined, {
+                        detected: false,
+                    }),
+                ]
+            );
+            const [row] = await getChildrenOf(model, {
+                label: "Agents",
+                id: "AITOOLS.agents",
+            });
+            assert.strictEqual((row.iconPath as ThemeIcon).id, "circle-slash");
+            assert.strictEqual(row.description, "Not detected");
+            assert.strictEqual(
+                row.contextValue,
+                "databricks.configuration.aitools.agent.blocked"
+            );
+            assert.ok(String(row.tooltip).includes("not detected"));
+            // Blocked rows are not clickable and get no inline install button.
+            assert.strictEqual(row.command, undefined);
+        });
+
+        it("blocks a global-only agent when installed at project scope", async () => {
+            const model = createModel(
+                "project",
+                "upToDate",
+                "0.2.9",
+                undefined,
+                [
+                    // Detected, but only supports global scope.
+                    agent("codex", "Codex CLI", undefined, undefined, {
+                        detected: true,
+                        supportsProjectScope: false,
+                    }),
+                ]
+            );
+            const [row] = await getChildrenOf(model, {
+                label: "Agents",
+                id: "AITOOLS.agents",
+            });
+            assert.strictEqual((row.iconPath as ThemeIcon).id, "circle-slash");
+            assert.strictEqual(row.description, "Only supports global scope");
+            assert.strictEqual(
+                row.contextValue,
+                "databricks.configuration.aitools.agent.blocked"
+            );
+            assert.ok(String(row.tooltip).includes("global"));
+            assert.strictEqual(row.command, undefined);
+        });
+
+        it("keeps a global-only agent installable when installed at global scope", async () => {
+            const model = createModel(
+                "global",
+                "upToDate",
+                "0.2.9",
+                undefined,
+                [
+                    // Detected + global-only, but the install scope is global, so
+                    // the scope rule must not fire: the row stays installable.
+                    agent("codex", "Codex CLI", undefined, undefined, {
+                        detected: true,
+                        supportsProjectScope: false,
+                    }),
+                ]
+            );
+            const [row] = await getChildrenOf(model, {
+                label: "Agents",
+                id: "AITOOLS.agents",
+            });
+            assert.strictEqual(row.description, "Not installed");
+            assert.strictEqual(
+                row.contextValue,
+                "databricks.configuration.aitools.agent.notInstalled"
+            );
+            assert.strictEqual(
+                row.command?.command,
+                "databricks.aitools.installAgent"
+            );
         });
 
         describe("in Cursor", () => {
