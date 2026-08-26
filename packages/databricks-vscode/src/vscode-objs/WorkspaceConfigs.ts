@@ -1,4 +1,4 @@
-import {ConfigurationTarget, workspace} from "vscode";
+import {ConfigurationTarget, Disposable, workspace} from "vscode";
 import {Time, TimeUnits} from "@databricks/sdk-experimental";
 
 /**
@@ -147,6 +147,18 @@ export const workspaceConfigs = {
             .get<string>("python.environmentSetup") === "manual"
             ? "manual"
             : "auto";
+    },
+
+    // Notify on changes to `python.environmentSetup`. Kept in the adapter so
+    // both reading the setting and observing its changes stay behind the
+    // vscode-objs seam, instead of feature/UI code reaching into `workspace`.
+    // The caller owns the returned Disposable.
+    onDidChangePythonEnvironmentSetup(listener: () => void): Disposable {
+        return workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration("databricks.python.environmentSetup")) {
+                listener();
+            }
+        });
     },
 
     get bundleRemoteStateRefreshInterval(): number {

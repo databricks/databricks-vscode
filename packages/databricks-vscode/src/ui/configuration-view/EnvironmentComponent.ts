@@ -1,10 +1,6 @@
-import {
-    ThemeColor,
-    ThemeIcon,
-    TreeItemCollapsibleState,
-    workspace,
-} from "vscode";
+import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
+import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
@@ -44,15 +40,9 @@ export class EnvironmentComponent extends BaseComponent {
             // (and a manual-mode click on a leftover uv row silently no-ops)
             // until an unrelated event happens to refresh it.
             this.disposables.push(
-                workspace.onDidChangeConfiguration((e) => {
-                    if (
-                        e.affectsConfiguration(
-                            "databricks.python.environmentSetup"
-                        )
-                    ) {
-                        this.onDidChangeEmitter.fire();
-                    }
-                })
+                workspaceConfigs.onDidChangePythonEnvironmentSetup(() =>
+                    this.onDidChangeEmitter.fire()
+                )
             );
         }
     }
