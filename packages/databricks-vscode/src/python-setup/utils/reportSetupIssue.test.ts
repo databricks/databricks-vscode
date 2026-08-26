@@ -195,6 +195,14 @@ describe("redactSetupStderr", () => {
         expect(out).to.not.contain(jwt);
     });
 
+    it("redacts secret values passed as URL query parameters", () => {
+        const out = redactSetupStderr(
+            "fetch https://pkgs.corp/simple/?token=SECRETVAL&sig=AZURESAS123"
+        );
+        expect(out).to.not.contain("SECRETVAL");
+        expect(out).to.not.contain("AZURESAS123");
+    });
+
     it("redacts a bearer token containing non-word characters", () => {
         const out = redactSetupStderr(
             "Authorization: Bearer abc.def/ghi+jkl=mno end"

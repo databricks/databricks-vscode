@@ -556,9 +556,11 @@ export class EventTypes {
             comment:
                 'Whether the failure surfaced a "Report this problem" affordance — a deep-link to file a ' +
                 "pre-filled issue against databricks/environments (constraint-content defect) or " +
-                "databricks/databricks-vscode (extension/CLI defect). true/false is meaningful on every " +
-                "post-preflight failure (the offer rate's denominator); omitted when the outcome is not a " +
-                "failure, or on the preflight/local/network codes that are never report-worthy",
+                "databricks/databricks-vscode (extension/CLI defect). Present on every failure outcome " +
+                "(failed / not_started): true when a report was offered, false otherwise (including the " +
+                "preflight/local/network codes that are never report-worthy — false is the offer rate's " +
+                "denominator). Omitted for non-failure outcomes; filter by failurePhase for the " +
+                "post-preflight population",
         },
         warningsCount: {
             comment:

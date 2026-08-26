@@ -1,9 +1,9 @@
-import {
+import type {
     PythonSetupResult,
     PythonSetupErrorCode,
 } from "../models/PythonSetupResult";
-import {PrimaryManager} from "../../language/packageManagerDetection";
-import {PythonSetupErrorAction} from "./errorMessages";
+import type {PrimaryManager} from "../../language/packageManagerDetection";
+import type {PythonSetupErrorAction} from "./errorMessages";
 
 /**
  * The two GitHub repositories a post-preflight setup-local failure can be
@@ -101,6 +101,12 @@ export function redactSetupStderr(
         // whole userinfo, keep the host. Runs first so a token here is gone
         // before the email rule could partially match around it.
         .replace(/(\bhttps?:\/\/)[^/\s@]+@/gi, "$1")
+        // Secret values passed as URL query parameters (private-index tokens,
+        // Azure SAS `sig=`, etc.): keep the key, drop the value.
+        .replace(
+            /([?&](?:token|password|passwd|pwd|secret|sig|signature|api[_-]?key|access[_-]?token|auth)=)[^&\s"']+/gi,
+            "$1<redacted>"
+        )
         // JWTs (three base64url segments) before the generic token rules.
         .replace(
             /\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,

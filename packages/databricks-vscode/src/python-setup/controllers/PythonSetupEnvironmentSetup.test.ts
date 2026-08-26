@@ -1281,11 +1281,15 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
 
     it("does not report ok when the post-adoption state bookkeeping throws", async () => {
         const telemetry = makeTelemetryRecorder();
+        const shown: {action?: PythonSetupErrorAction}[] = [];
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 ...telemetry,
                 saveState: () => {
                     throw new Error("workspaceState write failed");
+                },
+                showError: async (_m, _detail, action) => {
+                    shown.push({action});
                 },
             })
         );
@@ -1300,11 +1304,18 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         // The run rejected, so recording success would permanently overstate the
         // success rate.
         expect(rejected).to.equal(true);
+        // The user is still told the run failed and offered a report — a persist
+        // break is the extension's own defect, like adopt.
+        expect(shown[0].action?.label).to.equal("Report this problem");
+        expect(shown[0].action?.url).to.contain(
+            "databricks/databricks-vscode/issues/new"
+        );
         expect(telemetry.results).to.deep.equal([
             {
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                reportOffered: true,
                 warnings: SUCCESS_REAL_RUN.warnings,
             },
         ]);

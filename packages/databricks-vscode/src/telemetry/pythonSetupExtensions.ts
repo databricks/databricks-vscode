@@ -74,9 +74,11 @@ export interface PythonSetupOutcomeReport {
     indexUnreachable?: boolean;
     /**
      * Whether a "Report this problem" affordance was surfaced for this failure.
-     * Meaningful on every post-preflight failure (`false` is the offer rate's
-     * denominator); omitted for non-failures and the never-report-worthy
-     * preflight/local/network codes.
+     * Present on every failure outcome (`failed` / `not_started`): `true` when a
+     * report was offered (a post-preflight defect), `false` otherwise (including
+     * the never-report-worthy preflight/local/network codes — `false` is the
+     * offer rate's denominator). Omitted for non-failure outcomes. Filter by
+     * `failurePhase` to isolate the post-preflight population.
      */
     reportOffered?: boolean;
     /**

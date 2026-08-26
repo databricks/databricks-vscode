@@ -491,12 +491,28 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             this.readyRoots.add(cwd);
             this.stateEmitter.fire();
         } catch (e) {
+            // A persist break happens after the environment already works, so
+            // it is the extension's own defect — surface it and offer a report
+            // (like the adopt path) instead of failing silently. The throw is
+            // preserved so the run is never mis-recorded as ok.
+            const message = e instanceof Error ? e.message : String(e);
             reportResult({
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
+                reportOffered: true,
                 warnings: result.warnings,
             });
+            this.present(
+                this.deps.showError(
+                    message,
+                    reportLogMirror("databricks/databricks-vscode"),
+                    buildExtensionFailureReportAction(reportEnv, {
+                        phase: "persist",
+                        message,
+                    })
+                )
+            );
             throw e;
         }
 
