@@ -392,15 +392,18 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // result object exists, hence `not_started` rather than `failed`:
             // there is no phase or error code to attribute the break to. A
             // spawn/parse break is the extension/CLI's own defect, so it always
-            // offers a report against databricks/databricks-vscode.
+            // offers a report against databricks/databricks-vscode. Normalize a
+            // non-Error rejection so `.message` is never undefined (the redactor
+            // would throw on it, swallowing the original failure).
+            const message = e instanceof Error ? e.message : String(e);
             const reportAction = buildExtensionFailureReportAction(reportEnv, {
                 phase: "spawn",
-                message: (e as Error).message,
+                message,
             });
             reportResult({outcome: "not_started", reportOffered: true});
             this.present(
                 this.deps.showError(
-                    (e as Error).message,
+                    message,
                     reportLogMirror("databricks/databricks-vscode"),
                     reportAction
                 )
@@ -450,10 +453,13 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // flow failed. `adopt` is the extension's own phase, appended to the
             // CLI's six so the funnel shows breaks that happen after it exits. An
             // adopt failure is the extension's own defect, so it always offers a
-            // report against databricks/databricks-vscode.
+            // report against databricks/databricks-vscode. Normalize a non-Error
+            // rejection so `.message` is never undefined (the redactor would
+            // throw on it, swallowing the original failure).
+            const message = e instanceof Error ? e.message : String(e);
             const reportAction = buildExtensionFailureReportAction(reportEnv, {
                 phase: "adopt",
-                message: (e as Error).message,
+                message,
             });
             reportResult({
                 outcome: "failed",
@@ -464,7 +470,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             });
             this.present(
                 this.deps.showError(
-                    (e as Error).message,
+                    message,
                     reportLogMirror("databricks/databricks-vscode"),
                     reportAction
                 )

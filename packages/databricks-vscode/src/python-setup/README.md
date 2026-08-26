@@ -6,7 +6,7 @@ Python environment to the selected Databricks compute.
 
 ## "Report this problem" affordance
 
-A setup-local failure that gets *past* the pre-flight checks usually indicates a
+A setup-local failure that gets _past_ the pre-flight checks usually indicates a
 defect we own — a bad published constraint or an extension/CLI bug — not
 something the user can fix. Those failures surface a "Report this problem" button
 that deep-links a pre-filled GitHub new-issue form, routed by error code to the
@@ -15,9 +15,15 @@ defects, `databricks/databricks-vscode` for extension/CLI defects). Pre-flight,
 local, and network codes are deliberately excluded — they stay actionable from
 the mapped message alone (see `reportSetupIssue.ts` for the closed routing list).
 
-**Privacy posture.** The issue body carries only build metadata (error code,
-phase, env key, package manager, extension/CLI versions, OS) plus the CLI's
-stderr. The stderr is scrubbed of usernames, home paths, tokens, and emails
-before it goes into the URL — but that scrub is *defence-in-depth*, not the sole
-guard: a deep-link only pre-fills the form, which the user reviews and submits
-themselves. Nothing is sent automatically.
+`E_PROVISION` (a uv resolution conflict) is intentionally _not_ a report button:
+such a conflict is usually the user's own declared dependencies. When the
+published constraints are what conflict, that genuine case is served by a soft,
+conditional pointer in the output log instead (see `formatSetupFailureDetail`).
+
+**Privacy posture.** The issue body carries build metadata (error code, phase,
+env key, package manager, extension/CLI versions, OS) plus the CLI's stderr. The
+stderr is scrubbed on a best-effort basis — usernames, home paths, tokens
+(Databricks PATs, GitHub/AWS keys, JWTs, bearer credentials), URL credentials,
+and emails — to _reduce, not eliminate,_ PII exposure. That scrub is
+defence-in-depth, not the sole guard: a deep-link only pre-fills the form, which
+the user reviews and submits themselves. Nothing is sent automatically.

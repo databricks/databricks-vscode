@@ -3,10 +3,7 @@ import {
     PythonSetupErrorCode,
 } from "../models/PythonSetupResult";
 import {PrimaryManager} from "../../language/packageManagerDetection";
-import {
-    PythonSetupErrorAction,
-    isIndexUnreachableFailure,
-} from "./errorMessages";
+import {PythonSetupErrorAction} from "./errorMessages";
 
 /**
  * The two GitHub repositories a post-preflight setup-local failure can be
@@ -27,14 +24,20 @@ export type ReportRepo =
  * is user- or environment-fixable and gets no report prompt.
  *
  * - Constraint-content defects → `databricks/environments`: the published
- *   constraints have no entry for the runtime, don't resolve, or don't validate.
+ *   constraints have no entry for the runtime (`E_ENV_UNSUPPORTED`) or don't
+ *   validate after provisioning (`E_VALIDATE`).
  * - Extension/CLI behaviour defects → `databricks/databricks-vscode`: merging
  *   into or writing the user's pyproject.toml broke.
+ *
+ * `E_PROVISION` is deliberately absent: a uv resolution conflict is usually the
+ * user's own declared dependencies (possibly private packages), not a constraint
+ * defect, so it gets no report button. The genuine "the published constraints
+ * conflict" case is served by a softer, conditional pointer in the output log
+ * (see `formatSetupFailureDetail`) instead of a prominent CTA.
  */
 /* eslint-disable @typescript-eslint/naming-convention */
 const REPORT_ROUTING: Partial<Record<PythonSetupErrorCode, ReportRepo>> = {
     E_ENV_UNSUPPORTED: "databricks/environments",
-    E_PROVISION: "databricks/environments",
     E_VALIDATE: "databricks/environments",
     E_MERGE: "databricks/databricks-vscode",
     E_WRITE: "databricks/databricks-vscode",
@@ -63,19 +66,15 @@ export const REPORT_ACTION_LABEL = "Report this problem";
 
 /**
  * The repo a failed result should be reported against, or `undefined` when the
- * failure is not report-worthy. A blocked package index arrives as `E_PROVISION`
- * but is a local network condition, not a constraint defect — so it is excluded
- * even though `E_PROVISION` is otherwise routed (matching the same distinction
- * {@link isIndexUnreachableFailure} draws for the error copy).
+ * failure is not report-worthy. Report-worthiness is a closed allowlist
+ * ({@link REPORT_ROUTING}); everything else — including every `E_PROVISION`
+ * resolution conflict, blocked-index or not — gets no report button.
  */
 export function reportRepoForResult(
     result: PythonSetupResult
 ): ReportRepo | undefined {
     const err = result.error;
     if (!err) {
-        return undefined;
-    }
-    if (isIndexUnreachableFailure(result)) {
         return undefined;
     }
     return REPORT_ROUTING[err.code];
@@ -98,18 +97,36 @@ export function redactSetupStderr(
     maxLength: number = 2000
 ): string {
     let out = raw
-        // Emails first: an address never spans a path separator, so running it
-        // ahead of the path rules can't be undone by them.
+        // Credentials embedded in a URL (https://user:token@host): drop the
+        // whole userinfo, keep the host. Runs first so a token here is gone
+        // before the email rule could partially match around it.
+        .replace(/(\bhttps?:\/\/)[^/\s@]+@/gi, "$1")
+        // JWTs (three base64url segments) before the generic token rules.
+        .replace(
+            /\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+            "<redacted-token>"
+        )
+        // Emails: an address never spans a path separator, so this can't be
+        // undone by the path rules below.
         .replace(
             /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
             "<redacted-email>"
         )
-        // Databricks personal access tokens and bearer credentials.
+        // Known token shapes: Databricks PAT, GitHub tokens, AWS access-key ids,
+        // and bearer credentials (any non-space run).
         .replace(/dapi[A-Za-z0-9]{10,}/gi, "<redacted-token>")
-        .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer <redacted-token>")
-        // Home-directory paths: keep the shape, drop the username segment.
+        .replace(/\bgh[pousr]_[A-Za-z0-9]{20,}\b/g, "<redacted-token>")
+        .replace(/\bAKIA[0-9A-Z]{12,}\b/g, "<redacted-token>")
+        .replace(/Bearer\s+\S+/gi, "Bearer <redacted-token>")
+        // Home-directory paths: drop the username segment, keeping the shape. A
+        // username can contain spaces (`/Users/Jane Doe/…`), so first take the
+        // whole segment up to the next path separator, then the trailing
+        // single-token segment (no following separator) as a fallback.
+        .replace(/([A-Za-z]:\\Users\\)([^\\\r\n]+)(?=[\\/])/gi, "$1<redacted>")
         .replace(/([A-Za-z]:\\Users\\)([^\\/\s"']+)/gi, "$1<redacted>")
+        .replace(/(\/Users\/)([^/\r\n]+)(?=\/)/g, "$1<redacted>")
         .replace(/(\/Users\/)([^/\s"']+)/g, "$1<redacted>")
+        .replace(/(\/home\/)([^/\r\n]+)(?=\/)/g, "$1<redacted>")
         .replace(/(\/home\/)([^/\s"']+)/g, "$1<redacted>");
 
     if (out.length > maxLength) {

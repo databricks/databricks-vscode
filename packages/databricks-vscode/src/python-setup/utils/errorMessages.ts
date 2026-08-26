@@ -69,6 +69,15 @@ export const DATABRICKS_RUNTIME_DOCS_URL =
     "https://docs.databricks.com/aws/en/release-notes/runtime/";
 
 /**
+ * New-issue page for the published environment constraints. Surfaced only as a
+ * soft, conditional pointer in the log for a genuine `E_PROVISION` conflict —
+ * not a button — because such a conflict is usually the user's own dependencies,
+ * not a constraint defect (see the report-worthiness routing in reportSetupIssue).
+ */
+export const DATABRICKS_ENVIRONMENTS_NEW_ISSUE_URL =
+    "https://github.com/databricks/environments/issues/new";
+
+/**
  * "Cannot reach the host" phrases in uv's error text (matched case-insensitively).
  * TLS-interception and proxy-auth (407) are deliberately left out: they need a
  * CA-trust / credentials fix, not a different index.
@@ -317,6 +326,18 @@ export function formatSetupFailureDetail(
             "       [global]",
             "       index-url = https://<your-proxy>/simple",
             "     Use index-url (not extra-index-url) so pypi.org is replaced, not merely supplemented."
+        );
+    }
+    // A genuine E_PROVISION conflict gets no report button (it is usually the
+    // user's own dependencies). But if the *published constraints* are what
+    // conflict, that is a defect worth reporting — so offer a soft, conditional
+    // pointer here. Excludes the blocked-index variant, a local network issue.
+    if (err.code === "E_PROVISION" && !isIndexUnreachableFailure(result)) {
+        lines.push(
+            "",
+            "If you believe this conflict comes from the published runtime " +
+                "constraints rather than your own project dependencies, report " +
+                `it to the environments repository: ${DATABRICKS_ENVIRONMENTS_NEW_ISSUE_URL}`
         );
     }
     // The same doc link the popup offers as a button, spelled out here so the URL

@@ -562,6 +562,31 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         });
     });
 
+    it("handles a non-Error rejection without throwing on the spawn path", async () => {
+        const shown: {message: string; action?: PythonSetupErrorAction}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                // A rejection that is not an Error instance: `.message` would be
+                // undefined, and the redactor must not throw on it.
+                cli: {
+                    run: async () => {
+                        throw "spawn failed as a bare string";
+                    },
+                },
+                showError: async (message, _detail, action) => {
+                    shown.push({message, action});
+                },
+            })
+        );
+
+        // Must resolve, not reject — the original failure has to reach the user.
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].message).to.contain("spawn failed as a bare string");
+        expect(shown[0].action?.label).to.equal("Report this problem");
+    });
+
     it("offers a Report this problem action when interpreter adoption fails", async () => {
         const shown: {action?: PythonSetupErrorAction}[] = [];
         const telemetry = makeTelemetryRecorder();

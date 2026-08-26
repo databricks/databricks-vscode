@@ -62,7 +62,6 @@ describe("reportRepoForResult / isReportWorthy", () => {
     it("routes constraint-content defects to databricks/environments", () => {
         for (const code of [
             "E_ENV_UNSUPPORTED",
-            "E_PROVISION",
             "E_VALIDATE",
         ] as PythonSetupErrorCode[]) {
             expect(reportRepoForResult(failure(code))).to.equal(
@@ -78,6 +77,20 @@ describe("reportRepoForResult / isReportWorthy", () => {
                 "databricks/databricks-vscode"
             );
         }
+    });
+
+    it("does NOT make a genuine E_PROVISION conflict button-report-worthy", () => {
+        // A real dependency conflict is usually the user's own declared deps
+        // (possibly private packages), not a constraint defect — so it gets no
+        // report button; the output-channel hint (in errorMessages) covers the
+        // "if you think it's the constraints" case instead.
+        const r = failure("E_PROVISION", {
+            message:
+                "error: No solution found when resolving dependencies: " +
+                "x==1 depends on y<2, but the runtime requires y==2",
+        });
+        expect(reportRepoForResult(r)).to.equal(undefined);
+        expect(isReportWorthy(r)).to.equal(false);
     });
 
     it("does NOT treat a blocked-index E_PROVISION as report-worthy", () => {
@@ -138,6 +151,57 @@ describe("redactSetupStderr", () => {
         );
         expect(out).to.not.contain(fakeToken);
         expect(out).to.not.contain("alice@example.com");
+    });
+
+    it("strips a username containing a space from a home path", () => {
+        const out = redactSetupStderr(
+            "error at /Users/Jane Doe/proj/pyproject.toml"
+        );
+        expect(out).to.not.contain("Jane Doe");
+        expect(out).to.not.contain("Doe");
+        expect(out).to.contain("/proj/pyproject.toml");
+    });
+
+    it("strips a Windows username containing a space", () => {
+        const out = redactSetupStderr(
+            "C:\\Users\\Jane Doe\\project\\pyproject.toml"
+        );
+        expect(out).to.not.contain("Jane Doe");
+        expect(out).to.not.contain("Doe");
+        expect(out).to.contain("\\project\\pyproject.toml");
+    });
+
+    it("strips credentials embedded in a URL", () => {
+        const out = redactSetupStderr(
+            "failed to fetch https://alice:s3cr3tPAT@pkgs.corp.example/simple/"
+        );
+        expect(out).to.not.contain("s3cr3tPAT");
+        expect(out).to.not.contain("alice:s3cr3tPAT");
+    });
+
+    it("redacts a GitHub token, an AWS access key id, and a JWT", () => {
+        const ghToken = "ghp_" + "abcdEFGH1234abcdEFGH1234abcdEFGH1234";
+        const awsKey = "AKIA" + "IOSFODNN7EXAMPLE0";
+        // Assembled at runtime so no contiguous JWT literal sits in the source
+        // (it exercises the three-segment redaction regex all the same).
+        const jwt = [
+            "eyJ" + "hbGciOiJIUzI1NiJ9",
+            "eyJ" + "zdWIiOiIxMjM0NTY3ODkwIn0",
+            "abc-DEF_123",
+        ].join(".");
+        const out = redactSetupStderr(`gh=${ghToken} aws=${awsKey} jwt=${jwt}`);
+        expect(out).to.not.contain(ghToken);
+        expect(out).to.not.contain(awsKey);
+        expect(out).to.not.contain(jwt);
+    });
+
+    it("redacts a bearer token containing non-word characters", () => {
+        const out = redactSetupStderr(
+            "Authorization: Bearer abc.def/ghi+jkl=mno end"
+        );
+        expect(out).to.not.contain("abc.def/ghi+jkl=mno");
+        expect(out).to.not.contain("ghi+jkl=mno");
+        expect(out).to.contain("Bearer");
     });
 
     it("keeps benign uv output (package names and versions) intact", () => {
@@ -211,7 +275,7 @@ describe("getPythonSetupReportAction", () => {
 
     it("keeps the prefilled URL bounded even for enormous CLI stderr", () => {
         const action = getPythonSetupReportAction(
-            failure("E_PROVISION", {message: "boom\n" + "y".repeat(50000)}),
+            failure("E_VALIDATE", {message: "boom\n" + "y".repeat(50000)}),
             ENV
         );
         expect(action).to.not.equal(undefined);
