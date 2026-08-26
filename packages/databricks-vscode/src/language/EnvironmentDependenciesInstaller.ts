@@ -5,6 +5,8 @@ import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {DATABRICKS_CONNECT_VERSION as DATABRICKS_CONNECT_MINIMAL_VERSION} from "../utils/constants";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {Events} from "../telemetry";
+import type {Telemetry} from "../telemetry";
 
 export class EnvironmentDependenciesInstaller implements Disposable {
     private disposables: Disposable[] = [];
@@ -15,7 +17,8 @@ export class EnvironmentDependenciesInstaller implements Disposable {
 
     constructor(
         private readonly connectionManager: ConnectionManager,
-        private readonly pythonExtension: MsPythonExtensionWrapper
+        private readonly pythonExtension: MsPythonExtensionWrapper,
+        private readonly telemetry: Telemetry
     ) {}
 
     get outputChannel() {
@@ -35,6 +38,11 @@ export class EnvironmentDependenciesInstaller implements Disposable {
         if (!version) {
             version = await this.getSuggestedVersion();
         }
+        // Timed from here, not method entry, so the reported duration is the
+        // pip work only — not the interpreter/version prompts answered earlier.
+        const reportInstall = this.telemetry.start(
+            Events.PYTHON_ENV_DBCONNECT_INSTALL
+        );
         try {
             this.outputChannel.clear();
             this.outputChannel.show();
@@ -57,11 +65,13 @@ export class EnvironmentDependenciesInstaller implements Disposable {
                 undefined,
                 this.outputChannel
             );
+            reportInstall({outcome: "ok"});
         } catch (e: unknown) {
             if (e instanceof Error) {
                 window.showErrorMessage(e.message);
             }
             this.outputChannel.show();
+            reportInstall({outcome: "failed"});
         }
         this.onDidInstallAttemptEmitter.fire();
     }

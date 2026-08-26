@@ -898,7 +898,8 @@ export async function activate(
     const environmentDependenciesInstaller =
         new EnvironmentDependenciesInstaller(
             connectionManager,
-            pythonExtensionWrapper
+            pythonExtensionWrapper,
+            telemetry
         );
     const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(
