@@ -80,6 +80,7 @@ import {
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
+import {BundleEngineManager} from "./bundle/BundleEngineManager";
 import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
@@ -712,6 +713,12 @@ export async function activate(
         stateStorage
     );
 
+    const bundleEngineManager = new BundleEngineManager(
+        bundleValidateModel,
+        stateStorage,
+        telemetry
+    );
+
     const connectionManager = new ConnectionManager(
         cli,
         configModel,
@@ -744,6 +751,7 @@ export async function activate(
         bundlePreValidateModel,
         bundleRemoteStateModel,
         configModel,
+        bundleEngineManager,
         connectionManager,
         connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(
@@ -890,7 +898,8 @@ export async function activate(
     const environmentDependenciesInstaller =
         new EnvironmentDependenciesInstaller(
             connectionManager,
-            pythonExtensionWrapper
+            pythonExtensionWrapper,
+            telemetry
         );
     const featureManager = new FeatureManager<FeatureId>([]);
     featureManager.registerFeature(

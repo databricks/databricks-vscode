@@ -19,6 +19,7 @@ export enum Events {
     BUNDLE_RUN = "bundleRun",
     BUNDLE_INIT = "bundleInit",
     BUNDLE_SUB_PROJECTS = "bundleSubProjects",
+    BUNDLE_TERRAFORM_ENGINE_WARNING = "bundleTerraformEngineWarning",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
     COMPUTE_SELECTED = "computeSelected",
     WORKFLOW_RUN = "workflowRun",
@@ -29,6 +30,7 @@ export enum Events {
     PYTHON_ENV_SETUP_RESULT = "python_env.setup.result",
     PYTHON_ENV_DRIFT = "python_env.drift",
     PYTHON_ENV_ADOPTION = "python_env.adoption",
+    PYTHON_ENV_DBCONNECT_INSTALL = "python_env.dbconnect_install",
     AITOOLS_INSTALL = "aitoolsInstall",
     AITOOLS_UPDATE = "aitoolsUpdate",
     AITOOLS_UNINSTALL = "aitoolsUninstall",
@@ -43,6 +45,16 @@ export type ManualLoginSource =
     | "command"
     | "api";
 export type BundleRunResourceType = "pipelines" | "jobs";
+/**
+ * What the user did with the Terraform-engine deprecation warning:
+ *  - `'guide'` — opened the migration guide.
+ *  - `'hidden'` — chose "Don't show again" (persisted opt-out for the workspace).
+ *  - `'dismissed'` — closed it without either.
+ */
+export type BundleTerraformEngineWarningAction =
+    | "guide"
+    | "hidden"
+    | "dismissed";
 export type BundleRunType =
     | "run"
     | "validate"
@@ -154,6 +166,17 @@ export type PythonSetupFailurePhase =
     | PythonSetupPhaseName
     | "adopt"
     | "persist";
+
+/**
+ * How the legacy (pre-VPEX) databricks-connect install ended.
+ *
+ * Only `ok` / `failed`: the install itself is not user-cancellable once it
+ * starts (the prompts that a user can abandon run *before* `install()`), so a
+ * `cancelled` value would never be emitted. Deliberately a distinct, minimal
+ * vocabulary from {@link PythonSetupOutcome} — the legacy flow is its own
+ * event, not a variant of the uv-native result.
+ */
+export type DbConnectInstallOutcome = "ok" | "failed";
 
 /** How a drift check was triggered. */
 export type PythonSetupDriftTrigger =
@@ -330,6 +353,16 @@ export class EventTypes {
         comment: "An external resource URL was opened",
         type: {
             comment: "The resource type",
+        },
+    };
+    [Events.BUNDLE_TERRAFORM_ENGINE_WARNING]: EventType<{
+        action: BundleTerraformEngineWarningAction;
+    }> = {
+        comment:
+            "Surfaced the deprecation warning for the Terraform bundle deployment engine. Recorded once per surfacing (at most once per session per workspace, until the user opts out), so the count tracks how many users still have bundles on the Terraform engine.",
+        action: {
+            comment:
+                "What the user did with the warning: 'guide' chose to open the migration guide, 'hidden' chose \"Don't show again\" (persisted opt-out for the workspace), 'dismissed' closed it without either.",
         },
     };
     [Events.AITOOLS_INSTALL]: EventType<
@@ -627,6 +660,25 @@ export class EventTypes {
                 "The compute kind attached when the session check ran (cluster | serverless | " +
                 "none), so adoption can be sliced by compute. No cluster IDs or names",
         },
+    };
+    [Events.PYTHON_ENV_DBCONNECT_INSTALL]: EventType<
+        {
+            outcome: DbConnectInstallOutcome;
+        } & DurationMeasurement
+    > = {
+        comment:
+            "The outcome of a legacy (pre-VPEX) databricks-connect install run — the old " +
+            "environment-setup flow driven by EnvironmentDependenciesInstaller.install(). Its own " +
+            "event (not python_env.setup.result) so the legacy and uv-native flows stay cleanly " +
+            "separable in analysis. Categorical/numeric data only — no versions, paths, or names.",
+        outcome: {
+            comment:
+                "ok if the databricks-connect (and nbformat) install completed, failed if it threw",
+        },
+        // Measured by the extension around the install itself, so it is the pip
+        // work only — it excludes the prompts (interpreter/version) the user
+        // answers before install() runs.
+        ...getDurationProperty(),
     };
 }
 

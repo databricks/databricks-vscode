@@ -194,6 +194,12 @@ export interface AiToolsAgent {
     display_name: string;
     managed: boolean;
     detected: boolean;
+    /**
+     * Whether the agent can be installed at project scope. Older CLIs omit this
+     * field; callers treat its absence as "supported".
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    supports_project_scope?: boolean;
     installed: Partial<Record<AiToolsScope, AiToolsAgentInstallation>>;
 }
 
