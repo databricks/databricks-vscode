@@ -27,3 +27,9 @@ stderr is scrubbed on a best-effort basis — usernames, home paths, tokens
 and emails — to _reduce, not eliminate,_ PII exposure. That scrub is
 defence-in-depth, not the sole guard: a deep-link only pre-fills the form, which
 the user reviews and submits themselves. Nothing is sent automatically.
+
+The `pyproject.toml` is the crux for merge/resolution failures but is **not**
+auto-collected (it can carry private dependencies); the body instead includes a
+placeholder asking the reporter to paste a redacted copy. The body carries no
+`#` markdown headings on purpose — a `#` in the deep-link's query is
+double-encoded before the browser and renders as `%23`.

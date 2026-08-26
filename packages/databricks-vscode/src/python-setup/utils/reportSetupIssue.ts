@@ -197,14 +197,26 @@ function buildReportBody(ctx: {
     field("CLI version", ctx.env.cliVersion);
     field("OS", ctx.env.platform);
     if (ctx.redactedStderr !== undefined && ctx.redactedStderr.length > 0) {
+        // Plain label, not a `###` markdown heading: a `#` in the URL query is
+        // double-encoded on the way to the browser and renders as `%23`.
         lines.push(
             "",
-            "### CLI output (auto-redacted)",
+            "CLI output (auto-redacted):",
             "```",
             ctx.redactedStderr,
             "```"
         );
     }
+    // The pyproject.toml is the crux for merge/resolution failures but is not
+    // auto-collected (it can carry private dependencies), so ask the reporter to
+    // paste it. Kept free of `#` for the same encoding reason as above.
+    lines.push(
+        "",
+        "Your pyproject.toml (paste it below to help us reproduce — remove anything private):",
+        "```toml",
+        "(paste your pyproject.toml here)",
+        "```"
+    );
     return lines.join("\n");
 }
 
