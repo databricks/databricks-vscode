@@ -235,7 +235,9 @@ export function buildSetupReportUrl(ctx: {
     const phasePart = ctx.failurePhase
         ? ` in the ${ctx.failurePhase} phase`
         : "";
-    const title = `[setup-local] ${ctx.errorCode ?? "failure"}${phasePart}`;
+    const title = `[setup-local] Unexpected ${
+        ctx.errorCode ?? "failure"
+    }${phasePart}`;
     const body = buildReportBody(ctx);
     return (
         `${reportNewIssueBaseUrl(ctx.repo)}?title=${encodeURIComponent(

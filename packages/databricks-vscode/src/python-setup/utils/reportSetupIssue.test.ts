@@ -248,6 +248,19 @@ describe("buildSetupReportUrl", () => {
         );
     });
 
+    it("titles the issue as an unexpected failure with the code and phase", () => {
+        const url = buildSetupReportUrl({
+            repo: "databricks/databricks-vscode",
+            errorCode: "E_MERGE",
+            failurePhase: "merge",
+            env: ENV,
+        });
+        const title = decodeURIComponent(url.split("title=")[1].split("&")[0]);
+        expect(title).to.equal(
+            "[setup-local] Unexpected E_MERGE in the merge phase"
+        );
+    });
+
     it("URL-encodes the title and body (no raw spaces or newlines)", () => {
         const url = buildSetupReportUrl({
             repo: "databricks/databricks-vscode",
