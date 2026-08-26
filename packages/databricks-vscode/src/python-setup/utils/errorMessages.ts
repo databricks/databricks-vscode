@@ -144,16 +144,16 @@ export const USE_MANUAL_SETUP_COMMAND_ID =
 
 /**
  * An optional remediation button to attach to a failure popup. Exactly one of
- * `url` / `command` is set: `url` opens an external page (docs, issue), while
- * `command` runs a VS Code command (e.g. the one-click switch to manual setup).
- * Kept alongside {@link getPythonSetupErrorMessage} so the copy and its
- * call-to-action live together.
+ * `url` / `command` is set — a discriminated union (`?: never` on the other arm)
+ * forbids both/neither at compile time, while still letting callers read
+ * `action.url` / `action.command` as `string | undefined` without narrowing.
+ * `url` opens an external page (docs, issue); `command` runs a VS Code command
+ * (e.g. the one-click switch to manual setup). Kept alongside
+ * {@link getPythonSetupErrorMessage} so the copy and its call-to-action live together.
  */
-export interface PythonSetupErrorAction {
-    label: string;
-    url?: string;
-    command?: string;
-}
+export type PythonSetupErrorAction =
+    | {label: string; url: string; command?: never}
+    | {label: string; command: string; url?: never};
 
 /* eslint-disable @typescript-eslint/naming-convention */
 const BASE_MESSAGE: Record<

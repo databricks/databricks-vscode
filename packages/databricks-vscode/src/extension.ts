@@ -1065,13 +1065,30 @@ export async function activate(
         // is used as-is. Workspace scope keeps it scoped and reversible; if no
         // folder is open we fall back to Global so the write still lands.
         telemetry.registerCommand(USE_MANUAL_SETUP_COMMAND_ID, async () => {
-            const target =
-                (workspace.workspaceFolders?.length ?? 0) > 0
-                    ? ConfigurationTarget.Workspace
-                    : ConfigurationTarget.Global;
-            await workspaceConfigs.setPythonEnvironmentSetup("manual", target);
+            const hasFolder = (workspace.workspaceFolders?.length ?? 0) > 0;
+            const target = hasFolder
+                ? ConfigurationTarget.Workspace
+                : ConfigurationTarget.Global;
+            try {
+                await workspaceConfigs.setPythonEnvironmentSetup(
+                    "manual",
+                    target
+                );
+            } catch (e) {
+                // Don't claim success if the write failed — the user would
+                // otherwise believe automated setup is off when it is not.
+                await window.showErrorMessage(
+                    `Could not update databricks.python.environmentSetup: ${
+                        e instanceof Error ? e.message : String(e)
+                    }`
+                );
+                return;
+            }
+            // Match the message to the scope actually written: "this project"
+            // for Workspace, "globally" for the no-folder Global fallback.
+            const scope = hasFolder ? "for this project" : "globally";
             await window.showInformationMessage(
-                'Automated Python environment setup is now off for this project ("databricks.python.environmentSetup": "manual"). Your existing interpreter will be used as-is.'
+                `Automated Python environment setup is now off ${scope} ("databricks.python.environmentSetup": "manual"). Your existing interpreter will be used as-is.`
             );
         })
     );
