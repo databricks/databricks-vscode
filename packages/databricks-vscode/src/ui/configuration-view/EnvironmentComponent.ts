@@ -1,4 +1,9 @@
-import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
+import {
+    ThemeColor,
+    ThemeIcon,
+    TreeItemCollapsibleState,
+    workspace,
+} from "vscode";
 import {FeatureManager} from "../../feature-manager/FeatureManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
@@ -32,6 +37,22 @@ export class EnvironmentComponent extends BaseComponent {
                 this.pythonSetup.onDidChangeState(() =>
                     this.onDidChangeEmitter.fire()
                 )
+            );
+            // `databricks.python.environmentSetup` decides whether this section
+            // shows the uv entry or the legacy checklist, and getRoot reads it
+            // live — so a change must repaint the tree, or the stale row lingers
+            // (and a manual-mode click on a leftover uv row silently no-ops)
+            // until an unrelated event happens to refresh it.
+            this.disposables.push(
+                workspace.onDidChangeConfiguration((e) => {
+                    if (
+                        e.affectsConfiguration(
+                            "databricks.python.environmentSetup"
+                        )
+                    ) {
+                        this.onDidChangeEmitter.fire();
+                    }
+                })
             );
         }
     }
