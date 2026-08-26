@@ -260,9 +260,9 @@ describe("buildSetupReportUrl", () => {
         expect(query).to.not.match(/[ \n]/);
     });
 
-    it("uses a plain label (no '#' markdown heading) for the CLI output block", () => {
+    it("uses a bold label (not a '#' heading) for the CLI output block", () => {
         // A `#` in the query is double-encoded on the way to the browser and
-        // renders as `%23`, so the body must carry no markdown headings.
+        // renders as `%23`, so labels are bold (`**…**`), never headings.
         const url = buildSetupReportUrl({
             repo: "databricks/databricks-vscode",
             errorCode: "E_MERGE",
@@ -271,7 +271,7 @@ describe("buildSetupReportUrl", () => {
             redactedStderr: "boom",
         });
         const body = decodeURIComponent(url.split("body=")[1]);
-        expect(body).to.contain("CLI output (auto-redacted):");
+        expect(body).to.contain("**CLI output (auto-redacted):**");
         expect(body).to.not.contain("#");
     });
 
@@ -282,7 +282,7 @@ describe("buildSetupReportUrl", () => {
             env: ENV,
         });
         const body = decodeURIComponent(url.split("body=")[1]);
-        expect(body).to.match(/pyproject\.toml/i);
+        expect(body).to.contain("**Your pyproject.toml**");
         expect(body).to.match(/reproduce/i);
         // No markdown headings anywhere (no stderr in this case, so no `#` at all).
         expect(body).to.not.contain("#");
