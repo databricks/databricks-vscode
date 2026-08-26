@@ -6,6 +6,7 @@ import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {ConfigurationTreeItem} from "./types";
 import {PythonSetupEntry} from "./pythonSetupEntry";
+import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 
 const ENVIRONMENT_COMPONENT_ID = "ENVIRONMENT";
 const ENVIRONMENT_ROOT = {
@@ -107,5 +108,50 @@ describe("EnvironmentComponent dispatch", () => {
         // Being a leaf, it has no children — so the checklist never renders.
         const children = await component.getChildren(root[0]);
         expect(children).to.have.length(0);
+    });
+
+    describe("environmentSetup change refresh", () => {
+        // Stub the adapter's change subscription so the test drives the callback
+        // deterministically, without mutating real VS Code config or firing a
+        // live workspace event.
+        let captured: (() => void) | undefined;
+        let restore: () => void;
+
+        beforeEach(() => {
+            captured = undefined;
+            const original = workspaceConfigs.onDidChangePythonEnvironmentSetup;
+            workspaceConfigs.onDidChangePythonEnvironmentSetup = (
+                listener: () => void
+            ) => {
+                captured = listener;
+                return {dispose() {}};
+            };
+            restore = () => {
+                workspaceConfigs.onDidChangePythonEnvironmentSetup = original;
+            };
+        });
+
+        afterEach(() => restore());
+
+        it("repaints the tree when the setting changes", () => {
+            const component = make(
+                stubPythonSetup({visible: true, ready: false})
+            );
+            let fired = 0;
+            component.onDidChange(() => fired++);
+
+            expect(captured, "subscribed to the setting change").to.be.a(
+                "function"
+            );
+            captured!();
+            expect(fired).to.equal(1);
+        });
+
+        it("does not subscribe when no python-setup entry is wired", () => {
+            // The setting only governs the uv entry, so the legacy-only
+            // construction has nothing to refresh for.
+            make(undefined);
+            expect(captured).to.equal(undefined);
+        });
     });
 });
