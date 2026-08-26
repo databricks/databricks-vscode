@@ -69,6 +69,15 @@ export const DATABRICKS_RUNTIME_DOCS_URL =
     "https://docs.databricks.com/aws/en/release-notes/runtime/";
 
 /**
+ * New-issue page for the published environment constraints. Surfaced only as a
+ * soft, conditional pointer in the log for a genuine `E_PROVISION` conflict —
+ * not a button — because such a conflict is usually the user's own dependencies,
+ * not a constraint defect (see the report-worthiness routing in reportSetupIssue).
+ */
+export const DATABRICKS_ENVIRONMENTS_NEW_ISSUE_URL =
+    "https://github.com/databricks/environments/issues/new";
+
+/**
  * "Cannot reach the host" phrases in uv's error text (matched case-insensitively).
  * TLS-interception and proxy-auth (407) are deliberately left out: they need a
  * CA-trust / credentials fix, not a different index.
@@ -274,9 +283,13 @@ export function getPythonSetupErrorAction(
  *
  * Returns `undefined` when the result carries no error, i.e. there is nothing to
  * add to the log.
+ *
+ * `reportLink`, when given, is a "Report this problem" link mirrored into the log
+ * so it outlives the dismissed notification — see the report-issue helpers.
  */
 export function formatSetupFailureDetail(
-    result: PythonSetupResult
+    result: PythonSetupResult,
+    reportLink?: PythonSetupErrorAction
 ): string | undefined {
     const err = result.error;
     if (!err) {
@@ -315,11 +328,29 @@ export function formatSetupFailureDetail(
             "     Use index-url (not extra-index-url) so pypi.org is replaced, not merely supplemented."
         );
     }
+    // A genuine E_PROVISION conflict gets no report button (it is usually the
+    // user's own dependencies). But if the *published constraints* are what
+    // conflict, that is a defect worth reporting — so offer a soft, conditional
+    // pointer here. Excludes the blocked-index variant, a local network issue.
+    if (err.code === "E_PROVISION" && !isIndexUnreachableFailure(result)) {
+        lines.push(
+            "",
+            "If you believe this conflict comes from the published runtime " +
+                "constraints rather than your own project dependencies, report " +
+                `it to the environments repository: ${DATABRICKS_ENVIRONMENTS_NEW_ISSUE_URL}`
+        );
+    }
     // The same doc link the popup offers as a button, spelled out here so the URL
     // is reachable from the log even after the notification is dismissed.
     const action = getPythonSetupErrorAction(result);
     if (action) {
         lines.push("", `${action.label}: ${action.url}`);
+    }
+    // The report link is mirrored here too (a bare new-issue URL, not the popup's
+    // long pre-filled deep-link) so it survives the notification being dismissed.
+    // It is additive to the doc link above: a report-worthy code can carry both.
+    if (reportLink) {
+        lines.push("", `${reportLink.label}: ${reportLink.url}`);
     }
     // Bracket with blank lines so the block stands apart from any streamed CLI
     // output already in the channel.

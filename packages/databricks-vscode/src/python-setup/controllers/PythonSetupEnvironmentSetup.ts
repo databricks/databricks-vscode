@@ -18,6 +18,14 @@ import {
     NO_COMPUTE_TARGET_MESSAGE,
     PythonSetupErrorAction,
 } from "../utils/errorMessages";
+import {
+    buildExtensionFailureReportAction,
+    getPythonSetupReportAction,
+    reportLogLink,
+    reportLogMirror,
+    reportRepoForResult,
+    ReportEnvironment,
+} from "../utils/reportSetupIssue";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     PythonSetupAttempt,
@@ -146,6 +154,13 @@ export interface PythonSetupSetupDeps {
     ) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
+
+    /**
+     * Static build context (extension/CLI versions, OS) stamped into a
+     * "Report this problem" issue body. The per-run package manager is merged in
+     * by the orchestrator; this carries only what is constant for the session.
+     */
+    reportEnvironment: ReportEnvironment;
 
     withProgress: <T>(title: string, task: ProgressTask<T>) => Promise<T>;
 
@@ -350,7 +365,15 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // exit below reports an outcome. The reporter also starts the clock:
         // the duration we publish is the whole user-visible wait, including CLI
         // spawn and interpreter adoption.
-        const reportResult = await this.recordAttempt(invocation, cwd);
+        const {reportResult, packageManager} = await this.recordAttempt(
+            invocation,
+            cwd
+        );
+        // Per-run report context: the static build info plus this run's manager.
+        const reportEnv: ReportEnvironment = {
+            ...this.deps.reportEnvironment,
+            packageManager,
+        };
 
         let result: PythonSetupResult;
         try {
@@ -367,13 +390,33 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // Spawn/parse errors reject with a real Error carrying CLI stderr;
             // there is no result to map, so surface the message directly. No
             // result object exists, hence `not_started` rather than `failed`:
-            // there is no phase or error code to attribute the break to.
-            reportResult({outcome: "not_started"});
-            this.present(this.deps.showError((e as Error).message));
+            // there is no phase or error code to attribute the break to. A
+            // spawn/parse break is the extension/CLI's own defect, so it always
+            // offers a report against databricks/databricks-vscode. Normalize a
+            // non-Error rejection so `.message` is never undefined (the redactor
+            // would throw on it, swallowing the original failure).
+            const message = e instanceof Error ? e.message : String(e);
+            const reportAction = buildExtensionFailureReportAction(reportEnv, {
+                phase: "spawn",
+                message,
+            });
+            reportResult({outcome: "not_started", reportOffered: true});
+            this.present(
+                this.deps.showError(
+                    message,
+                    reportLogMirror("databricks/databricks-vscode"),
+                    reportAction
+                )
+            );
             return;
         }
 
         if (!isLocalEnvironmentReady(result)) {
+            // Report is the primary button for a report-worthy failure; its doc
+            // link (if any) drops to the log. A non-report-worthy failure keeps
+            // its doc-link button, unchanged.
+            const reportAction = getPythonSetupReportAction(result, reportEnv);
+            const reportRepo = reportRepoForResult(result);
             reportResult({
                 outcome: "failed",
                 failurePhase: result.error?.failurePhase,
@@ -381,13 +424,17 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 envKey: result.compute?.envKey,
                 diskMutated: result.error?.diskMutated,
                 indexUnreachable: isIndexUnreachableFailure(result),
+                reportOffered: reportAction !== undefined,
                 warnings: result.warnings,
             });
             this.present(
                 this.deps.showError(
                     getPythonSetupErrorMessage(result),
-                    formatSetupFailureDetail(result),
-                    getPythonSetupErrorAction(result)
+                    formatSetupFailureDetail(
+                        result,
+                        reportRepo ? reportLogLink(reportRepo) : undefined
+                    ),
+                    reportAction ?? getPythonSetupErrorAction(result)
                 )
             );
             return;
@@ -404,14 +451,30 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         } catch (e) {
             // The CLI succeeded, so there is no CLI error to report — but the
             // flow failed. `adopt` is the extension's own phase, appended to the
-            // CLI's six so the funnel shows breaks that happen after it exits.
+            // CLI's six so the funnel shows breaks that happen after it exits. An
+            // adopt failure is the extension's own defect, so it always offers a
+            // report against databricks/databricks-vscode. Normalize a non-Error
+            // rejection so `.message` is never undefined (the redactor would
+            // throw on it, swallowing the original failure).
+            const message = e instanceof Error ? e.message : String(e);
+            const reportAction = buildExtensionFailureReportAction(reportEnv, {
+                phase: "adopt",
+                message,
+            });
             reportResult({
                 outcome: "failed",
                 failurePhase: "adopt",
                 envKey: result.compute.envKey,
+                reportOffered: true,
                 warnings: result.warnings,
             });
-            this.present(this.deps.showError((e as Error).message));
+            this.present(
+                this.deps.showError(
+                    message,
+                    reportLogMirror("databricks/databricks-vscode"),
+                    reportAction
+                )
+            );
             return;
         }
 
@@ -428,12 +491,28 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             this.readyRoots.add(cwd);
             this.stateEmitter.fire();
         } catch (e) {
+            // A persist break happens after the environment already works, so
+            // it is the extension's own defect — surface it and offer a report
+            // (like the adopt path) instead of failing silently. The throw is
+            // preserved so the run is never mis-recorded as ok.
+            const message = e instanceof Error ? e.message : String(e);
             reportResult({
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
+                reportOffered: true,
                 warnings: result.warnings,
             });
+            this.present(
+                this.deps.showError(
+                    message,
+                    reportLogMirror("databricks/databricks-vscode"),
+                    buildExtensionFailureReportAction(reportEnv, {
+                        phase: "persist",
+                        message,
+                    })
+                )
+            );
             throw e;
         }
 
@@ -458,11 +537,18 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      * best-effort: a failure gathering the attempt's context degrades to
      * `unknown`/omitted, and a failure in the emit itself is swallowed — the
      * returned reporter then becomes a no-op rather than throwing mid-run.
+     *
+     * The detected `packageManager` is returned alongside the reporter so the
+     * failure paths can stamp it into a "Report this problem" issue body without
+     * re-running detection.
      */
     private async recordAttempt(
         invocation: SetupLocalInvocation,
         projectRoot: string
-    ): Promise<PythonSetupResultReporter> {
+    ): Promise<{
+        reportResult: PythonSetupResultReporter;
+        packageManager: PrimaryManager;
+    }> {
         const {compute} = invocation;
         // An unavailable detection degrades to "no manager fired", which reads as
         // a greenfield-suitable project -- the same reading the visibility gate
@@ -507,16 +593,19 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 // so every entry point labels the same event correctly.
                 trigger: this.readyRoots.has(projectRoot) ? "rerun" : "initial",
             });
-            return (report) => {
-                try {
-                    reportResult(report);
-                } catch {
-                    // Swallow: the run's outcome has already been decided and
-                    // surfaced to the user by the time this is called.
-                }
+            return {
+                packageManager,
+                reportResult: (report) => {
+                    try {
+                        reportResult(report);
+                    } catch {
+                        // Swallow: the run's outcome has already been decided and
+                        // surfaced to the user by the time this is called.
+                    }
+                },
             };
         } catch {
-            return () => {};
+            return {packageManager, reportResult: () => {}};
         }
     }
 

@@ -533,6 +533,7 @@ export class EventTypes {
         envKey?: string;
         diskMutated?: boolean;
         indexUnreachable?: boolean;
+        reportOffered?: boolean;
         warningsCount?: number;
         // A code->count histogram, not a list: JSON-stringified into a property
         // by recordEvent (numbers alone become metrics). Keys are a closed
@@ -583,6 +584,16 @@ export class EventTypes {
                 "needing a proxy) rather than a dependency conflict — both arrive as E_PROVISION. Present " +
                 "on every CLI setup failure, so false is meaningful (a non-index failure, the rate's " +
                 "denominator); omitted with no CLI result and on post-CLI adopt/persist failures",
+        },
+        reportOffered: {
+            comment:
+                'Whether the failure surfaced a "Report this problem" affordance — a deep-link to file a ' +
+                "pre-filled issue against databricks/environments (constraint-content defect) or " +
+                "databricks/databricks-vscode (extension/CLI defect). Present on every failure outcome " +
+                "(failed / not_started): true when a report was offered, false otherwise (including the " +
+                "preflight/local/network codes that are never report-worthy — false is the offer rate's " +
+                "denominator). Omitted for non-failure outcomes; filter by failurePhase for the " +
+                "post-preflight population",
         },
         warningsCount: {
             comment:

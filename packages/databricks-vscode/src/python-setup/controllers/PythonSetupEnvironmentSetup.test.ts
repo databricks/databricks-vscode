@@ -127,6 +127,11 @@ function makeDeps(
         notify: async () => {},
         showError: async () => {},
         showSuccess: async () => {},
+        reportEnvironment: {
+            extensionVersion: "2.14.1",
+            cliVersion: "1.13.0",
+            platform: "darwin",
+        },
         // Mirror the production wrapper: hand the task a log sink and a
         // (never-cancelled) progress token.
         withProgress: async (_title, task) => task(() => {}, makeToken()),
@@ -414,6 +419,106 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(shown[0].action).to.equal(undefined);
     });
 
+    it("makes Report this problem the button for a report-worthy CLI failure", async () => {
+        const shown: {detail?: string; action?: PythonSetupErrorAction}[] = [];
+        const telemetry = makeTelemetryRecorder();
+        const mergeFailure: PythonSetupResult = {
+            schemaVersion: 1,
+            command: "environments setup-local",
+            ok: false,
+            mode: "default",
+            dryRun: false,
+            greenfield: false,
+            phases: [],
+            warnings: [],
+            durationMs: 0,
+            error: {
+                code: "E_MERGE",
+                failurePhase: "merge",
+                message: "merge blew up",
+                diskMutated: true,
+            },
+        };
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: mergeFailure}),
+                recordSetupAttempt: telemetry.recordSetupAttempt,
+                showError: async (_m, detail, action) => {
+                    shown.push({detail, action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown[0].action?.label).to.equal("Report this problem");
+        expect(shown[0].action?.url).to.contain(
+            "databricks/databricks-vscode/issues/new"
+        );
+        // The bare new-issue URL is mirrored into the log too.
+        expect(shown[0].detail).to.contain(
+            "Report this problem: https://github.com/databricks/databricks-vscode/issues/new"
+        );
+        expect(telemetry.results[0].reportOffered).to.equal(true);
+    });
+
+    it("keeps Report as the button while mirroring the doc link into the log", async () => {
+        // E_ENV_UNSUPPORTED is report-worthy AND has a doc link: report wins the
+        // button; the doc link still appears in the log.
+        const shown: {detail?: string; action?: PythonSetupErrorAction}[] = [];
+        const envUnsupported: PythonSetupResult = {
+            schemaVersion: 1,
+            command: "environments setup-local",
+            ok: false,
+            mode: "default",
+            dryRun: false,
+            greenfield: false,
+            phases: [],
+            warnings: [],
+            durationMs: 0,
+            compute: {source: "cluster", envKey: "dbr/15.4.x-scala2.12"},
+            error: {
+                code: "E_ENV_UNSUPPORTED",
+                failurePhase: "resolve",
+                message: "no published environment",
+                diskMutated: false,
+            },
+        };
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: envUnsupported}),
+                showError: async (_m, detail, action) => {
+                    shown.push({detail, action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown[0].action?.label).to.equal("Report this problem");
+        expect(shown[0].action?.url).to.contain(
+            "databricks/environments/issues/new"
+        );
+        expect(shown[0].detail).to.contain("Databricks Runtime versions");
+        expect(shown[0].detail).to.contain(
+            "Report this problem: https://github.com/databricks/environments/issues/new"
+        );
+    });
+
+    it("records reportOffered=false for a non-report-worthy CLI failure", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_NO_TARGET}),
+                recordSetupAttempt: telemetry.recordSetupAttempt,
+            })
+        );
+
+        await setup.setup();
+
+        expect(telemetry.results[0].reportOffered).to.equal(false);
+    });
+
     it("surfaces the raw error message when the CLI run rejects", async () => {
         const shownErrors: string[] = [];
         const setup = new PythonSetupEnvironmentSetup(
@@ -430,6 +535,85 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
 
         expect(setup.ready).to.equal(false);
         expect(shownErrors).to.deep.equal(["spawn databricks ENOENT"]);
+    });
+
+    it("offers a Report this problem action on a spawn/parse rejection", async () => {
+        const shown: {action?: PythonSetupErrorAction}[] = [];
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({reject: new Error("spawn databricks ENOENT")}),
+                recordSetupAttempt: telemetry.recordSetupAttempt,
+                showError: async (_m, _detail, action) => {
+                    shown.push({action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown[0].action?.label).to.equal("Report this problem");
+        expect(shown[0].action?.url).to.contain(
+            "databricks/databricks-vscode/issues/new"
+        );
+        expect(telemetry.results[0]).to.include({
+            outcome: "not_started",
+            reportOffered: true,
+        });
+    });
+
+    it("handles a non-Error rejection without throwing on the spawn path", async () => {
+        const shown: {message: string; action?: PythonSetupErrorAction}[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                // A rejection that is not an Error instance: `.message` would be
+                // undefined, and the redactor must not throw on it.
+                cli: {
+                    run: async () => {
+                        throw "spawn failed as a bare string";
+                    },
+                },
+                showError: async (message, _detail, action) => {
+                    shown.push({message, action});
+                },
+            })
+        );
+
+        // Must resolve, not reject — the original failure has to reach the user.
+        await setup.setup();
+
+        expect(shown).to.have.length(1);
+        expect(shown[0].message).to.contain("spawn failed as a bare string");
+        expect(shown[0].action?.label).to.equal("Report this problem");
+    });
+
+    it("offers a Report this problem action when interpreter adoption fails", async () => {
+        const shown: {action?: PythonSetupErrorAction}[] = [];
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: SUCCESS_REAL_RUN}),
+                adoptInterpreter: async () => {
+                    throw new Error("adopt failed");
+                },
+                recordSetupAttempt: telemetry.recordSetupAttempt,
+                showError: async (_m, _detail, action) => {
+                    shown.push({action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown[0].action?.label).to.equal("Report this problem");
+        expect(shown[0].action?.url).to.contain(
+            "databricks/databricks-vscode/issues/new"
+        );
+        expect(telemetry.results[0]).to.include({
+            outcome: "failed",
+            failurePhase: "adopt",
+            reportOffered: true,
+        });
     });
 
     it("treats a success without a venv path as a failure", async () => {
@@ -894,6 +1078,8 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 diskMutated: ERROR_NO_TARGET.error!.diskMutated,
                 // E_NO_TARGET is not one of the package-fetching phases.
                 indexUnreachable: false,
+                // E_NO_TARGET is a preflight/local code, never report-worthy.
+                reportOffered: false,
                 warnings: ERROR_NO_TARGET.warnings,
             },
         ]);
@@ -951,6 +1137,8 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 outcome: "failed",
                 failurePhase: "adopt",
                 envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                // An adopt failure is the extension's own defect → report offered.
+                reportOffered: true,
                 warnings: SUCCESS_REAL_RUN.warnings,
             },
         ]);
@@ -983,8 +1171,11 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         await setup.setup();
 
         // A spawn/parse error has no result object, so there is no phase or
-        // error code to attribute the break to.
-        expect(telemetry.results).to.deep.equal([{outcome: "not_started"}]);
+        // error code to attribute the break to. It is the extension/CLI's own
+        // defect, so a report against databricks-vscode is offered.
+        expect(telemetry.results).to.deep.equal([
+            {outcome: "not_started", reportOffered: true},
+        ]);
     });
 
     it("records nothing when there is no project or the gate is closed", async () => {
@@ -1090,11 +1281,15 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
 
     it("does not report ok when the post-adoption state bookkeeping throws", async () => {
         const telemetry = makeTelemetryRecorder();
+        const shown: {action?: PythonSetupErrorAction}[] = [];
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
                 ...telemetry,
                 saveState: () => {
                     throw new Error("workspaceState write failed");
+                },
+                showError: async (_m, _detail, action) => {
+                    shown.push({action});
                 },
             })
         );
@@ -1109,11 +1304,18 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         // The run rejected, so recording success would permanently overstate the
         // success rate.
         expect(rejected).to.equal(true);
+        // The user is still told the run failed and offered a report — a persist
+        // break is the extension's own defect, like adopt.
+        expect(shown[0].action?.label).to.equal("Report this problem");
+        expect(shown[0].action?.url).to.contain(
+            "databricks/databricks-vscode/issues/new"
+        );
         expect(telemetry.results).to.deep.equal([
             {
                 outcome: "failed",
                 failurePhase: "persist",
                 envKey: SUCCESS_REAL_RUN.compute!.envKey,
+                reportOffered: true,
                 warnings: SUCCESS_REAL_RUN.warnings,
             },
         ]);
