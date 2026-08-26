@@ -1,3 +1,18 @@
+# Release: v2.15.0
+
+## packages/databricks-vscode
+
+## (2026-08-26)
+
+-   feat(aitools): flag agents that can't be installed, in the picker and the Agents tree (#2150) ([c04fb15](https://github.com/databricks/databricks-vscode/commit/c04fb15)), closes [#2150](https://github.com/databricks/databricks-vscode/issues/2150)
+-   feat(bundle): warn when a bundle uses the deprecated Terraform engine (#2152) ([5e558df](https://github.com/databricks/databricks-vscode/commit/5e558df)), closes [#2152](https://github.com/databricks/databricks-vscode/issues/2152)
+-   [E2E] Add timestamp to unique name (#2119) ([d2b2c5e](https://github.com/databricks/databricks-vscode/commit/d2b2c5e)), closes [#2119](https://github.com/databricks/databricks-vscode/issues/2119)
+-   Add performance telemetry for the legacy databricks-connect install (#2151) ([3424cf7](https://github.com/databricks/databricks-vscode/commit/3424cf7)), closes [#2151](https://github.com/databricks/databricks-vscode/issues/2151)
+-   Unit testing infra improvements (#2087) ([5086e07](https://github.com/databricks/databricks-vscode/commit/5086e07)), closes [#2087](https://github.com/databricks/databricks-vscode/issues/2087)
+-   Update Databricks CLI to v1.14.0 (#2154) ([9a24562](https://github.com/databricks/databricks-vscode/commit/9a24562)), closes [#2154](https://github.com/databricks/databricks-vscode/issues/2154)
+-   chore(deps-dev): bump quicktype-core from 23.3.25 to 26.0.0 in /packages/databricks-vscode (#2031) ([9910707](https://github.com/databricks/databricks-vscode/commit/9910707)), closes [#2031](https://github.com/databricks/databricks-vscode/issues/2031) [/github.com/glideapps/quicktype/blob/HEAD/#generated-code-defaults-new-in-2600](https://github.com//github.com/glideapps/quicktype/blob/HEAD//issues/generated-code-defaults-new-in-2600)
+-   chore(deps): bump markdown-it from 14.3.0 to 15.0.0 in /packages/databricks-vscode (#2067) ([f05b831](https://github.com/databricks/databricks-vscode/commit/f05b831)), closes [#2067](https://github.com/databricks/databricks-vscode/issues/2067) [#938](https://github.com/databricks/databricks-vscode/issues/938) [#1055](https://github.com/databricks/databricks-vscode/issues/1055) [#1139](https://github.com/databricks/databricks-vscode/issues/1139) [#1188](https://github.com/databricks/databricks-vscode/issues/1188) [#1189](https://github.com/databricks/databricks-vscode/issues/1189) [#1096](https://github.com/databricks/databricks-vscode/issues/1096) [#1142](https://github.com/databricks/databricks-vscode/issues/1142) [#1142](https://github.com/databricks/databricks-vscode/issues/1142)
+
 # Release: v2.14.1
 
 ## packages/databricks-vscode
