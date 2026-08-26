@@ -96,6 +96,12 @@ export function redactSetupStderr(
     raw: string,
     maxLength: number = 2000
 ): string {
+    // A drifted CLI result can carry a non-string `message` (the parser
+    // validates only `ok`), so guard rather than let `.replace` throw and
+    // suppress the failure notification the caller is trying to show.
+    if (typeof raw !== "string" || raw.length === 0) {
+        return "";
+    }
     let out = raw
         // Credentials embedded in a URL (https://user:token@host): drop the
         // whole userinfo, keep the host. Runs first so a token here is gone

@@ -217,6 +217,19 @@ describe("redactSetupStderr", () => {
         expect(redactSetupStderr(msg)).to.contain("numpy==1.26.4");
     });
 
+    it("returns empty for a non-string message instead of throwing", () => {
+        // A drifted CLI result could carry a non-string `message` (the parser
+        // validates only `ok`); the redactor must not throw, which would
+        // suppress the failure notification.
+        expect(redactSetupStderr(undefined as unknown as string)).to.equal("");
+    });
+
+    it("strips the username from a forward-slash Windows path", () => {
+        const out = redactSetupStderr("C:/Users/Jane/proj/pyproject.toml");
+        expect(out).to.not.contain("Jane");
+        expect(out).to.contain("/proj/pyproject.toml");
+    });
+
     it("truncates to the length budget and marks the cut", () => {
         const out = redactSetupStderr("x".repeat(10000), 1500);
         expect(out.length).to.be.lessThan(1600);
@@ -279,6 +292,13 @@ describe("getPythonSetupReportAction", () => {
         expect(
             getPythonSetupReportAction(failure("E_UV_MISSING"), ENV)
         ).to.equal(undefined);
+    });
+
+    it("builds an action even when the CLI message is not a string", () => {
+        const r = failure("E_VALIDATE");
+        (r.error as {message: unknown}).message = undefined;
+        const action = getPythonSetupReportAction(r, ENV);
+        expect(action?.label).to.equal("Report this problem");
     });
 
     it("keeps the prefilled URL bounded even for enormous CLI stderr", () => {
