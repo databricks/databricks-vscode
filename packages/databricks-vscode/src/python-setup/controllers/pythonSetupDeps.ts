@@ -1,6 +1,6 @@
 import {existsSync} from "fs";
 import path from "path";
-import {ProgressLocation, Uri, window} from "vscode";
+import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
 import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
@@ -280,18 +280,28 @@ export function makePythonSetupDeps(
                 wiring.log.show();
             } else if (remediation && picked === remediation.label) {
                 // showError is the failure-reporting path and its one caller does
-                // not wrap it, so neither a rejected launch nor a false "could not
-                // open" result may escape here — contain both and record them.
+                // not wrap it, so nothing thrown here may escape — contain and
+                // record any failure.
                 try {
-                    const opened = await openExternal(remediation.url);
-                    if (!opened) {
-                        wiring.log.append(
-                            `\nCould not open ${remediation.url} in a browser.\n`
-                        );
+                    if (remediation.command) {
+                        // A command-action (e.g. E_FETCH "Use manual setup")
+                        // runs a registered VS Code command instead of opening a
+                        // URL.
+                        await commands.executeCommand(remediation.command);
+                    } else if (remediation.url) {
+                        const opened = await openExternal(remediation.url);
+                        if (!opened) {
+                            wiring.log.append(
+                                `\nCould not open ${remediation.url} in a browser.\n`
+                            );
+                        }
                     }
                 } catch (e) {
+                    const what = remediation.command
+                        ? `run ${remediation.command}`
+                        : `open ${remediation.url}`;
                     wiring.log.append(
-                        `\nFailed to open ${remediation.url}: ${
+                        `\nFailed to ${what}: ${
                             e instanceof Error ? e.message : String(e)
                         }\n`
                     );

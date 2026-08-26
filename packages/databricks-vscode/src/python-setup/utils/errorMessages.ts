@@ -133,13 +133,26 @@ export function isIndexUnreachableFailure(result: PythonSetupResult): boolean {
 }
 
 /**
- * An optional remediation button to attach to a failure popup: a label and the
- * external URL it opens. Kept alongside {@link getPythonSetupErrorMessage} so the
- * copy and its call-to-action live together.
+ * Command that flips `databricks.python.environmentSetup` to `manual` for the
+ * current project. Surfaced as the E_FETCH remediation button so a user whose
+ * network blocks the constraints host can opt out in one click. Defined here
+ * (next to the action that references it) and reused by the command registration
+ * so the two cannot drift.
+ */
+export const USE_MANUAL_SETUP_COMMAND_ID =
+    "databricks.environment.useManualPythonSetup";
+
+/**
+ * An optional remediation button to attach to a failure popup. Exactly one of
+ * `url` / `command` is set: `url` opens an external page (docs, issue), while
+ * `command` runs a VS Code command (e.g. the one-click switch to manual setup).
+ * Kept alongside {@link getPythonSetupErrorMessage} so the copy and its
+ * call-to-action live together.
  */
 export interface PythonSetupErrorAction {
     label: string;
-    url: string;
+    url?: string;
+    command?: string;
 }
 
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -270,6 +283,14 @@ export function getPythonSetupErrorAction(
     if (isIndexUnreachableFailure(result)) {
         return {label: "Configure package index", url: UV_INDEX_DOCS_URL};
     }
+    // E_FETCH is the blocked-GitHub case (see the message/detail copy). Rather
+    // than only pointing at the setting, offer a one-click switch to manual mode.
+    if (err.code === "E_FETCH") {
+        return {
+            label: "Use manual setup",
+            command: USE_MANUAL_SETUP_COMMAND_ID,
+        };
+    }
     return DOC_LINKS[err.code];
 }
 
@@ -358,15 +379,17 @@ export function formatSetupFailureDetail(
         );
     }
     // The same doc link the popup offers as a button, spelled out here so the URL
-    // is reachable from the log even after the notification is dismissed.
+    // is reachable from the log even after the notification is dismissed. Only
+    // url-actions have something to print; a command-action (e.g. the E_FETCH
+    // "Use manual setup" button) has its guidance in the block above instead.
     const action = getPythonSetupErrorAction(result);
-    if (action) {
+    if (action && action.url) {
         lines.push("", `${action.label}: ${action.url}`);
     }
     // The report link is mirrored here too (a bare new-issue URL, not the popup's
     // long pre-filled deep-link) so it survives the notification being dismissed.
     // It is additive to the doc link above: a report-worthy code can carry both.
-    if (reportLink) {
+    if (reportLink && reportLink.url) {
         lines.push("", `${reportLink.label}: ${reportLink.url}`);
     }
     // Bracket with blank lines so the block stands apart from any streamed CLI

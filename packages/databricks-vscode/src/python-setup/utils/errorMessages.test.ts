@@ -4,6 +4,7 @@ import {
     getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
     isIndexUnreachableFailure,
+    USE_MANUAL_SETUP_COMMAND_ID,
 } from "./errorMessages";
 import {
     PythonSetupResult,
@@ -353,14 +354,17 @@ describe("getPythonSetupErrorAction", () => {
         });
     });
 
-    it("offers no action for E_FETCH (deliberately message-only)", () => {
-        // A generic network/cache failure has no single doc that reliably helps,
-        // so we avoid pointing the user at an unclear page.
+    it("offers a one-click 'Use manual setup' command action for E_FETCH", () => {
+        // The blocked-GitHub case: rather than a doc link, the button runs the
+        // command that flips the setting to manual for the project.
         expect(
             getPythonSetupErrorAction(
                 failure("E_FETCH", {failurePhase: "fetch"})
             )
-        ).to.equal(undefined);
+        ).to.deep.equal({
+            label: "Use manual setup",
+            command: USE_MANUAL_SETUP_COMMAND_ID,
+        });
     });
 
     it("offers no action for codes with no clear remediation doc", () => {
@@ -466,6 +470,9 @@ describe("formatSetupFailureDetail", () => {
         expect(detail).to.contain("allowlist");
         expect(detail).to.contain("databricks.python.environmentSetup");
         expect(detail).to.match(/manual/i);
+        // E_FETCH's action is a command (no URL), so the log must not print a
+        // "label: undefined" line for it.
+        expect(detail).to.not.contain("undefined");
     });
 
     it("adds no E_FETCH remediation block for another code", () => {

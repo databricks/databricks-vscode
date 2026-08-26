@@ -161,6 +161,18 @@ export const workspaceConfigs = {
         });
     },
 
+    // Write `python.environmentSetup` — the one-click "Use manual setup" escape
+    // hatch on a failed setup writes "manual" here. Returns the update Thenable
+    // so the caller can await/handle it.
+    setPythonEnvironmentSetup(
+        mode: PythonEnvironmentSetupMode,
+        target: ConfigurationTarget
+    ): Thenable<void> {
+        return workspace
+            .getConfiguration("databricks")
+            .update("python.environmentSetup", mode, target);
+    },
+
     get bundleRemoteStateRefreshInterval(): number {
         const config =
             workspace
