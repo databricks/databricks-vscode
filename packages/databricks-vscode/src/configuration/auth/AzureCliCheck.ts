@@ -14,6 +14,10 @@ import {
     FileNotFoundException,
     isFileNotFound,
 } from "@databricks/sdk-experimental/dist/config/execUtils";
+import {
+    applyProxyStrictSSLEnv,
+    getDatabricksHttpAgent,
+} from "../../utils/network/proxyAgent";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -212,6 +216,12 @@ export class AzureCliCheck implements Disposable {
         expired: boolean;
         error?: Error;
     }> {
+        // Match AuthProvider.getWorkspaceClient(): inject a proxy- and
+        // system-CA-aware agent so this login probe works behind corporate
+        // proxies and internal-CA TLS interception.
+        applyProxyStrictSSLEnv();
+        const agent = await getDatabricksHttpAgent(host);
+
         const workspaceClient = new WorkspaceClient(
             {
                 host: host.toString(),
@@ -221,6 +231,7 @@ export class AzureCliCheck implements Disposable {
             {
                 product: "databricks-vscode",
                 productVersion: extensionVersion,
+                agent,
             }
         );
         try {

@@ -14,6 +14,10 @@ import {DatabricksCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {Loggers} from "../../logger";
 import {execFile} from "../../cli/CliWrapper";
+import {
+    applyProxyStrictSSLEnv,
+    getDatabricksHttpAgent,
+} from "../../utils/network/proxyAgent";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const extensionVersion = require("../../../package.json")
@@ -111,6 +115,12 @@ export class DatabricksCliCheck implements Disposable {
     private async tryLogin(
         cancellationToken?: CancellationToken
     ): Promise<boolean> {
+        // Match AuthProvider.getWorkspaceClient(): inject a proxy- and
+        // system-CA-aware agent so this login probe works behind corporate
+        // proxies and internal-CA TLS interception.
+        applyProxyStrictSSLEnv();
+        const agent = await getDatabricksHttpAgent(this.authProvider.host);
+
         const workspaceClient = new WorkspaceClient(
             {
                 host: this.authProvider.host.toString(),
@@ -124,6 +134,7 @@ export class DatabricksCliCheck implements Disposable {
             {
                 product: "databricks-vscode",
                 productVersion: extensionVersion,
+                agent,
             }
         );
 
