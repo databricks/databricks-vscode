@@ -1,9 +1,4 @@
-import {
-    Context,
-    ProductVersion,
-    WorkspaceClient,
-    logging,
-} from "@databricks/sdk-experimental";
+import {Context, logging} from "@databricks/sdk-experimental";
 import {CancellationToken, commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
@@ -14,17 +9,10 @@ import {
     FileNotFoundException,
     isFileNotFound,
 } from "@databricks/sdk-experimental/dist/config/execUtils";
-import {
-    applyProxyStrictSSLEnv,
-    getDatabricksHttpAgent,
-} from "../../utils/network/proxyAgent";
+import {createWorkspaceClient} from "../../utils/network/proxyAgent";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const extensionVersion = require("../../../package.json")
-    .version as ProductVersion;
 
 type AzureCloud = "AzureCloud" | "AzureChinaCloud" | "AzureUSGovernment";
 
@@ -216,23 +204,13 @@ export class AzureCliCheck implements Disposable {
         expired: boolean;
         error?: Error;
     }> {
-        // Match AuthProvider.getWorkspaceClient(): inject a proxy- and
-        // system-CA-aware agent so this login probe works behind corporate
-        // proxies and internal-CA TLS interception.
-        applyProxyStrictSSLEnv();
-        const agent = await getDatabricksHttpAgent(host);
-
-        const workspaceClient = new WorkspaceClient(
+        const workspaceClient = await createWorkspaceClient(
             {
                 host: host.toString(),
                 authType: "azure-cli",
                 azureLoginAppId: this.azureLoginAppId,
             },
-            {
-                product: "databricks-vscode",
-                productVersion: extensionVersion,
-                agent,
-            }
+            host
         );
         try {
             await workspaceClient.currentUser.me(

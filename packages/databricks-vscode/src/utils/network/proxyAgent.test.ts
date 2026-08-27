@@ -5,8 +5,10 @@ import {reset, spy, when} from "ts-mockito";
 import {HttpsProxyAgent} from "https-proxy-agent";
 import {HttpProxyAgent} from "http-proxy-agent";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
+import {WorkspaceClient} from "@databricks/sdk-experimental";
 import {
     applyProxyStrictSSLEnv,
+    createWorkspaceClient,
     getDatabricksHttpAgent,
     resetProxyAgentCaches,
     strictSSL,
@@ -117,6 +119,19 @@ describe(__filename, () => {
                 (agent.options as https.AgentOptions).rejectUnauthorized,
                 false
             );
+        });
+    });
+
+    describe("createWorkspaceClient", () => {
+        it("builds a client tagged with the extension product and a proxy-aware agent", async () => {
+            const client = await createWorkspaceClient(
+                {host: "https://example.com", authType: "pat", token: "t"},
+                new URL("https://example.com")
+            );
+            assert.ok(client instanceof WorkspaceClient);
+            assert.strictEqual(client.apiClient.product, "databricks-vscode");
+            const agent = await client.apiClient.getAgent();
+            assert.ok(agent instanceof https.Agent);
         });
     });
 });

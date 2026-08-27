@@ -1,26 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
-    Config,
-    ProductVersion,
-    WorkspaceClient,
-    logging,
-} from "@databricks/sdk-experimental";
+import {Config, WorkspaceClient, logging} from "@databricks/sdk-experimental";
 import {CancellationToken, ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const extensionVersion = require("../../../package.json")
-    .version as ProductVersion;
 
 import {AzureCliCheck} from "./AzureCliCheck";
 import {DatabricksCliCheck} from "./DatabricksCliCheck";
 import {Loggers} from "../../logger";
 import {CliWrapper} from "../../cli/CliWrapper";
-import {
-    applyProxyStrictSSLEnv,
-    getDatabricksHttpAgent,
-} from "../../utils/network/proxyAgent";
+import {createWorkspaceClient} from "../../utils/network/proxyAgent";
 
 // TODO: Resolve this with SDK's AuthType.
 export type AuthType =
@@ -56,19 +44,7 @@ export abstract class AuthProvider {
 
     async getWorkspaceClient(): Promise<WorkspaceClient> {
         const config = await this.getSdkConfig();
-
-        // The SDK pins its own agent per request, bypassing VS Code's global
-        // proxy/CA patching. Inject a proxy- and system-CA-aware agent so
-        // in-process SDK calls work behind corporate proxies and internal-CA
-        // TLS interception, matching the bundled CLI's behaviour.
-        applyProxyStrictSSLEnv();
-        const agent = await getDatabricksHttpAgent(this.host);
-
-        return new WorkspaceClient(config, {
-            product: "databricks-vscode",
-            productVersion: extensionVersion,
-            agent,
-        });
+        return createWorkspaceClient(config, this.host);
     }
 
     /**

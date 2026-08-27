@@ -9,9 +9,17 @@ import {
 } from "@vscode/proxy-agent";
 import {HttpProxyAgent} from "http-proxy-agent";
 import {HttpsProxyAgent} from "https-proxy-agent";
-import {logging} from "@databricks/sdk-experimental";
+import {
+    logging,
+    ProductVersion,
+    WorkspaceClient,
+} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const extensionVersion = require("../../../package.json")
+    .version as ProductVersion;
 
 // Mirror the SDK's own default agent tuning (see @databricks/sdk-experimental
 // api-client.js ApiClient.getAgent), so behaviour is unchanged apart from the
@@ -139,4 +147,32 @@ export async function getDatabricksHttpAgent(
     return isHttps
         ? new https.Agent(agentOptions)
         : new http.Agent(agentOptions);
+}
+
+// The config shape the WorkspaceClient constructor accepts (ConfigOptions | Config),
+// derived from the constructor so we don't depend on ConfigOptions — the SDK index
+// doesn't re-export it.
+type WorkspaceClientConfig = ConstructorParameters<typeof WorkspaceClient>[0];
+
+/**
+ * Construct a WorkspaceClient wired for the extension's network environment.
+ *
+ * The SDK pins its own agent per request, bypassing VS Code's global proxy/CA
+ * patching. This injects a proxy- and system-CA-aware agent (and keeps the SDK
+ * fetch path and bundled-CLI subprocess consistent via the strict-SSL env) so
+ * in-process SDK calls work behind corporate proxies and internal-CA TLS
+ * interception, matching the bundled CLI's behaviour. This is the only place
+ * the extension should build a WorkspaceClient.
+ */
+export async function createWorkspaceClient(
+    config: WorkspaceClientConfig,
+    host: URL
+): Promise<WorkspaceClient> {
+    applyProxyStrictSSLEnv();
+    const agent = await getDatabricksHttpAgent(host);
+    return new WorkspaceClient(config, {
+        product: "databricks-vscode",
+        productVersion: extensionVersion,
+        agent,
+    });
 }
