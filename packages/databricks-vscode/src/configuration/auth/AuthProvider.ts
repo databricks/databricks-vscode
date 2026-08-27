@@ -17,6 +17,10 @@ import {AzureCliCheck} from "./AzureCliCheck";
 import {DatabricksCliCheck} from "./DatabricksCliCheck";
 import {Loggers} from "../../logger";
 import {CliWrapper} from "../../cli/CliWrapper";
+import {
+    applyProxyStrictSSLEnv,
+    getDatabricksHttpAgent,
+} from "../../utils/network/proxyAgent";
 
 // TODO: Resolve this with SDK's AuthType.
 export type AuthType =
@@ -53,9 +57,17 @@ export abstract class AuthProvider {
     async getWorkspaceClient(): Promise<WorkspaceClient> {
         const config = await this.getSdkConfig();
 
+        // The SDK pins its own agent per request, bypassing VS Code's global
+        // proxy/CA patching. Inject a proxy- and system-CA-aware agent so
+        // in-process SDK calls work behind corporate proxies and internal-CA
+        // TLS interception, matching the bundled CLI's behaviour.
+        applyProxyStrictSSLEnv();
+        const agent = await getDatabricksHttpAgent(this.host);
+
         return new WorkspaceClient(config, {
             product: "databricks-vscode",
             productVersion: extensionVersion,
+            agent,
         });
     }
 

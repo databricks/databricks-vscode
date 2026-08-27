@@ -1528,6 +1528,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tootallnate/once@npm:^3.0.0":
+  version: 3.0.1
+  resolution: "@tootallnate/once@npm:3.0.1"
+  checksum: 1ec82a3ff0dd2270eb09631789bd63a34445f62dd3031f0d620f4b1c81c5916d5cdb312ae651c4e390ecf62115279165421024efa75b2bb708d0699dc80c4a42
+  languageName: node
+  linkType: hard
+
 "@tootallnate/quickjs-emscripten@npm:^0.23.0":
   version: 0.23.0
   resolution: "@tootallnate/quickjs-emscripten@npm:0.23.0"
@@ -2066,6 +2073,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@vscode/proxy-agent@npm:^0.44.0":
+  version: 0.44.0
+  resolution: "@vscode/proxy-agent@npm:0.44.0"
+  dependencies:
+    "@tootallnate/once": ^3.0.0
+    "@vscode/windows-ca-certs": ^0.3.1
+    agent-base: ^7.0.1
+    debug: ^4.3.4
+    http-proxy-agent: ^7.0.0
+    https-proxy-agent: ^7.0.2
+    socks-proxy-agent: ^8.0.1
+    undici: ^7.2.0
+  dependenciesMeta:
+    "@vscode/windows-ca-certs":
+      optional: true
+  checksum: 4ebf8fd3c1764c1bb94665e4c70ff7c43eedfebac3a0af29e2912349076a530b3956908ab91b860745f49f64707717187b1d21c14445d8966c07195c2ffb5b7d
+  languageName: node
+  linkType: hard
+
 "@vscode/test-electron@npm:^2.4.1":
   version: 2.5.2
   resolution: "@vscode/test-electron@npm:2.5.2"
@@ -2103,6 +2129,16 @@ __metadata:
   peerDependencies:
     react: ">=16.9.0"
   checksum: d6555018749339be6c4d4baf2b3f3154f193c760f32905004f2a96dc1a09e980b7c7d209391b91b5f215ae288d4c19a1796e939616e3409cd6ccda2ae8f81837
+  languageName: node
+  linkType: hard
+
+"@vscode/windows-ca-certs@npm:^0.3.1":
+  version: 0.3.4
+  resolution: "@vscode/windows-ca-certs@npm:0.3.4"
+  dependencies:
+    node-addon-api: ^8.2.0
+    node-gyp: latest
+  conditions: os=win32
   languageName: node
   linkType: hard
 
@@ -2527,6 +2563,13 @@ __metadata:
   dependencies:
     debug: 4
   checksum: f52b6872cc96fd5f622071b71ef200e01c7c4c454ee68bc9accca90c98cfb39f2810e3e9aa330435835eedc8c23f4f8a15267f67c6e245d2b33757575bdac49d
+  languageName: node
+  linkType: hard
+
+"agent-base@npm:^7.0.1":
+  version: 7.1.4
+  resolution: "agent-base@npm:7.1.4"
+  checksum: 86a7f542af277cfbd77dd61e7df8422f90bac512953709003a1c530171a9d019d072e2400eab2b59f84b49ab9dd237be44315ca663ac73e82b3922d10ea5eafa
   languageName: node
   linkType: hard
 
@@ -4023,6 +4066,7 @@ __metadata:
     "@typescript-eslint/utils": ^8.62.0
     "@vscode/debugadapter": ^1.64.0
     "@vscode/extension-telemetry": ^1.5.2
+    "@vscode/proxy-agent": ^0.44.0
     "@vscode/test-electron": ^3.1.0
     "@vscode/webview-ui-toolkit": ^1.4.0
     "@wdio/cli": ^9.29.0
@@ -6200,7 +6244,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.5, https-proxy-agent@npm:^7.0.6":
+"https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.2, https-proxy-agent@npm:^7.0.5, https-proxy-agent@npm:^7.0.6":
   version: 7.0.6
   resolution: "https-proxy-agent@npm:7.0.6"
   dependencies:
@@ -7855,6 +7899,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"node-addon-api@npm:^8.2.0":
+  version: 8.9.2
+  resolution: "node-addon-api@npm:8.9.2"
+  dependencies:
+    node-gyp: latest
+  checksum: 820b3099b7d27c555fd9d98c986feab52d7eaf2e4dac1bce927857368baa0f2a3f31db5bd5112acd45222fd33a453b3baf8bf78771a0643a4b712e09a33f0fdf
+  languageName: node
+  linkType: hard
+
 "node-domexception@npm:^1.0.0":
   version: 1.0.0
   resolution: "node-domexception@npm:1.0.0"
@@ -9402,7 +9455,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"socks-proxy-agent@npm:^8.0.5":
+"socks-proxy-agent@npm:^8.0.1, socks-proxy-agent@npm:^8.0.5":
   version: 8.0.5
   resolution: "socks-proxy-agent@npm:8.0.5"
   dependencies:
@@ -10342,6 +10395,13 @@ __metadata:
   version: 7.28.0
   resolution: "undici@npm:7.28.0"
   checksum: 57c77c4ee75e166ef361ad238fcd88816fbc0d058aeadf4c0f689194bd17eb6d63ce25b89bd4f4d65a380ebbde784bf4886ec51acc9f8c826ecab01d8f63aaac
+  languageName: node
+  linkType: hard
+
+"undici@npm:^7.2.0":
+  version: 7.29.0
+  resolution: "undici@npm:7.29.0"
+  checksum: b3327e05259e66c61d3e05242bf63899c68d277302208f4fc1c7c0b880a9ba82651b8b3215584ffd424d8c8410f0114b6c3a89e6af604c703dc33009daa99ed3
   languageName: node
   linkType: hard
 
