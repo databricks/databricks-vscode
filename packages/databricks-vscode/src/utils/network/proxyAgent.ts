@@ -69,19 +69,39 @@ function getProxyAgentParams(): ProxyAgentParams {
     };
 }
 
-let systemCertificatesPromise: Promise<string[]> | undefined;
+let systemCertificatesPromise: Promise<string[] | undefined> | undefined;
 
 /**
  * Load and cache the OS certificate trust store (Windows/macOS/Linux) plus
  * Node's bundled CAs. Cached for the session; call {@link resetProxyAgentCaches}
  * in tests.
+ *
+ * Returns `undefined` (never a rejected/empty promise) when the store can't be
+ * read. @vscode/proxy-agent reads it via Node's `tls.getCACertificates`, which
+ * only exists on Node >= 22.15; on the older runtimes some supported VS Code
+ * builds still ship, that call throws. Swallowing it here lets the caller fall
+ * back to Node's bundled roots instead of failing the whole SDK request — a
+ * missing custom CA is recoverable (users can set `databricks.proxy.strictSSL`),
+ * a broken agent is not.
  */
-async function getSystemCertificates(params: ProxyAgentParams) {
+async function getSystemCertificates(
+    params: ProxyAgentParams
+): Promise<string[] | undefined> {
     if (!systemCertificatesPromise) {
         systemCertificatesPromise = loadSystemCertificates({
             loadSystemCertificatesFromNode:
                 params.loadSystemCertificatesFromNode,
             log: params.log,
+        }).catch((e) => {
+            params.log.error(
+                "Failed to load system certificates; falling back to Node's " +
+                    "bundled CAs. Custom/corporate CAs may not be trusted.",
+                e
+            );
+            // Don't cache the rejection — leave the promise unset so a later
+            // call can retry.
+            systemCertificatesPromise = undefined;
+            return undefined;
         });
     }
     return systemCertificatesPromise;
@@ -132,10 +152,13 @@ export async function getDatabricksHttpAgent(
     const resolver = createProxyResolver(params);
     const proxyUrl = await resolver.resolveProxyURL(host.toString());
 
+    // Only override `ca` when we actually loaded a trust store. Passing `ca:
+    // undefined` (or `[]`) would replace Node's bundled roots with nothing and
+    // break every TLS handshake, so omit it entirely on the fallback path.
     const agentOptions: https.AgentOptions = {
         keepAlive: true,
         keepAliveMsecs: KEEP_ALIVE_MSECS,
-        ...(isHttps ? {ca, rejectUnauthorized} : {}),
+        ...(isHttps ? {rejectUnauthorized, ...(ca ? {ca} : {})} : {}),
     };
 
     if (proxyUrl) {

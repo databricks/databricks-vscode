@@ -120,6 +120,32 @@ describe(__filename, () => {
                 false
             );
         });
+
+        it("falls back to Node's bundled CAs when the system store can't be read", async () => {
+            // @vscode/proxy-agent reads the store via tls.getCACertificates,
+            // which is absent/throws on older runtimes. Simulate that failure
+            // on the shared (required) tls module proxy-agent also sees.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const tls = require("node:tls");
+            const original = tls.getCACertificates;
+            tls.getCACertificates = () => {
+                throw new Error("getCACertificates unavailable");
+            };
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                // `ca` must be omitted (not [] / undefined) so Node keeps its
+                // bundled roots instead of trusting nothing.
+                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+                assert.strictEqual(
+                    (agent.options as https.AgentOptions).rejectUnauthorized,
+                    true
+                );
+            } finally {
+                tls.getCACertificates = original;
+            }
+        });
     });
 
     describe("createWorkspaceClient", () => {
