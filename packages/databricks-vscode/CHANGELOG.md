@@ -1,3 +1,13 @@
+# Release: v2.15.0
+
+## packages/databricks-vscode
+
+## (2026-08-26)
+
+-   AI tools installation now flags agents that can't be installed, in the picker and the Agents tree (#2150) ([c04fb15](https://github.com/databricks/databricks-vscode/commit/c04fb15))
+-   Warn when a bundle uses the deprecated Terraform engine (#2152) ([5e558df](https://github.com/databricks/databricks-vscode/commit/5e558df))
+-   Update Databricks CLI to v1.14.0 (#2154) ([9a24562](https://github.com/databricks/databricks-vscode/commit/9a24562))
+
 # Release: v2.14.1
 
 ## packages/databricks-vscode

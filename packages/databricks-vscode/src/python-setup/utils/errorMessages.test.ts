@@ -419,6 +419,21 @@ describe("formatSetupFailureDetail", () => {
         expect(formatSetupFailureDetail(ok)).to.equal(undefined);
     });
 
+    it("mirrors the report link into the log when one is provided", () => {
+        const detail = formatSetupFailureDetail(failure("E_MERGE"), {
+            label: "Report this problem",
+            url: "https://github.com/databricks/databricks-vscode/issues/new",
+        });
+        expect(detail).to.contain(
+            "Report this problem: https://github.com/databricks/databricks-vscode/issues/new"
+        );
+    });
+
+    it("omits the report line when no report link is given", () => {
+        const detail = formatSetupFailureDetail(failure("E_MERGE"));
+        expect(detail).to.not.contain("Report this problem");
+    });
+
     it("appends copy-pasteable proxy remediation for a blocked index", () => {
         const detail = formatSetupFailureDetail(
             failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
@@ -438,6 +453,38 @@ describe("formatSetupFailureDetail", () => {
             })
         );
         expect(detail).to.not.contain("UV_INDEX_URL");
+    });
+
+    it("adds a constraints-report hint for a genuine E_PROVISION conflict", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {
+                message: "No solution found when resolving dependencies",
+            })
+        );
+        // A soft, conditional pointer — no button — so a user who believes the
+        // published constraints are at fault can report it, without labelling
+        // an ordinary (user-owned) dependency conflict as a product defect.
+        expect(detail).to.match(/constraint/i);
+        expect(detail).to.contain(
+            "https://github.com/databricks/environments/issues/new"
+        );
+    });
+
+    it("adds no constraints-report hint for a blocked-index E_PROVISION", () => {
+        // A blocked index is a local network condition, not a constraint defect.
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG})
+        );
+        expect(detail).to.not.contain(
+            "https://github.com/databricks/environments/issues/new"
+        );
+    });
+
+    it("adds no constraints-report hint for a non-E_PROVISION failure", () => {
+        const detail = formatSetupFailureDetail(failure("E_MERGE"));
+        expect(detail).to.not.contain(
+            "https://github.com/databricks/environments/issues/new"
+        );
     });
 
     it("appends the documentation link and its label for a code that has one", () => {

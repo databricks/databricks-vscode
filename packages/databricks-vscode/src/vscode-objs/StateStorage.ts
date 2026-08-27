@@ -117,6 +117,15 @@ const StorageConfigurations = {
         location: "global",
         defaultValue: false,
     }),
+
+    // Set when the user picks "Don't show again" on the deprecation warning for
+    // the Terraform bundle deployment engine, so it stays silenced for this
+    // workspace. A plain dismissal leaves it false so the warning can resurface
+    // on a later session (see BundleEngineManager).
+    "databricks.bundle.hideTerraformEngineWarning": withType<boolean>()({
+        location: "workspace",
+        defaultValue: false,
+    }),
 };
 
 type Keys = keyof typeof StorageConfigurations;

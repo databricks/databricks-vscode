@@ -7,7 +7,7 @@ import {
 } from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import {AiToolsManager, CURSOR_AGENT_ID} from "./AiToolsManager";
-import {AiToolsAgentStatus} from "./AiToolsModel";
+import {AiToolsAgentStatus, agentInstallBlockReason} from "./AiToolsModel";
 import {AiToolsScope, ProcessError} from "../cli/CliWrapper";
 import {AiToolsInstallSource} from "../telemetry/constants";
 import {HostUtils} from "../utils";
@@ -19,6 +19,51 @@ interface ScopeQuickPickItem extends QuickPickItem {
 
 interface AgentQuickPickItem extends QuickPickItem {
     agentId: string;
+    /**
+     * True when the agent can't be installed for the chosen scope (not detected
+     * on the machine, or the scope isn't supported). VS Code has no true
+     * per-item disable, so the picker instead annotates the row and strips it
+     * from the selection (see {@link AiToolsCommands.pickAgents}).
+     */
+    disabled: boolean;
+}
+
+/**
+ * Decide how a single agent should appear in the install picker for the chosen
+ * scope: its annotation and whether it can be selected. An agent is
+ * non-selectable when it isn't detected on the machine, or the chosen scope
+ * isn't supported. The Cursor-plugin case takes precedence and is always
+ * selectable (in Cursor the `cursor` entry installs the marketplace plugin, a
+ * superset of the skills, rather than a CLI skills install).
+ */
+export function describeAgent(
+    agent: AiToolsAgentStatus,
+    scope: AiToolsScope,
+    isCursorPlugin: boolean
+): {description?: string; disabled: boolean; picked: boolean} {
+    if (isCursorPlugin) {
+        return {
+            description: "Databricks plugin",
+            disabled: false,
+            picked: true,
+        };
+    }
+    const reason = agentInstallBlockReason(agent, scope);
+    if (reason === "notDetected") {
+        return {
+            description: "Not detected",
+            disabled: true,
+            picked: false,
+        };
+    }
+    if (reason === "scopeUnsupported") {
+        return {
+            description: "Only supports global scope",
+            disabled: true,
+            picked: false,
+        };
+    }
+    return {description: "Detected", disabled: false, picked: true};
 }
 
 /**
@@ -226,8 +271,11 @@ export class AiToolsCommands implements Disposable {
     /**
      * Show the agent picker for the chosen scope. Lists every agent the CLI
      * knows about and allows selecting multiple; agents already present on the
-     * machine (`detected`) are preselected. Resolves to the selected agent ids,
-     * or undefined if the picker was dismissed (which cancels the install).
+     * machine (`detected`) are preselected. Agents that can't be installed for
+     * the chosen scope (not detected, or the scope isn't supported) are
+     * annotated with an explanation and can't be selected — see
+     * {@link describeAgent}. Resolves to the selected agent ids, or an empty
+     * array if the picker was dismissed (which cancels the install).
      *
      * If the CLI reports no agents (e.g. an older CLI, or a list failure), the
      * picker is skipped and we resolve to an empty selection so the install
@@ -251,19 +299,18 @@ export class AiToolsCommands implements Disposable {
         quickPick.canSelectMany = true;
         const items: AgentQuickPickItem[] = agents.map(
             (agent: AiToolsAgentStatus) => {
-                // In Cursor, the Cursor entry installs the marketplace plugin
-                // (a superset of the skills); always start it checked and label
-                // it as the plugin rather than a "Detected" skills install.
                 const isCursorPlugin = inCursor && agent.id === CURSOR_AGENT_ID;
+                const {description, disabled, picked} = describeAgent(
+                    agent,
+                    scope,
+                    isCursorPlugin
+                );
                 return {
                     label: agent.displayName,
-                    description: isCursorPlugin
-                        ? "Databricks plugin"
-                        : agent.detected
-                          ? "Detected"
-                          : undefined,
+                    description,
                     agentId: agent.id,
-                    picked: isCursorPlugin || agent.detected,
+                    disabled,
+                    picked,
                 };
             }
         );
@@ -275,8 +322,20 @@ export class AiToolsCommands implements Disposable {
         return new Promise<string[]>((resolve) => {
             let resolved: string[] = [];
             this.disposables.push(
+                // VS Code has no per-item disable, so enforce it here: if a
+                // disabled row gets checked, drop it from the selection so it
+                // reads as non-actionable (mirrors the scope picker's approach).
+                quickPick.onDidChangeSelection((selected) => {
+                    const allowed = selected.filter((i) => !i.disabled);
+                    if (allowed.length !== selected.length) {
+                        quickPick.selectedItems = allowed;
+                    }
+                }),
                 quickPick.onDidAccept(() => {
-                    resolved = quickPick.selectedItems.map((i) => i.agentId);
+                    // Defensively drop any disabled items that slipped through.
+                    resolved = quickPick.selectedItems
+                        .filter((i) => !i.disabled)
+                        .map((i) => i.agentId);
                     quickPick.hide();
                 }),
                 quickPick.onDidHide(() => {

@@ -18,6 +18,12 @@ export interface AiToolsAgentStatus {
     id: string;
     type: "plugin" | "skills-only";
     detected: boolean;
+    /**
+     * Whether the agent can be installed at project scope. Agents that only
+     * support global scope (e.g. Cursor, Codex CLI) report `false`; the install
+     * picker disables them when the chosen scope is `project`.
+     */
+    supportsProjectScope: boolean;
     version?: string;
     /**
      * True when a managed agent received only the raw skills rather than the
@@ -25,6 +31,28 @@ export interface AiToolsAgentStatus {
      * The row annotates its version with "skills only" in this case.
      */
     skillsOnly?: boolean;
+}
+
+export type AgentInstallBlockReason = "notDetected" | "scopeUnsupported";
+
+/**
+ * Why an agent can't be installed at `scope`, or undefined if it can. Shared by
+ * the install picker (`describeAgent` in AiToolsCommands) and the Agents tree
+ * (`describeAgentRow` in AiToolsComponent) so both surfaces stay in lockstep.
+ * `supportsProjectScope` only gates the `project` scope; not-detected is checked
+ * first.
+ */
+export function agentInstallBlockReason(
+    agent: AiToolsAgentStatus,
+    scope: AiToolsScope
+): AgentInstallBlockReason | undefined {
+    if (!agent.detected) {
+        return "notDetected";
+    }
+    if (scope === "project" && !agent.supportsProjectScope) {
+        return "scopeUnsupported";
+    }
+    return undefined;
 }
 
 export interface AiToolsState {

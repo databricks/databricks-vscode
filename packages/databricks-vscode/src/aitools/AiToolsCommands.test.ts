@@ -27,9 +27,10 @@ class FakeQuickPick {
     placeholder?: string;
     canSelectMany = false;
     items: readonly QuickPickItem[] = [];
-    selectedItems: readonly QuickPickItem[] = [];
+    private _selectedItems: readonly QuickPickItem[] = [];
     private acceptCbs: Array<() => void> = [];
     private hideCbs: Array<() => void> = [];
+    private selectionCbs: Array<(items: readonly QuickPickItem[]) => void> = [];
     public disposed = false;
 
     constructor(
@@ -38,12 +39,26 @@ class FakeQuickPick {
         ) => {selected: readonly QuickPickItem[]} | "dismiss"
     ) {}
 
+    // Assigning selectedItems fires onDidChangeSelection, like the real widget,
+    // so the picker's enforcement (stripping disabled rows) is exercised.
+    get selectedItems(): readonly QuickPickItem[] {
+        return this._selectedItems;
+    }
+    set selectedItems(items: readonly QuickPickItem[]) {
+        this._selectedItems = items;
+        this.selectionCbs.forEach((cb) => cb(items));
+    }
+
     onDidAccept(cb: () => void) {
         this.acceptCbs.push(cb);
         return {dispose() {}};
     }
     onDidHide(cb: () => void) {
         this.hideCbs.push(cb);
+        return {dispose() {}};
+    }
+    onDidChangeSelection(cb: (items: readonly QuickPickItem[]) => void) {
+        this.selectionCbs.push(cb);
         return {dispose() {}};
     }
     show() {
@@ -67,13 +82,15 @@ class FakeQuickPick {
 function agent(
     id: string,
     displayName: string,
-    detected: boolean
+    detected: boolean,
+    supportsProjectScope = true
 ): AiToolsAgentStatus {
     return {
         id,
         displayName,
         type: detected ? "plugin" : "skills-only",
         detected,
+        supportsProjectScope,
         version: detected ? "0.2.10" : undefined,
     };
 }
@@ -257,11 +274,12 @@ describe(__filename, () => {
             agentPick.selectedItems.map((i) => i.label),
             ["Claude Code", "Codex CLI"]
         );
-        // Detected agents carry a "Detected" hint.
+        // Detected agents carry a "Detected" hint; the undetected one is
+        // annotated inline with why it can't be selected.
         const detectedHints = agentPick.items.map((i) => i.description);
         assert.deepStrictEqual(detectedHints, [
             "Detected",
-            undefined,
+            "Not detected",
             "Detected",
         ]);
     });
@@ -284,9 +302,10 @@ describe(__filename, () => {
             agentPick.selectedItems.map((i) => i.label),
             ["Cursor"]
         );
-        // Cursor is labelled as the plugin rather than a detected skills install.
+        // Cursor is labelled as the plugin rather than a detected skills
+        // install; the undetected Claude row is annotated inline instead.
         const hints = agentPick.items.map((i) => i.description);
-        assert.deepStrictEqual(hints, [undefined, "Databricks plugin"]);
+        assert.deepStrictEqual(hints, ["Not detected", "Databricks plugin"]);
 
         const [, , agents] = capture(mockManager.install).last();
         assert.deepStrictEqual(agents, [CURSOR_AGENT_ID]);
@@ -307,22 +326,89 @@ describe(__filename, () => {
         assert.deepStrictEqual(agentPick.selectedItems, []);
     });
 
-    it("installs the user's edited selection, not just the detected agents", async () => {
+    it("installs the user's edited selection, not just the defaults", async () => {
         const {commands, mockManager, behaviors} = setup();
         when(mockManager.listAgents("global")).thenResolve([
             agent("claude-code", "Claude Code", true),
-            agent("cursor", "Cursor", false),
+            agent("codex", "Codex CLI", true),
         ]);
         behaviors.push(selectScope("global"));
-        // User deselects the detected agent and picks the undetected one.
+        // Both are detected (preselected); the user narrows to just codex.
         behaviors.push((pick) => ({
-            selected: pick.items.filter((i) => (i as any).agentId === "cursor"),
+            selected: pick.items.filter((i) => (i as any).agentId === "codex"),
         }));
 
         await commands.installCommand()("sidePane");
 
         const [, , agents] = capture(mockManager.install).last();
-        assert.deepStrictEqual(agents, ["cursor"]);
+        assert.deepStrictEqual(agents, ["codex"]);
+    });
+
+    it("disables undetected agents with an explanation and won't select them", async () => {
+        const {commands, mockManager, behaviors, quickPicks} = setup();
+        when(mockManager.listAgents("global")).thenResolve([
+            agent("claude-code", "Claude Code", true),
+            agent("gemini", "Gemini CLI", false),
+        ]);
+        behaviors.push(selectScope("global"));
+        // The user tries to also check the undetected agent; it must be stripped.
+        behaviors.push((pick) => ({selected: pick.items}));
+
+        await commands.installCommand()("sidePane");
+
+        const agentPick = quickPicks[1];
+        const gemini = agentPick.items.find(
+            (i) => (i as any).agentId === "gemini"
+        )!;
+        assert.strictEqual((gemini as any).disabled, true);
+        assert.strictEqual(gemini.description, "Not detected");
+
+        // Only the detected agent survives the selection.
+        const [, , agents] = capture(mockManager.install).last();
+        assert.deepStrictEqual(agents, ["claude-code"]);
+    });
+
+    it("disables scope-unsupported agents at project scope", async () => {
+        const {commands, mockManager, behaviors, quickPicks} = setup();
+        when(mockManager.listAgents("project")).thenResolve([
+            agent("claude-code", "Claude Code", true, true),
+            // Detected, but only supports global scope.
+            agent("codex", "Codex CLI", true, false),
+        ]);
+        behaviors.push(selectScope("project"));
+        behaviors.push((pick) => ({selected: pick.items}));
+
+        await commands.installCommand()("sidePane");
+
+        const agentPick = quickPicks[1];
+        const codex = agentPick.items.find(
+            (i) => (i as any).agentId === "codex"
+        )!;
+        assert.strictEqual((codex as any).disabled, true);
+        assert.strictEqual(codex.description, "Only supports global scope");
+
+        const [, , agents] = capture(mockManager.install).last();
+        assert.deepStrictEqual(agents, ["claude-code"]);
+    });
+
+    it("allows a scope-unsupported agent at global scope", async () => {
+        const {commands, mockManager, behaviors, quickPicks} = setup();
+        when(mockManager.listAgents("global")).thenResolve([
+            // Detected and only supports global scope: selectable at global.
+            agent("codex", "Codex CLI", true, false),
+        ]);
+        behaviors.push(selectScope("global"));
+        behaviors.push((pick) => ({selected: pick.selectedItems}));
+
+        await commands.installCommand()("sidePane");
+
+        const agentPick = quickPicks[1];
+        const codex = agentPick.items[0];
+        assert.strictEqual((codex as any).disabled, false);
+        assert.strictEqual(codex.description, "Detected");
+
+        const [, , agents] = capture(mockManager.install).last();
+        assert.deepStrictEqual(agents, ["codex"]);
     });
 
     it("aborts install and shows an error when no agents are reported", async () => {
@@ -421,12 +507,12 @@ describe(__filename, () => {
             when(mockManager.initialize()).thenResolve("promptInstall");
             when(mockManager.listAgents("global")).thenResolve([
                 agent("claude-code", "Claude Code", true),
-                agent("cursor", "Cursor", false),
+                agent("cursor", "Cursor", true),
                 agent("codex", "Codex CLI", true),
             ]);
             prompter.messageResponses.push("Install AI tools");
             behaviors.push(selectScope("global"));
-            // select all agents
+            // select all agents (all detected, so all selectable)
             behaviors.push((pick: FakeQuickPick) => ({selected: pick.items}));
 
             await commands.initializeCommand()();

@@ -876,6 +876,7 @@ describe(__filename, () => {
                         display_name: "Claude Code",
                         managed: true,
                         detected: true,
+                        supports_project_scope: true,
                         installed: {
                             project: {
                                 version: "1.2.0",
@@ -889,6 +890,7 @@ describe(__filename, () => {
                         display_name: "Codex",
                         managed: true,
                         detected: true,
+                        supports_project_scope: false,
                         installed: {
                             project: {
                                 version: "1.2.0",
@@ -902,6 +904,7 @@ describe(__filename, () => {
                         display_name: "Windsurf",
                         managed: false,
                         detected: true,
+                        supports_project_scope: true,
                         installed: {
                             project: {
                                 version: "1.2.0",
@@ -923,6 +926,37 @@ describe(__filename, () => {
         assert.strictEqual(agents[1].skillsOnly, false);
         // Unmanaged agents are never flagged, even when delivered as skills.
         assert.strictEqual(agents[2].skillsOnly, false);
+        // supports_project_scope is mapped straight through per agent.
+        assert.strictEqual(agents[0].supportsProjectScope, true);
+        assert.strictEqual(agents[1].supportsProjectScope, false);
+        assert.strictEqual(agents[2].supportsProjectScope, true);
+    });
+
+    it("defaults supportsProjectScope to true when the CLI omits it", async () => {
+        // A stale/older CLI doesn't emit supports_project_scope; absence must
+        // map to "supported" so we don't wrongly block project-scope installs.
+        const {manager, mockCli} = setup({project: loadSuccess});
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult(
+                [],
+                [
+                    {
+                        name: "claude-code",
+                        display_name: "Claude Code",
+                        managed: true,
+                        detected: true,
+                        installed: {},
+                    } as AiToolsAgent,
+                ]
+            )
+        );
+        await manager.detectInstall();
+        await manager.resolveInstalled();
+
+        assert.strictEqual(
+            manager.model.state.agents[0].supportsProjectScope,
+            true
+        );
     });
 
     it("clears the version when nothing is installed", async () => {
