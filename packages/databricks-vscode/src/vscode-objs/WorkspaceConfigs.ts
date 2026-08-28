@@ -1,5 +1,12 @@
-import {ConfigurationTarget, workspace} from "vscode";
+import {ConfigurationTarget, Disposable, workspace} from "vscode";
 import {Time, TimeUnits} from "@databricks/sdk-experimental";
+
+/**
+ * How the extension provisions the local Python environment. `auto` runs the
+ * uv-native setup (`databricks environments setup-local`) for suitable projects;
+ * `manual` disables it so an existing interpreter/environment is used as-is.
+ */
+export type PythonEnvironmentSetupMode = "auto" | "manual";
 
 export const workspaceConfigs = {
     get maxFieldLength() {
@@ -129,6 +136,41 @@ export const workspaceConfigs = {
                 .getConfiguration("databricks")
                 .get<string>("connect.serverlessDbconnectVersion") ?? "17.3"
         );
+    },
+
+    // Any value other than "manual" (unset, "auto", or an unexpected string)
+    // resolves to "auto" so the default and malformed configs both keep the
+    // automated setup — the historical behavior.
+    get pythonEnvironmentSetup(): PythonEnvironmentSetupMode {
+        return workspace
+            .getConfiguration("databricks")
+            .get<string>("python.environmentSetup") === "manual"
+            ? "manual"
+            : "auto";
+    },
+
+    // Notify on changes to `python.environmentSetup`. Kept in the adapter so
+    // both reading the setting and observing its changes stay behind the
+    // vscode-objs seam, instead of feature/UI code reaching into `workspace`.
+    // The caller owns the returned Disposable.
+    onDidChangePythonEnvironmentSetup(listener: () => void): Disposable {
+        return workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration("databricks.python.environmentSetup")) {
+                listener();
+            }
+        });
+    },
+
+    // Write `python.environmentSetup` — the one-click "Use manual setup" escape
+    // hatch on a failed setup writes "manual" here. Returns the update Thenable
+    // so the caller can await/handle it.
+    setPythonEnvironmentSetup(
+        mode: PythonEnvironmentSetupMode,
+        target: ConfigurationTarget
+    ): Thenable<void> {
+        return workspace
+            .getConfiguration("databricks")
+            .update("python.environmentSetup", mode, target);
     },
 
     get bundleRemoteStateRefreshInterval(): number {

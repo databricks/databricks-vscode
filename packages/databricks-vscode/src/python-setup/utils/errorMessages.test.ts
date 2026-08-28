@@ -4,6 +4,7 @@ import {
     getPythonSetupErrorAction,
     getPythonSetupErrorMessage,
     isIndexUnreachableFailure,
+    USE_MANUAL_SETUP_COMMAND_ID,
 } from "./errorMessages";
 import {
     PythonSetupResult,
@@ -130,6 +131,18 @@ describe("getPythonSetupErrorMessage", () => {
         expect(getPythonSetupErrorMessage(failure("E_FETCH"))).to.match(
             /reach|offline|network/i
         );
+    });
+
+    it("E_FETCH names the GitHub Raw host and the manual-mode escape hatch", () => {
+        // The regression from issue #2149: a network that blocks GitHub Raw
+        // dead-ends here, so the message must name the host to allowlist and the
+        // setting that skips automated setup entirely.
+        const msg = getPythonSetupErrorMessage(
+            failure("E_FETCH", {failurePhase: "fetch"})
+        );
+        expect(msg).to.contain("raw.githubusercontent.com");
+        expect(msg).to.contain("databricks.python.environmentSetup");
+        expect(msg).to.match(/manual/i);
     });
 
     it("maps E_VALIDATE to a mismatch message", () => {
@@ -341,14 +354,17 @@ describe("getPythonSetupErrorAction", () => {
         });
     });
 
-    it("offers no action for E_FETCH (deliberately message-only)", () => {
-        // A generic network/cache failure has no single doc that reliably helps,
-        // so we avoid pointing the user at an unclear page.
+    it("offers a one-click 'Use manual setup' command action for E_FETCH", () => {
+        // The blocked-GitHub case: rather than a doc link, the button runs the
+        // command that flips the setting to manual for the project.
         expect(
             getPythonSetupErrorAction(
                 failure("E_FETCH", {failurePhase: "fetch"})
             )
-        ).to.equal(undefined);
+        ).to.deep.equal({
+            label: "Use manual setup",
+            command: USE_MANUAL_SETUP_COMMAND_ID,
+        });
     });
 
     it("offers no action for codes with no clear remediation doc", () => {
@@ -444,6 +460,25 @@ describe("formatSetupFailureDetail", () => {
         expect(detail).to.contain("UV_INDEX_URL");
         expect(detail).to.contain("index-url");
         expect(detail).to.contain("extra-index-url");
+    });
+
+    it("spells out the allowlist + manual-mode fixes for E_FETCH", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_FETCH", {failurePhase: "fetch"})
+        );
+        expect(detail).to.contain("raw.githubusercontent.com");
+        expect(detail).to.contain("allowlist");
+        expect(detail).to.contain("databricks.python.environmentSetup");
+        expect(detail).to.match(/manual/i);
+        // E_FETCH's action is a command (no URL), so the log must not print a
+        // "label: undefined" line for it.
+        expect(detail).to.not.contain("undefined");
+    });
+
+    it("adds no E_FETCH remediation block for another code", () => {
+        const detail = formatSetupFailureDetail(failure("E_MERGE"));
+        expect(detail).to.not.contain("raw.githubusercontent.com");
+        expect(detail).to.not.contain("databricks.python.environmentSetup");
     });
 
     it("adds no remediation block for a non-connectivity E_PROVISION", () => {

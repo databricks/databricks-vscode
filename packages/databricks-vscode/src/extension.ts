@@ -1,5 +1,6 @@
 import {
     commands,
+    ConfigurationTarget,
     debug,
     env,
     ExtensionContext,
@@ -59,6 +60,7 @@ import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDri
 import {PythonSetupAdoptionManager} from "./python-setup/controllers/PythonSetupAdoptionManager";
 import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {venvInterpreterPath} from "./python-setup/utils/venvInterpreterPath";
+import {USE_MANUAL_SETUP_COMMAND_ID} from "./python-setup/utils/errorMessages";
 import {makeServerlessVersionPrompt} from "./python-setup/utils/serverlessVersionResolver";
 import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
@@ -976,6 +978,7 @@ export async function activate(
                 }
             },
             detect: (projectRoot) => pythonSetupDetector.detect(projectRoot),
+            setupMode: () => workspaceConfigs.pythonEnvironmentSetup,
             attachedCompute: () => ({
                 serverless: connectionManager.serverless,
                 cluster: connectionManager.cluster
@@ -1056,7 +1059,38 @@ export async function activate(
             "databricks.environment.rerunPythonEnv",
             pythonSetupEnvironment.setup,
             pythonSetupEnvironment
-        )
+        ),
+        // One-click opt-out surfaced as the E_FETCH failure's action button:
+        // turn automated setup off for this project so an existing environment
+        // is used as-is. Workspace scope keeps it scoped and reversible; if no
+        // folder is open we fall back to Global so the write still lands.
+        telemetry.registerCommand(USE_MANUAL_SETUP_COMMAND_ID, async () => {
+            const hasFolder = (workspace.workspaceFolders?.length ?? 0) > 0;
+            const target = hasFolder
+                ? ConfigurationTarget.Workspace
+                : ConfigurationTarget.Global;
+            try {
+                await workspaceConfigs.setPythonEnvironmentSetup(
+                    "manual",
+                    target
+                );
+            } catch (e) {
+                // Don't claim success if the write failed — the user would
+                // otherwise believe automated setup is off when it is not.
+                await window.showErrorMessage(
+                    `Could not update databricks.python.environmentSetup: ${
+                        e instanceof Error ? e.message : String(e)
+                    }`
+                );
+                return;
+            }
+            // Match the message to the scope actually written: "this project"
+            // for Workspace, "globally" for the no-folder Global fallback.
+            const scope = hasFolder ? "for this project" : "globally";
+            await window.showInformationMessage(
+                `Automated Python environment setup is now off ${scope} ("databricks.python.environmentSetup": "manual"). Your existing interpreter will be used as-is.`
+            );
+        })
     );
     // Drives the config-view row's out-of-sync state: on compute/open/setup
     // triggers it silently resolves the selected compute's env key via a CLI
