@@ -1095,11 +1095,8 @@ export async function activate(
                 `Automated Python environment setup is now off ${scope} ("databricks.python.environmentSetup": "manual"). Your existing interpreter will be used as-is.`
             );
         }),
-        // One-click install surfaced as the E_UV_MISSING failure's primary
-        // action button: run uv's official installer in a terminal so its
-        // step-by-step output stays in front of the user, who then re-runs setup.
-        // A terminal (over a silent spawn) needs no output capture and is the
-        // same pattern used for `az login` (see AzureCliCheck).
+        // E_UV_MISSING's "Install uv" button: run uv's official installer in a
+        // terminal so its output stays visible (same pattern as `az login`).
         telemetry.registerCommand(INSTALL_UV_COMMAND_ID, async () => {
             const terminal = window.createTerminal("Install uv");
             terminal.show();
