@@ -132,3 +132,27 @@ export function uvInstallTerminalSpec(
         command: uvInstallTerminalCommand(kind, platform),
     };
 }
+
+/**
+ * Seams for {@link runUvInstall}, so the confirm→open gate is testable without a
+ * VS Code host. The extension wires `confirm` to a modal warning and
+ * `openTerminal` to `window.createTerminal(...).show()/.sendText(...)`.
+ */
+export interface InstallUvDeps {
+    /** Ask the user to confirm the remote install; resolves true to proceed. */
+    confirm: () => Promise<boolean>;
+    /** Open the install terminal for the given spec. */
+    openTerminal: (spec: UvInstallTerminalSpec) => void;
+}
+
+/**
+ * The "Install uv" command body: confirm first, and only then open the installer
+ * terminal — so a dismissed confirmation runs nothing. Kept out of `extension.ts`
+ * so the gate is unit-tested rather than living untested in `activate()`.
+ */
+export async function runUvInstall(deps: InstallUvDeps): Promise<void> {
+    if (!(await deps.confirm())) {
+        return;
+    }
+    deps.openTerminal(uvInstallTerminalSpec());
+}

@@ -65,9 +65,9 @@ import {
     USE_MANUAL_SETUP_COMMAND_ID,
 } from "./python-setup/utils/errorMessages";
 import {
+    runUvInstall,
     UV_INSTALL_CONFIRM_ACTION,
     UV_INSTALL_CONFIRM_MESSAGE,
-    uvInstallTerminalSpec,
 } from "./python-setup/utils/uvInstall";
 import {makeServerlessVersionPrompt} from "./python-setup/utils/serverlessVersionResolver";
 import {collectPackageManagerSignals} from "./language/packageManagerSignals";
@@ -1103,23 +1103,25 @@ export async function activate(
         // terminal so its output stays visible (same pattern as `az login`).
         // A modal first makes the remote-install step an explicit, informed
         // choice; the terminal is pinned to PowerShell on Windows (see the spec).
-        telemetry.registerCommand(INSTALL_UV_COMMAND_ID, async () => {
-            const confirmed = await window.showWarningMessage(
-                UV_INSTALL_CONFIRM_MESSAGE,
-                {modal: true},
-                UV_INSTALL_CONFIRM_ACTION
-            );
-            if (confirmed !== UV_INSTALL_CONFIRM_ACTION) {
-                return;
-            }
-            const spec = uvInstallTerminalSpec();
-            const terminal = window.createTerminal({
-                name: spec.name,
-                shellPath: spec.shellPath,
-            });
-            terminal.show();
-            terminal.sendText(spec.command);
-        })
+        // The confirm→open gate lives in `runUvInstall` so it is unit-tested.
+        telemetry.registerCommand(INSTALL_UV_COMMAND_ID, () =>
+            runUvInstall({
+                confirm: async () =>
+                    (await window.showWarningMessage(
+                        UV_INSTALL_CONFIRM_MESSAGE,
+                        {modal: true},
+                        UV_INSTALL_CONFIRM_ACTION
+                    )) === UV_INSTALL_CONFIRM_ACTION,
+                openTerminal: (spec) => {
+                    const terminal = window.createTerminal({
+                        name: spec.name,
+                        shellPath: spec.shellPath,
+                    });
+                    terminal.show();
+                    terminal.sendText(spec.command);
+                },
+            })
+        )
     );
     // Drives the config-view row's out-of-sync state: on compute/open/setup
     // triggers it silently resolves the selected compute's env key via a CLI

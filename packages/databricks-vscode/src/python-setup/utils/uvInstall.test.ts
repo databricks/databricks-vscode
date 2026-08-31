@@ -1,7 +1,9 @@
 import {expect} from "chai";
 import {
+    runUvInstall,
     UV_INSTALL_SCRIPT_POSIX_URL,
     UV_INSTALL_SCRIPT_WINDOWS_URL,
+    UvInstallTerminalSpec,
     uvInstallTerminalCommand,
     uvInstallTerminalSpec,
 } from "./uvInstall";
@@ -130,5 +132,28 @@ describe("uvInstallTerminalSpec", () => {
         );
         expect(spec.command).to.contain("Write-Host");
         expect(spec.command).to.not.contain("printf");
+    });
+});
+
+describe("runUvInstall", () => {
+    it("opens the install terminal after the user confirms", async () => {
+        const opened: UvInstallTerminalSpec[] = [];
+        await runUvInstall({
+            confirm: async () => true,
+            openTerminal: (spec) => opened.push(spec),
+        });
+        expect(opened).to.have.length(1);
+        expect(opened[0].name).to.equal("Install uv");
+    });
+
+    it("opens nothing when the user dismisses the confirmation", async () => {
+        let opened = false;
+        await runUvInstall({
+            confirm: async () => false,
+            openTerminal: () => {
+                opened = true;
+            },
+        });
+        expect(opened).to.equal(false);
     });
 });
