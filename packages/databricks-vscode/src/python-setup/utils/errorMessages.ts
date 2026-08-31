@@ -143,6 +143,14 @@ export const USE_MANUAL_SETUP_COMMAND_ID =
     "databricks.environment.useManualPythonSetup";
 
 /**
+ * Command that runs uv's official installer in a terminal for the current
+ * platform, surfaced as the primary E_UV_MISSING remediation button (see
+ * {@link getPythonSetupErrorActions}). Defined here — next to the action that
+ * references it — and reused by the command registration so the two cannot drift.
+ */
+export const INSTALL_UV_COMMAND_ID = "databricks.environment.installUv";
+
+/**
  * An optional remediation button to attach to a failure popup. Exactly one of
  * `url` / `command` is set — a discriminated union (`?: never` on the other arm)
  * forbids both/neither at compile time, while still letting callers read
@@ -229,14 +237,16 @@ export function getPythonSetupErrorMessage(result: PythonSetupResult): string {
  * (E_USAGE, E_NOT_WRITABLE, E_WRITE, E_MERGE, E_VALIDATE, E_FETCH) are absent and
  * get the message alone rather than a link that might misdirect.
  *
- * `E_UV_MISSING` lives here so every code-keyed link takes one path; the
- * blocked-index variant of `E_PROVISION` cannot — it is told apart by the CLI's
- * message, not its code — so it is resolved ahead of this map (see below).
+ * `E_UV_MISSING`'s manual "Installation guide" link lives here so every code-keyed
+ * link takes one path (its one-click "Install uv" companion is added by
+ * {@link getPythonSetupErrorActions}); the blocked-index variant of `E_PROVISION`
+ * cannot — it is told apart by the CLI's message, not its code — so it is resolved
+ * ahead of this map (see below).
  */
 /* eslint-disable @typescript-eslint/naming-convention */
 const DOC_LINKS: Partial<Record<PythonSetupErrorCode, PythonSetupErrorAction>> =
     {
-        E_UV_MISSING: {label: "Install uv", url: UV_INSTALL_DOCS_URL},
+        E_UV_MISSING: {label: "Installation guide", url: UV_INSTALL_DOCS_URL},
         E_MANAGER_UNSUPPORTED: {
             label: "Set up a uv project",
             url: UV_PROJECTS_DOCS_URL,
@@ -292,6 +302,28 @@ export function getPythonSetupErrorAction(
         };
     }
     return DOC_LINKS[err.code];
+}
+
+/**
+ * The ordered remediation buttons for a failure popup. Most codes carry a single
+ * doc/command action (from {@link getPythonSetupErrorAction}), so this returns a
+ * one- or zero-element list. `E_UV_MISSING` is the exception: it leads with a
+ * one-click "Install uv" that runs uv's official installer in a terminal
+ * (`INSTALL_UV_COMMAND_ID`), then keeps the manual "Installation guide" link as a
+ * fallback for users who would rather install it themselves. Reuses the singular
+ * action for that fallback so the guide's label/URL are single-sourced.
+ */
+export function getPythonSetupErrorActions(
+    result: PythonSetupResult
+): PythonSetupErrorAction[] {
+    const action = getPythonSetupErrorAction(result);
+    if (result.error?.code === "E_UV_MISSING") {
+        return [
+            {label: "Install uv", command: INSTALL_UV_COMMAND_ID},
+            ...(action ? [action] : []),
+        ];
+    }
+    return action ? [action] : [];
 }
 
 /**

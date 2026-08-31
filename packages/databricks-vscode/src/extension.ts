@@ -60,7 +60,11 @@ import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDri
 import {PythonSetupAdoptionManager} from "./python-setup/controllers/PythonSetupAdoptionManager";
 import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {venvInterpreterPath} from "./python-setup/utils/venvInterpreterPath";
-import {USE_MANUAL_SETUP_COMMAND_ID} from "./python-setup/utils/errorMessages";
+import {
+    INSTALL_UV_COMMAND_ID,
+    USE_MANUAL_SETUP_COMMAND_ID,
+} from "./python-setup/utils/errorMessages";
+import {uvInstallTerminalCommand} from "./python-setup/utils/uvInstall";
 import {makeServerlessVersionPrompt} from "./python-setup/utils/serverlessVersionResolver";
 import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
@@ -1090,6 +1094,16 @@ export async function activate(
             await window.showInformationMessage(
                 `Automated Python environment setup is now off ${scope} ("databricks.python.environmentSetup": "manual"). Your existing interpreter will be used as-is.`
             );
+        }),
+        // One-click install surfaced as the E_UV_MISSING failure's primary
+        // action button: run uv's official installer in a terminal so its
+        // step-by-step output stays in front of the user, who then re-runs setup.
+        // A terminal (over a silent spawn) needs no output capture and is the
+        // same pattern used for `az login` (see AzureCliCheck).
+        telemetry.registerCommand(INSTALL_UV_COMMAND_ID, async () => {
+            const terminal = window.createTerminal("Install uv");
+            terminal.show();
+            terminal.sendText(uvInstallTerminalCommand());
         })
     );
     // Drives the config-view row's out-of-sync state: on compute/open/setup

@@ -250,7 +250,7 @@ export function makePythonSetupDeps(
         showError: async (
             message: string,
             detail?: string,
-            action?: PythonSetupErrorAction
+            actions: PythonSetupErrorAction[] = []
         ) => {
             // The mapped one-liner is deliberately concise and drops the CLI's
             // own explanation; write that detail into the channel so the log the
@@ -266,46 +266,57 @@ export function makePythonSetupDeps(
             const showLogs = "Show Logs";
             // `showErrorMessage` hands the picked value back as a bare label
             // string, so two buttons sharing a label are indistinguishable. Drop
-            // a remediation action that reuses the reserved "Show Logs" label
-            // rather than offer an ambiguous button whose URL branch is dead.
-            const remediation =
-                action && action.label !== showLogs ? action : undefined;
-            // Lead with the remediation button (e.g. "Install uv") when one is
-            // attached, so the action the user most likely wants comes first.
-            const actions = remediation
-                ? [remediation.label, showLogs]
-                : [showLogs];
-            const picked = await window.showErrorMessage(message, ...actions);
+            // any remediation reusing the reserved "Show Logs" label, and any
+            // later duplicate label (first wins), rather than offer an ambiguous
+            // button whose dispatch would be dead.
+            const seen = new Set<string>([showLogs]);
+            const remediations = actions.filter((a) => {
+                if (seen.has(a.label)) {
+                    return false;
+                }
+                seen.add(a.label);
+                return true;
+            });
+            // Lead with the remediation buttons (e.g. "Install uv", then
+            // "Installation guide") in order, so the action the user most likely
+            // wants comes first; "Show Logs" always trails.
+            const buttons = [...remediations.map((a) => a.label), showLogs];
+            const picked = await window.showErrorMessage(message, ...buttons);
             if (picked === showLogs) {
                 wiring.log.show();
-            } else if (remediation && picked === remediation.label) {
-                // showError is the failure-reporting path and its one caller does
-                // not wrap it, so nothing thrown here may escape — contain and
-                // record any failure.
-                try {
-                    if (remediation.command) {
-                        // A command-action (e.g. E_FETCH "Use manual setup")
-                        // runs a registered VS Code command instead of opening a
-                        // URL.
-                        await commands.executeCommand(remediation.command);
-                    } else if (remediation.url) {
-                        const opened = await openExternal(remediation.url);
-                        if (!opened) {
-                            wiring.log.append(
-                                `\nCould not open ${remediation.url} in a browser.\n`
-                            );
-                        }
+                return;
+            }
+            const chosen = remediations.find((a) => a.label === picked);
+            if (chosen === undefined) {
+                // Dismissed, or a label we did not render.
+                return;
+            }
+            // showError is the failure-reporting path and its one caller does not
+            // wrap it, so nothing thrown here may escape — contain and record any
+            // failure.
+            try {
+                if (chosen.command) {
+                    // A command-action (e.g. "Install uv", E_FETCH "Use manual
+                    // setup") runs a registered VS Code command instead of
+                    // opening a URL.
+                    await commands.executeCommand(chosen.command);
+                } else if (chosen.url) {
+                    const opened = await openExternal(chosen.url);
+                    if (!opened) {
+                        wiring.log.append(
+                            `\nCould not open ${chosen.url} in a browser.\n`
+                        );
                     }
-                } catch (e) {
-                    const what = remediation.command
-                        ? `run ${remediation.command}`
-                        : `open ${remediation.url}`;
-                    wiring.log.append(
-                        `\nFailed to ${what}: ${
-                            e instanceof Error ? e.message : String(e)
-                        }\n`
-                    );
                 }
+            } catch (e) {
+                const what = chosen.command
+                    ? `run ${chosen.command}`
+                    : `open ${chosen.url}`;
+                wiring.log.append(
+                    `\nFailed to ${what}: ${
+                        e instanceof Error ? e.message : String(e)
+                    }\n`
+                );
             }
         },
         showSuccess: async (result) => {

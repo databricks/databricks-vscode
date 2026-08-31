@@ -601,6 +601,12 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.environment.installUv",
+                "title": "Install uv",
+                "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.environment.rerunPythonEnv",
                 "title": "Re-run Python setup",
                 "icon": "$(sync)",
