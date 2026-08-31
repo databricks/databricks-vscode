@@ -106,7 +106,9 @@ export const UV_INSTALL_CONFIRM_MESSAGE =
  * default profile: a WSL / Git Bash default can have Windows interop disabled,
  * which would strand the Windows uv the extension host needs. A throwaway
  * install terminal needs no profile args, so pinning is safe here. On
- * macOS/Linux the default profile is used (always POSIX syntax).
+ * macOS/Linux the default profile is used, and its actual dialect drives the
+ * command syntax — `kind` is `powershell` when the user runs `pwsh`, not just
+ * `posix` — so the command parses in whatever shell that profile launches.
  */
 export interface UvInstallTerminalSpec {
     name: string;
@@ -115,7 +117,8 @@ export interface UvInstallTerminalSpec {
 }
 
 export function uvInstallTerminalSpec(
-    platform: NodeJS.Platform = process.platform
+    platform: NodeJS.Platform = process.platform,
+    kind: ShellKind = currentShellKind()
 ): UvInstallTerminalSpec {
     if (platform === "win32") {
         return {
@@ -126,6 +129,6 @@ export function uvInstallTerminalSpec(
     }
     return {
         name: "Install uv",
-        command: uvInstallTerminalCommand("posix", platform),
+        command: uvInstallTerminalCommand(kind, platform),
     };
 }

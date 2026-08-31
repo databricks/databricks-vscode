@@ -52,9 +52,22 @@ describe("uvInstallTerminalCommand", () => {
         expect(cmd).to.contain("; ");
     });
 
+    it("still curls the POSIX installer, in PowerShell syntax, for pwsh on macOS/Linux", () => {
+        // A pwsh default profile on macOS/Linux: the installer stays the POSIX
+        // curl | sh (uv is a *nix build there), but the banner must be
+        // PowerShell syntax so the whole line parses.
+        const cmd = uvInstallTerminalCommand("powershell", "darwin");
+        expect(cmd).to.contain(
+            `curl -LsSf ${UV_INSTALL_SCRIPT_POSIX_URL} | sh`
+        );
+        expect(cmd).to.contain("Write-Host");
+        expect(cmd).to.not.contain("install.ps1");
+    });
+
     const allShapes = [
         ["posix", "darwin"],
         ["posix", "linux"],
+        ["powershell", "darwin"],
         ["powershell", "win32"],
         ["cmd", "win32"],
         ["posix", "win32"],
@@ -96,13 +109,26 @@ describe("uvInstallTerminalSpec", () => {
         expect(spec.command).to.not.contain("install.sh");
     });
 
-    it("uses the default (POSIX) profile on macOS/Linux", () => {
+    it("uses the default profile on macOS/Linux (POSIX shell)", () => {
         for (const platform of ["darwin", "linux"] as const) {
-            const spec = uvInstallTerminalSpec(platform);
+            const spec = uvInstallTerminalSpec(platform, "posix");
             expect(spec.shellPath).to.equal(undefined);
             expect(spec.command).to.contain(
                 `curl -LsSf ${UV_INSTALL_SCRIPT_POSIX_URL} | sh`
             );
         }
+    });
+
+    it("matches the dialect when the default macOS/Linux profile is pwsh", () => {
+        // A pwsh default profile on macOS/Linux runs PowerShell syntax; the
+        // command must use it (Write-Host, not printf) while still curling the
+        // POSIX installer — otherwise the banner lines fail to parse.
+        const spec = uvInstallTerminalSpec("darwin", "powershell");
+        expect(spec.shellPath).to.equal(undefined);
+        expect(spec.command).to.contain(
+            `curl -LsSf ${UV_INSTALL_SCRIPT_POSIX_URL} | sh`
+        );
+        expect(spec.command).to.contain("Write-Host");
+        expect(spec.command).to.not.contain("printf");
     });
 });
