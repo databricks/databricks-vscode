@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {env, Uri, window} from "vscode";
+import {commands, env, Uri, window} from "vscode";
 import {
     makePythonSetupDeps,
     makePythonSetupVisibility,
@@ -879,5 +879,84 @@ describe("makePythonSetupDeps showSuccess", () => {
 
         // Once on the automatic reveal, again when the button is picked.
         expect(shown).to.equal(2);
+    });
+});
+
+describe("makePythonSetupDeps showReauthPrompt", () => {
+    let originalShowWarning: typeof window.showWarningMessage;
+    let originalExecuteCommand: typeof commands.executeCommand;
+    let shownWith: {message: string; actions: string[]}[];
+    let executed: string[];
+    let reply: string | undefined;
+
+    beforeEach(() => {
+        originalShowWarning = window.showWarningMessage;
+        originalExecuteCommand = commands.executeCommand;
+        shownWith = [];
+        executed = [];
+        reply = undefined;
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = async (
+            message: string,
+            ...actions: string[]
+        ) => {
+            shownWith.push({message, actions});
+            return reply;
+        };
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            async (command: string) => {
+                executed.push(command);
+                return undefined;
+            };
+    });
+
+    afterEach(() => {
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = originalShowWarning;
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            originalExecuteCommand;
+    });
+
+    it("shows a warning with a Login action and does not reveal the log", async () => {
+        let logShown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        logShown++;
+                    },
+                },
+            })
+        );
+
+        await deps.showReauthPrompt();
+
+        expect(shownWith).to.have.length(1);
+        expect(shownWith[0].actions).to.deep.equal(["Login"]);
+        // An expired session is expected, not a defect: no log channel reveal.
+        expect(logShown).to.equal(0);
+    });
+
+    it("runs the re-auth command when Login is picked", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+        reply = "Login";
+
+        await deps.showReauthPrompt();
+
+        expect(executed).to.deep.equal([
+            "databricks.connection.configureLogin",
+        ]);
+    });
+
+    it("runs nothing when the prompt is dismissed", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+        reply = undefined;
+
+        await deps.showReauthPrompt();
+
+        expect(executed).to.have.length(0);
     });
 });

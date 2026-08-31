@@ -182,6 +182,17 @@ export interface PythonSetupWiringDeps {
     telemetry: Telemetry;
 }
 
+/** User-facing copy for the expired-session re-login prompt. */
+const REAUTH_PROMPT_MESSAGE =
+    "Your Databricks session has expired. Log in again to set up the Python environment.";
+
+/**
+ * The extension's re-auth command (opens the login flow for the active profile
+ * and reconnects). Reused rather than shelling out to `databricks auth login`
+ * so host, profile, and workspace-id routing stay owned by one place.
+ */
+const RELOGIN_COMMAND_ID = "databricks.connection.configureLogin";
+
 /**
  * Assemble the {@link PythonSetupSetupDeps} for the real extension: the gate and
  * compute resolution come from the pure helpers above, the interpreter is
@@ -246,6 +257,20 @@ export function makePythonSetupDeps(
             // Pre-flight guidance: no CLI ran, so show a plain warning without
             // revealing the (empty) output channel.
             await window.showWarningMessage(message);
+        },
+        showReauthPrompt: async () => {
+            // A warning, not an error, and no log reveal: an expired session is
+            // expected, not a defect. The "Login" button runs the extension's
+            // existing re-auth flow for the active profile; the user re-runs
+            // setup once connected (we deliberately don't auto-retry).
+            const login = "Login";
+            const picked = await window.showWarningMessage(
+                REAUTH_PROMPT_MESSAGE,
+                login
+            );
+            if (picked === login) {
+                await commands.executeCommand(RELOGIN_COMMAND_ID);
+            }
         },
         showError: async (
             message: string,
