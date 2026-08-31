@@ -64,7 +64,11 @@ import {
     INSTALL_UV_COMMAND_ID,
     USE_MANUAL_SETUP_COMMAND_ID,
 } from "./python-setup/utils/errorMessages";
-import {uvInstallTerminalCommand} from "./python-setup/utils/uvInstall";
+import {
+    UV_INSTALL_CONFIRM_ACTION,
+    UV_INSTALL_CONFIRM_MESSAGE,
+    uvInstallTerminalSpec,
+} from "./python-setup/utils/uvInstall";
 import {makeServerlessVersionPrompt} from "./python-setup/utils/serverlessVersionResolver";
 import {collectPackageManagerSignals} from "./language/packageManagerSignals";
 import {EnvironmentDependenciesVerifier} from "./language/EnvironmentDependenciesVerifier";
@@ -1097,10 +1101,24 @@ export async function activate(
         }),
         // E_UV_MISSING's "Install uv" button: run uv's official installer in a
         // terminal so its output stays visible (same pattern as `az login`).
+        // A modal first makes the remote-install step an explicit, informed
+        // choice; the terminal is pinned to PowerShell on Windows (see the spec).
         telemetry.registerCommand(INSTALL_UV_COMMAND_ID, async () => {
-            const terminal = window.createTerminal("Install uv");
+            const confirmed = await window.showWarningMessage(
+                UV_INSTALL_CONFIRM_MESSAGE,
+                {modal: true},
+                UV_INSTALL_CONFIRM_ACTION
+            );
+            if (confirmed !== UV_INSTALL_CONFIRM_ACTION) {
+                return;
+            }
+            const spec = uvInstallTerminalSpec();
+            const terminal = window.createTerminal({
+                name: spec.name,
+                shellPath: spec.shellPath,
+            });
             terminal.show();
-            terminal.sendText(uvInstallTerminalCommand());
+            terminal.sendText(spec.command);
         })
     );
     // Drives the config-view row's out-of-sync state: on compute/open/setup

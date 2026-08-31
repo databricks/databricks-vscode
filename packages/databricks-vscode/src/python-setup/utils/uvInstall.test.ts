@@ -3,6 +3,7 @@ import {
     UV_INSTALL_SCRIPT_POSIX_URL,
     UV_INSTALL_SCRIPT_WINDOWS_URL,
     uvInstallTerminalCommand,
+    uvInstallTerminalSpec,
 } from "./uvInstall";
 
 describe("uvInstallTerminalCommand", () => {
@@ -77,6 +78,31 @@ describe("uvInstallTerminalCommand", () => {
         for (const [kind, platform] of allShapes) {
             const cmd = uvInstallTerminalCommand(kind, platform);
             expect(cmd).to.not.match(/(^|\s|;|&)exit(\s|;|&|$)/);
+        }
+    });
+});
+
+describe("uvInstallTerminalSpec", () => {
+    it("pins a PowerShell terminal on Windows so it does not depend on the default profile", () => {
+        // A WSL / Git Bash default profile can have Windows interop disabled,
+        // which would strand the Windows uv. Pinning powershell.exe sidesteps
+        // that, and the command is the direct PowerShell irm | iex.
+        const spec = uvInstallTerminalSpec("win32");
+        expect(spec.shellPath).to.equal("powershell.exe");
+        expect(spec.name).to.equal("Install uv");
+        expect(spec.command).to.contain(
+            `irm ${UV_INSTALL_SCRIPT_WINDOWS_URL} | iex`
+        );
+        expect(spec.command).to.not.contain("install.sh");
+    });
+
+    it("uses the default (POSIX) profile on macOS/Linux", () => {
+        for (const platform of ["darwin", "linux"] as const) {
+            const spec = uvInstallTerminalSpec(platform);
+            expect(spec.shellPath).to.equal(undefined);
+            expect(spec.command).to.contain(
+                `curl -LsSf ${UV_INSTALL_SCRIPT_POSIX_URL} | sh`
+            );
         }
     });
 });
