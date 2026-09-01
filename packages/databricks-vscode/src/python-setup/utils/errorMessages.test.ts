@@ -423,13 +423,13 @@ describe("getPythonSetupErrorActions", () => {
         ]);
     });
 
-    it("wraps a non-uv code's single action in a one-element list", () => {
+    it("wraps Python install recovery in a one-element list", () => {
         expect(
             getPythonSetupErrorActions(failure("E_PYTHON_INSTALL"))
         ).to.deep.equal([
             {
-                label: "Install a Python version",
-                url: "https://docs.astral.sh/uv/guides/install-python/",
+                label: "Select Python interpreter",
+                command: "databricks.environment.selectPythonInterpreter",
             },
         ]);
     });
