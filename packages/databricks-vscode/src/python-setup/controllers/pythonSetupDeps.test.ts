@@ -640,10 +640,12 @@ describe("makePythonSetupDeps showError", () => {
             );
             reply = "Install uv";
 
-            await deps.showError("uv missing", "detail", {
-                label: "Install uv",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             // Order matters: the remediation button leads, "Show Logs" follows.
             expect(shownWith[0].actions).to.deep.equal([
@@ -678,10 +680,12 @@ describe("makePythonSetupDeps showError", () => {
             );
             reply = "Show Logs";
 
-            await deps.showError("uv missing", "detail", {
-                label: "Show Logs",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Show Logs",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             // Only the single, unambiguous Show Logs button is offered...
             expect(shownWith[0].actions).to.deep.equal(["Show Logs"]);
@@ -708,10 +712,12 @@ describe("makePythonSetupDeps showError", () => {
             );
             reply = "Install uv";
 
-            await deps.showError("uv missing", "detail", {
-                label: "Install uv",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             expect(appended.join("")).to.match(/could not open/i);
         } finally {
@@ -737,10 +743,12 @@ describe("makePythonSetupDeps showError", () => {
             reply = "Install uv";
 
             // Must resolve, not throw.
-            await deps.showError("uv missing", "detail", {
-                label: "Install uv",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             // The failure is recorded to the log channel rather than swallowed
             // silently.
@@ -766,13 +774,81 @@ describe("makePythonSetupDeps showError", () => {
             );
             reply = "Show Logs";
 
-            await deps.showError("uv missing", "detail", {
-                label: "Install uv",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             expect(opened).to.have.length(0);
         } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("renders two remediation buttons in order, then Show Logs", async () => {
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        reply = undefined; // dismissed — we only assert on the offered buttons
+
+        await deps.showError("uv missing", "detail", [
+            {label: "Install uv", command: "databricks.environment.installUv"},
+            {
+                label: "Installation guide",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            },
+        ]);
+
+        expect(shownWith[0].actions).to.deep.equal([
+            "Install uv",
+            "Installation guide",
+            "Show Logs",
+        ]);
+    });
+
+    it("runs the VS Code command when a command-action button is picked", async () => {
+        const original = commands.executeCommand;
+        const executed: string[] = [];
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            async (command: string) => {
+                executed.push(command);
+            };
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    command: "databricks.environment.installUv",
+                },
+                {
+                    label: "Installation guide",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
+
+            // The command runs; the sibling URL action is untouched.
+            expect(executed).to.deep.equal([
+                "databricks.environment.installUv",
+            ]);
+            expect(opened).to.have.length(0);
+        } finally {
+            (commands as unknown as {executeCommand: unknown}).executeCommand =
+                original;
             (env as unknown as {openExternal: unknown}).openExternal =
                 originalOpen;
         }
