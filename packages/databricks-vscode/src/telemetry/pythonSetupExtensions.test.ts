@@ -210,7 +210,7 @@ describe(__filename, () => {
     });
 
     it("reports only the categorical Python install flow", () => {
-        for (const pythonInstallFlow of [
+        for (const pythonSetupFlow of [
             "uv_install_succeeded",
             "installed_fallback",
             "manual_selection_requested",
@@ -222,10 +222,10 @@ describe(__filename, () => {
                 targetType: "cluster",
                 mode: "default",
                 trigger: "initial",
-            })({outcome: "ok", pythonInstallFlow});
+            })({outcome: "ok", pythonSetupFlow});
 
-            expect(events[1].props["event.pythonInstallFlow"]).to.equal(
-                pythonInstallFlow
+            expect(events[1].props["event.pythonSetupFlow"]).to.equal(
+                pythonSetupFlow
             );
             expect(JSON.stringify(events[1])).to.not.contain("/usr/bin/python");
             expect(JSON.stringify(events[1])).to.not.contain("3.12");

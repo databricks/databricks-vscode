@@ -398,7 +398,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             if (e instanceof PythonSetupCancelledError) {
                 reportResult({
                     outcome: "cancelled",
-                    pythonInstallFlow: "cancelled",
+                    pythonSetupFlow: "cancelled",
                 });
                 return;
             }
@@ -442,7 +442,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             const reportAction = getPythonSetupReportAction(result, reportEnv);
             const reportRepo = reportRepoForResult(result);
             const remediationActions = getPythonSetupErrorActions(result);
-            const pythonInstallFlow =
+            const pythonSetupFlow =
                 result.error?.code === "E_PYTHON_INSTALL" ||
                 result.pythonResolution === "installed_fallback"
                     ? "manual_selection_requested"
@@ -457,7 +457,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                   : remediationActions;
             reportResult({
                 outcome: "failed",
-                ...(pythonInstallFlow !== undefined ? {pythonInstallFlow} : {}),
+                ...(pythonSetupFlow !== undefined ? {pythonSetupFlow} : {}),
                 failurePhase: result.error?.failurePhase,
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
@@ -503,7 +503,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             reportResult({
                 outcome: "failed",
                 ...(result.pythonResolution !== undefined
-                    ? {pythonInstallFlow: result.pythonResolution}
+                    ? {pythonSetupFlow: result.pythonResolution}
                     : {}),
                 failurePhase: "adopt",
                 envKey: result.compute.envKey,
@@ -541,7 +541,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             reportResult({
                 outcome: "failed",
                 ...(result.pythonResolution !== undefined
-                    ? {pythonInstallFlow: result.pythonResolution}
+                    ? {pythonSetupFlow: result.pythonResolution}
                     : {}),
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
@@ -570,7 +570,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         reportResult({
             outcome: "ok",
             ...(result.pythonResolution !== undefined
-                ? {pythonInstallFlow: result.pythonResolution}
+                ? {pythonSetupFlow: result.pythonResolution}
                 : {}),
             envKey: result.compute.envKey,
             warnings: result.warnings,

@@ -119,7 +119,7 @@ export type SetupTrigger = "auto_open" | "explicit_command" | "run" | "debug";
 export type PythonSetupRunTrigger = "initial" | "rerun";
 
 /** Categorical outcome of Python acquisition and its user recovery path. */
-export type PythonInstallFlow =
+export type PythonSetupFlow =
     | "uv_install_succeeded"
     | "installed_fallback"
     | "manual_selection_requested"
@@ -535,7 +535,7 @@ export class EventTypes {
     };
     [Events.PYTHON_ENV_SETUP_RESULT]: EventType<{
         outcome: PythonSetupOutcome;
-        pythonInstallFlow?: PythonInstallFlow;
+        pythonSetupFlow?: PythonSetupFlow;
         failurePhase?: PythonSetupFailurePhase;
         errorCode?: PythonSetupErrorCode;
         envKey?: string;
@@ -564,7 +564,7 @@ export class EventTypes {
                 "ok | failed | cancelled (user aborted) | not_started (the CLI produced no " +
                 "result) | no_compute (the CTA was a dead end: nothing was attached to set up for)",
         },
-        pythonInstallFlow: {
+        pythonSetupFlow: {
             comment:
                 "Whether uv downloaded Python, an installed compatible Python was used, " +
                 "manual interpreter selection was requested, or the operation was cancelled. " +

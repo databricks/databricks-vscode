@@ -421,7 +421,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         await setup.setup();
 
         expect(cli.calls).to.have.length(1);
-        expect(telemetry.results[0].pythonInstallFlow).to.equal(
+        expect(telemetry.results[0].pythonSetupFlow).to.equal(
             "manual_selection_requested"
         );
         expect(shown[0].actions).to.deep.equal([
@@ -1325,7 +1325,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
 
         // Distinct from `failed`: the user gave up, nothing broke.
         expect(telemetry.results).to.deep.equal([
-            {outcome: "cancelled", pythonInstallFlow: "cancelled"},
+            {outcome: "cancelled", pythonSetupFlow: "cancelled"},
         ]);
     });
 
