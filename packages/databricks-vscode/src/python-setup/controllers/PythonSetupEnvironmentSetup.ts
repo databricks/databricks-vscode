@@ -26,6 +26,7 @@ import {
     reportRepoForResult,
     ReportEnvironment,
 } from "../utils/reportSetupIssue";
+import {isReauthRequiredError} from "../utils/authErrors";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     PythonSetupAttempt,
@@ -137,6 +138,15 @@ export interface PythonSetupSetupDeps {
      * affordance — there is no log to show.
      */
     notify: (message: string) => Promise<void>;
+
+    /**
+     * Prompt the user to re-authenticate when setup-local aborted because the
+     * profile's session expired (see {@link isReauthRequiredError}). A plain
+     * warning with a "Login" action that runs the extension's re-auth flow — no
+     * error styling, no log reveal, and no "Report this problem": an expired
+     * session is an expected, self-service condition, not a defect to report.
+     */
+    showReauthPrompt: () => Promise<void>;
 
     /**
      * Shows the mapped, user-facing copy — not raw CLI text — with a "Show Logs"
@@ -397,6 +407,15 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // non-Error rejection so `.message` is never undefined (the redactor
             // would throw on it, swallowing the original failure).
             const message = e instanceof Error ? e.message : String(e);
+            // An expired session is expected, not a defect: route it to a
+            // re-login prompt, not the hard error + "Report this problem". A
+            // positive gate — anything unmatched (real defect, network blip)
+            // falls through to the report path.
+            if (isReauthRequiredError(message)) {
+                reportResult({outcome: "not_started", reportOffered: false});
+                this.present(this.deps.showReauthPrompt());
+                return;
+            }
             const reportAction = buildExtensionFailureReportAction(reportEnv, {
                 phase: "spawn",
                 message,

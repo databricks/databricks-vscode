@@ -9,6 +9,7 @@ import {
     SUCCESS_DEFAULT,
     ERROR_NO_TARGET,
 } from "../models/fixtures/setupLocalResults";
+import {isReauthRequiredError} from "../utils/authErrors";
 
 /**
  * A fake child process that emits scripted stdout/stderr then closes. Lets us
@@ -240,6 +241,30 @@ describe("PythonSetupCliClient", () => {
             expect((e as Error).message).to.contain("boom");
         }
         expect(threw).to.equal(true);
+    });
+
+    it("produces a rejection the reauth matcher recognizes (gateway stderr → reauth gate)", async () => {
+        // The real shape of an expired-session abort: no JSON on stdout, the
+        // CLI's reauth guidance on stderr. This links the gateway's
+        // stderr-appending format to `isReauthRequiredError` (the controller's
+        // positive gate), so a change to either side that would silently break
+        // the re-login prompt fails here instead of in production.
+        const authStderr =
+            "Error: a new access token could not be retrieved because the " +
+            "refresh token is invalid. To reauthenticate, run the following " +
+            "command:\n  databricks auth login --profile dev\n";
+        const client = new PythonSetupCliClient(
+            () => "/fake/databricks",
+            () => ({}),
+            fakeSpawn({stdout: "", stderr: authStderr, code: 1})
+        );
+        let message = "";
+        try {
+            await client.run(inv, {cwd: "/proj"});
+        } catch (e) {
+            message = (e as Error).message;
+        }
+        expect(isReauthRequiredError(message)).to.equal(true);
     });
 
     it("decodes a multi-byte char split across two stdout chunks", async () => {

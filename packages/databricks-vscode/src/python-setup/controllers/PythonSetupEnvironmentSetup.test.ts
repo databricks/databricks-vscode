@@ -125,6 +125,7 @@ function makeDeps(
         adoptInterpreter: async () => {},
         saveState: () => {},
         notify: async () => {},
+        showReauthPrompt: async () => {},
         showError: async () => {},
         showSuccess: async () => {},
         reportEnvironment: {
@@ -566,6 +567,74 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(shown[0].actions?.[0].url).to.contain(
             "databricks/databricks-vscode/issues/new"
         );
+        expect(telemetry.results[0]).to.include({
+            outcome: "not_started",
+            reportOffered: true,
+        });
+    });
+
+    it("prompts re-login (no report) when the CLI aborts telling the user to re-authenticate", async () => {
+        const shownErrors: {
+            message: string;
+            action?: PythonSetupErrorAction;
+        }[] = [];
+        let reauthPrompts = 0;
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                // A no-result abort whose stderr carries the reauth signal.
+                cli: makeCli({
+                    reject: new Error(
+                        "CLI did not return valid JSON: Unexpected end of JSON input\n" +
+                            "Error: the refresh token is invalid. To reauthenticate, " +
+                            "run: databricks auth login --profile dev"
+                    ),
+                }),
+                recordSetupAttempt: telemetry.recordSetupAttempt,
+                showReauthPrompt: async () => {
+                    reauthPrompts++;
+                },
+                showError: async (message, _detail, action) => {
+                    shownErrors.push({message, action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(setup.ready).to.equal(false);
+        // The re-login prompt replaces the hard error + report action entirely.
+        expect(reauthPrompts).to.equal(1);
+        expect(shownErrors).to.have.length(0);
+        expect(telemetry.results[0]).to.include({
+            outcome: "not_started",
+            reportOffered: false,
+        });
+    });
+
+    it("reports a spawn/parse defect (not re-login) when the abort has no reauth signal", async () => {
+        const shown: {action?: PythonSetupErrorAction}[] = [];
+        let reauthPrompts = 0;
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                // A no-result abort with no auth signal (e.g. offline / crash):
+                // it must stay on the report path, not be mislabeled as expiry.
+                cli: makeCli({reject: new Error("spawn databricks ENOENT")}),
+                recordSetupAttempt: telemetry.recordSetupAttempt,
+                showReauthPrompt: async () => {
+                    reauthPrompts++;
+                },
+                showError: async (_m, _detail, action) => {
+                    shown.push({action});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(reauthPrompts).to.equal(0);
+        expect(shown[0].action?.label).to.equal("Report this problem");
         expect(telemetry.results[0]).to.include({
             outcome: "not_started",
             reportOffered: true,
