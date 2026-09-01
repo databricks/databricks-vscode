@@ -17,6 +17,7 @@ import {
     isIndexUnreachableFailure,
     NO_COMPUTE_TARGET_MESSAGE,
     PythonSetupErrorAction,
+    SELECT_PYTHON_INTERPRETER_COMMAND_ID,
 } from "../utils/errorMessages";
 import {
     buildExtensionFailureReportAction,
@@ -395,7 +396,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         } catch (e) {
             // A cancelled run is a user action, not a failure: stay quiet.
             if (e instanceof PythonSetupCancelledError) {
-                reportResult({outcome: "cancelled"});
+                reportResult({
+                    outcome: "cancelled",
+                    pythonInstallFlow: "cancelled",
+                });
                 return;
             }
             // Spawn/parse errors reject with a real Error carrying CLI stderr;
@@ -437,8 +441,23 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // its doc-link button, unchanged.
             const reportAction = getPythonSetupReportAction(result, reportEnv);
             const reportRepo = reportRepoForResult(result);
+            const remediationActions = getPythonSetupErrorActions(result);
+            const pythonInstallFlow =
+                result.error?.code === "E_PYTHON_INSTALL" ||
+                result.pythonResolution === "installed_fallback"
+                    ? "manual_selection_requested"
+                    : result.pythonResolution;
+            const actions = remediationActions.some(
+                (candidate) =>
+                    candidate.command === SELECT_PYTHON_INTERPRETER_COMMAND_ID
+            )
+                ? remediationActions
+                : reportAction
+                  ? [reportAction]
+                  : remediationActions;
             reportResult({
                 outcome: "failed",
+                ...(pythonInstallFlow !== undefined ? {pythonInstallFlow} : {}),
                 failurePhase: result.error?.failurePhase,
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
@@ -454,9 +473,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                         result,
                         reportRepo ? reportLogLink(reportRepo) : undefined
                     ),
-                    reportAction
-                        ? [reportAction]
-                        : getPythonSetupErrorActions(result)
+                    actions
                 )
             );
             return;
@@ -485,6 +502,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             });
             reportResult({
                 outcome: "failed",
+                ...(result.pythonResolution !== undefined
+                    ? {pythonInstallFlow: result.pythonResolution}
+                    : {}),
                 failurePhase: "adopt",
                 envKey: result.compute.envKey,
                 reportOffered: true,
@@ -520,6 +540,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             const message = e instanceof Error ? e.message : String(e);
             reportResult({
                 outcome: "failed",
+                ...(result.pythonResolution !== undefined
+                    ? {pythonInstallFlow: result.pythonResolution}
+                    : {}),
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
                 reportOffered: true,
@@ -546,6 +569,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // releases regardless of whether the user dismisses the notification.
         reportResult({
             outcome: "ok",
+            ...(result.pythonResolution !== undefined
+                ? {pythonInstallFlow: result.pythonResolution}
+                : {}),
             envKey: result.compute.envKey,
             warnings: result.warnings,
         });

@@ -316,12 +316,29 @@ describe("getPythonSetupErrorAction", () => {
         });
     });
 
-    it("points E_PYTHON_INSTALL at the uv install-Python docs", () => {
+    it("asks for manual interpreter selection after Python download fails", () => {
         expect(
             getPythonSetupErrorAction(failure("E_PYTHON_INSTALL"))
         ).to.deep.equal({
-            label: "Install a Python version",
-            url: "https://docs.astral.sh/uv/guides/install-python/",
+            label: "Select Python interpreter",
+            command: "databricks.environment.selectPythonInterpreter",
+        });
+    });
+
+    it("asks for manual selection when provisioning fails after installed fallback", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure(
+                    "E_PROVISION",
+                    {},
+                    {
+                        pythonResolution: "installed_fallback",
+                    }
+                )
+            )
+        ).to.deep.equal({
+            label: "Select Python interpreter",
+            command: "databricks.environment.selectPythonInterpreter",
         });
     });
 

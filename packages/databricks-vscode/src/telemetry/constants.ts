@@ -118,6 +118,13 @@ export type SetupTrigger = "auto_open" | "explicit_command" | "run" | "debug";
  */
 export type PythonSetupRunTrigger = "initial" | "rerun";
 
+/** Categorical outcome of Python acquisition and its user recovery path. */
+export type PythonInstallFlow =
+    | "uv_install_succeeded"
+    | "installed_fallback"
+    | "manual_selection_requested"
+    | "cancelled";
+
 // The uv-native ("VPEX") python-setup flow mirrors the CLI's `environments
 // setup-local --output json` contract, so the setup event unions are owned by
 // the result model (the TypeScript view of that contract) and re-exported here.
@@ -528,6 +535,7 @@ export class EventTypes {
     };
     [Events.PYTHON_ENV_SETUP_RESULT]: EventType<{
         outcome: PythonSetupOutcome;
+        pythonInstallFlow?: PythonInstallFlow;
         failurePhase?: PythonSetupFailurePhase;
         errorCode?: PythonSetupErrorCode;
         envKey?: string;
@@ -555,6 +563,12 @@ export class EventTypes {
             comment:
                 "ok | failed | cancelled (user aborted) | not_started (the CLI produced no " +
                 "result) | no_compute (the CTA was a dead end: nothing was attached to set up for)",
+        },
+        pythonInstallFlow: {
+            comment:
+                "Whether uv downloaded Python, an installed compatible Python was used, " +
+                "manual interpreter selection was requested, or the operation was cancelled. " +
+                "Categorical only; never contains an interpreter path or version",
         },
         failurePhase: {
             comment:
