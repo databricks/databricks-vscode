@@ -12,7 +12,7 @@ import {
 } from "../models/PythonSetupResult";
 import {
     formatSetupFailureDetail,
-    getPythonSetupErrorAction,
+    getPythonSetupErrorActions,
     getPythonSetupErrorMessage,
     isIndexUnreachableFailure,
     NO_COMPUTE_TARGET_MESSAGE,
@@ -143,14 +143,15 @@ export interface PythonSetupSetupDeps {
      * action that reveals the setup output channel. `detail`, when given, is
      * written to that channel first (see `formatSetupFailureDetail`), so the
      * button leads to the CLI's full explanation instead of an empty log.
-     * `action`, when given, adds one more button that opens an external URL —
-     * e.g. "Install uv" pointing at uv's install guide (see
-     * `getPythonSetupErrorAction`).
+     * `actions`, when non-empty, add remediation buttons ahead of "Show Logs" —
+     * each opens an external URL or runs a VS Code command. Most failures carry
+     * one; `E_UV_MISSING` carries two ("Install uv" + "Installation guide", see
+     * `getPythonSetupErrorActions`).
      */
     showError: (
         message: string,
         detail?: string,
-        action?: PythonSetupErrorAction
+        actions?: PythonSetupErrorAction[]
     ) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
@@ -405,7 +406,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 this.deps.showError(
                     message,
                     reportLogMirror("databricks/databricks-vscode"),
-                    reportAction
+                    [reportAction]
                 )
             );
             return;
@@ -434,7 +435,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                         result,
                         reportRepo ? reportLogLink(reportRepo) : undefined
                     ),
-                    reportAction ?? getPythonSetupErrorAction(result)
+                    reportAction
+                        ? [reportAction]
+                        : getPythonSetupErrorActions(result)
                 )
             );
             return;
@@ -472,7 +475,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 this.deps.showError(
                     message,
                     reportLogMirror("databricks/databricks-vscode"),
-                    reportAction
+                    [reportAction]
                 )
             );
             return;
@@ -507,10 +510,12 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 this.deps.showError(
                     message,
                     reportLogMirror("databricks/databricks-vscode"),
-                    buildExtensionFailureReportAction(reportEnv, {
-                        phase: "persist",
-                        message,
-                    })
+                    [
+                        buildExtensionFailureReportAction(reportEnv, {
+                            phase: "persist",
+                            message,
+                        }),
+                    ]
                 )
             );
             throw e;

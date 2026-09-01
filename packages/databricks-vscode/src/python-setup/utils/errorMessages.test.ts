@@ -2,7 +2,9 @@ import {expect} from "chai";
 import {
     formatSetupFailureDetail,
     getPythonSetupErrorAction,
+    getPythonSetupErrorActions,
     getPythonSetupErrorMessage,
+    INSTALL_UV_COMMAND_ID,
     isIndexUnreachableFailure,
     USE_MANUAL_SETUP_COMMAND_ID,
 } from "./errorMessages";
@@ -270,12 +272,14 @@ describe("getPythonSetupErrorMessage", () => {
 });
 
 describe("getPythonSetupErrorAction", () => {
-    it("offers an Install uv action pointing at the uv docs for E_UV_MISSING", () => {
+    it("offers an Installation guide link pointing at the uv docs for E_UV_MISSING", () => {
+        // The singular action is the manual fallback (and the log mirror); the
+        // one-click installer button is added by getPythonSetupErrorActions.
         const action = getPythonSetupErrorAction(
             failure("E_UV_MISSING", {failurePhase: "preflight"})
         );
         expect(action).to.deep.equal({
-            label: "Install uv",
+            label: "Installation guide",
             url: "https://docs.astral.sh/uv/getting-started/installation/",
         });
     });
@@ -385,6 +389,45 @@ describe("getPythonSetupErrorAction", () => {
         const ok = failure("E_UV_MISSING");
         ok.error = null;
         expect(getPythonSetupErrorAction(ok)).to.equal(undefined);
+    });
+});
+
+describe("getPythonSetupErrorActions", () => {
+    it("leads E_UV_MISSING with a one-click installer, then the manual guide", () => {
+        const actions = getPythonSetupErrorActions(
+            failure("E_UV_MISSING", {failurePhase: "preflight"})
+        );
+        expect(actions).to.deep.equal([
+            {label: "Install uv", command: INSTALL_UV_COMMAND_ID},
+            {
+                label: "Installation guide",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            },
+        ]);
+    });
+
+    it("wraps a non-uv code's single action in a one-element list", () => {
+        expect(
+            getPythonSetupErrorActions(failure("E_PYTHON_INSTALL"))
+        ).to.deep.equal([
+            {
+                label: "Install a Python version",
+                url: "https://docs.astral.sh/uv/guides/install-python/",
+            },
+        ]);
+    });
+
+    it("returns an empty list for a code with no actionable button", () => {
+        // E_USAGE has no doc link and is not E_UV_MISSING.
+        expect(getPythonSetupErrorActions(failure("E_USAGE"))).to.deep.equal(
+            []
+        );
+    });
+
+    it("returns an empty list when the result carries no error", () => {
+        const ok = failure("E_UV_MISSING");
+        ok.error = null;
+        expect(getPythonSetupErrorActions(ok)).to.deep.equal([]);
     });
 });
 
