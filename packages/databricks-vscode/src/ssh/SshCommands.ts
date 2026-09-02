@@ -182,6 +182,7 @@ export class SshCommands implements Disposable {
         // terminal report the real error rather than blocking a tunnel that
         // would have worked.
         await this.warnIfHostCliMissing();
+        await this.offerToInstallSshExtension();
         const context = await this.resolveTunnelContext();
         if (context === undefined) {
             return;
@@ -480,6 +481,52 @@ export class SshCommands implements Disposable {
             ? "https://docs.cursor.com/en/cli/installation"
             : "https://code.visualstudio.com/docs/setup/setup-overview";
         await commands.executeCommand("vscode.open", Uri.parse(url));
+    }
+
+    /**
+     * Offers to install the host's Remote SSH extension when it is missing or
+     * too old.
+     *
+     * `databricks ssh connect` checks this too, but from inside the terminal and
+     * by shelling out to `<command> --list-extensions`; that check is the
+     * largest single source of failed IDE-mode tunnels. Here the editor's own
+     * registry answers directly and its marketplace client does the install.
+     *
+     * Unlike warnIfHostCliMissing this awaits the choice rather than firing and
+     * forgetting: installing takes a moment, and the point is to let the attempt
+     * the user just started succeed instead of failing and relying on a retry.
+     * It still never blocks the tunnel — a dismissed or failed install falls
+     * through to the CLI's own check, which reports the real error.
+     */
+    private async offerToInstallSshExtension(): Promise<void> {
+        const status = HostUtils.getSshExtensionStatus();
+        if (status.kind === "ok") {
+            return;
+        }
+        const {id, name} = HostUtils.getHostSshExtension();
+        const detail =
+            status.kind === "missing"
+                ? "is not installed"
+                : `is version ${status.installed}, which is too old`;
+        const action = status.kind === "missing" ? "Install" : "Update";
+        const message =
+            `The "${name}" extension ${detail}. The Databricks SSH tunnel ` +
+            `needs it to open the remote window.`;
+
+        if ((await window.showWarningMessage(message, action)) !== action) {
+            return;
+        }
+        try {
+            await commands.executeCommand(
+                "workbench.extensions.installExtension",
+                id
+            );
+        } catch (e) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                `Failed to install the "${name}" extension`,
+                e
+            );
+        }
     }
 
     private async launchSshTunnel(

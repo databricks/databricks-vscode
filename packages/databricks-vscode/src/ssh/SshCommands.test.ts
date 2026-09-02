@@ -6,15 +6,17 @@ import {SshCommands} from "./SshCommands";
 import {HostUtils} from "../utils";
 
 /**
- * Exercises the advisory host-CLI PATH warning in isolation. The prompt is
- * fired-and-forgotten from startTunnelCommand, so tests reach the private
- * warnIfHostCliMissing directly and flush the detached prompt chain it kicks
- * off before asserting on the message and any follow-up command.
+ * Exercises the two tunnel pre-checks in isolation, reaching the private methods
+ * directly. The host-CLI PATH warning is fired-and-forgotten from
+ * startTunnelCommand, so those tests flush the detached prompt chain it kicks off
+ * before asserting; the Remote SSH extension check is awaited and needs no flush.
  */
 describe(__filename, () => {
     let originalIsHostCliOnPath: typeof HostUtils.isHostCliOnPath;
     let originalGetHostCliCommand: typeof HostUtils.getHostCliCommand;
     let originalIsCursor: typeof HostUtils.isCursor;
+    let originalGetSshExtensionStatus: typeof HostUtils.getSshExtensionStatus;
+    let originalGetHostSshExtension: typeof HostUtils.getHostSshExtension;
     let originalShowWarningMessage: typeof window.showWarningMessage;
     let originalExecuteCommand: typeof commands.executeCommand;
     let originalPlatform: PropertyDescriptor | undefined;
@@ -52,6 +54,8 @@ describe(__filename, () => {
         originalIsHostCliOnPath = HostUtils.isHostCliOnPath;
         originalGetHostCliCommand = HostUtils.getHostCliCommand;
         originalIsCursor = HostUtils.isCursor;
+        originalGetSshExtensionStatus = HostUtils.getSshExtensionStatus;
+        originalGetHostSshExtension = HostUtils.getHostSshExtension;
         originalShowWarningMessage = window.showWarningMessage;
         originalExecuteCommand = commands.executeCommand;
         originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
@@ -76,6 +80,9 @@ describe(__filename, () => {
         (HostUtils as any).isHostCliOnPath = originalIsHostCliOnPath;
         (HostUtils as any).getHostCliCommand = originalGetHostCliCommand;
         (HostUtils as any).isCursor = originalIsCursor;
+        (HostUtils as any).getSshExtensionStatus =
+            originalGetSshExtensionStatus;
+        (HostUtils as any).getHostSshExtension = originalGetHostSshExtension;
         (window as any).showWarningMessage = originalShowWarningMessage;
         (commands as any).executeCommand = originalExecuteCommand;
         if (originalPlatform) {
@@ -170,4 +177,82 @@ describe(__filename, () => {
         assert.strictEqual(shownWarnings.length, 1);
         assert.strictEqual(executedCommands.length, 0);
     });
+
+    describe("offerToInstallSshExtension", () => {
+        function stubExtension(status: HostUtils.SshExtensionStatus) {
+            (HostUtils as any).getSshExtensionStatus = () => status;
+            (HostUtils as any).getHostSshExtension = () => ({
+                id: "ms-vscode-remote.remote-ssh",
+                name: "Remote - SSH",
+                minVersion: "0.120.0",
+            });
+        }
+
+        function offer(sshCommands: SshCommands) {
+            return (sshCommands as any).offerToInstallSshExtension();
+        }
+
+        it("says nothing when the extension is usable", async () => {
+            stubExtension({kind: "ok"});
+
+            await offer(newSshCommands());
+
+            assert.strictEqual(shownWarnings.length, 0);
+            assert.strictEqual(executedCommands.length, 0);
+        });
+
+        it("offers to install a missing extension", async () => {
+            stubExtension({kind: "missing"});
+            warningResponse = "Install";
+
+            await offer(newSshCommands());
+
+            assert.strictEqual(shownWarnings.length, 1);
+            assert.ok(shownWarnings[0].message.includes('"Remote - SSH"'));
+            assert.deepStrictEqual(shownWarnings[0].items, ["Install"]);
+            assert.deepStrictEqual(executedCommands, [
+                {
+                    command: "workbench.extensions.installExtension",
+                    args: ["ms-vscode-remote.remote-ssh"],
+                },
+            ]);
+        });
+
+        it("offers to update an outdated extension, naming the version", async () => {
+            stubExtension({kind: "outdated", installed: "0.100.0"});
+            warningResponse = "Update";
+
+            await offer(newSshCommands());
+
+            assert.strictEqual(shownWarnings.length, 1);
+            assert.ok(shownWarnings[0].message.includes("0.100.0"));
+            assert.deepStrictEqual(shownWarnings[0].items, ["Update"]);
+            assert.strictEqual(
+                executedCommands[0].command,
+                "workbench.extensions.installExtension"
+            );
+        });
+
+        it("installs nothing when the prompt is dismissed", async () => {
+            stubExtension({kind: "missing"});
+            warningResponse = undefined;
+
+            await offer(newSshCommands());
+
+            assert.strictEqual(shownWarnings.length, 1);
+            assert.strictEqual(executedCommands.length, 0);
+        });
+
+        // The pre-check must never gate the tunnel: the CLI repeats the check and
+        // reports the real error, so a broken install here has to fall through.
+        it("does not throw when the install fails", async () => {
+            stubExtension({kind: "missing"});
+            warningResponse = "Install";
+            (commands as any).executeCommand = () =>
+                Promise.reject(new Error("marketplace unreachable"));
+
+            await offer(newSshCommands());
+        });
+    });
 });
+

@@ -1,5 +1,6 @@
-import {env} from "vscode";
+import {env, extensions} from "vscode";
 import {ExecUtils, logging} from "@databricks/sdk-experimental";
+import * as semver from "semver";
 import {cancellableExecFile} from "../cli/CliWrapper";
 import {Loggers} from "../logger";
 
@@ -84,4 +85,59 @@ export async function isHostCliOnPath(
         );
         return true;
     }
+}
+
+/**
+ * The Remote SSH extension `databricks ssh connect` opens the remote window
+ * through, and the lowest version it accepts. Mirrors the CLI's IDE descriptors
+ * the way getHostCliCommand mirrors its `--ide` handling: the CLI enforces this
+ * id and floor itself, so a value that drifts from it passes here and then
+ * fails in the terminal.
+ */
+export function getHostSshExtension(): {
+    id: string;
+    name: string;
+    minVersion: string;
+} {
+    if (isCursor()) {
+        return {
+            id: "anysphere.remote-ssh",
+            name: "Remote - SSH",
+            minVersion: "1.0.32",
+        };
+    }
+    return {
+        id: "ms-vscode-remote.remote-ssh",
+        name: "Remote - SSH",
+        minVersion: "0.120.0",
+    };
+}
+
+export type SshExtensionStatus =
+    | {kind: "ok"}
+    | {kind: "missing"}
+    | {kind: "outdated"; installed: string};
+
+/**
+ * Whether the host's Remote SSH extension is installed at a version the tunnel
+ * can use.
+ *
+ * The CLI answers the same question by shelling out to
+ * `<command> --list-extensions`, which can fail for reasons that say nothing
+ * about the extension. Reading the running editor's registry instead cannot.
+ * Extensions disabled in this window are absent from it and so read as missing,
+ * which is the right answer here: a disabled Remote SSH cannot open a window.
+ */
+export function getSshExtensionStatus(): SshExtensionStatus {
+    const {id, minVersion} = getHostSshExtension();
+    const installed = extensions.getExtension(id);
+    if (installed === undefined) {
+        return {kind: "missing"};
+    }
+    // Matches the CLI, which also treats an unparseable version as too old.
+    const version = String(installed.packageJSON.version);
+    if (semver.valid(version) !== null && semver.gte(version, minVersion)) {
+        return {kind: "ok"};
+    }
+    return {kind: "outdated", installed: version};
 }

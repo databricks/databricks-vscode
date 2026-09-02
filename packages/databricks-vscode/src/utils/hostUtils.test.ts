@@ -1,6 +1,12 @@
-import {env} from "vscode";
+import {env, extensions} from "vscode";
 import assert from "assert";
-import {getHostCliCommand, isCursor, isHostCliOnPath} from "./hostUtils";
+import {
+    getHostCliCommand,
+    getHostSshExtension,
+    getSshExtensionStatus,
+    isCursor,
+    isHostCliOnPath,
+} from "./hostUtils";
 import {cancellableExecFile} from "../cli/CliWrapper";
 
 describe(__filename, () => {
@@ -118,4 +124,77 @@ describe(__filename, () => {
             );
         });
     });
+
+    describe("getSshExtensionStatus", () => {
+        let originalGetExtension: typeof extensions.getExtension;
+
+        // Stands in for the one field getSshExtensionStatus reads off an extension.
+        function stubInstalled(version: string | undefined) {
+            (extensions as any).getExtension = () =>
+                version === undefined
+                    ? undefined
+                    : {packageJSON: {version}};
+        }
+
+        beforeEach(() => {
+            originalGetExtension = extensions.getExtension;
+            stubUriScheme("vscode");
+        });
+
+        afterEach(() => {
+            (extensions as any).getExtension = originalGetExtension;
+        });
+
+        it("resolves the extension id per host", () => {
+            stubUriScheme("cursor");
+            assert.strictEqual(
+                getHostSshExtension().id,
+                "anysphere.remote-ssh"
+            );
+            stubUriScheme("vscode");
+            assert.strictEqual(
+                getHostSshExtension().id,
+                "ms-vscode-remote.remote-ssh"
+            );
+        });
+
+        it("is missing when the extension is not in the registry", () => {
+            stubInstalled(undefined);
+            assert.deepStrictEqual(getSshExtensionStatus(), {kind: "missing"});
+        });
+
+        it("is ok at and above the minimum version", () => {
+            stubInstalled("0.120.0");
+            assert.deepStrictEqual(getSshExtensionStatus(), {kind: "ok"});
+            stubInstalled("0.130.1");
+            assert.deepStrictEqual(getSshExtensionStatus(), {kind: "ok"});
+        });
+
+        it("is outdated below the minimum version, and reports it", () => {
+            stubInstalled("0.100.0");
+            assert.deepStrictEqual(getSshExtensionStatus(), {
+                kind: "outdated",
+                installed: "0.100.0",
+            });
+        });
+
+        it("treats an unparseable version as outdated, like the CLI does", () => {
+            stubInstalled("not-a-version");
+            assert.deepStrictEqual(getSshExtensionStatus(), {
+                kind: "outdated",
+                installed: "not-a-version",
+            });
+        });
+
+        it("applies the Cursor floor in Cursor", () => {
+            stubUriScheme("cursor");
+            // Below Cursor's 1.0.32 floor but far above VS Code's 0.120.0 one.
+            stubInstalled("1.0.10");
+            assert.deepStrictEqual(getSshExtensionStatus(), {
+                kind: "outdated",
+                installed: "1.0.10",
+            });
+        });
+    });
 });
+
