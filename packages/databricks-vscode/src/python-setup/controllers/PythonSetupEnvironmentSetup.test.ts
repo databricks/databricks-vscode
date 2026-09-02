@@ -576,7 +576,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
     it("prompts re-login (no report) when the CLI aborts telling the user to re-authenticate", async () => {
         const shownErrors: {
             message: string;
-            action?: PythonSetupErrorAction;
+            actions?: PythonSetupErrorAction[];
         }[] = [];
         let reauthPrompts = 0;
         const telemetry = makeTelemetryRecorder();
@@ -594,8 +594,8 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
                 showReauthPrompt: async () => {
                     reauthPrompts++;
                 },
-                showError: async (message, _detail, action) => {
-                    shownErrors.push({message, action});
+                showError: async (message, _detail, actions) => {
+                    shownErrors.push({message, actions});
                 },
             })
         );
@@ -613,7 +613,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
     });
 
     it("reports a spawn/parse defect (not re-login) when the abort has no reauth signal", async () => {
-        const shown: {action?: PythonSetupErrorAction}[] = [];
+        const shown: {actions?: PythonSetupErrorAction[]}[] = [];
         let reauthPrompts = 0;
         const telemetry = makeTelemetryRecorder();
         const setup = new PythonSetupEnvironmentSetup(
@@ -625,8 +625,8 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
                 showReauthPrompt: async () => {
                     reauthPrompts++;
                 },
-                showError: async (_m, _detail, action) => {
-                    shown.push({action});
+                showError: async (_m, _detail, actions) => {
+                    shown.push({actions});
                 },
             })
         );
@@ -634,7 +634,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         await setup.setup();
 
         expect(reauthPrompts).to.equal(0);
-        expect(shown[0].action?.label).to.equal("Report this problem");
+        expect(shown[0].actions?.[0].label).to.equal("Report this problem");
         expect(telemetry.results[0]).to.include({
             outcome: "not_started",
             reportOffered: true,
