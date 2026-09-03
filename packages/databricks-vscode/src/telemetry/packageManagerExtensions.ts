@@ -1,5 +1,5 @@
 import {Events, Telemetry} from ".";
-import {TargetCompute, SetupTrigger, PythonEnvSetupMode} from "./constants";
+import type {TargetCompute, SetupTrigger, ReportedSetupMode} from "./constants";
 import {PackageManagerDetection} from "../language/packageManagerDetection";
 
 /**
@@ -11,7 +11,7 @@ export interface PackageManagerDetectionContext {
     pythonVersion?: string;
     targetCompute: TargetCompute;
     trigger: SetupTrigger;
-    setupMode: PythonEnvSetupMode;
+    setupMode: ReportedSetupMode;
 }
 
 declare module "." {

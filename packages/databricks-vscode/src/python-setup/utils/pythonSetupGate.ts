@@ -89,14 +89,16 @@ export function isUvSetupSuitable(detection: SuitabilityDetection): boolean {
 }
 
 /**
- * The environment-setup flow actually in effect for a session, as reported on
- * `python_env.setup.detected`. Distinct from the `auto | manual`
- * `databricks.python.environmentSetup` setting ({@link PythonEnvironmentSetupMode}):
- * `manual` maps to `fallback-pip` (the user opted out; an existing interpreter is
- * used as-is), while `auto` splits by uv-suitability into `uv` (uv-native flow)
- * or `pip` (legacy/non-uv flow — the exact manager stays in `primaryManager`).
+ * The environment-setup flow actually in effect, as reported on
+ * `python_env.setup.detected`. Named distinctly from the `auto | manual`
+ * `databricks.python.environmentSetup` setting ({@link PythonEnvironmentSetupMode})
+ * and the `default | constraints-only` provisioning `PythonSetupMode`, since all
+ * three sit on the same telemetry surface: `manual` maps to `fallback-pip` (the
+ * user opted out; an existing interpreter is used as-is), while `auto` splits by
+ * uv-suitability into `uv` (uv-native flow) or `pip` (legacy/non-uv flow — the
+ * exact manager stays in `primaryManager`).
  */
-export type PythonEnvSetupMode = "uv" | "pip" | "fallback-pip";
+export type ReportedSetupMode = "uv" | "pip" | "fallback-pip";
 
 /**
  * Resolve the reported setup mode from the user's setting and the detected
@@ -107,7 +109,7 @@ export type PythonEnvSetupMode = "uv" | "pip" | "fallback-pip";
 export function resolveSetupMode(
     setting: PythonEnvironmentSetupMode,
     detection: SuitabilityDetection
-): PythonEnvSetupMode {
+): ReportedSetupMode {
     if (setting === "manual") {
         return "fallback-pip";
     }

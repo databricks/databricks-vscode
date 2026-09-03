@@ -1,6 +1,5 @@
 import {
     commands,
-    ConfigurationTarget,
     debug,
     env,
     ExtensionContext,
@@ -60,6 +59,7 @@ import {PythonSetupDriftManager} from "./python-setup/controllers/PythonSetupDri
 import {PythonSetupAdoptionManager} from "./python-setup/controllers/PythonSetupAdoptionManager";
 import {SetupCompute} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
 import {venvInterpreterPath} from "./python-setup/utils/venvInterpreterPath";
+import {optOutOfAutomatedPythonSetup} from "./python-setup/utils/manualSetupOptOut";
 import {
     INSTALL_UV_COMMAND_ID,
     USE_MANUAL_SETUP_COMMAND_ID,
@@ -77,7 +77,7 @@ import {DatabricksEnvFileManager} from "./file-managers/DatabricksEnvFileManager
 import {getContextMetadata, Telemetry, toUserMetadata} from "./telemetry";
 import "./telemetry/commandExtensions";
 import "./telemetry/pythonSetupExtensions";
-import {Events, Metadata, PythonSetupOptoutSource} from "./telemetry/constants";
+import {Events, Metadata, PythonSetupOptOutSource} from "./telemetry/constants";
 import {EnvironmentDependenciesInstaller} from "./language/EnvironmentDependenciesInstaller";
 import {setDbnbCellLimits} from "./language/notebooks/DatabricksNbCellLimits";
 import {DbConnectStatusBarButton} from "./language/DbConnectStatusBarButton";
@@ -1076,44 +1076,27 @@ export async function activate(
         // folder is open we fall back to Global so the write still lands.
         telemetry.registerCommand(
             USE_MANUAL_SETUP_COMMAND_ID,
-            async (arg?: {source?: PythonSetupOptoutSource}) => {
+            async (arg?: {source?: PythonSetupOptOutSource}) => {
                 // The E_FETCH popup passes {source: "error_popup"}; a palette
                 // invocation passes nothing, so anything else reads as palette.
-                const source: PythonSetupOptoutSource =
+                const source: PythonSetupOptOutSource =
                     arg?.source === "error_popup"
                         ? "error_popup"
                         : "command_palette";
-                const hasFolder = (workspace.workspaceFolders?.length ?? 0) > 0;
-                const target = hasFolder
-                    ? ConfigurationTarget.Workspace
-                    : ConfigurationTarget.Global;
-                try {
-                    await workspaceConfigs.setPythonEnvironmentSetup(
-                        "manual",
-                        target
-                    );
-                } catch (e) {
-                    // Don't claim success if the write failed — the user would
-                    // otherwise believe automated setup is off when it is not.
-                    await window.showErrorMessage(
-                        `Could not update databricks.python.environmentSetup: ${
-                            e instanceof Error ? e.message : String(e)
-                        }`
-                    );
-                    return;
-                }
-                // Record only after the write lands, so the count reflects real
-                // opt-outs. scope mirrors the ConfigurationTarget written.
-                telemetry.recordManualSetupOptout({
-                    scope: hasFolder ? "workspace" : "global",
-                    source,
+                await optOutOfAutomatedPythonSetup(source, {
+                    currentMode: () => workspaceConfigs.pythonEnvironmentSetup,
+                    hasFolder: () =>
+                        (workspace.workspaceFolders?.length ?? 0) > 0,
+                    setManual: (target) =>
+                        workspaceConfigs.setPythonEnvironmentSetup(
+                            "manual",
+                            target
+                        ),
+                    recordOptOut: (report) =>
+                        telemetry.recordManualSetupOptOut(report),
+                    showError: (m) => window.showErrorMessage(m),
+                    showInfo: (m) => window.showInformationMessage(m),
                 });
-                // Match the message to the scope actually written: "this project"
-                // for Workspace, "globally" for the no-folder Global fallback.
-                const scope = hasFolder ? "for this project" : "globally";
-                await window.showInformationMessage(
-                    `Automated Python environment setup is now off ${scope} ("databricks.python.environmentSetup": "manual"). Your existing interpreter will be used as-is.`
-                );
             }
         ),
         // E_UV_MISSING's "Install uv" button: run uv's official installer in a
