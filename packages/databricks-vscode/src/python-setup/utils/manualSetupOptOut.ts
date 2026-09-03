@@ -8,7 +8,9 @@ import type {
 /**
  * Collaborators for {@link optOutOfAutomatedPythonSetup}, injected so the
  * decision logic (transition detection, scope, record-on-success) is unit-tested
- * without VS Code globals.
+ * without the VS Code UI globals (window/workspace/commands). The tests still run
+ * under the extension-host harness because the module imports the
+ * `ConfigurationTarget` enum as a runtime value.
  */
 export interface ManualSetupOptOutDeps {
     /** The effective setup mode, read before the write to detect a transition. */
