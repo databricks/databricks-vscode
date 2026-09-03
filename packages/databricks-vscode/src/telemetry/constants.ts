@@ -107,19 +107,19 @@ export type {PackageManager, PrimaryManager, InterpreterSource};
 // The effective setup-flow union lives with the uv-suitability gate that derives
 // it (the single source of truth), re-exported here so the event schema and the
 // resolver can never drift. Type-only, so no runtime dependency/cycle.
-import type {PythonEnvSetupMode} from "../python-setup/utils/pythonSetupGate";
-export type {PythonEnvSetupMode};
+import type {ReportedSetupMode} from "../python-setup/utils/pythonSetupGate";
+export type {ReportedSetupMode};
 
 /**
  * Which configuration scope the manual opt-out was written to: `workspace` when
  * a project folder is open, `global` for the no-folder fallback.
  */
-export type PythonSetupOptoutScope = "workspace" | "global";
+export type PythonSetupOptOutScope = "workspace" | "global";
 /**
  * Where the manual opt-out was triggered: the `error_popup` "Use manual setup"
  * button on the E_FETCH failure, or the `command_palette`.
  */
-export type PythonSetupOptoutSource = "error_popup" | "command_palette";
+export type PythonSetupOptOutSource = "error_popup" | "command_palette";
 
 /** The compute targeted at the time of detection. */
 export type TargetCompute = ComputeType | "none";
@@ -465,7 +465,7 @@ export class EventTypes {
         hasLockfile: boolean;
         targetCompute: TargetCompute;
         setupTrigger: SetupTrigger;
-        setupMode: PythonEnvSetupMode;
+        setupMode: ReportedSetupMode;
     }> = {
         comment:
             "The Python package/environment manager(s) detected for a project at setup time. " +
@@ -502,15 +502,17 @@ export class EventTypes {
         },
         setupMode: {
             comment:
-                "The environment-setup flow in effect this session: uv (uv-native setup), pip " +
-                "(legacy/non-uv flow; the exact manager is in primaryManager), or fallback-pip " +
+                "The environment-setup flow in effect at this detection: uv (uv-native setup), " +
+                "pip (legacy/non-uv flow; the exact manager is in primaryManager), or fallback-pip " +
                 "(user opted out via databricks.python.environmentSetup=manual). The auto|manual " +
-                "setting is recoverable: fallback-pip <=> manual, uv|pip <=> auto",
+                "setting is recoverable: fallback-pip <=> manual, uv|pip <=> auto. Emitted per " +
+                "(trigger, project) like the rest of this event, so measure prevalence by distinct " +
+                "user (common.vscodemachineid), not raw event share",
         },
     };
     [Events.PYTHON_ENV_MANUAL_SETUP_OPTOUT]: EventType<{
-        scope: PythonSetupOptoutScope;
-        source: PythonSetupOptoutSource;
+        scope: PythonSetupOptOutScope;
+        source: PythonSetupOptOutSource;
     }> = {
         comment:
             "The user opted out of automated uv-native Python setup by switching " +

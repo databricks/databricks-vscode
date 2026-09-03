@@ -532,11 +532,11 @@ describe(__filename, () => {
         });
     });
 
-    describe("recordManualSetupOptout", () => {
+    describe("recordManualSetupOptOut", () => {
         it("emits the opt-out event with scope and source", () => {
             const {telemetry, events} = makeTelemetry();
 
-            telemetry.recordManualSetupOptout({
+            telemetry.recordManualSetupOptOut({
                 scope: "workspace",
                 source: "error_popup",
             });
@@ -553,7 +553,7 @@ describe(__filename, () => {
         it("carries the global / command_palette variant through", () => {
             const {telemetry, events} = makeTelemetry();
 
-            telemetry.recordManualSetupOptout({
+            telemetry.recordManualSetupOptOut({
                 scope: "global",
                 source: "command_palette",
             });
