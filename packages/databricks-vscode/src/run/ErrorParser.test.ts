@@ -1,5 +1,5 @@
 import assert from "assert";
-import {parseErrorResult} from "./ErrorParser";
+import {parseErrorResult, renderErrorEnvelope} from "./ErrorParser";
 
 describe(__filename, () => {
     it("should parse error from SyntaxError", () => {
@@ -86,5 +86,37 @@ describe(__filename, () => {
         ];
 
         assert.deepStrictEqual(result, expected);
+    });
+
+    it("should render a structured error envelope into frames", () => {
+        const payload = JSON.stringify({
+            type: "ValueError",
+            message: "boom",
+            frames: [
+                {
+                    file: "/Workspace/Users/me/hello.py",
+                    line: 4,
+                    name: "<module>",
+                    text: 'raise ValueError("boom")',
+                },
+            ],
+        });
+
+        const result = renderErrorEnvelope(payload);
+
+        assert.deepStrictEqual(result, [
+            {text: "Traceback (most recent call last):"},
+            {
+                file: "/Workspace/Users/me/hello.py",
+                line: 4,
+                text: '  File "/Workspace/Users/me/hello.py", line 4, in <module>\n    raise ValueError("boom")',
+            },
+            {text: "\u001b[0;31mValueError: boom\u001b[0m"},
+        ]);
+    });
+
+    it("should surface a malformed envelope payload verbatim", () => {
+        const result = renderErrorEnvelope("  not json  ");
+        assert.deepStrictEqual(result, [{text: "not json"}]);
     });
 });
