@@ -4,14 +4,11 @@
 
 ## (2026-09-03)
 
--   Normalize notebook cell source before wrapping jobs (#2143) ([3b8a4dd](https://github.com/databricks/databricks-vscode/commit/3b8a4dd)), closes [#2143](https://github.com/databricks/databricks-vscode/issues/2143) [#2142](https://github.com/databricks/databricks-vscode/issues/2142)
--   Offer a one-click "Install uv" action when uv is missing (#2162) ([9f6f125](https://github.com/databricks/databricks-vscode/commit/9f6f125)), closes [#2162](https://github.com/databricks/databricks-vscode/issues/2162)
--   Prompt re-login on setup-local session expiry instead of a hard error (#2163) ([3ebc920](https://github.com/databricks/databricks-vscode/commit/3ebc920)), closes [#2163](https://github.com/databricks/databricks-vscode/issues/2163)
--   Update Databricks CLI to v1.14.1 (#2160) ([e3ddf06](https://github.com/databricks/databricks-vscode/commit/e3ddf06)), closes [#2160](https://github.com/databricks/databricks-vscode/issues/2160)
--   fix(python-setup): fix red main — align two lagging tests with the array showError signature (#2165) ([24f6731](https://github.com/databricks/databricks-vscode/commit/24f6731)), closes [#2165](https://github.com/databricks/databricks-vscode/issues/2165) [#2163](https://github.com/databricks/databricks-vscode/issues/2163) [#2163](https://github.com/databricks/databricks-vscode/issues/2163)
--   feat(python-setup): add manual mode to opt out of automated uv setup (#2158) ([9ab3cab](https://github.com/databricks/databricks-vscode/commit/9ab3cab)), closes [#2158](https://github.com/databricks/databricks-vscode/issues/2158) [#2149](https://github.com/databricks/databricks-vscode/issues/2149) [#2124](https://github.com/databricks/databricks-vscode/issues/2124) [#2149](https://github.com/databricks/databricks-vscode/issues/2149)
--   refactor(cli): unify CLI process execution behind one vscode-free seam (#2148) ([cbcda15](https://github.com/databricks/databricks-vscode/commit/cbcda15)), closes [#2148](https://github.com/databricks/databricks-vscode/issues/2148)
--   test(e2e): give the shared cluster warm-up a longer, single deadline (#2141) ([a72cdae](https://github.com/databricks/databricks-vscode/commit/a72cdae)), closes [#2141](https://github.com/databricks/databricks-vscode/issues/2141)
+-   Add a manual mode to opt out of automated Python environment (uv) setup (#2158) ([9ab3cab](https://github.com/databricks/databricks-vscode/commit/9ab3cab))
+-   Offer a one-click "Install uv" action when uv is missing (#2162) ([9f6f125](https://github.com/databricks/databricks-vscode/commit/9f6f125))
+-   Prompt re-login on setup-local session expiry instead of a hard error (#2163) ([3ebc920](https://github.com/databricks/databricks-vscode/commit/3ebc920))
+-   Normalize notebook cell source before wrapping jobs, fixing "Run as Databricks Job" when a cell's source is a JSON string (#2143) ([3b8a4dd](https://github.com/databricks/databricks-vscode/commit/3b8a4dd)) — reported in [#2142](https://github.com/databricks/databricks-vscode/issues/2142)
+-   Update Databricks CLI to v1.14.1 (#2160) ([e3ddf06](https://github.com/databricks/databricks-vscode/commit/e3ddf06)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes
 
 # Release: v2.15.0
 
