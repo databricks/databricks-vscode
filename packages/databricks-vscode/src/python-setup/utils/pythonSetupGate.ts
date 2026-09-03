@@ -3,6 +3,7 @@ import {
     PackageManager,
     PackageManagerDetection,
 } from "../../language/packageManagerDetection";
+import type {PythonEnvironmentSetupMode} from "../../vscode-objs/WorkspaceConfigs";
 
 /**
  * Managers whose presence means the project is already committed to a
@@ -85,4 +86,30 @@ export function isUvSetupSuitable(detection: SuitabilityDetection): boolean {
         : managers;
 
     return !effective.some((m) => COMPETING_MANAGERS.includes(m));
+}
+
+/**
+ * The environment-setup flow actually in effect for a session, as reported on
+ * `python_env.setup.detected`. Distinct from the `auto | manual`
+ * `databricks.python.environmentSetup` setting ({@link PythonEnvironmentSetupMode}):
+ * `manual` maps to `fallback-pip` (the user opted out; an existing interpreter is
+ * used as-is), while `auto` splits by uv-suitability into `uv` (uv-native flow)
+ * or `pip` (legacy/non-uv flow — the exact manager stays in `primaryManager`).
+ */
+export type PythonEnvSetupMode = "uv" | "pip" | "fallback-pip";
+
+/**
+ * Resolve the reported setup mode from the user's setting and the detected
+ * project. `manual` is decisive (opted out); on `auto`, uv-suitability decides.
+ * Kept beside {@link isUvSetupSuitable} so "which flow is in effect" has a single
+ * source of truth shared by the telemetry emitter.
+ */
+export function resolveSetupMode(
+    setting: PythonEnvironmentSetupMode,
+    detection: SuitabilityDetection
+): PythonEnvSetupMode {
+    if (setting === "manual") {
+        return "fallback-pip";
+    }
+    return isUvSetupSuitable(detection) ? "uv" : "pip";
 }
