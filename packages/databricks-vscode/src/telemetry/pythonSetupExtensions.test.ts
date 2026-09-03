@@ -531,4 +531,35 @@ describe(__filename, () => {
             ]);
         });
     });
+
+    describe("recordManualSetupOptout", () => {
+        it("emits the opt-out event with scope and source", () => {
+            const {telemetry, events} = makeTelemetry();
+
+            telemetry.recordManualSetupOptout({
+                scope: "workspace",
+                source: "error_popup",
+            });
+
+            expect(events).to.have.length(1);
+            expect(events[0].name).to.equal("python_env.manual_setup.optout");
+            expect(events[0].props).to.deep.equal({
+                "version": "1.0",
+                "event.scope": "workspace",
+                "event.source": "error_popup",
+            });
+        });
+
+        it("carries the global / command_palette variant through", () => {
+            const {telemetry, events} = makeTelemetry();
+
+            telemetry.recordManualSetupOptout({
+                scope: "global",
+                source: "command_palette",
+            });
+
+            expect(events[0].props["event.scope"]).to.equal("global");
+            expect(events[0].props["event.source"]).to.equal("command_palette");
+        });
+    });
 });

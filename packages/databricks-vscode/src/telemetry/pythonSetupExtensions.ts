@@ -6,6 +6,8 @@ import {
     PythonSetupErrorCode,
     PythonSetupFailurePhase,
     PythonSetupMode,
+    PythonSetupOptoutScope,
+    PythonSetupOptoutSource,
     PythonSetupOutcome,
     PythonSetupRunTrigger,
     TargetCompute,
@@ -240,7 +242,19 @@ declare module "." {
          * itself the adoption-rate denominator.
          */
         recordPythonSetupAdoption(report: PythonSetupAdoption): void;
+        /**
+         * Record that the user opted out of automated uv-native setup (switched
+         * `databricks.python.environmentSetup` to `manual`). Call only after the
+         * setting write succeeds, so the count reflects actual opt-outs.
+         */
+        recordManualSetupOptout(report: ManualSetupOptout): void;
     }
+}
+
+/** A manual-setup opt-out, reduced to the categorical fields we report. */
+export interface ManualSetupOptout {
+    scope: PythonSetupOptoutScope;
+    source: PythonSetupOptoutSource;
 }
 
 // Both payloads below name every field explicitly instead of spreading the
@@ -353,5 +367,16 @@ Telemetry.prototype.recordPythonSetupAdoption = function (
     this.recordEvent(Events.PYTHON_ENV_ADOPTION, {
         venvPresent: report.venvPresent,
         currentTargetType: report.currentTargetType,
+    });
+};
+
+Telemetry.prototype.recordManualSetupOptout = function (
+    report: ManualSetupOptout
+): void {
+    // Named explicitly (not spread) for the same allowlist reason as the
+    // emitters above; both fields are required categorical strings.
+    this.recordEvent(Events.PYTHON_ENV_MANUAL_SETUP_OPTOUT, {
+        scope: report.scope,
+        source: report.source,
     });
 };
