@@ -1,3 +1,15 @@
+# Release: v2.16.0
+
+## packages/databricks-vscode
+
+## (2026-09-03)
+
+-   Add a manual mode to opt out of automated Python environment (uv) setup (#2158) ([9ab3cab](https://github.com/databricks/databricks-vscode/commit/9ab3cab))
+-   Offer a one-click "Install uv" action when uv is missing (#2162) ([9f6f125](https://github.com/databricks/databricks-vscode/commit/9f6f125))
+-   Prompt re-login on setup-local session expiry instead of a hard error (#2163) ([3ebc920](https://github.com/databricks/databricks-vscode/commit/3ebc920))
+-   Normalize notebook cell source before wrapping jobs, fixing "Run as Databricks Job" when a cell's source is a JSON string (#2143) ([3b8a4dd](https://github.com/databricks/databricks-vscode/commit/3b8a4dd)) — reported in [#2142](https://github.com/databricks/databricks-vscode/issues/2142)
+-   Update Databricks CLI to v1.14.1 (#2160) ([e3ddf06](https://github.com/databricks/databricks-vscode/commit/e3ddf06)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes
+
 # Release: v2.15.0
 
 ## packages/databricks-vscode
