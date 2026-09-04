@@ -45,10 +45,6 @@ export const UV_INDEX_DOCS_URL =
 export const UV_PROJECTS_DOCS_URL =
     "https://docs.astral.sh/uv/concepts/projects/";
 
-/** uv's Python-version guide — for E_PYTHON_INSTALL. */
-export const UV_PYTHON_INSTALL_DOCS_URL =
-    "https://docs.astral.sh/uv/guides/install-python/";
-
 /** uv's resolution concept page — for a genuine E_PROVISION dependency conflict. */
 export const UV_RESOLUTION_DOCS_URL =
     "https://docs.astral.sh/uv/concepts/resolution/";
@@ -141,6 +137,10 @@ export function isIndexUnreachableFailure(result: PythonSetupResult): boolean {
  */
 export const USE_MANUAL_SETUP_COMMAND_ID =
     "databricks.environment.useManualPythonSetup";
+
+/** Existing extension command that opens the Python interpreter picker. */
+export const SELECT_PYTHON_INTERPRETER_COMMAND_ID =
+    "databricks.environment.selectPythonInterpreter";
 
 /**
  * Command that runs uv's official installer in a terminal for the current
@@ -251,10 +251,6 @@ const DOC_LINKS: Partial<Record<PythonSetupErrorCode, PythonSetupErrorAction>> =
             label: "Set up a uv project",
             url: UV_PROJECTS_DOCS_URL,
         },
-        E_PYTHON_INSTALL: {
-            label: "Install a Python version",
-            url: UV_PYTHON_INSTALL_DOCS_URL,
-        },
         E_PROVISION: {
             label: "Resolve dependency conflicts",
             url: UV_RESOLUTION_DOCS_URL,
@@ -286,6 +282,15 @@ export function getPythonSetupErrorAction(
     const err = result.error;
     if (!err) {
         return undefined;
+    }
+    if (
+        err.code === "E_PYTHON_INSTALL" ||
+        result.pythonResolution === "installed_fallback"
+    ) {
+        return {
+            label: "Select Python interpreter",
+            command: SELECT_PYTHON_INTERPRETER_COMMAND_ID,
+        };
     }
     // A blocked package index arrives as E_PROVISION and is distinguished by the
     // CLI's message, not its code — so resolve it before the code-keyed map,

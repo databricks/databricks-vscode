@@ -209,6 +209,29 @@ describe(__filename, () => {
         expect(events[1].props["event.outcome"]).to.equal("ok");
     });
 
+    it("reports only the categorical Python install flow", () => {
+        for (const pythonSetupFlow of [
+            "uv_install_succeeded",
+            "installed_fallback",
+            "manual_selection_requested",
+            "cancelled",
+        ] as const) {
+            const {telemetry, events} = makeTelemetry();
+            telemetry.recordPythonSetupAttempt({
+                packageManager: "uv",
+                targetType: "cluster",
+                mode: "default",
+                trigger: "initial",
+            })({outcome: "ok", pythonSetupFlow});
+
+            expect(events[1].props["event.pythonSetupFlow"]).to.equal(
+                pythonSetupFlow
+            );
+            expect(JSON.stringify(events[1])).to.not.contain("/usr/bin/python");
+            expect(JSON.stringify(events[1])).to.not.contain("3.12");
+        }
+    });
+
     it("passes through the CLI's documented env-key shapes", () => {
         for (const envKey of [
             "serverless/serverless-v5",

@@ -387,6 +387,94 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         ]);
     });
 
+    it("offers manual interpreter selection without retrying a failed download", async () => {
+        const shown: {actions?: PythonSetupErrorAction[]}[] = [];
+        const telemetry = makeTelemetryRecorder();
+        const pythonInstallFailure: PythonSetupResult = {
+            schemaVersion: 1,
+            command: "environments setup-local",
+            ok: false,
+            mode: "default",
+            dryRun: false,
+            greenfield: false,
+            phases: [],
+            warnings: [],
+            durationMs: 0,
+            error: {
+                code: "E_PYTHON_INSTALL",
+                failurePhase: "provision",
+                message: "Python download failed",
+                diskMutated: false,
+            },
+        };
+        const cli = makeCli({resolve: pythonInstallFailure});
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                recordSetupAttempt: telemetry.recordSetupAttempt,
+                showError: async (_message, _detail, actions) => {
+                    shown.push({actions});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(cli.calls).to.have.length(1);
+        expect(telemetry.results[0].pythonSetupFlow).to.equal(
+            "manual_selection_requested"
+        );
+        expect(shown[0].actions).to.deep.equal([
+            {
+                label: "Select Python interpreter",
+                command: "databricks.environment.selectPythonInterpreter",
+            },
+        ]);
+    });
+
+    it("prioritizes manual selection after installed fallback and keeps report in logs", async () => {
+        const shown: {
+            detail?: string;
+            actions?: PythonSetupErrorAction[];
+        }[] = [];
+        const fallbackFailure: PythonSetupResult = {
+            schemaVersion: 1,
+            command: "environments setup-local",
+            ok: false,
+            mode: "default",
+            dryRun: false,
+            pythonResolution: "installed_fallback",
+            greenfield: false,
+            phases: [],
+            warnings: [],
+            durationMs: 0,
+            error: {
+                code: "E_VALIDATE",
+                failurePhase: "validate",
+                message: "selected Python could not be validated",
+                diskMutated: false,
+            },
+        };
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: fallbackFailure}),
+                showError: async (_message, detail, actions) => {
+                    shown.push({detail, actions});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown[0].actions).to.deep.equal([
+            {
+                label: "Select Python interpreter",
+                command: "databricks.environment.selectPythonInterpreter",
+            },
+        ]);
+        expect(shown[0].detail).to.contain("Report this problem:");
+    });
+
     it("offers the mapped documentation action for a doc-linked failure", async () => {
         const shown: {actions?: PythonSetupErrorAction[]}[] = [];
         const setup = new PythonSetupEnvironmentSetup(
@@ -1236,7 +1324,9 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         await setup.setup();
 
         // Distinct from `failed`: the user gave up, nothing broke.
-        expect(telemetry.results).to.deep.equal([{outcome: "cancelled"}]);
+        expect(telemetry.results).to.deep.equal([
+            {outcome: "cancelled", pythonSetupFlow: "cancelled"},
+        ]);
     });
 
     it("reports not_started when the CLI produces no result", async () => {

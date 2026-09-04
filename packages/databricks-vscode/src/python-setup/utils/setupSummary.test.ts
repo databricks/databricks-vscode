@@ -38,6 +38,19 @@ describe("formatSetupNotification", () => {
         expect(message).to.contain("with 1 warning —");
         expect(message).to.not.contain("1 warnings");
     });
+
+    it("explains when setup used an installed Python after download failed", () => {
+        const fallback = {
+            ...SUCCESS_DEFAULT,
+            pythonResolution: "installed_fallback",
+        } as PythonSetupResult;
+
+        expect(formatSetupNotification(fallback)).to.equal(
+            "Python environment ready — Python download failed; used a " +
+                "compatible installed Python instead. .venv created and " +
+                "selected for your Databricks project."
+        );
+    });
 });
 
 describe("formatSetupLog", () => {
