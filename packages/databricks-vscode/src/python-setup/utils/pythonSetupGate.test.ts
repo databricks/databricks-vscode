@@ -4,7 +4,7 @@ import {
     PackageManager,
     PrimaryManager,
 } from "../../language/packageManagerDetection";
-import {isUvSetupSuitable} from "./pythonSetupGate";
+import {isUvSetupSuitable, resolveSetupMode} from "./pythonSetupGate";
 
 const det = (
     primary: PrimaryManager,
@@ -106,5 +106,43 @@ describe("isUvSetupSuitable", () => {
                 )
             )
         ).to.equal(false);
+    });
+});
+
+// The reported setup flow: manual is decisive (opted out → fallback-pip);
+// on auto, uv-suitability splits uv from pip.
+describe("resolveSetupMode", () => {
+    it("reports fallback-pip whenever the setting is manual", () => {
+        // Manual wins regardless of what the project looks like — even a clean
+        // uv project, because the user turned automated setup off.
+        expect(resolveSetupMode("manual", det("uv", ["uv"]))).to.equal(
+            "fallback-pip"
+        );
+        expect(
+            resolveSetupMode(
+                "manual",
+                det("pip", ["pip"], ["requirements.txt"])
+            )
+        ).to.equal("fallback-pip");
+    });
+
+    it("reports uv for an auto, uv-suitable project", () => {
+        expect(resolveSetupMode("auto", det("uv", ["uv"]))).to.equal("uv");
+        // Greenfield / packaging-shaped pyproject is uv-suitable too.
+        expect(
+            resolveSetupMode("auto", det("pip", ["pip"], ["pyproject.pipOnly"]))
+        ).to.equal("uv");
+    });
+
+    it("reports pip for an auto project driven by a competing manager", () => {
+        expect(
+            resolveSetupMode("auto", det("pip", ["pip"], ["requirements.txt"]))
+        ).to.equal("pip");
+        expect(
+            resolveSetupMode("auto", det("poetry", ["poetry"], ["poetry.lock"]))
+        ).to.equal("pip");
+        expect(
+            resolveSetupMode("auto", det("conda", ["conda"], ["conda.prefix"]))
+        ).to.equal("pip");
     });
 });

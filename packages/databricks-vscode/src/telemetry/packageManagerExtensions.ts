@@ -1,16 +1,17 @@
 import {Events, Telemetry} from ".";
-import {TargetCompute, SetupTrigger} from "./constants";
+import type {TargetCompute, SetupTrigger, ReportedSetupMode} from "./constants";
 import {PackageManagerDetection} from "../language/packageManagerDetection";
 
 /**
  * Context for a package-manager detection that is not part of the detection
- * result itself: the interpreter version, the targeted compute, and what
- * triggered the emission.
+ * result itself: the interpreter version, the targeted compute, what triggered
+ * the emission, and the effective setup flow.
  */
 export interface PackageManagerDetectionContext {
     pythonVersion?: string;
     targetCompute: TargetCompute;
     trigger: SetupTrigger;
+    setupMode: ReportedSetupMode;
 }
 
 declare module "." {
@@ -41,6 +42,7 @@ Telemetry.prototype.recordPackageManagerDetection = function (
         hasLockfile: detection.hasLockfile,
         targetCompute: context.targetCompute,
         setupTrigger: context.trigger,
+        setupMode: context.setupMode,
         // Omit pythonVersion entirely when unknown -- recordEvent serializes an
         // explicit `undefined` to the string "undefined", which would pollute
         // the schema for users without a resolved interpreter.
