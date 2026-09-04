@@ -26,7 +26,12 @@ import {
     promptForClusterStart,
 } from "./prompts";
 import * as fs from "node:fs/promises";
-import {parseErrorResult} from "./ErrorParser";
+import {
+    Frame,
+    parseErrorResult,
+    renderErrorEnvelope,
+    STDOUT_ERROR_BOUNDARY,
+} from "./ErrorParser";
 import path from "node:path";
 import {Time, TimeUnits} from "@databricks/sdk-experimental";
 import {BundleCommands} from "../ui/bundle-resource-explorer/BundleCommands";
@@ -195,37 +200,41 @@ export class DatabricksRuntime implements Disposable {
             const result = response.result;
 
             if (result.results!.resultType === "text") {
-                this._onDidSendOutputEmitter.fire({
-                    type: "out",
-                    text: (result.results as any).data,
-                    filePath: program,
-                    line: 0,
-                    column: 0,
-                });
-            } else if (result.results!.resultType === "error") {
-                const frames = parseErrorResult(result.results!);
-                for (const frame of frames) {
-                    let localFile = "";
-                    try {
-                        if (frame.file) {
-                            localFile = syncDestinationMapper.remoteToLocal(
-                                new RemoteUri(path.posix.normalize(frame.file))
-                            ).path;
-
-                            frame.text = frame.text.replace(
-                                frame.file,
-                                localFile
-                            );
-                        }
-                    } catch {}
-
+                const data: string = (result.results as any).data ?? "";
+                const boundary = data.indexOf(STDOUT_ERROR_BOUNDARY);
+                if (boundary === -1) {
+                    // Plain successful output.
                     this._onDidSendOutputEmitter.fire({
                         type: "out",
-                        text: frame.text,
-                        filePath: localFile,
-                        line: frame.line || 0,
+                        text: data,
+                        filePath: program,
+                        line: 0,
                         column: 0,
                     });
+                } else {
+                    // The script printed and then failed: bootstrap.py sends the
+                    // captured stdout, the boundary, then a structured traceback
+                    // (the 1.2 API drops stdout on native error results).
+                    const stdout = data.slice(0, boundary);
+                    const payload = data.slice(
+                        boundary + STDOUT_ERROR_BOUNDARY.length
+                    );
+                    if (stdout.length > 0) {
+                        this._onDidSendOutputEmitter.fire({
+                            type: "out",
+                            text: stdout,
+                            filePath: program,
+                            line: 0,
+                            column: 0,
+                        });
+                    }
+                    for (const frame of renderErrorEnvelope(payload)) {
+                        this.emitTracebackFrame(frame, syncDestinationMapper);
+                    }
+                }
+            } else if (result.results!.resultType === "error") {
+                for (const frame of parseErrorResult(result.results!)) {
+                    this.emitTracebackFrame(frame, syncDestinationMapper);
                 }
             } else {
                 this._onDidSendOutputEmitter.fire({
@@ -254,6 +263,34 @@ export class DatabricksRuntime implements Disposable {
         } finally {
             this._onDidEndEmitter.fire();
         }
+    }
+
+    /**
+     * Remap a traceback frame's remote file to its local path (so the emitted
+     * output links to the user's file) and send it to the output channel.
+     */
+    private emitTracebackFrame(
+        frame: Frame,
+        syncDestinationMapper: SyncDestinationMapper
+    ) {
+        let localFile = "";
+        try {
+            if (frame.file) {
+                localFile = syncDestinationMapper.remoteToLocal(
+                    new RemoteUri(path.posix.normalize(frame.file))
+                ).path;
+
+                frame.text = frame.text.replace(frame.file, localFile);
+            }
+        } catch {}
+
+        this._onDidSendOutputEmitter.fire({
+            type: "out",
+            text: frame.text,
+            filePath: localFile,
+            line: frame.line || 0,
+            column: 0,
+        });
     }
 
     private async compileCommandString(
@@ -306,6 +343,10 @@ export class DatabricksRuntime implements Disposable {
         bootstrap = bootstrap.replace(
             "env = {}",
             `env = ${JSON.stringify(envVars)}`
+        );
+        bootstrap = bootstrap.replace(
+            '"STDOUT_ERROR_BOUNDARY"',
+            `"${STDOUT_ERROR_BOUNDARY}"`
         );
 
         return bootstrap;
