@@ -130,6 +130,12 @@ describe(__filename, () => {
             );
             // A known bundled root is still present.
             assert.ok((ca as string[]).includes(tls.rootCertificates[0]));
+            // Deduped: the OS store often re-lists the bundled roots, but each
+            // cert appears at most once in the handed-off list.
+            assert.strictEqual(
+                new Set(ca as string[]).size,
+                (ca as string[]).length
+            );
         });
 
         it("disables certificate verification when strict SSL is off", async () => {

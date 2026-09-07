@@ -191,18 +191,23 @@ async function loadConfiguredCaCert(): Promise<string | undefined> {
  * certs, public-root TLS would break — hence the merge. When we have nothing to
  * add (system store unreadable and no `caCert`), return `undefined` so the
  * caller omits `ca` and Node keeps its defaults.
+ *
+ * Deduped because the OS store commonly re-lists the public roots already in
+ * `tls.rootCertificates`; a `Set` keeps the handed-off list minimal.
  */
 function buildCaBundle(
     systemCerts: string[] | undefined,
     configuredCaCert: string | undefined
-): (string | Buffer)[] | undefined {
+): string[] | undefined {
     if (!systemCerts && !configuredCaCert) {
         return undefined;
     }
     return [
-        ...tls.rootCertificates,
-        ...(systemCerts ?? []),
-        ...(configuredCaCert ? [configuredCaCert] : []),
+        ...new Set([
+            ...tls.rootCertificates,
+            ...(systemCerts ?? []),
+            ...(configuredCaCert ? [configuredCaCert] : []),
+        ]),
     ];
 }
 

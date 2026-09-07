@@ -148,10 +148,12 @@ export async function getDbConnectEnvVars(
  * only way to route CLI traffic through a proxy.
  *
  * Precedence mirrors the in-process SDK path (`proxyAgent.ts`
- * `getProxyAgentParams`): the VS Code `http.proxy` / `http.noProxy` settings win
- * over the OS `http(s)_proxy` / `no_proxy` env vars. That keeps the CLI and the
- * SDK resolving the same proxy from the same inputs, so a user who configures the
- * proxy purely through the VS Code setting gets it applied to both.
+ * `getProxyAgentParams`): the VS Code `http.proxy` setting wins over the OS
+ * `http(s)_proxy` env vars. That keeps the CLI and the SDK resolving the same
+ * proxy from the same inputs, so a user who configures the proxy purely through
+ * the VS Code setting gets it applied to both. `no_proxy` is the exception — the
+ * `http.noProxy` setting and the env var are *unioned* (not overridden), since a
+ * bypass list is only ever safer when it's broader.
  *
  * Absent values stay `undefined` so `removeUndefinedKeys(...)` at the call sites
  * strips them, leaving the CLI's own env untouched when nothing is configured.
