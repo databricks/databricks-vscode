@@ -97,6 +97,7 @@ import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
+import {applyProxyStrictSSLEnv} from "./utils/network/proxyAgent";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {PackageManagerTelemetry} from "./language/PackageManagerTelemetry";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
@@ -663,20 +664,16 @@ export async function activate(
         customWhenContext.updateShowClusterView();
     }
 
-    function updateStrictSSLEnv() {
-        const httpConfig = workspace.getConfiguration("http");
-        const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
-        process.env["DATABRICKS_SDK_PROXY_STRICT_SSL"] = proxyStrictSSL
-            ? "true"
-            : "false";
-    }
-
     updateFeatureContexts();
-    updateStrictSSLEnv();
+    // Resolve TLS strict-SSL through the same layered setting the SDK client
+    // path uses (databricks.proxy.strictSSL -> http.proxyStrictSSL -> true), so
+    // both writers of DATABRICKS_SDK_PROXY_STRICT_SSL agree and verification
+    // stays on by default when nothing is configured.
+    applyProxyStrictSSLEnv();
     context.subscriptions.push(
         workspace.onDidChangeConfiguration(() => {
             updateFeatureContexts();
-            updateStrictSSLEnv();
+            applyProxyStrictSSLEnv();
         })
     );
 
