@@ -1170,7 +1170,6 @@ export async function activate(
             try {
                 const result = await pythonSetupClient.run(
                     {
-                        mode: "default",
                         dryRun: true,
                         compute: resolution.compute,
                     },

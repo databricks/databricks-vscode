@@ -4,7 +4,6 @@ import {buildSetupLocalArgs, SetupLocalInvocation} from "./setupLocalArgs";
 describe("buildSetupLocalArgs", () => {
     it("builds a default serverless invocation with JSON output", () => {
         const inv: SetupLocalInvocation = {
-            mode: "default",
             compute: {kind: "serverless", version: "5"},
         };
         expect(buildSetupLocalArgs(inv)).to.deep.equal([
@@ -19,7 +18,6 @@ describe("buildSetupLocalArgs", () => {
 
     it("uses --cluster-id for a cluster target", () => {
         const args = buildSetupLocalArgs({
-            mode: "default",
             compute: {kind: "cluster", clusterId: "0710-abc"},
         });
         const i = args.indexOf("--cluster-id");
@@ -28,25 +26,56 @@ describe("buildSetupLocalArgs", () => {
         expect(args).to.not.include("--serverless-version");
     });
 
-    it("adds --constraints-only in constraints-only mode", () => {
+    it("adds --no-constraints when constraints are skipped", () => {
         const args = buildSetupLocalArgs({
-            mode: "constraints-only",
+            skipConstraints: true,
             compute: {kind: "serverless", version: "5"},
         });
-        expect(args).to.include("--constraints-only");
+        expect(args).to.include("--no-constraints");
+        expect(args).to.not.include("--no-dbconnect");
     });
 
-    it("omits --constraints-only in default mode", () => {
+    it("adds --no-dbconnect when databricks-connect is skipped", () => {
         const args = buildSetupLocalArgs({
-            mode: "default",
+            skipDbconnect: true,
             compute: {kind: "serverless", version: "5"},
+        });
+        expect(args).to.include("--no-dbconnect");
+        expect(args).to.not.include("--no-constraints");
+    });
+
+    it("adds both negative flags when both are skipped, --no-constraints first", () => {
+        const args = buildSetupLocalArgs({
+            skipConstraints: true,
+            skipDbconnect: true,
+            compute: {kind: "serverless", version: "5"},
+        });
+        const c = args.indexOf("--no-constraints");
+        const d = args.indexOf("--no-dbconnect");
+        expect(c).to.be.greaterThan(-1);
+        expect(d).to.be.greaterThan(-1);
+        expect(c).to.be.lessThan(d);
+    });
+
+    it("emits no behavioral flags for the default (full) invocation", () => {
+        const args = buildSetupLocalArgs({
+            compute: {kind: "serverless", version: "5"},
+        });
+        expect(args).to.not.include("--no-constraints");
+        expect(args).to.not.include("--no-dbconnect");
+    });
+
+    it("never emits the deprecated --constraints-only flag", () => {
+        const args = buildSetupLocalArgs({
+            skipConstraints: true,
+            skipDbconnect: true,
+            compute: {kind: "cluster", clusterId: "c"},
         });
         expect(args).to.not.include("--constraints-only");
     });
 
     it("never passes --profile (auth is forwarded via the environment)", () => {
         const args = buildSetupLocalArgs({
-            mode: "default",
             compute: {kind: "serverless", version: "5"},
         });
         expect(args).to.not.include("--profile");
@@ -54,7 +83,6 @@ describe("buildSetupLocalArgs", () => {
 
     it("passes the hidden --constraint-source-url when provided", () => {
         const args = buildSetupLocalArgs({
-            mode: "default",
             compute: {kind: "serverless", version: "5"},
             constraintSourceUrl: "http://localhost:8077",
         });
@@ -65,7 +93,8 @@ describe("buildSetupLocalArgs", () => {
 
     it("always ends with --output json", () => {
         const args = buildSetupLocalArgs({
-            mode: "constraints-only",
+            skipConstraints: true,
+            skipDbconnect: true,
             compute: {kind: "cluster", clusterId: "c"},
             constraintSourceUrl: "u",
         });
@@ -74,7 +103,6 @@ describe("buildSetupLocalArgs", () => {
 
     it("adds --dry-run when the invocation is a dry run", () => {
         const args = buildSetupLocalArgs({
-            mode: "default",
             compute: {kind: "serverless", version: "5"},
             dryRun: true,
         });
@@ -85,7 +113,6 @@ describe("buildSetupLocalArgs", () => {
 
     it("omits --dry-run by default", () => {
         const args = buildSetupLocalArgs({
-            mode: "default",
             compute: {kind: "serverless", version: "5"},
         });
         expect(args).to.not.include("--dry-run");

@@ -1,10 +1,8 @@
-import {PythonSetupMode} from "../models/PythonSetupResult";
-
 /**
- * A resolved `environments setup-local` invocation: the mode, the compute
- * target (cluster or serverless), and an optional dev-only constraint-source
- * override. This is the pure input to {@link buildSetupLocalArgs}; the gateway
- * turns the argv into a spawned process.
+ * A resolved `environments setup-local` invocation: the compute target (cluster
+ * or serverless), which of the two behavioral steps to skip, and an optional
+ * dev-only constraint-source override. This is the pure input to
+ * {@link buildSetupLocalArgs}; the gateway turns the argv into a spawned process.
  *
  * There is deliberately no profile here: authentication reaches the CLI through
  * the spawned process's environment (see `CliWrapper.getSetupLocalEnvVars`),
@@ -12,7 +10,6 @@ import {PythonSetupMode} from "../models/PythonSetupResult";
  * flag would be a redundant second source of truth.
  */
 export interface SetupLocalInvocation {
-    mode: PythonSetupMode;
     /**
      * When true, pass `--dry-run`: the CLI resolves compute and reports the
      * environment key without provisioning or writing to disk. Used by drift
@@ -24,6 +21,17 @@ export interface SetupLocalInvocation {
         | {kind: "cluster"; clusterId: string}
         | {kind: "serverless"; version: string};
     /**
+     * When true, pass `--no-constraints`: don't write the remote Python-version
+     * and dependency pins. Orthogonal to {@link skipDbconnect}.
+     */
+    skipConstraints?: boolean;
+    /**
+     * When true, pass `--no-dbconnect`: don't add the databricks-connect
+     * dependency. The orthogonal replacement for the deprecated
+     * `--constraints-only`. Orthogonal to {@link skipConstraints}.
+     */
+    skipDbconnect?: boolean;
+    /**
      * Hidden `--constraint-source-url` override (dev/testing only). The
      * serverless version is passed verbatim as a bare number, e.g. "5" — the
      * CLI normalizes it to `vN` in its output.
@@ -34,7 +42,8 @@ export interface SetupLocalInvocation {
 /**
  * Build the argv for `databricks environments setup-local --output json`.
  * Deterministic and side-effect-free so it is trivially unit-testable; the
- * order is fixed (compute → mode → source → output) for stable tests.
+ * order is fixed (compute → skip flags → dry-run → source → output) for stable
+ * tests.
  */
 export function buildSetupLocalArgs(inv: SetupLocalInvocation): string[] {
     const args = ["environments", "setup-local"];
@@ -45,8 +54,11 @@ export function buildSetupLocalArgs(inv: SetupLocalInvocation): string[] {
         args.push("--serverless-version", inv.compute.version);
     }
 
-    if (inv.mode === "constraints-only") {
-        args.push("--constraints-only");
+    if (inv.skipConstraints) {
+        args.push("--no-constraints");
+    }
+    if (inv.skipDbconnect) {
+        args.push("--no-dbconnect");
     }
     if (inv.dryRun) {
         args.push("--dry-run");
