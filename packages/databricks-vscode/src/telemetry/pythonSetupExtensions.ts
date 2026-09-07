@@ -11,6 +11,7 @@ import type {
     PythonSetupOptOutSource,
     PythonSetupOutcome,
     PythonSetupRunTrigger,
+    SetupPreset,
     TargetCompute,
 } from "./constants";
 import {PythonSetupWarning} from "../python-setup/models/PythonSetupResult";
@@ -26,6 +27,13 @@ export interface PythonSetupAttempt {
     /** The chosen serverless environment version; absent for clusters. */
     serverlessVersion?: string;
     mode: PythonSetupMode;
+    /**
+     * The preset tier the user picked (full | dbconnect | python). Kept
+     * alongside {@link mode} because the two-value mode field cannot represent
+     * the orthogonal skip axes the picker enables: a `dbconnect` run skips the
+     * pins yet still reports `mode: "default"`.
+     */
+    setupPreset: SetupPreset;
     /**
      * Whether the project has no `pyproject.toml` yet, or `undefined` when the
      * signal would be misleading — for a pip/conda project the absence of a
@@ -276,6 +284,7 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
         packageManager: attempt.packageManager,
         targetType: attempt.targetType,
         mode: attempt.mode,
+        setupPreset: attempt.setupPreset,
         trigger: attempt.trigger,
         ...(attempt.serverlessVersion !== undefined
             ? {serverlessVersion: attempt.serverlessVersion}

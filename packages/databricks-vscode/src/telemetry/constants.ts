@@ -154,6 +154,11 @@ import type {
     PythonSetupErrorCode,
 } from "../python-setup/models/PythonSetupResult";
 export type {PythonSetupMode, PythonSetupErrorCode};
+// The setup preset is an extension-side concept (the picker's tiers), not part
+// of the CLI wire contract, so it is owned by the picker util. Type-only, for
+// the attempt event's schema.
+import type {SetupPreset} from "../python-setup/utils/pythonSetupPresetPicker";
+export type {SetupPreset};
 
 /**
  * How a setup run ended.
@@ -541,6 +546,7 @@ export class EventTypes {
         targetType: ComputeType;
         serverlessVersion?: string;
         mode: PythonSetupMode;
+        setupPreset: SetupPreset;
         isGreenfield?: boolean;
         trigger: PythonSetupRunTrigger;
     }> = {
@@ -569,6 +575,14 @@ export class EventTypes {
         mode: {
             comment:
                 "Whether databricks-connect is included (default) or only the runtime constraints (constraints-only)",
+        },
+        setupPreset: {
+            comment:
+                "The preset tier the user picked: full (matching Python + Databricks Connect + " +
+                "pinned cluster dependencies), dbconnect (matching Python + Databricks Connect, " +
+                "no pins), or python (matching Python only). Disambiguates the two orthogonal " +
+                "skip axes that the two-value mode field cannot: a dbconnect run skips the pins " +
+                "yet reports mode=default",
         },
         isGreenfield: {
             comment:
