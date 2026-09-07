@@ -4,6 +4,7 @@ import {ExtensionContext, Uri} from "vscode";
 import {logging, Headers} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {TerraformMetadata} from "./terraformUtils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require("../../package.json");
@@ -140,12 +141,45 @@ export async function getDbConnectEnvVars(
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
+/**
+ * Proxy env vars forwarded to the bundled Databricks CLI (and any other
+ * subprocess). The Go CLI does no proxy handling of its own — it relies on Go's
+ * `http.ProxyFromEnvironment`, which reads only these env vars — so this is the
+ * only way to route CLI traffic through a proxy.
+ *
+ * Precedence mirrors the in-process SDK path (`proxyAgent.ts`
+ * `getProxyAgentParams`): the VS Code `http.proxy` / `http.noProxy` settings win
+ * over the OS `http(s)_proxy` / `no_proxy` env vars. That keeps the CLI and the
+ * SDK resolving the same proxy from the same inputs, so a user who configures the
+ * proxy purely through the VS Code setting gets it applied to both.
+ *
+ * Absent values stay `undefined` so `removeUndefinedKeys(...)` at the call sites
+ * strips them, leaving the CLI's own env untouched when nothing is configured.
+ */
 export function getProxyEnvVars() {
+    // The `http.proxy` setting is a single URL used for both schemes.
+    const settingProxy = workspaceConfigs.httpProxy;
+    const httpProxy =
+        settingProxy || process.env.HTTP_PROXY || process.env.http_proxy;
+    const httpsProxy =
+        settingProxy || process.env.HTTPS_PROXY || process.env.https_proxy;
+
+    // Merge the `http.noProxy` setting (an array) with the comma-separated
+    // NO_PROXY env var, deduping at host granularity.
+    const envNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
+    const noProxyParts = [
+        ...workspaceConfigs.httpNoProxy,
+        ...envNoProxy.split(","),
+    ]
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    const noProxy = [...new Set(noProxyParts)].join(",") || undefined;
+
     return {
         /* eslint-disable @typescript-eslint/naming-convention */
-        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
-        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
-        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy,
+        HTTP_PROXY: httpProxy,
+        HTTPS_PROXY: httpsProxy,
+        NO_PROXY: noProxy,
         /* eslint-enable @typescript-eslint/naming-convention */
     };
 }
