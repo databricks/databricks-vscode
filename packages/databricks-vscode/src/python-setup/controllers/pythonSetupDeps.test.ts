@@ -812,9 +812,11 @@ describe("makePythonSetupDeps showError", () => {
     it("runs the VS Code command when a command-action button is picked", async () => {
         const original = commands.executeCommand;
         const executed: string[] = [];
+        const executedArgs: unknown[] = [];
         (commands as unknown as {executeCommand: unknown}).executeCommand =
-            async (command: string) => {
+            async (command: string, ...args: unknown[]) => {
                 executed.push(command);
+                executedArgs.push(args[0]);
             };
         const originalOpen = env.openExternal;
         const opened: string[] = [];
@@ -845,6 +847,9 @@ describe("makePythonSetupDeps showError", () => {
             expect(executed).to.deep.equal([
                 "databricks.environment.installUv",
             ]);
+            // Command-actions are tagged as coming from the error popup, so a
+            // command can distinguish a popup click from a palette invocation.
+            expect(executedArgs).to.deep.equal([{source: "error_popup"}]);
             expect(opened).to.have.length(0);
         } finally {
             (commands as unknown as {executeCommand: unknown}).executeCommand =
