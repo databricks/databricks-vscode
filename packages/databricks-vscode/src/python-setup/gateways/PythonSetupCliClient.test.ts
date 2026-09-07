@@ -4,13 +4,12 @@ import {
     PythonSetupCancelledError,
     PythonSetupCliClient,
     SpawnFn,
-    TerminatePrimitives,
-    terminateProcessTree,
 } from "./PythonSetupCliClient";
 import {
     SUCCESS_DEFAULT,
     ERROR_NO_TARGET,
 } from "../models/fixtures/setupLocalResults";
+import {isReauthRequiredError} from "../utils/authErrors";
 
 /**
  * A fake child process that emits scripted stdout/stderr then closes. Lets us
@@ -27,10 +26,10 @@ function fakeSpawn(script: {
     captureArgs?: (
         cmd: string,
         args: string[],
-        cwd: string,
-        detached: boolean
+        cwd: string | undefined,
+        detached: boolean | undefined
     ) => void;
-    captureEnv?: (env: NodeJS.ProcessEnv) => void;
+    captureEnv?: (env: NodeJS.ProcessEnv | undefined) => void;
 }): SpawnFn {
     const toChunks = (v?: string | Buffer[]): Buffer[] => {
         if (v === undefined) {
@@ -44,6 +43,7 @@ function fakeSpawn(script: {
         const child: any = new EventEmitter();
         child.stdout = new EventEmitter();
         child.stderr = new EventEmitter();
+        child.stdin = {end: () => {}};
         child.kill = () => script.onKill?.();
         setImmediate(() => {
             if (script.spawnError) {
@@ -93,7 +93,7 @@ describe("PythonSetupCliClient", () => {
     it("spawns the resolved path with setup-local argv in the given cwd", async () => {
         let seenCmd = "";
         let seenArgs: string[] = [];
-        let seenCwd = "";
+        let seenCwd: string | undefined = "";
         const client = new PythonSetupCliClient(
             () => "/custom/databricks",
             () => ({}),
@@ -161,7 +161,7 @@ describe("PythonSetupCliClient", () => {
             () => ({DATABRICKS_CONFIG_PROFILE: profiles[call++]}),
             fakeSpawn({
                 stdout: JSON.stringify(SUCCESS_DEFAULT),
-                captureEnv: (env) => seen.push(env.DATABRICKS_CONFIG_PROFILE),
+                captureEnv: (env) => seen.push(env?.DATABRICKS_CONFIG_PROFILE),
             })
         );
         await client.run(inv, {cwd: "/proj"});
@@ -241,6 +241,30 @@ describe("PythonSetupCliClient", () => {
             expect((e as Error).message).to.contain("boom");
         }
         expect(threw).to.equal(true);
+    });
+
+    it("produces a rejection the reauth matcher recognizes (gateway stderr → reauth gate)", async () => {
+        // The real shape of an expired-session abort: no JSON on stdout, the
+        // CLI's reauth guidance on stderr. This links the gateway's
+        // stderr-appending format to `isReauthRequiredError` (the controller's
+        // positive gate), so a change to either side that would silently break
+        // the re-login prompt fails here instead of in production.
+        const authStderr =
+            "Error: a new access token could not be retrieved because the " +
+            "refresh token is invalid. To reauthenticate, run the following " +
+            "command:\n  databricks auth login --profile dev\n";
+        const client = new PythonSetupCliClient(
+            () => "/fake/databricks",
+            () => ({}),
+            fakeSpawn({stdout: "", stderr: authStderr, code: 1})
+        );
+        let message = "";
+        try {
+            await client.run(inv, {cwd: "/proj"});
+        } catch (e) {
+            message = (e as Error).message;
+        }
+        expect(isReauthRequiredError(message)).to.equal(true);
     });
 
     it("decodes a multi-byte char split across two stdout chunks", async () => {
@@ -404,69 +428,5 @@ describe("PythonSetupCliClient", () => {
         let caught: unknown;
         await client.run(inv, {cwd: "/proj", token}).catch((e) => (caught = e));
         expect(caught).to.be.instanceOf(PythonSetupCancelledError);
-    });
-});
-
-describe("terminateProcessTree", () => {
-    // Records what the terminator did, plus a fake child whose direct kill()
-    // we can observe. `killThrows` simulates the group being gone (ESRCH).
-    function harness(platform: NodeJS.Platform, killThrows = false) {
-        const calls = {
-            groupKill: [] as Array<[number, NodeJS.Signals]>,
-            spawned: [] as Array<[string, string[]]>,
-            directKill: [] as (NodeJS.Signals | undefined)[],
-        };
-        const prims: TerminatePrimitives = {
-            platform,
-            kill: (pid, signal) => {
-                if (killThrows) {
-                    throw new Error("ESRCH");
-                }
-                calls.groupKill.push([pid, signal]);
-            },
-            spawnHelper: (cmd, args) => calls.spawned.push([cmd, args]),
-        };
-        const child: any = new EventEmitter();
-        child.pid = 4321;
-        child.kill = (signal?: NodeJS.Signals) => calls.directKill.push(signal);
-        return {calls, prims, child};
-    }
-
-    it("kills the negated pid (process group) with SIGTERM on POSIX", () => {
-        const {calls, prims, child} = harness("linux");
-        terminateProcessTree(child, prims);
-        expect(calls.groupKill).to.deep.equal([[-4321, "SIGTERM"]]);
-        expect(calls.directKill).to.be.empty;
-    });
-
-    it("falls back to a direct child kill when the group is already gone", () => {
-        const {calls, prims, child} = harness("darwin", /*killThrows*/ true);
-        terminateProcessTree(child, prims);
-        expect(calls.directKill).to.deep.equal(["SIGTERM"]);
-    });
-
-    it("shells taskkill /T /F with the string pid on Windows", () => {
-        const {calls, prims, child} = harness("win32");
-        terminateProcessTree(child, prims);
-        expect(calls.spawned).to.deep.equal([
-            ["taskkill", ["/pid", "4321", "/T", "/F"]],
-        ]);
-        expect(calls.directKill).to.be.empty;
-    });
-
-    it("falls back to a direct kill when the child has no pid", () => {
-        const {calls, prims, child} = harness("linux");
-        child.pid = undefined;
-        terminateProcessTree(child, prims);
-        expect(calls.groupKill).to.be.empty;
-        expect(calls.directKill).to.deep.equal(["SIGTERM"]);
-    });
-
-    it("falls back to a direct kill on Windows when the child has no pid", () => {
-        const {calls, prims, child} = harness("win32");
-        child.pid = undefined;
-        terminateProcessTree(child, prims);
-        expect(calls.spawned).to.be.empty;
-        expect(calls.directKill).to.deep.equal(["SIGTERM"]);
     });
 });

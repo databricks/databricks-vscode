@@ -348,7 +348,7 @@ describe("getPythonSetupReportAction", () => {
             ENV
         );
         expect(action).to.not.equal(undefined);
-        expect(action!.url.length).to.be.lessThan(8000);
+        expect(action!.url!.length).to.be.lessThan(8000);
     });
 
     it("does not leak PII from stderr into the prefilled body", () => {
@@ -358,7 +358,7 @@ describe("getPythonSetupReportAction", () => {
             }),
             ENV
         );
-        const body = decodeURIComponent(action!.url.split("body=")[1]);
+        const body = decodeURIComponent(action!.url!.split("body=")[1]);
         expect(body).to.not.contain("grigory.panov");
     });
 });
@@ -373,7 +373,7 @@ describe("buildExtensionFailureReportAction", () => {
         expect(action.url).to.contain(
             "databricks/databricks-vscode/issues/new"
         );
-        const body = decodeURIComponent(action.url.split("body=")[1]);
+        const body = decodeURIComponent(action.url!.split("body=")[1]);
         expect(body).to.contain("adopt");
         expect(body).to.not.contain("jdoe");
     });

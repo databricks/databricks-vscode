@@ -11,7 +11,6 @@ import {
     CliWrapper,
     ProcessError,
     getSshConnectCommand,
-    waitForProcess,
 } from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
@@ -23,8 +22,6 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {isMatch} from "lodash";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {writeFileSync} from "fs";
-import {ChildProcess, ChildProcessWithoutNullStreams} from "child_process";
-import {Readable} from "stream";
 
 const execFile = promisify(execFileCb);
 // Mirror CliWrapper.cliPath: the bundled binary is `databricks.exe` on Windows.
@@ -495,30 +492,29 @@ describe("cancellableExecFile closeStdin", () => {
             await settled;
         }
     });
-});
 
-describe("waitForProcess", () => {
-    it("should return correctly formatted stdout and stderr", async () => {
-        const process = new ChildProcess();
-        const stdoutChunks = [`{"hello": "wor`, `ld"}`];
-        const stderrChunks = [`{"error": "no`, `oo"}`];
-        process.stdout = new Readable({
-            read() {
-                this.push(stdoutChunks.shift());
-            },
-        });
-        process.stderr = new Readable({
-            read() {
-                this.push(stderrChunks.shift());
-            },
-        });
-        const waitPromise = waitForProcess(
-            process as ChildProcessWithoutNullStreams
+    // On a non-zero exit the thrown error must mirror Node's `execFile`
+    // rejection: stderr in `.message` (the profile parser greps it) plus
+    // numeric `.code` and `.stderr`/`.stdout` (what the SDK's `isFileNotFound`
+    // inspects). Regression guard for the spawn-based reimplementation.
+    it("throws a Node-execFile-shaped error on a non-zero exit", async () => {
+        let caught: any;
+        try {
+            await cancellableExecFile(process.execPath, [
+                "-e",
+                "process.stderr.write('cannot parse config file'); process.stdout.write('partial'); process.exit(3);",
+            ]);
+        } catch (e) {
+            caught = e;
+        }
+        assert.ok(caught, "expected a rejection on non-zero exit");
+        assert.strictEqual(caught.code, 3);
+        assert.strictEqual(caught.stderr, "cannot parse config file");
+        assert.strictEqual(caught.stdout, "partial");
+        assert.ok(
+            caught.message.includes("cannot parse config file"),
+            "stderr must be in the error message for the profile-parse checks"
         );
-        process.emit("close", 0);
-        const {stdout, stderr} = await waitPromise;
-        assert.equal(stdout, `{"hello": "world"}`);
-        assert.equal(stderr, `{"error": "nooo"}`);
     });
 });
 

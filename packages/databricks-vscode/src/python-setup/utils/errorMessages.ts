@@ -45,10 +45,6 @@ export const UV_INDEX_DOCS_URL =
 export const UV_PROJECTS_DOCS_URL =
     "https://docs.astral.sh/uv/concepts/projects/";
 
-/** uv's Python-version guide — for E_PYTHON_INSTALL. */
-export const UV_PYTHON_INSTALL_DOCS_URL =
-    "https://docs.astral.sh/uv/guides/install-python/";
-
 /** uv's resolution concept page — for a genuine E_PROVISION dependency conflict. */
 export const UV_RESOLUTION_DOCS_URL =
     "https://docs.astral.sh/uv/concepts/resolution/";
@@ -133,14 +129,39 @@ export function isIndexUnreachableFailure(result: PythonSetupResult): boolean {
 }
 
 /**
- * An optional remediation button to attach to a failure popup: a label and the
- * external URL it opens. Kept alongside {@link getPythonSetupErrorMessage} so the
- * copy and its call-to-action live together.
+ * Command that flips `databricks.python.environmentSetup` to `manual` for the
+ * current project. Surfaced as the E_FETCH remediation button so a user whose
+ * network blocks the constraints host can opt out in one click. Defined here
+ * (next to the action that references it) and reused by the command registration
+ * so the two cannot drift.
  */
-export interface PythonSetupErrorAction {
-    label: string;
-    url: string;
-}
+export const USE_MANUAL_SETUP_COMMAND_ID =
+    "databricks.environment.useManualPythonSetup";
+
+/** Existing extension command that opens the Python interpreter picker. */
+export const SELECT_PYTHON_INTERPRETER_COMMAND_ID =
+    "databricks.environment.selectPythonInterpreter";
+
+/**
+ * Command that runs uv's official installer in a terminal for the current
+ * platform, surfaced as the primary E_UV_MISSING remediation button (see
+ * {@link getPythonSetupErrorActions}). Defined here — next to the action that
+ * references it — and reused by the command registration so the two cannot drift.
+ */
+export const INSTALL_UV_COMMAND_ID = "databricks.environment.installUv";
+
+/**
+ * An optional remediation button to attach to a failure popup. Exactly one of
+ * `url` / `command` is set — a discriminated union (`?: never` on the other arm)
+ * forbids both/neither at compile time, while still letting callers read
+ * `action.url` / `action.command` as `string | undefined` without narrowing.
+ * `url` opens an external page (docs, issue); `command` runs a VS Code command
+ * (e.g. the one-click switch to manual setup). Kept alongside
+ * {@link getPythonSetupErrorMessage} so the copy and its call-to-action live together.
+ */
+export type PythonSetupErrorAction =
+    | {label: string; url: string; command?: never}
+    | {label: string; command: string; url?: never};
 
 /* eslint-disable @typescript-eslint/naming-convention */
 const BASE_MESSAGE: Record<
@@ -167,8 +188,9 @@ const BASE_MESSAGE: Record<
         );
     },
     E_FETCH: () =>
-        "Could not reach the environment constraints repository and no local cache is available. " +
-        "Check your network connection and try again.",
+        "Could not reach the runtime constraints on raw.githubusercontent.com, and no local cache is available. " +
+        'If your network blocks it, allowlist that host — or set "databricks.python.environmentSetup" to ' +
+        '"manual" to skip automated setup and use your existing environment.',
     E_WRITE: () => "Failed to write pyproject.toml.",
     E_MERGE: () =>
         "Failed to merge the runtime constraints into your existing pyproject.toml.",
@@ -215,21 +237,19 @@ export function getPythonSetupErrorMessage(result: PythonSetupResult): string {
  * (E_USAGE, E_NOT_WRITABLE, E_WRITE, E_MERGE, E_VALIDATE, E_FETCH) are absent and
  * get the message alone rather than a link that might misdirect.
  *
- * `E_UV_MISSING` lives here so every code-keyed link takes one path; the
- * blocked-index variant of `E_PROVISION` cannot — it is told apart by the CLI's
- * message, not its code — so it is resolved ahead of this map (see below).
+ * `E_UV_MISSING`'s manual "Installation guide" link lives here so every code-keyed
+ * link takes one path (its one-click "Install uv" companion is added by
+ * {@link getPythonSetupErrorActions}); the blocked-index variant of `E_PROVISION`
+ * cannot — it is told apart by the CLI's message, not its code — so it is resolved
+ * ahead of this map (see below).
  */
 /* eslint-disable @typescript-eslint/naming-convention */
 const DOC_LINKS: Partial<Record<PythonSetupErrorCode, PythonSetupErrorAction>> =
     {
-        E_UV_MISSING: {label: "Install uv", url: UV_INSTALL_DOCS_URL},
+        E_UV_MISSING: {label: "Installation guide", url: UV_INSTALL_DOCS_URL},
         E_MANAGER_UNSUPPORTED: {
             label: "Set up a uv project",
             url: UV_PROJECTS_DOCS_URL,
-        },
-        E_PYTHON_INSTALL: {
-            label: "Install a Python version",
-            url: UV_PYTHON_INSTALL_DOCS_URL,
         },
         E_PROVISION: {
             label: "Resolve dependency conflicts",
@@ -263,13 +283,52 @@ export function getPythonSetupErrorAction(
     if (!err) {
         return undefined;
     }
+    if (
+        err.code === "E_PYTHON_INSTALL" ||
+        result.pythonResolution === "installed_fallback"
+    ) {
+        return {
+            label: "Select Python interpreter",
+            command: SELECT_PYTHON_INTERPRETER_COMMAND_ID,
+        };
+    }
     // A blocked package index arrives as E_PROVISION and is distinguished by the
     // CLI's message, not its code — so resolve it before the code-keyed map,
     // ahead of E_PROVISION's generic dependency-conflict link.
     if (isIndexUnreachableFailure(result)) {
         return {label: "Configure package index", url: UV_INDEX_DOCS_URL};
     }
+    // E_FETCH is the blocked-GitHub case (see the message/detail copy). Rather
+    // than only pointing at the setting, offer a one-click switch to manual mode.
+    if (err.code === "E_FETCH") {
+        return {
+            label: "Use manual setup",
+            command: USE_MANUAL_SETUP_COMMAND_ID,
+        };
+    }
     return DOC_LINKS[err.code];
+}
+
+/**
+ * The ordered remediation buttons for a failure popup. Most codes carry a single
+ * doc/command action (from {@link getPythonSetupErrorAction}), so this returns a
+ * one- or zero-element list. `E_UV_MISSING` is the exception: it leads with a
+ * one-click "Install uv" that runs uv's official installer in a terminal
+ * (`INSTALL_UV_COMMAND_ID`), then keeps the manual "Installation guide" link as a
+ * fallback for users who would rather install it themselves. Reuses the singular
+ * action for that fallback so the guide's label/URL are single-sourced.
+ */
+export function getPythonSetupErrorActions(
+    result: PythonSetupResult
+): PythonSetupErrorAction[] {
+    const action = getPythonSetupErrorAction(result);
+    if (result.error?.code === "E_UV_MISSING") {
+        return [
+            {label: "Install uv", command: INSTALL_UV_COMMAND_ID},
+            ...(action ? [action] : []),
+        ];
+    }
+    return action ? [action] : [];
 }
 
 /**
@@ -328,6 +387,22 @@ export function formatSetupFailureDetail(
             "     Use index-url (not extra-index-url) so pypi.org is replaced, not merely supplemented."
         );
     }
+    // E_FETCH means the published runtime constraints (on GitHub) were
+    // unreachable and nothing was cached — most often a corporate network that
+    // blocks raw.githubusercontent.com. Spell out both fixes here; the popup only
+    // summarises them.
+    if (err.code === "E_FETCH") {
+        lines.push(
+            "",
+            "Automated setup downloads runtime constraints from raw.githubusercontent.com " +
+                "(the databricks/environments repository), which your network appears to block. " +
+                "You have two options:",
+            "",
+            "  1. Ask your network admin to allowlist raw.githubusercontent.com, then re-run setup.",
+            '  2. Or skip automated setup and manage the environment yourself: set the "databricks.python.environmentSetup" ' +
+                'setting to "manual". The extension then uses your existing interpreter/.venv (with its databricks-connect) as-is.'
+        );
+    }
     // A genuine E_PROVISION conflict gets no report button (it is usually the
     // user's own dependencies). But if the *published constraints* are what
     // conflict, that is a defect worth reporting — so offer a soft, conditional
@@ -341,15 +416,17 @@ export function formatSetupFailureDetail(
         );
     }
     // The same doc link the popup offers as a button, spelled out here so the URL
-    // is reachable from the log even after the notification is dismissed.
+    // is reachable from the log even after the notification is dismissed. Only
+    // url-actions have something to print; a command-action (e.g. the E_FETCH
+    // "Use manual setup" button) has its guidance in the block above instead.
     const action = getPythonSetupErrorAction(result);
-    if (action) {
+    if (action && action.url) {
         lines.push("", `${action.label}: ${action.url}`);
     }
     // The report link is mirrored here too (a bare new-issue URL, not the popup's
     // long pre-filled deep-link) so it survives the notification being dismissed.
     // It is additive to the doc link above: a report-worthy code can carry both.
-    if (reportLink) {
+    if (reportLink && reportLink.url) {
         lines.push("", `${reportLink.label}: ${reportLink.url}`);
     }
     // Bracket with blank lines so the block stands apart from any streamed CLI

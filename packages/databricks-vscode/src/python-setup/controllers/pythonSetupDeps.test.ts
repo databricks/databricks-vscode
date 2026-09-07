@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {env, Uri, window} from "vscode";
+import {commands, env, Uri, window} from "vscode";
 import {
     makePythonSetupDeps,
     makePythonSetupVisibility,
@@ -25,6 +25,7 @@ describe("makePythonSetupVisibility", () => {
         const isVisible = makePythonSetupVisibility({
             detect: async () => uvDetection,
             projectRoot: () => undefined,
+            setupMode: () => "auto",
         });
         expect(await isVisible()).to.equal(false);
     });
@@ -33,6 +34,7 @@ describe("makePythonSetupVisibility", () => {
         const isVisible = makePythonSetupVisibility({
             detect: async () => uvDetection,
             projectRoot: () => "/proj",
+            setupMode: () => "auto",
         });
         expect(await isVisible()).to.equal(true);
     });
@@ -45,8 +47,26 @@ describe("makePythonSetupVisibility", () => {
                 signals: ["requirements.txt" as const],
             }),
             projectRoot: () => "/proj",
+            setupMode: () => "auto",
         });
         expect(await isVisible()).to.equal(false);
+    });
+
+    it("is hidden for a clean uv project when setup mode is manual", async () => {
+        // The user's opt-out: `manual` disables uv-native setup outright, so a
+        // valid existing environment is used as-is and no fetch to GitHub is
+        // needed. It short-circuits before detection even runs.
+        let detected = false;
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => {
+                detected = true;
+                return uvDetection;
+            },
+            projectRoot: () => "/proj",
+            setupMode: () => "manual",
+        });
+        expect(await isVisible()).to.equal(false);
+        expect(detected).to.equal(false);
     });
 });
 
@@ -156,6 +176,7 @@ function makeWiring(
             managers: ["uv" as const],
             signals: [],
         }),
+        setupMode: () => "auto",
         attachedCompute: () => ({
             serverless: false,
             cluster: undefined,
@@ -447,6 +468,7 @@ describe("makePythonSetupVisibility error handling", () => {
                 throw new Error("signal collection blew up");
             },
             projectRoot: () => "/proj",
+            setupMode: () => "auto",
         });
         // Must resolve false, not reject: a throwing gate would blank the
         // Environment section instead of showing the legacy checklist.
@@ -458,6 +480,18 @@ describe("makePythonSetupVisibility error handling", () => {
             detect: async () => uvDetection,
             projectRoot: () => {
                 throw new Error("no active project folder");
+            },
+            setupMode: () => "auto",
+        });
+        expect(await isVisible()).to.equal(false);
+    });
+
+    it("degrades to not-visible when the setup-mode read throws", async () => {
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => uvDetection,
+            projectRoot: () => "/proj",
+            setupMode: () => {
+                throw new Error("config read blew up");
             },
         });
         expect(await isVisible()).to.equal(false);
@@ -606,10 +640,12 @@ describe("makePythonSetupDeps showError", () => {
             );
             reply = "Install uv";
 
-            await deps.showError("uv missing", "detail", {
-                label: "Install uv",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             // Order matters: the remediation button leads, "Show Logs" follows.
             expect(shownWith[0].actions).to.deep.equal([
@@ -644,10 +680,12 @@ describe("makePythonSetupDeps showError", () => {
             );
             reply = "Show Logs";
 
-            await deps.showError("uv missing", "detail", {
-                label: "Show Logs",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Show Logs",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             // Only the single, unambiguous Show Logs button is offered...
             expect(shownWith[0].actions).to.deep.equal(["Show Logs"]);
@@ -674,10 +712,12 @@ describe("makePythonSetupDeps showError", () => {
             );
             reply = "Install uv";
 
-            await deps.showError("uv missing", "detail", {
-                label: "Install uv",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             expect(appended.join("")).to.match(/could not open/i);
         } finally {
@@ -703,10 +743,12 @@ describe("makePythonSetupDeps showError", () => {
             reply = "Install uv";
 
             // Must resolve, not throw.
-            await deps.showError("uv missing", "detail", {
-                label: "Install uv",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             // The failure is recorded to the log channel rather than swallowed
             // silently.
@@ -732,13 +774,81 @@ describe("makePythonSetupDeps showError", () => {
             );
             reply = "Show Logs";
 
-            await deps.showError("uv missing", "detail", {
-                label: "Install uv",
-                url: "https://docs.astral.sh/uv/getting-started/installation/",
-            });
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
 
             expect(opened).to.have.length(0);
         } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("renders two remediation buttons in order, then Show Logs", async () => {
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        reply = undefined; // dismissed — we only assert on the offered buttons
+
+        await deps.showError("uv missing", "detail", [
+            {label: "Install uv", command: "databricks.environment.installUv"},
+            {
+                label: "Installation guide",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            },
+        ]);
+
+        expect(shownWith[0].actions).to.deep.equal([
+            "Install uv",
+            "Installation guide",
+            "Show Logs",
+        ]);
+    });
+
+    it("runs the VS Code command when a command-action button is picked", async () => {
+        const original = commands.executeCommand;
+        const executed: string[] = [];
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            async (command: string) => {
+                executed.push(command);
+            };
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    command: "databricks.environment.installUv",
+                },
+                {
+                    label: "Installation guide",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
+
+            // The command runs; the sibling URL action is untouched.
+            expect(executed).to.deep.equal([
+                "databricks.environment.installUv",
+            ]);
+            expect(opened).to.have.length(0);
+        } finally {
+            (commands as unknown as {executeCommand: unknown}).executeCommand =
+                original;
             (env as unknown as {openExternal: unknown}).openExternal =
                 originalOpen;
         }
@@ -845,5 +955,84 @@ describe("makePythonSetupDeps showSuccess", () => {
 
         // Once on the automatic reveal, again when the button is picked.
         expect(shown).to.equal(2);
+    });
+});
+
+describe("makePythonSetupDeps showReauthPrompt", () => {
+    let originalShowWarning: typeof window.showWarningMessage;
+    let originalExecuteCommand: typeof commands.executeCommand;
+    let shownWith: {message: string; actions: string[]}[];
+    let executed: string[];
+    let reply: string | undefined;
+
+    beforeEach(() => {
+        originalShowWarning = window.showWarningMessage;
+        originalExecuteCommand = commands.executeCommand;
+        shownWith = [];
+        executed = [];
+        reply = undefined;
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = async (
+            message: string,
+            ...actions: string[]
+        ) => {
+            shownWith.push({message, actions});
+            return reply;
+        };
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            async (command: string) => {
+                executed.push(command);
+                return undefined;
+            };
+    });
+
+    afterEach(() => {
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = originalShowWarning;
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            originalExecuteCommand;
+    });
+
+    it("shows a warning with a Login action and does not reveal the log", async () => {
+        let logShown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        logShown++;
+                    },
+                },
+            })
+        );
+
+        await deps.showReauthPrompt();
+
+        expect(shownWith).to.have.length(1);
+        expect(shownWith[0].actions).to.deep.equal(["Login"]);
+        // An expired session is expected, not a defect: no log channel reveal.
+        expect(logShown).to.equal(0);
+    });
+
+    it("runs the re-auth command when Login is picked", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+        reply = "Login";
+
+        await deps.showReauthPrompt();
+
+        expect(executed).to.deep.equal([
+            "databricks.connection.configureLogin",
+        ]);
+    });
+
+    it("runs nothing when the prompt is dismissed", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+        reply = undefined;
+
+        await deps.showReauthPrompt();
+
+        expect(executed).to.have.length(0);
     });
 });

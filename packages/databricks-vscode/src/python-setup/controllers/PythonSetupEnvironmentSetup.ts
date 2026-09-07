@@ -12,11 +12,12 @@ import {
 } from "../models/PythonSetupResult";
 import {
     formatSetupFailureDetail,
-    getPythonSetupErrorAction,
+    getPythonSetupErrorActions,
     getPythonSetupErrorMessage,
     isIndexUnreachableFailure,
     NO_COMPUTE_TARGET_MESSAGE,
     PythonSetupErrorAction,
+    SELECT_PYTHON_INTERPRETER_COMMAND_ID,
 } from "../utils/errorMessages";
 import {
     buildExtensionFailureReportAction,
@@ -26,6 +27,7 @@ import {
     reportRepoForResult,
     ReportEnvironment,
 } from "../utils/reportSetupIssue";
+import {isReauthRequiredError} from "../utils/authErrors";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     PythonSetupAttempt,
@@ -139,18 +141,28 @@ export interface PythonSetupSetupDeps {
     notify: (message: string) => Promise<void>;
 
     /**
+     * Prompt the user to re-authenticate when setup-local aborted because the
+     * profile's session expired (see {@link isReauthRequiredError}). A plain
+     * warning with a "Login" action that runs the extension's re-auth flow — no
+     * error styling, no log reveal, and no "Report this problem": an expired
+     * session is an expected, self-service condition, not a defect to report.
+     */
+    showReauthPrompt: () => Promise<void>;
+
+    /**
      * Shows the mapped, user-facing copy — not raw CLI text — with a "Show Logs"
      * action that reveals the setup output channel. `detail`, when given, is
      * written to that channel first (see `formatSetupFailureDetail`), so the
      * button leads to the CLI's full explanation instead of an empty log.
-     * `action`, when given, adds one more button that opens an external URL —
-     * e.g. "Install uv" pointing at uv's install guide (see
-     * `getPythonSetupErrorAction`).
+     * `actions`, when non-empty, add remediation buttons ahead of "Show Logs" —
+     * each opens an external URL or runs a VS Code command. Most failures carry
+     * one; `E_UV_MISSING` carries two ("Install uv" + "Installation guide", see
+     * `getPythonSetupErrorActions`).
      */
     showError: (
         message: string,
         detail?: string,
-        action?: PythonSetupErrorAction
+        actions?: PythonSetupErrorAction[]
     ) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
@@ -384,7 +396,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         } catch (e) {
             // A cancelled run is a user action, not a failure: stay quiet.
             if (e instanceof PythonSetupCancelledError) {
-                reportResult({outcome: "cancelled"});
+                reportResult({
+                    outcome: "cancelled",
+                    pythonSetupFlow: "cancelled",
+                });
                 return;
             }
             // Spawn/parse errors reject with a real Error carrying CLI stderr;
@@ -396,6 +411,15 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // non-Error rejection so `.message` is never undefined (the redactor
             // would throw on it, swallowing the original failure).
             const message = e instanceof Error ? e.message : String(e);
+            // An expired session is expected, not a defect: route it to a
+            // re-login prompt, not the hard error + "Report this problem". A
+            // positive gate — anything unmatched (real defect, network blip)
+            // falls through to the report path.
+            if (isReauthRequiredError(message)) {
+                reportResult({outcome: "not_started", reportOffered: false});
+                this.present(this.deps.showReauthPrompt());
+                return;
+            }
             const reportAction = buildExtensionFailureReportAction(reportEnv, {
                 phase: "spawn",
                 message,
@@ -405,7 +429,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 this.deps.showError(
                     message,
                     reportLogMirror("databricks/databricks-vscode"),
-                    reportAction
+                    [reportAction]
                 )
             );
             return;
@@ -417,8 +441,23 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // its doc-link button, unchanged.
             const reportAction = getPythonSetupReportAction(result, reportEnv);
             const reportRepo = reportRepoForResult(result);
+            const remediationActions = getPythonSetupErrorActions(result);
+            const pythonSetupFlow =
+                result.error?.code === "E_PYTHON_INSTALL" ||
+                result.pythonResolution === "installed_fallback"
+                    ? "manual_selection_requested"
+                    : result.pythonResolution;
+            const actions = remediationActions.some(
+                (candidate) =>
+                    candidate.command === SELECT_PYTHON_INTERPRETER_COMMAND_ID
+            )
+                ? remediationActions
+                : reportAction
+                  ? [reportAction]
+                  : remediationActions;
             reportResult({
                 outcome: "failed",
+                ...(pythonSetupFlow !== undefined ? {pythonSetupFlow} : {}),
                 failurePhase: result.error?.failurePhase,
                 errorCode: result.error?.code,
                 envKey: result.compute?.envKey,
@@ -434,7 +473,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                         result,
                         reportRepo ? reportLogLink(reportRepo) : undefined
                     ),
-                    reportAction ?? getPythonSetupErrorAction(result)
+                    actions
                 )
             );
             return;
@@ -463,6 +502,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             });
             reportResult({
                 outcome: "failed",
+                ...(result.pythonResolution !== undefined
+                    ? {pythonSetupFlow: result.pythonResolution}
+                    : {}),
                 failurePhase: "adopt",
                 envKey: result.compute.envKey,
                 reportOffered: true,
@@ -472,7 +514,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 this.deps.showError(
                     message,
                     reportLogMirror("databricks/databricks-vscode"),
-                    reportAction
+                    [reportAction]
                 )
             );
             return;
@@ -498,6 +540,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             const message = e instanceof Error ? e.message : String(e);
             reportResult({
                 outcome: "failed",
+                ...(result.pythonResolution !== undefined
+                    ? {pythonSetupFlow: result.pythonResolution}
+                    : {}),
                 failurePhase: "persist",
                 envKey: result.compute.envKey,
                 reportOffered: true,
@@ -507,10 +552,12 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 this.deps.showError(
                     message,
                     reportLogMirror("databricks/databricks-vscode"),
-                    buildExtensionFailureReportAction(reportEnv, {
-                        phase: "persist",
-                        message,
-                    })
+                    [
+                        buildExtensionFailureReportAction(reportEnv, {
+                            phase: "persist",
+                            message,
+                        }),
+                    ]
                 )
             );
             throw e;
@@ -522,6 +569,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // releases regardless of whether the user dismisses the notification.
         reportResult({
             outcome: "ok",
+            ...(result.pythonResolution !== undefined
+                ? {pythonSetupFlow: result.pythonResolution}
+                : {}),
             envKey: result.compute.envKey,
             warnings: result.warnings,
         });

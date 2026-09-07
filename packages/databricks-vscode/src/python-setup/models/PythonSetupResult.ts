@@ -14,6 +14,9 @@
 /** Provisioning mode. `constraints-only` omits the databricks-connect dep. */
 export type PythonSetupMode = "default" | "constraints-only";
 
+/** How the CLI obtained the Python interpreter used for provisioning. */
+export type PythonResolution = "uv_install_succeeded" | "installed_fallback";
+
 /** Canonical execution phases, always reported in this order. */
 export type PythonSetupPhaseName =
     | "preflight"
@@ -97,6 +100,7 @@ export interface PythonSetupResult {
     ok: boolean;
     mode: PythonSetupMode;
     dryRun: boolean;
+    pythonResolution?: PythonResolution;
     /**
      * The resolved compute the environment was provisioned against. Mirrors the
      * CLI's `compute` result key (renamed from `target` in databricks/cli#6100)

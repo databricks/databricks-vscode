@@ -1,9 +1,4 @@
-import {
-    ChildProcessWithoutNullStreams,
-    SpawnOptionsWithoutStdio,
-    execFile as execFileCb,
-    spawn,
-} from "child_process";
+import {SpawnOptionsWithoutStdio} from "child_process";
 import {
     ExtensionContext,
     window,
@@ -12,7 +7,7 @@ import {
     CancellationToken,
 } from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {promisify} from "node:util";
+import {run as runCli} from "./cliProcess";
 import {logging} from "@databricks/sdk-experimental";
 import {LoggerManager, Loggers} from "../logger";
 import {Context, context} from "@databricks/sdk-experimental/dist/context";
@@ -33,85 +28,103 @@ import {
 } from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
-function getEscapedCommandAndAgrs(
-    cmd: string,
-    args: string[],
-    options: SpawnOptionsWithoutStdio
-) {
-    if (process.platform === "win32") {
-        const cmdArgs = args.slice();
-        args = [
-            "/d", // Disables execution of AutoRun commands, which are like .bashrc commands.
-            "/c", // Carries out the command specified by <string> and then exits the command processor.
-            `""${cmd}" ${cmdArgs.map((a) => `"${a}"`).join(" ")}"`,
-        ];
-        cmd = "cmd.exe";
-        options = {...options, windowsVerbatimArguments: true};
-    }
-    return {cmd, args, options};
-}
 
 export interface ExecFileOptions {
     /**
-     * Close the child's stdin immediately after spawning. Node's `execFile`
-     * gives the child an open stdin pipe that never receives EOF, so any CLI
-     * command that prompts for confirmation (e.g. `aitools update`) blocks
-     * forever waiting on input. Ending stdin delivers EOF so the prompt
-     * resolves instead of hanging. Only set this for non-interactive commands
-     * that we never feed input to.
+     * Close the child's stdin immediately after spawning. Node gives the child
+     * an open stdin pipe that never receives EOF, so any CLI command that
+     * prompts for confirmation (e.g. `aitools update`) blocks forever waiting
+     * on input. Ending stdin delivers EOF so the prompt resolves instead of
+     * hanging. Only set this for non-interactive commands we never feed input to.
      */
     closeStdin?: boolean;
 }
 
+/**
+ * Buffered CLI execution over the shared {@link runCli} seam: run to
+ * completion, then resolve with the full output or throw. The thrown error
+ * mirrors Node's `execFile` rejection so existing callers keep working — its
+ * `message` includes stderr, and `.code`/`.stderr`/`.stdout` are set — which
+ * is what the SDK's `isFileNotFound` and the profile-parsing checks inspect.
+ */
+async function bufferedExec(
+    file: string,
+    args: string[],
+    options: Omit<SpawnOptionsWithoutStdio, "signal">,
+    cancellationToken: CancellationToken | undefined,
+    execOptions: ExecFileOptions,
+    escapeCommandForWindows: boolean
+): Promise<{stdout: string; stderr: string}> {
+    const result = await runCli(file, args, {
+        // SpawnOptions types cwd as string | URL; every caller passes a string.
+        cwd: options.cwd as string | undefined,
+        env: options.env,
+        shell: options.shell as boolean | undefined,
+        token: cancellationToken,
+        closeStdin: execOptions.closeStdin,
+        escapeCommandForWindows,
+    });
+
+    if (result.cancelled) {
+        throw new CancellationError();
+    }
+    if (result.exitCode !== 0) {
+        const error: Error & {
+            code?: number | null;
+            stdout?: string;
+            stderr?: string;
+        } = new Error(
+            `Command failed: ${file} ${args.join(" ")}\n${result.stderr}`
+        );
+        error.code = result.exitCode;
+        error.stdout = result.stdout;
+        error.stderr = result.stderr;
+        throw error;
+    }
+    return {stdout: result.stdout, stderr: result.stderr};
+}
+
+/**
+ * Buffered exec that spawns `file` directly (bare command names resolve via the
+ * PATH / shell). Used by callers that manage their own Windows quoting through
+ * the `shell` option (e.g. the Azure and host-CLI probes).
+ */
 export async function cancellableExecFile(
     file: string,
     args: string[],
     options: Omit<SpawnOptionsWithoutStdio, "signal"> = {},
     cancellationToken?: CancellationToken,
     execOptions: ExecFileOptions = {}
-): Promise<{
-    stdout: string;
-    stderr: string;
-}> {
-    const abortController = new AbortController();
-    cancellationToken?.onCancellationRequested(() => abortController.abort());
-    const signal = abortController.signal;
-
-    const promise = promisify(execFileCb)(file, args, {
-        ...options,
-        signal,
-    });
-    if (execOptions.closeStdin) {
-        // `promisify(execFile)` returns a PromiseWithChild that exposes the
-        // spawned ChildProcess on `.child`.
-        promise.child.stdin?.end();
-    }
-    const res = await promise;
-    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+): Promise<{stdout: string; stderr: string}> {
+    return await bufferedExec(
+        file,
+        args,
+        options,
+        cancellationToken,
+        execOptions,
+        /*escapeCommandForWindows*/ false
+    );
 }
 
+/**
+ * Buffered exec that routes the command through `cmd.exe` on Windows, so a CLI
+ * invoked by a bare name or a path with spaces resolves and quotes correctly.
+ * The default entry point for the extension's own CLI calls.
+ */
 export const execFile = async (
     file: string,
     args: string[],
     options: Omit<SpawnOptionsWithoutStdio, "signal"> = {},
     cancellationToken?: CancellationToken,
     execOptions: ExecFileOptions = {}
-): Promise<{
-    stdout: string;
-    stderr: string;
-}> => {
-    const {
-        cmd,
-        args: escapedArgs,
-        options: escapedOptions,
-    } = getEscapedCommandAndAgrs(file, args, options);
-
-    return await cancellableExecFile(
-        cmd,
-        escapedArgs,
-        escapedOptions,
+): Promise<{stdout: string; stderr: string}> => {
+    return await bufferedExec(
+        file,
+        args,
+        options,
         cancellationToken,
-        execOptions
+        execOptions,
+        /*escapeCommandForWindows*/ true
     );
 };
 
@@ -272,42 +285,6 @@ export class CancellationError extends Error {
     }
 }
 
-export async function waitForProcess(
-    p: ChildProcessWithoutNullStreams,
-    onStdOut?: (data: string) => void,
-    onStdError?: (data: string) => void
-) {
-    const stdout: string[] = [];
-    p.stdout.on("data", (data) => {
-        stdout.push(data.toString());
-        if (onStdOut) {
-            onStdOut(data.toString());
-        }
-    });
-
-    const stderr: string[] = [];
-    p.stderr.on("data", (data) => {
-        stderr.push(data.toString());
-        if (onStdError) {
-            onStdError(data.toString());
-        }
-    });
-
-    await new Promise<void>((resolve, reject) => {
-        p.on("close", (code) => {
-            if (code === 0) {
-                resolve();
-            } else {
-                const message = onStdError ? "" : stderr.join("");
-                reject(new ProcessError(message, code));
-            }
-        });
-        p.on("error", (e) => new ProcessError(e.message, null));
-    });
-
-    return {stdout: stdout.join(""), stderr: stderr.join("")};
-}
-
 async function runBundleCommand(
     bundleOpName: string,
     cmd: string,
@@ -348,45 +325,50 @@ async function runBundleCommand(
     });
 
     logger?.debug(quote([cmd, ...args]), {bundleOpName});
-    const abortController = new AbortController();
-    let options: SpawnOptionsWithoutStdio = {
-        cwd: workspaceFolder.fsPath,
-        env: removeUndefinedKeys(env),
-        signal: abortController.signal,
-    };
 
-    ({cmd, args, options} = getEscapedCommandAndAgrs(cmd, args, options));
+    let result;
     try {
-        const p = spawn(cmd, args, options);
-        cancellationToken?.onCancellationRequested(() => {
-            if (process.platform === "win32" && p.pid) {
-                // On windows aborting the signal doesn't kill the CLI.
-                // Use taskkill here with the "force" and "tree" flags (to kill sub-processes too)
-                spawn("taskkill", ["/pid", String(p.pid), "/T", "/F"]);
-            } else {
-                abortController.abort();
-            }
+        result = await runCli(cmd, args, {
+            cwd: workspaceFolder.fsPath,
+            env: removeUndefinedKeys(env),
+            token: cancellationToken,
+            escapeCommandForWindows: true,
+            onStdout: onStdOut,
+            onStderr: onStdError,
         });
-        const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
-        logger?.info(displayLogs.end, {
-            bundleOpName,
-        });
-        logger?.debug("output", {stdout, stderr, bundleOpName});
-        return {stdout, stderr};
     } catch (e: any) {
+        // A genuine spawn/stream failure (e.g. the binary is missing).
         if (cancellationToken?.isCancellationRequested) {
             logger?.warn(`${displayLogs.error} Reason: Cancelled`, {
                 bundleOpName,
             });
             throw new CancellationError();
-        } else {
-            logger?.error(`${displayLogs.error} ${e.message ?? ""}`, {
-                ...e,
-                bundleOpName,
-            });
-            throw new ProcessError(e.message, e.code);
         }
+        logger?.error(`${displayLogs.error} ${e.message ?? ""}`, {
+            ...e,
+            bundleOpName,
+        });
+        throw new ProcessError(e.message, e.code ?? null);
     }
+
+    if (result.cancelled) {
+        logger?.warn(`${displayLogs.error} Reason: Cancelled`, {bundleOpName});
+        throw new CancellationError();
+    }
+    if (result.exitCode !== 0) {
+        // stderr was streamed to onStdError (and the logs), so the error itself
+        // carries no message — the detail lives in the "Show Logs" channel.
+        logger?.error(displayLogs.error, {bundleOpName});
+        throw new ProcessError("", result.exitCode);
+    }
+
+    logger?.info(displayLogs.end, {bundleOpName});
+    logger?.debug("output", {
+        stdout: result.stdout,
+        stderr: result.stderr,
+        bundleOpName,
+    });
+    return {stdout: result.stdout, stderr: result.stderr};
 }
 /**
  * Entrypoint for all wrapped CLI commands

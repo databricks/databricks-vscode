@@ -5,6 +5,7 @@ import {
     PythonSetupDriftTrigger,
     PythonSetupErrorCode,
     PythonSetupFailurePhase,
+    PythonSetupFlow,
     PythonSetupMode,
     PythonSetupOutcome,
     PythonSetupRunTrigger,
@@ -61,6 +62,7 @@ export interface PythonSetupAdoption {
 /** How a setup run ended, reduced to the categorical fields we report. */
 export interface PythonSetupOutcomeReport {
     outcome: PythonSetupOutcome;
+    pythonSetupFlow?: PythonSetupFlow;
     failurePhase?: PythonSetupFailurePhase;
     errorCode?: PythonSetupErrorCode;
     envKey?: string;
@@ -282,6 +284,9 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
         reported = true;
         reportResult({
             outcome: report.outcome,
+            ...(report.pythonSetupFlow !== undefined
+                ? {pythonSetupFlow: report.pythonSetupFlow}
+                : {}),
             ...(report.failurePhase !== undefined
                 ? {failurePhase: report.failurePhase}
                 : {}),

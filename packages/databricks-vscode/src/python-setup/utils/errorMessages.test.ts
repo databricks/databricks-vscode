@@ -2,8 +2,11 @@ import {expect} from "chai";
 import {
     formatSetupFailureDetail,
     getPythonSetupErrorAction,
+    getPythonSetupErrorActions,
     getPythonSetupErrorMessage,
+    INSTALL_UV_COMMAND_ID,
     isIndexUnreachableFailure,
+    USE_MANUAL_SETUP_COMMAND_ID,
 } from "./errorMessages";
 import {
     PythonSetupResult,
@@ -132,6 +135,18 @@ describe("getPythonSetupErrorMessage", () => {
         );
     });
 
+    it("E_FETCH names the GitHub Raw host and the manual-mode escape hatch", () => {
+        // The regression from issue #2149: a network that blocks GitHub Raw
+        // dead-ends here, so the message must name the host to allowlist and the
+        // setting that skips automated setup entirely.
+        const msg = getPythonSetupErrorMessage(
+            failure("E_FETCH", {failurePhase: "fetch"})
+        );
+        expect(msg).to.contain("raw.githubusercontent.com");
+        expect(msg).to.contain("databricks.python.environmentSetup");
+        expect(msg).to.match(/manual/i);
+    });
+
     it("maps E_VALIDATE to a mismatch message", () => {
         expect(getPythonSetupErrorMessage(failure("E_VALIDATE"))).to.match(
             /match|mismatch/i
@@ -257,12 +272,14 @@ describe("getPythonSetupErrorMessage", () => {
 });
 
 describe("getPythonSetupErrorAction", () => {
-    it("offers an Install uv action pointing at the uv docs for E_UV_MISSING", () => {
+    it("offers an Installation guide link pointing at the uv docs for E_UV_MISSING", () => {
+        // The singular action is the manual fallback (and the log mirror); the
+        // one-click installer button is added by getPythonSetupErrorActions.
         const action = getPythonSetupErrorAction(
             failure("E_UV_MISSING", {failurePhase: "preflight"})
         );
         expect(action).to.deep.equal({
-            label: "Install uv",
+            label: "Installation guide",
             url: "https://docs.astral.sh/uv/getting-started/installation/",
         });
     });
@@ -299,12 +316,29 @@ describe("getPythonSetupErrorAction", () => {
         });
     });
 
-    it("points E_PYTHON_INSTALL at the uv install-Python docs", () => {
+    it("asks for manual interpreter selection after Python download fails", () => {
         expect(
             getPythonSetupErrorAction(failure("E_PYTHON_INSTALL"))
         ).to.deep.equal({
-            label: "Install a Python version",
-            url: "https://docs.astral.sh/uv/guides/install-python/",
+            label: "Select Python interpreter",
+            command: "databricks.environment.selectPythonInterpreter",
+        });
+    });
+
+    it("asks for manual selection when provisioning fails after installed fallback", () => {
+        expect(
+            getPythonSetupErrorAction(
+                failure(
+                    "E_PROVISION",
+                    {},
+                    {
+                        pythonResolution: "installed_fallback",
+                    }
+                )
+            )
+        ).to.deep.equal({
+            label: "Select Python interpreter",
+            command: "databricks.environment.selectPythonInterpreter",
         });
     });
 
@@ -341,14 +375,17 @@ describe("getPythonSetupErrorAction", () => {
         });
     });
 
-    it("offers no action for E_FETCH (deliberately message-only)", () => {
-        // A generic network/cache failure has no single doc that reliably helps,
-        // so we avoid pointing the user at an unclear page.
+    it("offers a one-click 'Use manual setup' command action for E_FETCH", () => {
+        // The blocked-GitHub case: rather than a doc link, the button runs the
+        // command that flips the setting to manual for the project.
         expect(
             getPythonSetupErrorAction(
                 failure("E_FETCH", {failurePhase: "fetch"})
             )
-        ).to.equal(undefined);
+        ).to.deep.equal({
+            label: "Use manual setup",
+            command: USE_MANUAL_SETUP_COMMAND_ID,
+        });
     });
 
     it("offers no action for codes with no clear remediation doc", () => {
@@ -369,6 +406,45 @@ describe("getPythonSetupErrorAction", () => {
         const ok = failure("E_UV_MISSING");
         ok.error = null;
         expect(getPythonSetupErrorAction(ok)).to.equal(undefined);
+    });
+});
+
+describe("getPythonSetupErrorActions", () => {
+    it("leads E_UV_MISSING with a one-click installer, then the manual guide", () => {
+        const actions = getPythonSetupErrorActions(
+            failure("E_UV_MISSING", {failurePhase: "preflight"})
+        );
+        expect(actions).to.deep.equal([
+            {label: "Install uv", command: INSTALL_UV_COMMAND_ID},
+            {
+                label: "Installation guide",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            },
+        ]);
+    });
+
+    it("wraps Python install recovery in a one-element list", () => {
+        expect(
+            getPythonSetupErrorActions(failure("E_PYTHON_INSTALL"))
+        ).to.deep.equal([
+            {
+                label: "Select Python interpreter",
+                command: "databricks.environment.selectPythonInterpreter",
+            },
+        ]);
+    });
+
+    it("returns an empty list for a code with no actionable button", () => {
+        // E_USAGE has no doc link and is not E_UV_MISSING.
+        expect(getPythonSetupErrorActions(failure("E_USAGE"))).to.deep.equal(
+            []
+        );
+    });
+
+    it("returns an empty list when the result carries no error", () => {
+        const ok = failure("E_UV_MISSING");
+        ok.error = null;
+        expect(getPythonSetupErrorActions(ok)).to.deep.equal([]);
     });
 });
 
@@ -444,6 +520,25 @@ describe("formatSetupFailureDetail", () => {
         expect(detail).to.contain("UV_INDEX_URL");
         expect(detail).to.contain("index-url");
         expect(detail).to.contain("extra-index-url");
+    });
+
+    it("spells out the allowlist + manual-mode fixes for E_FETCH", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_FETCH", {failurePhase: "fetch"})
+        );
+        expect(detail).to.contain("raw.githubusercontent.com");
+        expect(detail).to.contain("allowlist");
+        expect(detail).to.contain("databricks.python.environmentSetup");
+        expect(detail).to.match(/manual/i);
+        // E_FETCH's action is a command (no URL), so the log must not print a
+        // "label: undefined" line for it.
+        expect(detail).to.not.contain("undefined");
+    });
+
+    it("adds no E_FETCH remediation block for another code", () => {
+        const detail = formatSetupFailureDetail(failure("E_MERGE"));
+        expect(detail).to.not.contain("raw.githubusercontent.com");
+        expect(detail).to.not.contain("databricks.python.environmentSetup");
     });
 
     it("adds no remediation block for a non-connectivity E_PROVISION", () => {

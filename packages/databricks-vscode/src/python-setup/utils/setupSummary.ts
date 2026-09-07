@@ -16,13 +16,18 @@ import {venvInterpreterPath} from "./venvInterpreterPath";
  */
 export function formatSetupNotification(result: PythonSetupResult): string {
     const tail = ".venv created and selected for your Databricks project.";
+    const fallback =
+        result.pythonResolution === "installed_fallback"
+            ? "Python download failed; used a compatible installed Python " +
+              "instead. "
+            : "";
     const n = result.warnings.length;
     if (n === 0) {
-        return `Python environment ready — ${tail}`;
+        return `Python environment ready — ${fallback}${tail}`;
     }
     return (
         `Python environment ready, with ${n} ` +
-        `warning${n === 1 ? "" : "s"} — ${tail}`
+        `warning${n === 1 ? "" : "s"} — ${fallback}${tail}`
     );
 }
 

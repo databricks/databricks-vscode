@@ -1,10 +1,11 @@
 import {existsSync} from "fs";
 import path from "path";
-import {ProgressLocation, Uri, window} from "vscode";
+import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
 import {Telemetry} from "../../telemetry";
 import "../../telemetry/pythonSetupExtensions";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
+import type {PythonEnvironmentSetupMode} from "../../vscode-objs/WorkspaceConfigs";
 import {openExternal} from "../../utils/urlUtils";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {ReportEnvironment} from "../utils/reportSetupIssue";
@@ -95,13 +96,24 @@ export function resolveComputeFrom(
  * empty. Note the classification itself still fails *open*: `detect` maps a
  * signal-collection failure to `unknown`/`[]`, which reads as greenfield and so
  * shows the entry -- an unclassifiable project is treated as safe to offer.
+ *
+ * `setupMode` is the user's opt-out: `manual` hides the uv flow outright (before
+ * any detection), so a valid existing interpreter is used as-is and no project
+ * ever needs to reach `raw.githubusercontent.com` for runtime constraints. This
+ * is the single gate every entry point reads (config view, the setup command's
+ * routing, and the serverless-version prompt), so honoring it here covers them
+ * all.
  */
 export function makePythonSetupVisibility(deps: {
     detect: (projectRoot: string) => Promise<Detection>;
     projectRoot: () => string | undefined;
+    setupMode: () => PythonEnvironmentSetupMode;
 }): () => Promise<boolean> {
     return async () => {
         try {
+            if (deps.setupMode() === "manual") {
+                return false;
+            }
             const root = deps.projectRoot();
             if (root === undefined) {
                 return false;
@@ -123,6 +135,11 @@ export interface PythonSetupWiringDeps {
     cli: CliRunner;
     projectRoot: () => string | undefined;
     detect: (projectRoot: string) => Promise<Detection>;
+    /**
+     * The user's `databricks.python.environmentSetup` choice. `manual` opts the
+     * project out of uv-native setup entirely (see {@link makePythonSetupVisibility}).
+     */
+    setupMode: () => PythonEnvironmentSetupMode;
     attachedCompute: () => AttachedCompute;
     /**
      * Ask the user which serverless version to provision, for a serverless
@@ -164,6 +181,17 @@ export interface PythonSetupWiringDeps {
     /** Records the setup attempt/result events. */
     telemetry: Telemetry;
 }
+
+/** User-facing copy for the expired-session re-login prompt. */
+const REAUTH_PROMPT_MESSAGE =
+    "Your Databricks session has expired. Log in again to set up the Python environment.";
+
+/**
+ * The extension's re-auth command (opens the login flow for the active profile
+ * and reconnects). Reused rather than shelling out to `databricks auth login`
+ * so host, profile, and workspace-id routing stay owned by one place.
+ */
+const RELOGIN_COMMAND_ID = "databricks.connection.configureLogin";
 
 /**
  * Assemble the {@link PythonSetupSetupDeps} for the real extension: the gate and
@@ -230,10 +258,24 @@ export function makePythonSetupDeps(
             // revealing the (empty) output channel.
             await window.showWarningMessage(message);
         },
+        showReauthPrompt: async () => {
+            // A warning, not an error, and no log reveal: an expired session is
+            // expected, not a defect. The "Login" button runs the extension's
+            // existing re-auth flow for the active profile; the user re-runs
+            // setup once connected (we deliberately don't auto-retry).
+            const login = "Login";
+            const picked = await window.showWarningMessage(
+                REAUTH_PROMPT_MESSAGE,
+                login
+            );
+            if (picked === login) {
+                await commands.executeCommand(RELOGIN_COMMAND_ID);
+            }
+        },
         showError: async (
             message: string,
             detail?: string,
-            action?: PythonSetupErrorAction
+            actions: PythonSetupErrorAction[] = []
         ) => {
             // The mapped one-liner is deliberately concise and drops the CLI's
             // own explanation; write that detail into the channel so the log the
@@ -249,36 +291,57 @@ export function makePythonSetupDeps(
             const showLogs = "Show Logs";
             // `showErrorMessage` hands the picked value back as a bare label
             // string, so two buttons sharing a label are indistinguishable. Drop
-            // a remediation action that reuses the reserved "Show Logs" label
-            // rather than offer an ambiguous button whose URL branch is dead.
-            const remediation =
-                action && action.label !== showLogs ? action : undefined;
-            // Lead with the remediation button (e.g. "Install uv") when one is
-            // attached, so the action the user most likely wants comes first.
-            const actions = remediation
-                ? [remediation.label, showLogs]
-                : [showLogs];
-            const picked = await window.showErrorMessage(message, ...actions);
+            // any remediation reusing the reserved "Show Logs" label, and any
+            // later duplicate label (first wins), rather than offer an ambiguous
+            // button whose dispatch would be dead.
+            const seen = new Set<string>([showLogs]);
+            const remediations = actions.filter((a) => {
+                if (seen.has(a.label)) {
+                    return false;
+                }
+                seen.add(a.label);
+                return true;
+            });
+            // Lead with the remediation buttons (e.g. "Install uv", then
+            // "Installation guide") in order, so the action the user most likely
+            // wants comes first; "Show Logs" always trails.
+            const buttons = [...remediations.map((a) => a.label), showLogs];
+            const picked = await window.showErrorMessage(message, ...buttons);
             if (picked === showLogs) {
                 wiring.log.show();
-            } else if (remediation && picked === remediation.label) {
-                // showError is the failure-reporting path and its one caller does
-                // not wrap it, so neither a rejected launch nor a false "could not
-                // open" result may escape here — contain both and record them.
-                try {
-                    const opened = await openExternal(remediation.url);
+                return;
+            }
+            const chosen = remediations.find((a) => a.label === picked);
+            if (chosen === undefined) {
+                // Dismissed, or a label we did not render.
+                return;
+            }
+            // showError is the failure-reporting path and its one caller does not
+            // wrap it, so nothing thrown here may escape — contain and record any
+            // failure.
+            try {
+                if (chosen.command) {
+                    // A command-action (e.g. "Install uv", E_FETCH "Use manual
+                    // setup") runs a registered VS Code command instead of
+                    // opening a URL.
+                    await commands.executeCommand(chosen.command);
+                } else if (chosen.url) {
+                    const opened = await openExternal(chosen.url);
                     if (!opened) {
                         wiring.log.append(
-                            `\nCould not open ${remediation.url} in a browser.\n`
+                            `\nCould not open ${chosen.url} in a browser.\n`
                         );
                     }
-                } catch (e) {
-                    wiring.log.append(
-                        `\nFailed to open ${remediation.url}: ${
-                            e instanceof Error ? e.message : String(e)
-                        }\n`
-                    );
                 }
+            } catch (e) {
+                const what = chosen.command
+                    ? `run ${chosen.command}`
+                    : `open ${chosen.url}`;
+                wiring.log.append(
+                    `\nFailed to ${what}: ${
+                        e instanceof Error ? e.message : String(e)
+                    }\n`
+                );
             }
         },
         showSuccess: async (result) => {
