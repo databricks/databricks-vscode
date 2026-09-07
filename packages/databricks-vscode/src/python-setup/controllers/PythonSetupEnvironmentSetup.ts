@@ -369,7 +369,6 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         const compute = resolved.compute;
 
         const invocation: SetupLocalInvocation = {
-            mode: "default",
             compute,
         };
 
@@ -635,7 +634,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 targetType: compute.kind,
                 serverlessVersion:
                     compute.kind === "serverless" ? compute.version : undefined,
-                mode: invocation.mode,
+                // The attempt event keeps its default/constraints-only mode
+                // dimension; derive it from the orthogonal flag that drops
+                // databricks-connect (the CLI treats --no-dbconnect and the old
+                // --constraints-only as the same mode).
+                mode: invocation.skipDbconnect ? "constraints-only" : "default",
                 isGreenfield,
                 // A run against a project already marked ready this session is a
                 // re-run (the ready row's Re-run button / row click); anything
