@@ -634,10 +634,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 targetType: compute.kind,
                 serverlessVersion:
                     compute.kind === "serverless" ? compute.version : undefined,
-                // The attempt event keeps its default/constraints-only mode
-                // dimension; derive it from the orthogonal flag that drops
-                // databricks-connect (the CLI treats --no-dbconnect and the old
-                // --constraints-only as the same mode).
+                // --no-dbconnect is the orthogonal spelling of the legacy
+                // --constraints-only, so it maps to that telemetry mode.
                 mode: invocation.skipDbconnect ? "constraints-only" : "default",
                 isGreenfield,
                 // A run against a project already marked ready this session is a
