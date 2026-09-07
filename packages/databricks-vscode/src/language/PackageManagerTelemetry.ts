@@ -7,6 +7,8 @@ import {MsPythonExtensionWrapper} from "./MsPythonExtensionWrapper";
 import {ResolvedEnvironment} from "./MsPythonExtensionApi";
 import {detectPackageManagers} from "./packageManagerDetection";
 import {collectPackageManagerSignals} from "./packageManagerSignals";
+import {resolveSetupMode} from "../python-setup/utils/pythonSetupGate";
+import type {PythonEnvironmentSetupMode} from "../vscode-objs/WorkspaceConfigs";
 
 export type {SetupTrigger};
 
@@ -34,7 +36,8 @@ export class PackageManagerTelemetry {
         private readonly pythonExtension: MsPythonExtensionWrapper,
         private readonly getProjectRoot: () => string | undefined,
         private readonly getComputeType: () => ComputeType | "none",
-        private readonly isConnected: () => boolean
+        private readonly isConnected: () => boolean,
+        private readonly getSetupMode: () => PythonEnvironmentSetupMode
     ) {}
 
     /**
@@ -80,6 +83,7 @@ export class PackageManagerTelemetry {
                 pythonVersion: this.getPythonMinorVersion(env),
                 targetCompute: this.getComputeType(),
                 trigger,
+                setupMode: resolveSetupMode(this.getSetupMode(), detection),
             });
         } catch (e) {
             // Detection is measurement-only and must never disrupt setup.

@@ -323,8 +323,13 @@ export function makePythonSetupDeps(
                 if (chosen.command) {
                     // A command-action (e.g. "Install uv", E_FETCH "Use manual
                     // setup") runs a registered VS Code command instead of
-                    // opening a URL.
-                    await commands.executeCommand(chosen.command);
+                    // opening a URL. Tag the invocation as coming from the error
+                    // popup so the command can tell it apart from a palette call
+                    // (the manual-setup opt-out reads this for telemetry;
+                    // commands that take no args simply ignore it).
+                    await commands.executeCommand(chosen.command, {
+                        source: "error_popup",
+                    });
                 } else if (chosen.url) {
                     const opened = await openExternal(chosen.url);
                     if (!opened) {
