@@ -1,6 +1,10 @@
 import * as assert from "assert";
 import * as https from "node:https";
 import * as http from "node:http";
+import * as tls from "node:tls";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import {reset, spy, when} from "ts-mockito";
 import {HttpsProxyAgent} from "https-proxy-agent";
 import {HttpProxyAgent} from "http-proxy-agent";
@@ -10,9 +14,15 @@ import {
     applyProxyStrictSSLEnv,
     createWorkspaceClient,
     getDatabricksHttpAgent,
+    loadSystemCertificatesFromNode,
     resetProxyAgentCaches,
     strictSSL,
 } from "./proxyAgent";
+
+// A syntactically-valid but throwaway PEM used to assert it lands in the agent's
+// `ca` list. It never has to verify anything — the tests only check membership.
+const FAKE_CA_PEM =
+    "-----BEGIN CERTIFICATE-----\nMIIBFake\n-----END CERTIFICATE-----\n";
 
 describe(__filename, () => {
     let configsSpy: typeof workspaceConfigs;
@@ -22,10 +32,11 @@ describe(__filename, () => {
         existingEnv = Object.assign({}, process.env);
         resetProxyAgentCaches();
         configsSpy = spy(workspaceConfigs);
-        // Defaults: strict SSL on, no proxy configured.
+        // Defaults: strict SSL on, no proxy or custom CA configured.
         when(configsSpy.proxyStrictSSL).thenReturn(true);
         when(configsSpy.httpProxy).thenReturn(undefined);
         when(configsSpy.httpNoProxy).thenReturn([]);
+        when(configsSpy.proxyCaCert).thenReturn(undefined);
     });
 
     afterEach(() => {
@@ -102,12 +113,23 @@ describe(__filename, () => {
             assert.ok(!(agent instanceof HttpProxyAgent));
         });
 
-        it("loads the system certificate trust store onto https agents", async () => {
+        it("merges the system trust store with Node's bundled roots (never replaces them)", async () => {
             const agent = (await getDatabricksHttpAgent(
                 new URL("https://example.com")
             )) as https.Agent;
             const ca = (agent.options as https.AgentOptions).ca;
-            assert.ok(Array.isArray(ca) && ca.length > 0);
+            assert.ok(Array.isArray(ca));
+            // tls.getCACertificates('system') returns only the OS store; setting
+            // `ca` to that alone would drop Node's bundled public roots. The
+            // agent must carry at least all of the bundled roots.
+            assert.ok(
+                (ca as unknown[]).length >= tls.rootCertificates.length,
+                `expected >= ${tls.rootCertificates.length} CAs, got ${
+                    (ca as unknown[]).length
+                }`
+            );
+            // A known bundled root is still present.
+            assert.ok((ca as string[]).includes(tls.rootCertificates[0]));
         });
 
         it("disables certificate verification when strict SSL is off", async () => {
@@ -144,6 +166,79 @@ describe(__filename, () => {
                 );
             } finally {
                 tls.getCACertificates = original;
+            }
+        });
+
+        it("merges databricks.proxy.caCert onto the trust store", async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "corp-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            when(configsSpy.proxyCaCert).thenReturn(pemPath);
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(Array.isArray(ca));
+                assert.ok(ca.includes(FAKE_CA_PEM));
+                // Still anchored on the bundled roots.
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
+        it("applies databricks.proxy.caCert even when the system store can't be read", async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "corp-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            when(configsSpy.proxyCaCert).thenReturn(pemPath);
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const tlsMod = require("node:tls");
+            const original = tlsMod.getCACertificates;
+            tlsMod.getCACertificates = () => {
+                throw new Error("getCACertificates unavailable");
+            };
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(Array.isArray(ca));
+                assert.ok(ca.includes(FAKE_CA_PEM));
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+            } finally {
+                tlsMod.getCACertificates = original;
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
+        it("ignores an unreadable databricks.proxy.caCert path", async () => {
+            when(configsSpy.proxyCaCert).thenReturn(
+                path.join(os.tmpdir(), "does-not-exist-xyz.pem")
+            );
+            // Must not throw; falls back to the rest of the trust store.
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            const ca = (agent.options as https.AgentOptions).ca as string[];
+            assert.ok(!ca || !ca.includes(FAKE_CA_PEM));
+        });
+    });
+
+    describe("loadSystemCertificatesFromNode", () => {
+        it("is true when tls.getCACertificates exists, false when it doesn't", () => {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const tlsMod = require("node:tls");
+            const original = tlsMod.getCACertificates;
+            try {
+                tlsMod.getCACertificates = () => [];
+                assert.strictEqual(loadSystemCertificatesFromNode(), true);
+
+                tlsMod.getCACertificates = undefined;
+                assert.strictEqual(loadSystemCertificatesFromNode(), false);
+            } finally {
+                tlsMod.getCACertificates = original;
             }
         });
     });

@@ -1,5 +1,7 @@
 import * as http from "node:http";
 import * as https from "node:https";
+import * as tls from "node:tls";
+import {readFile} from "node:fs/promises";
 import {
     createProxyResolver,
     loadSystemCertificates,
@@ -25,6 +27,26 @@ const extensionVersion = require("../../../package.json")
 // api-client.js ApiClient.getAgent), so behaviour is unchanged apart from the
 // proxy + CA wiring we add on top.
 const KEEP_ALIVE_MSECS = 15000;
+
+/**
+ * Whether to let @vscode/proxy-agent read the OS trust store via Node's
+ * `tls.getCACertificates`.
+ *
+ * That API was added in Node 22.15. proxy-agent's "from Node" path calls it
+ * unconditionally, so on older runtimes (shipped by many supported VS Code
+ * builds) it throws and we lose the OS trust store. When it's missing we return
+ * `false` so proxy-agent instead uses its native readers (the
+ * `@vscode/windows-ca-certs` module on Windows, `security` on macOS, PEM bundle
+ * files on Linux), which work on every Node version.
+ *
+ * Evaluated per call (not cached) so tests can simulate an older runtime.
+ */
+export function loadSystemCertificatesFromNode(): boolean {
+    return (
+        typeof (tls as {getCACertificates?: unknown}).getCACertificates ===
+        "function"
+    );
+}
 
 function getLog(): Log {
     const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -59,7 +81,7 @@ function getProxyAgentParams(): ProxyAgentParams {
         isWebSocketPatchEnabled: () => false,
         addCertificatesV1: () => false,
         addCertificatesV2: () => true,
-        loadSystemCertificatesFromNode: () => true,
+        loadSystemCertificatesFromNode,
         loadAdditionalCertificates: async () => [],
         log,
         getLogLevel: () => LogLevel.Error,
@@ -77,12 +99,15 @@ let systemCertificatesPromise: Promise<string[] | undefined> | undefined;
  * in tests.
  *
  * Returns `undefined` (never a rejected/empty promise) when the store can't be
- * read. @vscode/proxy-agent reads it via Node's `tls.getCACertificates`, which
- * only exists on Node >= 22.15; on the older runtimes some supported VS Code
- * builds still ship, that call throws. Swallowing it here lets the caller fall
- * back to Node's bundled roots instead of failing the whole SDK request — a
- * missing custom CA is recoverable (users can set `databricks.proxy.strictSSL`),
- * a broken agent is not.
+ * read. @vscode/proxy-agent reads it either via Node's `tls.getCACertificates`
+ * (Node >= 22.15) or, on older runtimes, its native readers (the
+ * `@vscode/windows-ca-certs` module on Windows, `security` on macOS, PEM files
+ * on Linux) — see {@link loadSystemCertificatesFromNode}. If that native module is
+ * absent (e.g. not shipped for this platform) the read can still fail; swallowing
+ * it here lets the caller fall back to Node's bundled roots instead of failing
+ * the whole SDK request. A missing custom CA is recoverable (users can point
+ * `databricks.proxy.caCert` at their PEM, or opt out via
+ * `databricks.proxy.strictSSL`), a broken agent is not.
  */
 async function getSystemCertificates(
     params: ProxyAgentParams
@@ -134,6 +159,54 @@ export function applyProxyStrictSSLEnv() {
 }
 
 /**
+ * Read the user-configured `databricks.proxy.caCert` PEM bundle, if set. Returns
+ * `undefined` when the setting is empty or the file can't be read — a bad path
+ * shouldn't break every TLS handshake, so we log and fall back to the rest of
+ * the trust store.
+ */
+async function loadConfiguredCaCert(): Promise<string | undefined> {
+    const caCertPath = workspaceConfigs.proxyCaCert;
+    if (!caCertPath) {
+        return undefined;
+    }
+    try {
+        return await readFile(caCertPath, "utf8");
+    } catch (e) {
+        getLog().error(
+            `Failed to read databricks.proxy.caCert from "${caCertPath}"; ` +
+                "ignoring it. The certificate it points at will not be trusted.",
+            e
+        );
+        return undefined;
+    }
+}
+
+/**
+ * Assemble the CA trust list for the SDK's HTTPS agent, or `undefined` to leave
+ * Node's default store in place.
+ *
+ * Any list we build is anchored on `tls.rootCertificates` (Node's bundled public
+ * roots) and then extended with the OS trust store and the configured PEM.
+ * Setting `ca` *replaces* Node's defaults, so if we set it to only the extra
+ * certs, public-root TLS would break — hence the merge. When we have nothing to
+ * add (system store unreadable and no `caCert`), return `undefined` so the
+ * caller omits `ca` and Node keeps its defaults.
+ */
+function buildCaBundle(
+    systemCerts: string[] | undefined,
+    configuredCaCert: string | undefined
+): (string | Buffer)[] | undefined {
+    if (!systemCerts && !configuredCaCert) {
+        return undefined;
+    }
+    return [
+        ...tls.rootCertificates,
+        ...(systemCerts ?? []),
+        ...(configuredCaCert ? [configuredCaCert] : []),
+    ];
+}
+
+/**
  * Build the HTTP(S) agent the Databricks SDK should use, wiring in the proxy
  * (VS Code `http.proxy` setting + `http(s)_proxy` env vars, honouring
  * `NO_PROXY`) and the OS certificate trust store. This is what lets the
@@ -146,15 +219,18 @@ export async function getDatabricksHttpAgent(
     const params = getProxyAgentParams();
     const isHttps = host.protocol === "https:";
 
-    const ca = await getSystemCertificates(params);
+    const systemCerts = await getSystemCertificates(params);
+    const configuredCaCert = await loadConfiguredCaCert();
+    const ca = buildCaBundle(systemCerts, configuredCaCert);
     const rejectUnauthorized = strictSSL();
 
     const resolver = createProxyResolver(params);
     const proxyUrl = await resolver.resolveProxyURL(host.toString());
 
-    // Only override `ca` when we actually loaded a trust store. Passing `ca:
-    // undefined` (or `[]`) would replace Node's bundled roots with nothing and
-    // break every TLS handshake, so omit it entirely on the fallback path.
+    // Only set `ca` when we have certs to add on top of Node's bundled roots
+    // (which `buildCaBundle` already folds in). On the fallback path `ca` is
+    // `undefined`, so we omit it entirely and Node keeps its default store —
+    // passing `undefined`/`[]` would instead trust nothing.
     const agentOptions: https.AgentOptions = {
         keepAlive: true,
         keepAliveMsecs: KEEP_ALIVE_MSECS,
