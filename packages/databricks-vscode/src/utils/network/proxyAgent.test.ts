@@ -105,12 +105,59 @@ describe(__filename, () => {
             assert.ok(!(agent instanceof HttpsProxyAgent));
         });
 
+        it("returns a plain agent when the host matches NO_PROXY and http.noProxy is also set", async () => {
+            process.env.NO_PROXY = "example.com";
+            when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+            when(configsSpy.httpNoProxy).thenReturn(["setting.example.com"]);
+
+            const agent = await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            );
+
+            assert.ok(agent instanceof https.Agent);
+            assert.ok(!(agent instanceof HttpsProxyAgent));
+        });
+
         it("falls back to a plain http agent for http hosts without a proxy", async () => {
             const agent = await getDatabricksHttpAgent(
                 new URL("http://example.com")
             );
             assert.ok(agent instanceof http.Agent);
             assert.ok(!(agent instanceof HttpProxyAgent));
+        });
+
+        it("sets the SDK default request timeout on plain agents", async () => {
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+
+            assert.strictEqual(
+                (agent.options as https.AgentOptions).timeout,
+                5000
+            );
+        });
+
+        it("preserves the configured SDK request timeout on plain agents", async () => {
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com"),
+                60
+            )) as https.Agent;
+
+            assert.strictEqual(
+                (agent.options as https.AgentOptions).timeout,
+                60000
+            );
+        });
+
+        it("preserves the configured SDK request timeout on proxy agents", async () => {
+            when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com"),
+                60
+            )) as HttpsProxyAgent<string>;
+
+            assert.strictEqual(agent.connectOpts.timeout, 60000);
         });
 
         it("merges the system trust store with Node's bundled roots (never replaces them)", async () => {
@@ -259,6 +306,25 @@ describe(__filename, () => {
             assert.strictEqual(client.apiClient.product, "databricks-vscode");
             const agent = await client.apiClient.getAgent();
             assert.ok(agent instanceof https.Agent);
+        });
+
+        it("preserves the configured SDK request timeout on the injected agent", async () => {
+            const client = await createWorkspaceClient(
+                {
+                    host: "https://example.com",
+                    authType: "pat",
+                    token: "t",
+                    httpTimeoutSeconds: 60,
+                },
+                new URL("https://example.com")
+            );
+
+            const agent = (await client.apiClient.getAgent()) as https.Agent;
+
+            assert.strictEqual(
+                (agent.options as https.AgentOptions).timeout,
+                60000
+            );
         });
     });
 });

@@ -27,6 +27,7 @@ const extensionVersion = require("../../../package.json")
 // api-client.js ApiClient.getAgent), so behaviour is unchanged apart from the
 // proxy + CA wiring we add on top.
 const KEEP_ALIVE_MSECS = 15000;
+const DEFAULT_HTTP_TIMEOUT_SECONDS = 5;
 
 /**
  * Whether to let @vscode/proxy-agent read the OS trust store via Node's
@@ -76,7 +77,7 @@ function getProxyAgentParams(): ProxyAgentParams {
         resolveProxy: async () => undefined,
         getProxyURL: () => workspaceConfigs.httpProxy,
         getProxySupport: () => "on",
-        getNoProxyConfig: () => workspaceConfigs.httpNoProxy,
+        getNoProxyConfig: () => getNoProxyConfig(),
         isAdditionalFetchSupportEnabled: () => false,
         isWebSocketPatchEnabled: () => false,
         addCertificatesV1: () => false,
@@ -89,6 +90,18 @@ function getProxyAgentParams(): ProxyAgentParams {
         isUseHostProxyEnabled: () => false,
         env: process.env,
     };
+}
+
+function getNoProxyConfig(): string[] {
+    const envNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
+    const noProxyParts = [
+        ...workspaceConfigs.httpNoProxy,
+        ...envNoProxy.split(","),
+    ]
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+
+    return [...new Set(noProxyParts)];
 }
 
 let systemCertificatesPromise: Promise<string[] | undefined> | undefined;
@@ -219,7 +232,8 @@ function buildCaBundle(
  * interception, matching the bundled CLI's behaviour.
  */
 export async function getDatabricksHttpAgent(
-    host: URL
+    host: URL,
+    httpTimeoutSeconds?: number
 ): Promise<http.Agent | https.Agent> {
     const params = getProxyAgentParams();
     const isHttps = host.protocol === "https:";
@@ -239,6 +253,7 @@ export async function getDatabricksHttpAgent(
     const agentOptions: https.AgentOptions = {
         keepAlive: true,
         keepAliveMsecs: KEEP_ALIVE_MSECS,
+        timeout: (httpTimeoutSeconds || DEFAULT_HTTP_TIMEOUT_SECONDS) * 1000,
         ...(isHttps ? {rejectUnauthorized, ...(ca ? {ca} : {})} : {}),
     };
 
@@ -273,7 +288,10 @@ export async function createWorkspaceClient(
     host: URL
 ): Promise<WorkspaceClient> {
     applyProxyStrictSSLEnv();
-    const agent = await getDatabricksHttpAgent(host);
+    const agent = await getDatabricksHttpAgent(
+        host,
+        config.httpTimeoutSeconds
+    );
     return new WorkspaceClient(config, {
         product: "databricks-vscode",
         productVersion: extensionVersion,
