@@ -134,7 +134,7 @@ export type SetupTrigger = "auto_open" | "explicit_command" | "run" | "debug";
  * again. One event, one enum dimension — so re-runs stay analysable without
  * fingerprinting on the command id.
  */
-export type PythonSetupRunTrigger = "initial" | "rerun";
+export type PythonSetupRunTrigger = "initial" | "rerun" | "conflict_retry";
 
 /** Categorical outcome of Python acquisition and its user recovery path. */
 export type PythonSetupFlow =
@@ -557,9 +557,13 @@ export class EventTypes {
             "IDs/names, paths, or package names.",
         trigger: {
             comment:
-                "initial (first setup for the project this session) or rerun (re-running over an " +
+                "initial (first setup for the project this session), rerun (re-running over an " +
                 "environment already provisioned this session, e.g. via the ready row's Re-run " +
-                "button). Session-scoped: a run after a window reload reads as initial again",
+                "button), or conflict_retry (a Full-preset run hit a cluster-vs-local dependency " +
+                "conflict and the user clicked 'Retry DB Connect setup', which re-runs with " +
+                "--no-constraints). conflict_retry counts conflict-recovery clicks; pair it with " +
+                "the matching result's outcome for the recovery success rate. Session-scoped: a " +
+                "run after a window reload reads as initial again",
         },
         packageManager: {
             comment:

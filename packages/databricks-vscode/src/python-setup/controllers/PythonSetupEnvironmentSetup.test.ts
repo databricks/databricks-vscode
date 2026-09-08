@@ -1845,7 +1845,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         expect(setup.ready).to.equal(true);
     });
 
-    it("records the retry attempt as the dbconnect preset", async () => {
+    it("records the retry as a dbconnect run with the conflict_retry trigger", async () => {
         const cli = makeScriptedCli([conflictResult(), SUCCESS_REAL_RUN]);
         const telemetry = makeTelemetryRecorder();
         let retryAction: PythonSetupErrorAction | undefined;
@@ -1865,10 +1865,23 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         await setup.setup();
         await (retryAction as {run: () => Promise<void>}).run();
 
-        expect(telemetry.attempts.map((a) => a.setupPreset)).to.deep.equal([
-            "full",
-            "dbconnect",
+        // The initial Full attempt is a first-time setup; the retry is labeled
+        // distinctly so a conflict recovery can be counted separately from a
+        // first-time DB Connect pick (both would otherwise be initial/dbconnect).
+        expect(
+            telemetry.attempts.map((a) => ({
+                preset: a.setupPreset,
+                trigger: a.trigger,
+            }))
+        ).to.deep.equal([
+            {preset: "full", trigger: "initial"},
+            {preset: "dbconnect", trigger: "conflict_retry"},
         ]);
+        // The paired result carries the retry's outcome — success here — so
+        // (b)/(a) is derivable from the same attempt→result pairing.
+        expect(telemetry.results).to.have.length(2);
+        expect(telemetry.results[0].outcome).to.equal("failed");
+        expect(telemetry.results[1].outcome).to.equal("ok");
     });
 
     it("opens pyproject.toml (at the run's cwd) when Open pyproject.toml is picked", async () => {

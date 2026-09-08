@@ -41,9 +41,11 @@ export interface PythonSetupAttempt {
      */
     isGreenfield?: boolean;
     /**
-     * Whether this is the first setup for the project this session or a re-run
-     * over an environment already provisioned this session (session-scoped).
-     * Same event, one enum dimension.
+     * Whether this is the first setup for the project this session (`initial`), a
+     * re-run over an environment already provisioned this session (`rerun`), or a
+     * constraint-conflict recovery — the `Retry DB Connect setup` click on a
+     * failed Full-preset run (`conflict_retry`). Session-scoped; same event, one
+     * enum dimension.
      */
     trigger: PythonSetupRunTrigger;
 }

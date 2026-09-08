@@ -34,6 +34,7 @@ import {
     PythonSetupAttempt,
     PythonSetupResultReporter,
 } from "../../telemetry/pythonSetupExtensions";
+import {PythonSetupRunTrigger} from "../../telemetry/constants";
 import {PrimaryManager} from "../../language/packageManagerDetection";
 import {
     isUvSetupSuitable,
@@ -420,11 +421,16 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      * failure. Split out from {@link runSetup} so the constraint-conflict
      * "Retry DB Connect setup" recovery can re-enter it with the `dbconnect` preset
      * directly, without re-prompting the compute or the preset picker.
+     *
+     * `trigger` overrides how the attempt is labeled: the retry passes
+     * `conflict_retry`; the normal path leaves it undefined so
+     * {@link recordAttempt} derives `initial` / `rerun` from readiness.
      */
     private async runResolved(
         compute: SetupCompute,
         cwd: string,
-        preset: SetupPreset
+        preset: SetupPreset,
+        trigger?: PythonSetupRunTrigger
     ): Promise<void> {
         const {cli, withProgress} = this.deps;
 
@@ -440,7 +446,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         const {reportResult, packageManager} = await this.recordAttempt(
             invocation,
             cwd,
-            preset
+            preset,
+            trigger
         );
         // Per-run report context: the static build info plus this run's manager.
         const reportEnv: ReportEnvironment = {
@@ -690,7 +697,12 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                         return;
                     }
                     return this.runGuarded(() =>
-                        this.runResolved(compute, cwd, "dbconnect")
+                        this.runResolved(
+                            compute,
+                            cwd,
+                            "dbconnect",
+                            "conflict_retry"
+                        )
                     );
                 },
             },
@@ -717,7 +729,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     private async recordAttempt(
         invocation: SetupLocalInvocation,
         projectRoot: string,
-        setupPreset: SetupPreset
+        setupPreset: SetupPreset,
+        trigger?: PythonSetupRunTrigger
     ): Promise<{
         reportResult: PythonSetupResultReporter;
         packageManager: PrimaryManager;
@@ -765,14 +778,16 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 mode: invocation.skipDbconnect ? "constraints-only" : "default",
                 setupPreset,
                 isGreenfield,
-                // A run against a project already marked ready this session is a
-                // re-run (the ready row's Re-run button / row click); anything
-                // else is the first setup. Derived from state, not the command,
-                // so every entry point labels the same event correctly. A
-                // constraint-conflict retry therefore reports `initial` (the
-                // failed Full run never marked the project ready), distinguished
-                // from the first attempt only by its `dbconnect` setupPreset.
-                trigger: this.readyRoots.has(projectRoot) ? "rerun" : "initial",
+                // An explicit trigger wins (the constraint-conflict retry passes
+                // `conflict_retry`, so its recovery clicks are countable and not
+                // conflated with a first-time DB Connect pick). Otherwise it is
+                // derived from state: a run against a project already marked ready
+                // this session is a re-run (the ready row's Re-run button / row
+                // click), anything else the first setup. Derived from state, not
+                // the command, so every entry point labels the same event.
+                trigger:
+                    trigger ??
+                    (this.readyRoots.has(projectRoot) ? "rerun" : "initial"),
             });
             return {
                 packageManager,
