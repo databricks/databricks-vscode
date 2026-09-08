@@ -657,7 +657,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      *   conflicting cluster-dependency pins while keeping matched Python +
      *   databricks-connect. It goes through {@link runGuarded} so a click cannot
      *   race a run already in flight, and because that preset skips constraints
-     *   the retry can't itself surface a recoverable conflict (no loop).
+     *   the retry can't itself surface a recoverable conflict (no loop). It also
+     *   bails when the project is already set up: the conflict toast lingers in
+     *   the Notifications Center, so its Retry can be clicked long after a
+     *   separate run has since provisioned the project — re-running as DB Connect
+     *   then would silently drop the pins and downgrade a working environment.
      * - "Open pyproject.toml" opens the file the failed run merged into, so the
      *   user can inspect and adjust the dependencies that clashed.
      */
@@ -668,10 +672,16 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         return [
             {
                 label: "Retry as DB Connect setup",
-                run: () =>
-                    this.runGuarded(() =>
+                run: () => {
+                    // A stale Retry (project provisioned by a later run since the
+                    // conflict) must not re-provision and downgrade it.
+                    if (this.readyRoots.has(cwd)) {
+                        return;
+                    }
+                    return this.runGuarded(() =>
                         this.runResolved(compute, cwd, "dbconnect")
-                    ),
+                    );
+                },
             },
             {
                 label: "Open pyproject.toml",

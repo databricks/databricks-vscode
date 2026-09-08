@@ -1997,4 +1997,37 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         // not spawn a third, concurrent CLI process.
         expect(calls).to.have.length(2);
     });
+
+    it("does not re-provision when the project became ready before a stale Retry is clicked", async () => {
+        // The conflict toast lingers in the Notifications Center, so its Retry
+        // can be clicked long after a separate run has since set the project up.
+        // Re-provisioning as DB Connect then would silently downgrade the
+        // working environment, so a stale Retry must no-op once ready.
+        const cli = makeScriptedCli([conflictResult(), SUCCESS_REAL_RUN]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry as DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        // Full run conflicts (retry captured, project not ready)…
+        await setup.setup();
+        expect(setup.ready).to.equal(false);
+        // …then a later run succeeds and marks the project ready.
+        await setup.setup();
+        expect(setup.ready).to.equal(true);
+        expect(cli.calls).to.have.length(2);
+
+        // Clicking the now-stale Retry must not re-run the CLI.
+        await (retryAction as {run: () => Promise<void>}).run();
+        expect(cli.calls).to.have.length(2);
+        expect(setup.ready).to.equal(true);
+    });
 });
