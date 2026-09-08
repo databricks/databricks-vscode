@@ -586,6 +586,23 @@ describe("formatSetupFailureDetail", () => {
         );
     });
 
+    it("keeps the constraints-report hint for E_PROVISION_CONFLICT", () => {
+        // A constraint conflict was E_PROVISION before the CLI split out the
+        // distinct code; the soft "if you think it's the published constraints,
+        // report it" log pointer must not silently vanish, since a pins-vs-local
+        // conflict is exactly the case where the published constraints may be at
+        // fault.
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION_CONFLICT", {
+                message: "No solution found when resolving dependencies",
+            })
+        );
+        expect(detail).to.match(/constraint/i);
+        expect(detail).to.contain(
+            "https://github.com/databricks/environments/issues/new"
+        );
+    });
+
     it("adds no constraints-report hint for a blocked-index E_PROVISION", () => {
         // A blocked index is a local network condition, not a constraint defect.
         const detail = formatSetupFailureDetail(

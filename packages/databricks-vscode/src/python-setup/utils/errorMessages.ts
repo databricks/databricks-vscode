@@ -423,11 +423,18 @@ export function formatSetupFailureDetail(
                 'setting to "manual". The extension then uses your existing interpreter/.venv (with its databricks-connect) as-is.'
         );
     }
-    // A genuine E_PROVISION conflict gets no report button (it is usually the
-    // user's own dependencies). But if the *published constraints* are what
-    // conflict, that is a defect worth reporting — so offer a soft, conditional
-    // pointer here. Excludes the blocked-index variant, a local network issue.
-    if (err.code === "E_PROVISION" && !isIndexUnreachableFailure(result)) {
+    // A dependency conflict gets no report button (it is usually the user's own
+    // dependencies). But if the *published constraints* are what conflict, that
+    // is a defect worth reporting — so offer a soft, conditional pointer here.
+    // Covers both the generic E_PROVISION conflict and the distinct
+    // E_PROVISION_CONFLICT (a pins-vs-local conflict is exactly where the
+    // published constraints may be at fault, and it was E_PROVISION — carrying
+    // this pointer — before the CLI split the code out). Excludes the
+    // blocked-index variant, a local network issue.
+    if (
+        (err.code === "E_PROVISION" || err.code === "E_PROVISION_CONFLICT") &&
+        !isIndexUnreachableFailure(result)
+    ) {
         lines.push(
             "",
             "If you believe this conflict comes from the published runtime " +

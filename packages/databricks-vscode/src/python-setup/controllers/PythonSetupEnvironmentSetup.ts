@@ -747,7 +747,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 // A run against a project already marked ready this session is a
                 // re-run (the ready row's Re-run button / row click); anything
                 // else is the first setup. Derived from state, not the command,
-                // so every entry point labels the same event correctly.
+                // so every entry point labels the same event correctly. A
+                // constraint-conflict retry therefore reports `initial` (the
+                // failed Full run never marked the project ready), distinguished
+                // from the first attempt only by its `dbconnect` setupPreset.
                 trigger: this.readyRoots.has(projectRoot) ? "rerun" : "initial",
             });
             return {

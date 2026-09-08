@@ -1906,4 +1906,95 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
             },
         ]);
     });
+
+    it("does not loop: a DB Connect retry that also fails gets the generic action, not another Retry", async () => {
+        // The retry runs with --no-constraints, so even if it somehow returns
+        // E_PROVISION_CONFLICT again the !skipConstraints gate makes it
+        // non-recoverable — the generic doc-link handling, never a second
+        // "Retry as DB Connect" (which would loop).
+        const cli = makeScriptedCli([conflictResult(), conflictResult()]);
+        const shown: {actions?: PythonSetupErrorAction[]}[] = [];
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, actions) => {
+                    shown.push({actions});
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry as DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        expect(retryAction).to.not.equal(undefined);
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(cli.calls).to.have.length(2);
+        expect(cli.calls[1].skipConstraints).to.equal(true);
+        // The retry's failure toast carries only the generic doc link — no
+        // recovery button, so there is no way to loop.
+        expect(shown).to.have.length(2);
+        expect(shown[1].actions).to.deep.equal([
+            {
+                label: "Resolve dependency conflicts",
+                url: "https://docs.astral.sh/uv/concepts/resolution/",
+            },
+        ]);
+    });
+
+    it("coalesces a Retry click onto an in-flight run instead of starting a concurrent one", async () => {
+        // The retry goes through the same re-entrancy guard as a fresh setup:
+        // if another run is already in flight when the (still-open) conflict
+        // toast's Retry is clicked, it must coalesce onto that run rather than
+        // spawn a second, concurrent project-mutating CLI process — and, since a
+        // queued dbconnect retry could otherwise clobber a run that is about to
+        // succeed, coalescing (not queuing) is the intended, safe behavior.
+        let releaseSecond: (r: PythonSetupResult) => void = () => {};
+        const secondGate = new Promise<PythonSetupResult>((res) => {
+            releaseSecond = res;
+        });
+        const calls: SetupLocalInvocation[] = [];
+        let call = 0;
+        const cli = {
+            calls,
+            run: (invocation: SetupLocalInvocation) => {
+                calls.push(invocation);
+                return call++ === 0
+                    ? Promise.resolve(conflictResult())
+                    : secondGate;
+            },
+        };
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry as DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        // First Full run fails with a conflict; the guard is now released.
+        await setup.setup();
+        expect(calls).to.have.length(1);
+        expect(retryAction).to.not.equal(undefined);
+
+        // A second setup starts and is left in flight (its guard is held).
+        const second = setup.setup();
+        // Clicking the stale Retry now must coalesce onto the in-flight run.
+        const retryPromise = (retryAction as {run: () => Promise<void>}).run();
+
+        releaseSecond(SUCCESS_REAL_RUN);
+        await Promise.all([second, retryPromise]);
+
+        // Two runs total (the Full conflict and the second run) — the Retry did
+        // not spawn a third, concurrent CLI process.
+        expect(calls).to.have.length(2);
+    });
 });
