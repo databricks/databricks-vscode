@@ -152,16 +152,26 @@ export const INSTALL_UV_COMMAND_ID = "databricks.environment.installUv";
 
 /**
  * An optional remediation button to attach to a failure popup. Exactly one of
- * `url` / `command` is set — a discriminated union (`?: never` on the other arm)
- * forbids both/neither at compile time, while still letting callers read
- * `action.url` / `action.command` as `string | undefined` without narrowing.
- * `url` opens an external page (docs, issue); `command` runs a VS Code command
- * (e.g. the one-click switch to manual setup). Kept alongside
- * {@link getPythonSetupErrorMessage} so the copy and its call-to-action live together.
+ * `url` / `command` / `run` is set — a discriminated union (`?: never` on the
+ * other arms) forbids more than one at compile time, while still letting callers
+ * read `action.url` / `action.command` as `string | undefined` without
+ * narrowing. `url` opens an external page (docs, issue); `command` runs a VS
+ * Code command (e.g. the one-click switch to manual setup); `run` invokes an
+ * in-process callback for a button whose behavior needs runtime state and so
+ * can't be expressed as a static url/command (the constraint-conflict
+ * "Retry as DB Connect" / "Open pyproject.toml" buttons, built by the
+ * orchestrator). Kept alongside {@link getPythonSetupErrorMessage} so the copy
+ * and its call-to-action live together.
  */
 export type PythonSetupErrorAction =
-    | {label: string; url: string; command?: never}
-    | {label: string; command: string; url?: never};
+    | {label: string; url: string; command?: never; run?: never}
+    | {label: string; command: string; url?: never; run?: never}
+    | {
+          label: string;
+          run: () => void | Promise<void>;
+          url?: never;
+          command?: never;
+      };
 
 /* eslint-disable @typescript-eslint/naming-convention */
 const BASE_MESSAGE: Record<
@@ -199,6 +209,9 @@ const BASE_MESSAGE: Record<
     E_PROVISION: () =>
         "uv could not resolve the project's dependencies (a version conflict). " +
         "Review the conflict in the logs and adjust your dependencies.",
+    E_PROVISION_CONFLICT: () =>
+        "The cluster dependencies conflict with your local dependencies, so uv " +
+        "sync couldn't resolve the environment.",
     E_VALIDATE: () =>
         "The provisioned environment did not match the selected runtime.",
 };
@@ -252,6 +265,13 @@ const DOC_LINKS: Partial<Record<PythonSetupErrorCode, PythonSetupErrorAction>> =
             url: UV_PROJECTS_DOCS_URL,
         },
         E_PROVISION: {
+            label: "Resolve dependency conflicts",
+            url: UV_RESOLUTION_DOCS_URL,
+        },
+        // The Full-preset flow builds its own retry/open buttons in the
+        // orchestrator; this is the fallback link for a conflict that somehow
+        // reaches the generic path (a run that already dropped the pins).
+        E_PROVISION_CONFLICT: {
             label: "Resolve dependency conflicts",
             url: UV_RESOLUTION_DOCS_URL,
         },

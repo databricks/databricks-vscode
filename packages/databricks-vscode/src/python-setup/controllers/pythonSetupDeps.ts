@@ -276,6 +276,15 @@ export function makePythonSetupDeps(
                 Uri.file(projectRoot)
             );
         },
+        openProjectFile: async (projectRoot: string) => {
+            // Open the pyproject.toml the conflicting run merged into, so the
+            // user can inspect/adjust the dependencies that clashed. A
+            // constraint conflict always mutates disk (constraints are merged
+            // before provisioning fails), so the file exists.
+            await window.showTextDocument(
+                Uri.file(path.join(projectRoot, "pyproject.toml"))
+            );
+        },
         // Stamp the persisted state with the completion time here (the
         // orchestrator supplies the env identity; the timestamp is a wiring
         // concern) and hand it to the injected store for drift detection.
@@ -369,11 +378,18 @@ export function makePythonSetupDeps(
                             `\nCould not open ${chosen.url} in a browser.\n`
                         );
                     }
+                } else if (chosen.run) {
+                    // A run-action (the constraint-conflict "Retry as DB Connect"
+                    // / "Open pyproject.toml" buttons) invokes an in-process
+                    // callback the orchestrator built with the run's live state.
+                    await chosen.run();
                 }
             } catch (e) {
                 const what = chosen.command
                     ? `run ${chosen.command}`
-                    : `open ${chosen.url}`;
+                    : chosen.url
+                      ? `open ${chosen.url}`
+                      : `run the "${chosen.label}" action`;
                 wiring.log.append(
                     `\nFailed to ${what}: ${
                         e instanceof Error ? e.message : String(e)

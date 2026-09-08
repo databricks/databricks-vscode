@@ -34,6 +34,13 @@ export type PythonSetupPhaseStatus = "ok" | "error" | "pending";
  * ErrorCode set. `E_AUTH` / `E_PYTHON_POLICY` appear in the spec but are never
  * emitted by the CLI (auth is handled by the shared workspace-client preflight
  * before a result object is built), so they are intentionally absent here.
+ *
+ * `E_PROVISION_CONFLICT` is the distinct code the CLI emits when `uv sync` fails
+ * specifically because the runtime's pinned dependencies conflict with the
+ * user's own (only the Full preset pins them); a generic provision failure stays
+ * `E_PROVISION`. The constraints are already merged at the point of failure
+ * (`diskMutated: true`), which the extension's retry-as-DB-Connect recovery
+ * relies on.
  */
 export type PythonSetupErrorCode =
     | "E_USAGE"
@@ -48,6 +55,7 @@ export type PythonSetupErrorCode =
     | "E_MERGE"
     | "E_PYTHON_INSTALL"
     | "E_PROVISION"
+    | "E_PROVISION_CONFLICT"
     | "E_VALIDATE";
 
 export interface PythonSetupComputeInfo {

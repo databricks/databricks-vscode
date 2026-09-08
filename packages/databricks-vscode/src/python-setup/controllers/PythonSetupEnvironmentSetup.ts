@@ -144,6 +144,14 @@ export interface PythonSetupSetupDeps {
      */
     adoptInterpreter: (venvPath: string, projectRoot: string) => Promise<void>;
 
+    /**
+     * Open the project's pyproject.toml in an editor — the "Open pyproject.toml"
+     * button on a constraint-conflict failure, so the user can inspect and
+     * adjust the dependencies that clashed. Takes the run's captured root so it
+     * targets the project the failing run mutated, even after a mid-run switch.
+     */
+    openProjectFile: (projectRoot: string) => Promise<void>;
+
     saveState: (state: PythonSetupPersistedState) => void;
 
     /**
@@ -305,19 +313,27 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     }
 
     setup(): Promise<void> {
-        // Re-entrancy guard: coalesce concurrent callers onto the running run
-        // rather than spawning a second project-mutating CLI process. The guard
-        // releases when the run's *work* settles; the terminal notification is
-        // presented via {@link present} (fire-and-forget), so a toast left open
-        // never wedges the entry -- see that method.
+        return this.runGuarded(() => this.runSetup());
+    }
+
+    /**
+     * Re-entrancy guard: coalesce concurrent callers onto the running run rather
+     * than spawning a second project-mutating CLI process. The guard releases
+     * when the run's *work* settles; the terminal notification is presented via
+     * {@link present} (fire-and-forget), so a toast left open never wedges the
+     * entry -- see that method. Used both for a fresh {@link setup} and for the
+     * constraint-conflict retry, so a retry click cannot race a run already in
+     * flight.
+     */
+    private runGuarded(run: () => Promise<void>): Promise<void> {
         if (this.inFlight) {
             return this.inFlight;
         }
-        const run = this.runSetup().finally(() => {
+        const guarded = run().finally(() => {
             this.inFlight = undefined;
         });
-        this.inFlight = run;
-        return run;
+        this.inFlight = guarded;
+        return guarded;
     }
 
     /**
@@ -344,8 +360,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     }
 
     private async runSetup(): Promise<void> {
-        const {cli, projectRoot, isVisible, resolveCompute, withProgress} =
-            this.deps;
+        const {projectRoot, isVisible, resolveCompute} = this.deps;
 
         const cwd = projectRoot();
         if (cwd === undefined) {
@@ -388,6 +403,24 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         if (preset === undefined) {
             return;
         }
+
+        await this.runResolved(compute, cwd, preset);
+    }
+
+    /**
+     * Run a resolved invocation (compute + preset) to completion: record the
+     * attempt, spawn the CLI under a progress indicator, then adopt the
+     * interpreter and persist state on success — or surface a mapped error on
+     * failure. Split out from {@link runSetup} so the constraint-conflict
+     * "Retry as DB Connect" recovery can re-enter it with the `dbconnect` preset
+     * directly, without re-prompting the compute or the preset picker.
+     */
+    private async runResolved(
+        compute: SetupCompute,
+        cwd: string,
+        preset: SetupPreset
+    ): Promise<void> {
+        const {cli, withProgress} = this.deps;
 
         const invocation: SetupLocalInvocation = {
             compute,
@@ -469,14 +502,27 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 result.pythonResolution === "installed_fallback"
                     ? "manual_selection_requested"
                     : result.pythonResolution;
-            const actions = remediationActions.some(
-                (candidate) =>
-                    candidate.command === SELECT_PYTHON_INTERPRETER_COMMAND_ID
-            )
-                ? remediationActions
-                : reportAction
-                  ? [reportAction]
-                  : remediationActions;
+            // Only the Full preset pins cluster dependencies, so a constraint
+            // conflict is only recoverable when this run carried them: replace
+            // the generic actions with a one-click retry that drops the pins
+            // (the DB Connect preset) and a jump to the merged pyproject.toml. A
+            // conflict on a run that already skipped constraints (which shouldn't
+            // happen) falls through to the ordinary doc-link handling rather than
+            // offering a nonsensical, looping "retry as DB Connect".
+            const recoverableConflict =
+                result.error?.code === "E_PROVISION_CONFLICT" &&
+                !invocation.skipConstraints;
+            const actions = recoverableConflict
+                ? this.buildConflictRecoveryActions(compute, cwd)
+                : remediationActions.some(
+                        (candidate) =>
+                            candidate.command ===
+                            SELECT_PYTHON_INTERPRETER_COMMAND_ID
+                    )
+                  ? remediationActions
+                  : reportAction
+                    ? [reportAction]
+                    : remediationActions;
             reportResult({
                 outcome: "failed",
                 ...(pythonSetupFlow !== undefined ? {pythonSetupFlow} : {}),
@@ -599,6 +645,39 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         });
 
         this.present(this.deps.showSuccess(result));
+    }
+
+    /**
+     * The two recovery buttons for a Full-preset constraint conflict. Both are
+     * run-actions (their behavior needs the run's live compute/cwd, so they
+     * can't be a static url/command):
+     *
+     * - "Retry as DB Connect setup" re-enters {@link runResolved} with the
+     *   `dbconnect` preset, which passes `--no-constraints` to drop the
+     *   conflicting cluster-dependency pins while keeping matched Python +
+     *   databricks-connect. It goes through {@link runGuarded} so a click cannot
+     *   race a run already in flight, and because that preset skips constraints
+     *   the retry can't itself surface a recoverable conflict (no loop).
+     * - "Open pyproject.toml" opens the file the failed run merged into, so the
+     *   user can inspect and adjust the dependencies that clashed.
+     */
+    private buildConflictRecoveryActions(
+        compute: SetupCompute,
+        cwd: string
+    ): PythonSetupErrorAction[] {
+        return [
+            {
+                label: "Retry as DB Connect setup",
+                run: () =>
+                    this.runGuarded(() =>
+                        this.runResolved(compute, cwd, "dbconnect")
+                    ),
+            },
+            {
+                label: "Open pyproject.toml",
+                run: () => this.deps.openProjectFile(cwd),
+            },
+        ];
     }
 
     /**

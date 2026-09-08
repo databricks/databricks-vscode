@@ -919,6 +919,89 @@ describe("makePythonSetupDeps showError", () => {
                 originalOpen;
         }
     });
+
+    it("runs a run-action's callback when its button is picked", async () => {
+        // A run-action carries an in-process closure (the constraint-conflict
+        // "Retry as DB Connect" / "Open pyproject.toml" buttons need runtime
+        // state, so they can't be a static url/command).
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        let ran = 0;
+        reply = "Retry as DB Connect setup";
+
+        await deps.showError("conflict copy", "detail", [
+            {label: "Retry as DB Connect setup", run: async () => void ran++},
+        ]);
+
+        expect(ran).to.equal(1);
+    });
+
+    it("does not run a run-action's callback when its button is not picked", async () => {
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        let ran = 0;
+        reply = "Show Logs";
+
+        await deps.showError("conflict copy", "detail", [
+            {label: "Retry as DB Connect setup", run: async () => void ran++},
+        ]);
+
+        expect(ran).to.equal(0);
+    });
+
+    it("does not reject when a run-action's callback throws", async () => {
+        // showError is the failure-reporting path and its one caller does not
+        // wrap it, so a throwing callback must be contained (logged), not escape.
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+        reply = "Retry as DB Connect setup";
+
+        await deps.showError("conflict copy", "detail", [
+            {
+                label: "Retry as DB Connect setup",
+                run: async () => {
+                    throw new Error("retry blew up");
+                },
+            },
+        ]);
+
+        expect(appended.join("")).to.contain("retry blew up");
+    });
+});
+
+describe("makePythonSetupDeps openProjectFile", () => {
+    let originalShow: typeof window.showTextDocument;
+    let opened: string[];
+
+    beforeEach(() => {
+        originalShow = window.showTextDocument;
+        opened = [];
+        (window as unknown as {showTextDocument: unknown}).showTextDocument =
+            async (uri: Uri) => {
+                opened.push(uri.fsPath);
+                return {} as any;
+            };
+    });
+
+    afterEach(() => {
+        (window as unknown as {showTextDocument: unknown}).showTextDocument =
+            originalShow;
+    });
+
+    it("opens the project's pyproject.toml in an editor", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+
+        await deps.openProjectFile("/proj");
+
+        expect(opened).to.have.length(1);
+        expect(opened[0]).to.match(/[/\\]proj[/\\]pyproject\.toml$/);
+    });
 });
 
 describe("makePythonSetupDeps showSuccess", () => {
