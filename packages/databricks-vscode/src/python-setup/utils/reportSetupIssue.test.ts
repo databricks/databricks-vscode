@@ -24,6 +24,14 @@ const INDEX_UNREACHABLE_CLI_MSG =
     "error: Failed to fetch: `https://pypi.org/simple/ipykernel/`\n" +
     "  Caused by: tcp connect error: Connection refused (os error 61)";
 
+/**
+ * The CLI text for the errNoProjectTable variant of E_MERGE — a valid
+ * dependency-groups-only pyproject with no [project] table. Used to prove this
+ * user-fixable manifest shape is NOT report-worthy, unlike a generic E_MERGE.
+ */
+const NO_PROJECT_TABLE_CLI_MSG =
+    "merge managed regions failed: pyproject.toml has no [project] table to hold requires-python";
+
 /** Build a minimal failed result carrying a specific error. */
 function failure(
     code: PythonSetupErrorCode,
@@ -95,6 +103,19 @@ describe("reportRepoForResult / isReportWorthy", () => {
 
     it("does NOT treat a blocked-index E_PROVISION as report-worthy", () => {
         const r = failure("E_PROVISION", {message: INDEX_UNREACHABLE_CLI_MSG});
+        expect(reportRepoForResult(r)).to.equal(undefined);
+        expect(isReportWorthy(r)).to.equal(false);
+    });
+
+    it("does NOT treat a [project]-less E_MERGE as report-worthy", () => {
+        // A valid PEP 735 dependency-groups-only manifest is user-fixable, not a
+        // merge bug (errorMessages gives actionable copy), so it must not prompt a
+        // bug report — that mis-prompt is what auto-filed issue #2177. Generic
+        // E_MERGE (above) stays report-worthy.
+        const r = failure("E_MERGE", {
+            message: NO_PROJECT_TABLE_CLI_MSG,
+            failurePhase: "merge",
+        });
         expect(reportRepoForResult(r)).to.equal(undefined);
         expect(isReportWorthy(r)).to.equal(false);
     });
