@@ -922,19 +922,45 @@ describe("makePythonSetupDeps showError", () => {
 
     it("runs a run-action's callback when its button is picked", async () => {
         // A run-action carries an in-process closure (the constraint-conflict
-        // "Retry as DB Connect" / "Open pyproject.toml" buttons need runtime
+        // "Retry DB Connect setup" / "Open pyproject.toml" buttons need runtime
         // state, so they can't be a static url/command).
         const deps = makePythonSetupDeps(
             makeWiring({log: {append: () => {}, show: () => {}}})
         );
         let ran = 0;
-        reply = "Retry as DB Connect setup";
+        reply = "Retry DB Connect setup";
 
         await deps.showError("conflict copy", "detail", [
-            {label: "Retry as DB Connect setup", run: async () => void ran++},
+            {label: "Retry DB Connect setup", run: async () => void ran++},
         ]);
 
         expect(ran).to.equal(1);
+    });
+
+    it("omits the Show Logs button when includeShowLogs is false", async () => {
+        // A self-service toast (the recoverable constraint conflict) drops the
+        // trailing Show Logs so its own action buttons fit; the channel is still
+        // revealed, so the log stays reachable.
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        reply = undefined;
+
+        await deps.showError(
+            "conflict copy",
+            "detail",
+            [
+                {label: "Retry DB Connect setup", run: async () => {}},
+                {label: "Open pyproject.toml", run: async () => {}},
+            ],
+            {includeShowLogs: false}
+        );
+
+        expect(shownWith[0].actions).to.deep.equal([
+            "Retry DB Connect setup",
+            "Open pyproject.toml",
+        ]);
+        expect(shownWith[0].actions).to.not.contain("Show Logs");
     });
 
     it("does not run a run-action's callback when its button is not picked", async () => {
@@ -945,7 +971,7 @@ describe("makePythonSetupDeps showError", () => {
         reply = "Show Logs";
 
         await deps.showError("conflict copy", "detail", [
-            {label: "Retry as DB Connect setup", run: async () => void ran++},
+            {label: "Retry DB Connect setup", run: async () => void ran++},
         ]);
 
         expect(ran).to.equal(0);
@@ -960,11 +986,11 @@ describe("makePythonSetupDeps showError", () => {
                 log: {append: (c) => appended.push(c), show: () => {}},
             })
         );
-        reply = "Retry as DB Connect setup";
+        reply = "Retry DB Connect setup";
 
         await deps.showError("conflict copy", "detail", [
             {
-                label: "Retry as DB Connect setup",
+                label: "Retry DB Connect setup",
                 run: async () => {
                     throw new Error("retry blew up");
                 },

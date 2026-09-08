@@ -159,7 +159,7 @@ export const INSTALL_UV_COMMAND_ID = "databricks.environment.installUv";
  * Code command (e.g. the one-click switch to manual setup); `run` invokes an
  * in-process callback for a button whose behavior needs runtime state and so
  * can't be expressed as a static url/command (the constraint-conflict
- * "Retry as DB Connect" / "Open pyproject.toml" buttons, built by the
+ * "Retry DB Connect setup" / "Open pyproject.toml" buttons, built by the
  * orchestrator). Kept alongside {@link getPythonSetupErrorMessage} so the copy
  * and its call-to-action live together.
  */

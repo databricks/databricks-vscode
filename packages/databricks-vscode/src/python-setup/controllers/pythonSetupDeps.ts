@@ -316,7 +316,8 @@ export function makePythonSetupDeps(
         showError: async (
             message: string,
             detail?: string,
-            actions: PythonSetupErrorAction[] = []
+            actions: PythonSetupErrorAction[] = [],
+            options?: {includeShowLogs?: boolean}
         ) => {
             // The mapped one-liner is deliberately concise and drops the CLI's
             // own explanation; write that detail into the channel so the log the
@@ -345,10 +346,15 @@ export function makePythonSetupDeps(
             });
             // Lead with the remediation buttons (e.g. "Install uv", then
             // "Installation guide") in order, so the action the user most likely
-            // wants comes first; "Show Logs" always trails.
-            const buttons = [...remediations.map((a) => a.label), showLogs];
+            // wants comes first; "Show Logs" trails, unless the caller opted it
+            // out (a self-service toast whose own buttons are the remedy) — the
+            // channel is revealed above regardless, so the log stays reachable.
+            const includeShowLogs = options?.includeShowLogs !== false;
+            const buttons = includeShowLogs
+                ? [...remediations.map((a) => a.label), showLogs]
+                : remediations.map((a) => a.label);
             const picked = await window.showErrorMessage(message, ...buttons);
-            if (picked === showLogs) {
+            if (includeShowLogs && picked === showLogs) {
                 wiring.log.show();
                 return;
             }
@@ -379,7 +385,7 @@ export function makePythonSetupDeps(
                         );
                     }
                 } else if (chosen.run) {
-                    // A run-action (the constraint-conflict "Retry as DB Connect"
+                    // A run-action (the constraint-conflict "Retry DB Connect setup"
                     // / "Open pyproject.toml" buttons) invokes an in-process
                     // callback the orchestrator built with the run's live state.
                     await chosen.run();

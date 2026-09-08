@@ -1766,7 +1766,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         expect(shown[0].message).to.match(/cluster dependencies conflict/i);
         // The two recovery buttons, in order; both are in-process run-actions.
         expect(shown[0].actions?.map((a) => a.label)).to.deep.equal([
-            "Retry as DB Connect setup",
+            "Retry DB Connect setup",
             "Open pyproject.toml",
         ]);
         for (const action of shown[0].actions ?? []) {
@@ -1774,7 +1774,42 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         }
     });
 
-    it("re-runs with --no-constraints (and adopts) when Retry as DB Connect is picked", async () => {
+    it("hides the Show Logs button on the conflict toast (self-service)", async () => {
+        const seen: Array<{includeShowLogs?: boolean} | undefined> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: conflictResult()}),
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, _actions, options) => {
+                    seen.push(options);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(seen).to.have.length(1);
+        expect(seen[0]).to.deep.equal({includeShowLogs: false});
+    });
+
+    it("keeps the Show Logs button for an ordinary (non-conflict) failure", async () => {
+        const seen: Array<{includeShowLogs?: boolean} | undefined> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: ERROR_NO_TARGET}),
+                showError: async (_message, _detail, _actions, options) => {
+                    seen.push(options);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        // No opt-out: showError keeps its default trailing Show Logs button.
+        expect(seen[0]).to.equal(undefined);
+    });
+
+    it("re-runs with --no-constraints (and adopts) when Retry DB Connect setup is picked", async () => {
         const cli = makeScriptedCli([conflictResult(), SUCCESS_REAL_RUN]);
         const adopted: string[] = [];
         let retryAction: PythonSetupErrorAction | undefined;
@@ -1787,7 +1822,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
                 },
                 showError: async (_message, _detail, actions) => {
                     retryAction = actions?.find(
-                        (a) => a.label === "Retry as DB Connect setup"
+                        (a) => a.label === "Retry DB Connect setup"
                     );
                 },
             })
@@ -1821,7 +1856,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
                 pickSetupPreset: async () => "full",
                 showError: async (_message, _detail, actions) => {
                     retryAction = actions?.find(
-                        (a) => a.label === "Retry as DB Connect setup"
+                        (a) => a.label === "Retry DB Connect setup"
                     );
                 },
             })
@@ -1884,7 +1919,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
 
     it("falls back to the generic action when a conflict arrives on a run that already dropped the pins", async () => {
         // Defensive: only Full pins cluster deps, so a conflict on a dbconnect
-        // run should never happen — but if it does, "Retry as DB Connect" would
+        // run should never happen — but if it does, "Retry DB Connect setup" would
         // be nonsensical (and loop), so use the ordinary doc-link handling.
         const shown: {actions?: PythonSetupErrorAction[]}[] = [];
         const setup = new PythonSetupEnvironmentSetup(
@@ -1911,7 +1946,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         // The retry runs with --no-constraints, so even if it somehow returns
         // E_PROVISION_CONFLICT again the !skipConstraints gate makes it
         // non-recoverable — the generic doc-link handling, never a second
-        // "Retry as DB Connect" (which would loop).
+        // "Retry DB Connect setup" (which would loop).
         const cli = makeScriptedCli([conflictResult(), conflictResult()]);
         const shown: {actions?: PythonSetupErrorAction[]}[] = [];
         let retryAction: PythonSetupErrorAction | undefined;
@@ -1922,7 +1957,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
                 showError: async (_message, _detail, actions) => {
                     shown.push({actions});
                     retryAction = actions?.find(
-                        (a) => a.label === "Retry as DB Connect setup"
+                        (a) => a.label === "Retry DB Connect setup"
                     );
                 },
             })
@@ -1974,7 +2009,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
                 pickSetupPreset: async () => "full",
                 showError: async (_message, _detail, actions) => {
                     retryAction = actions?.find(
-                        (a) => a.label === "Retry as DB Connect setup"
+                        (a) => a.label === "Retry DB Connect setup"
                     );
                 },
             })
@@ -2011,7 +2046,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
                 pickSetupPreset: async () => "full",
                 showError: async (_message, _detail, actions) => {
                     retryAction = actions?.find(
-                        (a) => a.label === "Retry as DB Connect setup"
+                        (a) => a.label === "Retry DB Connect setup"
                     );
                 },
             })

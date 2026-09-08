@@ -179,11 +179,17 @@ export interface PythonSetupSetupDeps {
      * each opens an external URL or runs a VS Code command. Most failures carry
      * one; `E_UV_MISSING` carries two ("Install uv" + "Installation guide", see
      * `getPythonSetupErrorActions`).
+     *
+     * `options.includeShowLogs` defaults to true; pass `false` to omit the
+     * trailing "Show Logs" button — for a self-service toast whose own buttons
+     * are the remedy (the recoverable constraint conflict), so the row stays
+     * short. The channel is still written and revealed, so the log is reachable.
      */
     showError: (
         message: string,
         detail?: string,
-        actions?: PythonSetupErrorAction[]
+        actions?: PythonSetupErrorAction[],
+        options?: {includeShowLogs?: boolean}
     ) => Promise<void>;
 
     showSuccess: (result: PythonSetupResult) => Promise<void>;
@@ -412,7 +418,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      * attempt, spawn the CLI under a progress indicator, then adopt the
      * interpreter and persist state on success — or surface a mapped error on
      * failure. Split out from {@link runSetup} so the constraint-conflict
-     * "Retry as DB Connect" recovery can re-enter it with the `dbconnect` preset
+     * "Retry DB Connect setup" recovery can re-enter it with the `dbconnect` preset
      * directly, without re-prompting the compute or the preset picker.
      */
     private async runResolved(
@@ -541,7 +547,12 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                         result,
                         reportRepo ? reportLogLink(reportRepo) : undefined
                     ),
-                    actions
+                    actions,
+                    // The recoverable conflict is self-service via its Retry /
+                    // Open buttons, so drop the trailing "Show Logs" to keep the
+                    // notification's button row short (the channel is revealed
+                    // regardless).
+                    recoverableConflict ? {includeShowLogs: false} : undefined
                 )
             );
             return;
@@ -652,7 +663,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      * run-actions (their behavior needs the run's live compute/cwd, so they
      * can't be a static url/command):
      *
-     * - "Retry as DB Connect setup" re-enters {@link runResolved} with the
+     * - "Retry DB Connect setup" re-enters {@link runResolved} with the
      *   `dbconnect` preset, which passes `--no-constraints` to drop the
      *   conflicting cluster-dependency pins while keeping matched Python +
      *   databricks-connect. It goes through {@link runGuarded} so a click cannot
@@ -671,7 +682,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     ): PythonSetupErrorAction[] {
         return [
             {
-                label: "Retry as DB Connect setup",
+                label: "Retry DB Connect setup",
                 run: () => {
                     // A stale Retry (project provisioned by a later run since the
                     // conflict) must not re-provision and downgrade it.
