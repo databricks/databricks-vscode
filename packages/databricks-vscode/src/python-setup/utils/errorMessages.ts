@@ -129,6 +129,27 @@ export function isIndexUnreachableFailure(result: PythonSetupResult): boolean {
 }
 
 /**
+ * True when an E_MERGE failure is the CLI refusing to write requires-python
+ * because the pyproject.toml has no `[project]` table (libs/localenv's
+ * `errNoProjectTable`) — a valid, user-fixable manifest shape (a PEP 735
+ * dependency-groups-only file), not a merge defect. It gets actionable copy and
+ * is excluded from the report-a-bug routing, while a generic E_MERGE is
+ * untouched. The CLI emits no distinct code, so we read its message (mirroring
+ * {@link isIndexUnreachableFailure}); matching `no [project] table` — not the
+ * bare phrase — keeps a future merge bug that merely mentions the table from
+ * being misclassified as this user-fixable case.
+ */
+export function isMissingProjectTableFailure(
+    result: PythonSetupResult
+): boolean {
+    const err = result.error;
+    if (!err || err.code !== "E_MERGE") {
+        return false;
+    }
+    return (err.message?.toLowerCase() ?? "").includes("no [project] table");
+}
+
+/**
  * Command that flips `databricks.python.environmentSetup` to `manual` for the
  * current project. Surfaced as the E_FETCH remediation button so a user whose
  * network blocks the constraints host can opt out in one click. Defined here
@@ -230,16 +251,36 @@ const INDEX_UNREACHABLE_MESSAGE =
     "environment variable, or add an index-url to your pip config), then try " +
     "again. See the logs for details.";
 
+/**
+ * Popup copy for the `[project]`-less variant of E_MERGE, replacing the generic
+ * "failed to merge" text. The primary fix is a manual edit (add a `[project]`
+ * table), so there is no remediation button; {@link formatSetupFailureDetail}
+ * spells out both fixes for the log.
+ */
+const MISSING_PROJECT_TABLE_MESSAGE =
+    "Your pyproject.toml has no [project] table, so setup can't record the " +
+    "runtime's required Python version (requires-python) there. Add a minimal " +
+    "[project] table (a name and version) and setup will fill it in — or set " +
+    '"databricks.python.environmentSetup" to "manual" to skip automated setup ' +
+    "and use your existing environment as-is.";
+
 export function getPythonSetupErrorMessage(result: PythonSetupResult): string {
     const err = result.error;
     if (!err) {
         return GENERIC;
     }
-    // Checked before the per-code map: a blocked index arrives as E_PROVISION,
-    // whose generic "dependency conflict" copy points at the wrong cause.
-    const base = isIndexUnreachableFailure(result)
-        ? INDEX_UNREACHABLE_MESSAGE
-        : BASE_MESSAGE[err.code]?.(result) ?? GENERIC;
+    // Checked before the per-code map: both a blocked index (arriving as
+    // E_PROVISION) and a [project]-less pyproject (arriving as E_MERGE) are told
+    // apart by the CLI's message, not a distinct code, and their per-code copy
+    // would misdirect.
+    let base: string;
+    if (isIndexUnreachableFailure(result)) {
+        base = INDEX_UNREACHABLE_MESSAGE;
+    } else if (isMissingProjectTableFailure(result)) {
+        base = MISSING_PROJECT_TABLE_MESSAGE;
+    } else {
+        base = BASE_MESSAGE[err.code]?.(result) ?? GENERIC;
+    }
     return base + diskStateSuffix(result, err);
 }
 
@@ -422,6 +463,25 @@ export function formatSetupFailureDetail(
             "  1. Ask your network admin to allowlist raw.githubusercontent.com, then re-run setup.",
             '  2. Or skip automated setup and manage the environment yourself: set the "databricks.python.environmentSetup" ' +
                 'setting to "manual". The extension then uses your existing interpreter/.venv (with its databricks-connect) as-is.'
+        );
+    }
+    // The [project]-less variant of E_MERGE: spell out both fixes here so they
+    // survive the notification being dismissed. The popup only summarises them.
+    if (isMissingProjectTableFailure(result)) {
+        lines.push(
+            "",
+            "Automated setup writes the runtime's required Python version into " +
+                "your pyproject.toml's [project] table, but this file has none (a " +
+                "valid dependency-groups-only manifest). You have two options:",
+            "",
+            "  1. Add a minimal [project] table so the pin has a home, for example:",
+            "       [project]",
+            '       name = "my-project"',
+            '       version = "0.0.0"',
+            "     Setup fills in requires-python for you — you don't need to set it.",
+            "",
+            '  2. Or skip automated setup and manage the environment yourself: set the "databricks.python.environmentSetup" ' +
+                'setting to "manual". The extension then uses your existing interpreter/.venv as-is.'
         );
     }
     // A dependency conflict gets no report button (it is usually the user's own
