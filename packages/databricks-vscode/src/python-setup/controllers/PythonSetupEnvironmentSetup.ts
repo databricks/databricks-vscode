@@ -153,6 +153,18 @@ export interface PythonSetupSetupDeps {
      */
     openProjectFile: (projectRoot: string) => Promise<void>;
 
+    /**
+     * Restore `<projectRoot>/pyproject.toml` from the CLI's pre-merge
+     * `backupPath` (see {@link PythonSetupResult.backupPath}) by copying it over
+     * the file. First step of the "Retry DB Connect setup" recovery, whose
+     * rationale lives on {@link buildConflictRecoveryActions}; a rejection there
+     * aborts the retry before any CLI run.
+     */
+    restoreProjectFile: (
+        projectRoot: string,
+        backupPath: string
+    ) => Promise<void>;
+
     saveState: (state: PythonSetupPersistedState) => void;
 
     /**
@@ -515,18 +527,23 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 result.pythonResolution === "installed_fallback"
                     ? "manual_selection_requested"
                     : result.pythonResolution;
-            // Only the Full preset pins cluster dependencies, so a constraint
-            // conflict is only recoverable when this run carried them: replace
-            // the generic actions with a one-click retry that drops the pins
-            // (the DB Connect preset) and a jump to the merged pyproject.toml. A
-            // conflict on a run that already skipped constraints (which shouldn't
-            // happen) falls through to the ordinary doc-link handling rather than
-            // offering a nonsensical, looping "retry as DB Connect".
-            const recoverableConflict =
+            // A constraint conflict is recoverable only when this run carried the
+            // pins (Full preset) AND the CLI saved a pre-merge backup to roll them
+            // back to. Without either, fall through to the ordinary doc-link
+            // handling rather than offer a "retry as DB Connect" that can't work
+            // (nothing to restore) or would loop (a run that already skipped pins).
+            const conflictBackupPath =
                 result.error?.code === "E_PROVISION_CONFLICT" &&
-                !invocation.skipConstraints;
+                !invocation.skipConstraints
+                    ? result.backupPath
+                    : undefined;
+            const recoverableConflict = conflictBackupPath !== undefined;
             const actions = recoverableConflict
-                ? this.buildConflictRecoveryActions(compute, cwd)
+                ? this.buildConflictRecoveryActions(
+                      compute,
+                      cwd,
+                      conflictBackupPath
+                  )
                 : remediationActions.some(
                         (candidate) =>
                             candidate.command ===
@@ -666,26 +683,25 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     }
 
     /**
-     * The two recovery buttons for a Full-preset constraint conflict. Both are
-     * run-actions (their behavior needs the run's live compute/cwd, so they
-     * can't be a static url/command):
+     * The two recovery buttons for a Full-preset constraint conflict, both
+     * run-actions (their behavior needs the run's live compute/cwd):
      *
-     * - "Retry DB Connect setup" re-enters {@link runResolved} with the
-     *   `dbconnect` preset, which passes `--no-constraints` to drop the
-     *   conflicting cluster-dependency pins while keeping matched Python +
-     *   databricks-connect. It goes through {@link runGuarded} so a click cannot
-     *   race a run already in flight, and because that preset skips constraints
-     *   the retry can't itself surface a recoverable conflict (no loop). It also
-     *   bails when the project is already set up: the conflict toast lingers in
-     *   the Notifications Center, so its Retry can be clicked long after a
-     *   separate run has since provisioned the project — re-running as DB Connect
-     *   then would silently drop the pins and downgrade a working environment.
-     * - "Open pyproject.toml" opens the file the failed run merged into, so the
-     *   user can inspect and adjust the dependencies that clashed.
+     * - "Retry DB Connect setup" restores pyproject.toml from the CLI's pre-merge
+     *   `backupPath`, then re-runs as DB Connect (`--no-constraints`). The restore
+     *   is load-bearing: the conflict fails *after* the pins were merged to disk,
+     *   so `--no-constraints` alone would leave the conflicting pins in place and
+     *   only skip re-adding them. It runs through {@link runGuarded} — so a click
+     *   can't race an in-flight run, and the restore only fires when the retry
+     *   actually runs — and no-ops once the project is ready, so a stale toast's
+     *   Retry can't downgrade an environment a later run provisioned. A failed
+     *   restore throws before the CLI spawns, leaving showError to log it.
+     * - "Open pyproject.toml" opens the merged file so the user can adjust the
+     *   dependencies that clashed.
      */
     private buildConflictRecoveryActions(
         compute: SetupCompute,
-        cwd: string
+        cwd: string,
+        backupPath: string
     ): PythonSetupErrorAction[] {
         return [
             {
@@ -696,14 +712,17 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                     if (this.readyRoots.has(cwd)) {
                         return;
                     }
-                    return this.runGuarded(() =>
-                        this.runResolved(
+                    return this.runGuarded(async () => {
+                        // Restore before re-running; a failure throws here, before
+                        // any attempt is recorded or the CLI spawns.
+                        await this.deps.restoreProjectFile(cwd, backupPath);
+                        await this.runResolved(
                             compute,
                             cwd,
                             "dbconnect",
                             "conflict_retry"
-                        )
-                    );
+                        );
+                    });
                 },
             },
             {

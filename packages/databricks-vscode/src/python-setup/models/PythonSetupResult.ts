@@ -38,9 +38,10 @@ export type PythonSetupPhaseStatus = "ok" | "error" | "pending";
  * `E_PROVISION_CONFLICT` is the distinct code the CLI emits when `uv sync` fails
  * specifically because the runtime's pinned dependencies conflict with the
  * user's own (only the Full preset pins them); a generic provision failure stays
- * `E_PROVISION`. The constraints are already merged at the point of failure
- * (`diskMutated: true`), which the extension's retry-as-DB-Connect recovery
- * relies on.
+ * `E_PROVISION`. The pins are already merged into pyproject.toml at the point of
+ * failure (`diskMutated: true`, with the pre-merge file saved to `backupPath`),
+ * which the extension's retry-as-DB-Connect recovery relies on: it restores that
+ * backup before re-running.
  */
 export type PythonSetupErrorCode =
     | "E_USAGE"

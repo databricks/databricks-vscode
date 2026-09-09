@@ -125,6 +125,7 @@ function makeDeps(
         }),
         adoptInterpreter: async () => {},
         openProjectFile: async () => {},
+        restoreProjectFile: async () => {},
         saveState: () => {},
         notify: async () => {},
         showReauthPrompt: async () => {},
@@ -1835,7 +1836,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         expect(retryAction).to.not.equal(undefined);
         await (retryAction as {run: () => Promise<void>}).run();
 
-        // Two runs: the Full attempt, then the DB Connect retry dropping the pins.
+        // Two runs: the Full attempt, then the DB Connect retry (restore + --no-constraints).
         expect(cli.calls).to.have.length(2);
         expect(cli.calls[0].skipConstraints).to.equal(undefined);
         expect(cli.calls[1].skipConstraints).to.equal(true);
@@ -2077,5 +2078,127 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         await (retryAction as {run: () => Promise<void>}).run();
         expect(cli.calls).to.have.length(2);
         expect(setup.ready).to.equal(true);
+    });
+
+    it("restores the CLI's backup before the DB Connect retry re-runs", async () => {
+        // The conflict fails after the pins were merged into pyproject.toml, so
+        // the retry must roll the file back to the CLI's backup *before*
+        // re-running with --no-constraints (which alone would leave the
+        // already-written conflicting pins in place).
+        const scripted = makeScriptedCli([conflictResult(), SUCCESS_REAL_RUN]);
+        const events: string[] = [];
+        const restored: Array<{root: string; backupPath: string}> = [];
+        // A CliRunner wrapper that records the run order (assigned to a variable
+        // so the extra fields aren't excess-property-checked as a literal would).
+        const cli = {
+            run: async (invocation: SetupLocalInvocation) => {
+                events.push("cli");
+                return scripted.run(invocation);
+            },
+        };
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (root, backupPath) => {
+                    events.push("restore");
+                    restored.push({root, backupPath});
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        // The restore targets the run's cwd with the CLI-reported backup path…
+        expect(restored).to.deep.equal([
+            {root: "/proj", backupPath: "/proj/pyproject.toml.bak"},
+        ]);
+        // …and it happens between the failed Full run and the DB Connect retry.
+        expect(events).to.deep.equal(["cli", "restore", "cli"]);
+    });
+
+    it("does not run the CLI or record a retry attempt when the restore fails", async () => {
+        // A failed restore leaves the conflicting pins on disk, so re-running
+        // would just conflict again: abort before spawning the CLI or recording
+        // a second attempt, and let showError's action-error handling log it.
+        const cli = makeScriptedCli([conflictResult(), SUCCESS_REAL_RUN]);
+        const telemetry = makeTelemetryRecorder();
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                ...telemetry,
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async () => {
+                    throw new Error("copy failed");
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        expect(retryAction).to.not.equal(undefined);
+
+        // The run-action rejects so showError (its only production caller) can
+        // log the failure; here we assert only that nothing was launched.
+        let threw = false;
+        try {
+            await (retryAction as {run: () => Promise<void>}).run();
+        } catch {
+            threw = true;
+        }
+        expect(threw).to.equal(true);
+
+        // Only the initial Full attempt happened: no DB Connect retry ran, and
+        // no second attempt/result was recorded.
+        expect(cli.calls).to.have.length(1);
+        expect(telemetry.attempts).to.have.length(1);
+        expect(telemetry.results).to.have.length(1);
+        expect(setup.ready).to.equal(false);
+    });
+
+    it("does not offer Retry when the conflict result has no backup to restore", async () => {
+        // Without a backupPath there is nothing to roll the merged pins back to,
+        // so the restore-then-retry recovery cannot run — fall through to the
+        // ordinary doc-link handling instead of offering a Retry that would
+        // re-run against the still-conflicting file.
+        const noBackup: PythonSetupResult = {
+            ...conflictResult(),
+            backupPath: undefined,
+        };
+        const shown: {actions?: PythonSetupErrorAction[]}[] = [];
+        const seenOptions: Array<{includeShowLogs?: boolean} | undefined> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: noBackup}),
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, actions, options) => {
+                    shown.push({actions});
+                    seenOptions.push(options);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown[0].actions).to.deep.equal([
+            {
+                label: "Resolve dependency conflicts",
+                url: "https://docs.astral.sh/uv/concepts/resolution/",
+            },
+        ]);
+        // Not a self-service toast without the Retry button, so Show Logs stays.
+        expect(seenOptions[0]).to.equal(undefined);
     });
 });

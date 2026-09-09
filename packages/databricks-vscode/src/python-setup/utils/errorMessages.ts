@@ -269,8 +269,9 @@ const DOC_LINKS: Partial<Record<PythonSetupErrorCode, PythonSetupErrorAction>> =
             url: UV_RESOLUTION_DOCS_URL,
         },
         // The Full-preset flow builds its own retry/open buttons in the
-        // orchestrator; this is the fallback link for a conflict that somehow
-        // reaches the generic path (a run that already dropped the pins).
+        // orchestrator; this is the fallback link for a conflict that reaches the
+        // generic path instead — a run that already skipped constraints, or one
+        // with no backup to restore.
         E_PROVISION_CONFLICT: {
             label: "Resolve dependency conflicts",
             url: UV_RESOLUTION_DOCS_URL,

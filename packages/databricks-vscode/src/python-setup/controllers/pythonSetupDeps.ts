@@ -1,4 +1,5 @@
 import {existsSync} from "fs";
+import {copyFile} from "fs/promises";
 import path from "path";
 import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
@@ -283,6 +284,14 @@ export function makePythonSetupDeps(
             // before provisioning fails), so the file exists.
             await window.showTextDocument(
                 Uri.file(path.join(projectRoot, "pyproject.toml"))
+            );
+        },
+        restoreProjectFile: async (projectRoot: string, backupPath: string) => {
+            // Copy the CLI's pre-merge backup over pyproject.toml (the seam's doc
+            // covers why the DB Connect retry needs this).
+            await copyFile(
+                backupPath,
+                path.join(projectRoot, "pyproject.toml")
             );
         },
         // Stamp the persisted state with the completion time here (the

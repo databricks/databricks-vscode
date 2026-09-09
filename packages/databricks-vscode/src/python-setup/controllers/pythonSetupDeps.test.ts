@@ -1,4 +1,7 @@
 import {expect} from "chai";
+import {mkdtemp, readFile, rm, writeFile} from "fs/promises";
+import {tmpdir} from "os";
+import path from "path";
 import {commands, env, QuickPick, QuickPickItem, Uri, window} from "vscode";
 import {
     makePythonSetupDeps,
@@ -1027,6 +1030,29 @@ describe("makePythonSetupDeps openProjectFile", () => {
 
         expect(opened).to.have.length(1);
         expect(opened[0]).to.match(/[/\\]proj[/\\]pyproject\.toml$/);
+    });
+});
+
+describe("makePythonSetupDeps restoreProjectFile", () => {
+    it("copies the CLI's backup over the project's pyproject.toml", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
+        try {
+            const pyproject = path.join(dir, "pyproject.toml");
+            const backup = path.join(dir, "pyproject.toml.bak");
+            // The failed run's conflicting file, and the pre-merge backup.
+            await writeFile(pyproject, "conflicting = true\n");
+            await writeFile(backup, "original = true\n");
+
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.restoreProjectFile(dir, backup);
+
+            // pyproject.toml now holds the backup's (original) contents again.
+            expect(await readFile(pyproject, "utf8")).to.equal(
+                "original = true\n"
+            );
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
     });
 });
 
