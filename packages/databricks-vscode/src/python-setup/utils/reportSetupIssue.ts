@@ -3,6 +3,7 @@ import type {
     PythonSetupErrorCode,
 } from "../models/PythonSetupResult";
 import type {PrimaryManager} from "../../language/packageManagerDetection";
+import {isMissingProjectTableFailure} from "./errorMessages";
 import type {PythonSetupErrorAction} from "./errorMessages";
 
 /**
@@ -27,7 +28,9 @@ export type ReportRepo =
  *   constraints have no entry for the runtime (`E_ENV_UNSUPPORTED`) or don't
  *   validate after provisioning (`E_VALIDATE`).
  * - Extension/CLI behaviour defects → `databricks/databricks-vscode`: merging
- *   into or writing the user's pyproject.toml broke.
+ *   into or writing the user's pyproject.toml broke. Exception: the
+ *   `[project]`-less variant of `E_MERGE` is a valid, user-fixable manifest
+ *   shape, not a defect — `reportRepoForResult` filters it out (see there).
  *
  * `E_PROVISION` is deliberately absent: a uv resolution conflict is usually the
  * user's own declared dependencies (possibly private packages), not a constraint
@@ -75,6 +78,13 @@ export function reportRepoForResult(
 ): ReportRepo | undefined {
     const err = result.error;
     if (!err) {
+        return undefined;
+    }
+    // The [project]-less variant of E_MERGE is a valid, user-fixable manifest
+    // shape (errorMessages gives it actionable copy), not a merge defect — so it
+    // is not report-worthy, even though a generic E_MERGE is. Prompting a bug
+    // report for it is what auto-filed databricks/databricks-vscode#2177.
+    if (isMissingProjectTableFailure(result)) {
         return undefined;
     }
     return REPORT_ROUTING[err.code];
