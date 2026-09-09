@@ -32,6 +32,12 @@ describe(__filename, function () {
     ): compute.ClusterDetails =>
         ({cluster_id: clusterId, state, ...extra}) as compute.ClusterDetails;
 
+    const placementFailure = () =>
+        details("TERMINATED", {
+            state_message:
+                "Unexpected failure during launch. databricks_error_message: Timeout while placing nodes.",
+        });
+
     const whenGet = () =>
         when(
             mockedClient.request(
@@ -100,24 +106,6 @@ describe(__filename, function () {
         verifyStarted(1);
     });
 
-    it("fails fast when the cluster returns to a terminal state after start", async () => {
-        whenGet().thenResolve(
-            details("TERMINATED"),
-            details("TERMINATED", {state_message: "bad spark config"})
-        );
-        whenStart().thenResolve({});
-
-        const startPromise = startCluster(instance(mockedClient), clusterId);
-        const rejection = assert.rejects(
-            startPromise,
-            (e: Error) =>
-                e instanceof ClusterStartError &&
-                /bad spark config/.test(e.message)
-        );
-        await fakeTimer.runToLastAsync();
-        await rejection;
-    });
-
     it("tolerates a concurrent start race on the shared cluster", async () => {
         // Initial TERMINATED -> our start() races a sibling and throws -> the
         // re-check finds it already coming up (PENDING) -> RUNNING.
@@ -138,9 +126,10 @@ describe(__filename, function () {
         verifyStarted(1);
     });
 
-    it("propagates a non-race start error when the cluster stays stopped", async () => {
+    it("fails fast when start() is rejected and the cluster stays stopped", async () => {
         // start() fails and the re-check shows the cluster still stopped, so the
-        // original (actionable) error surfaces rather than being masked.
+        // original (actionable) error surfaces immediately rather than being
+        // masked or retried — retrying the same rejected call can't help.
         whenGet().thenResolve(details("TERMINATED"), details("TERMINATED"));
         whenStart().thenReject(new Error("permission denied"));
 
@@ -150,6 +139,8 @@ describe(__filename, function () {
         );
         await fakeTimer.runToLastAsync();
         await rejection;
+
+        verifyStarted(1);
     });
 
     it("waits for a TERMINATING cluster to stop, then starts it", async () => {
@@ -167,10 +158,28 @@ describe(__filename, function () {
         verifyStarted(1);
     });
 
-    it("fails fast when the cluster is UNKNOWN after start", async () => {
+    it("re-starts after a transient post-start terminal failure, then reaches RUNNING", async () => {
         whenGet().thenResolve(
             details("TERMINATED"),
-            details("UNKNOWN", {state_message: "lost the cluster"})
+            placementFailure(),
+            details("PENDING"),
+            details("RUNNING")
+        );
+        whenStart().thenResolve({});
+
+        const startPromise = startCluster(instance(mockedClient), clusterId);
+        await fakeTimer.runAllAsync();
+        await startPromise;
+
+        // start() issued once per attempt: the failed one plus the recovery.
+        verifyStarted(2);
+    });
+
+    it("retries a persistent terminal failure up to the max, then surfaces its reason", async () => {
+        // Retry is not gated on the reason string, so even a deterministic
+        // failure is re-attempted (best-effort warm-up) before surfacing.
+        whenGet().thenResolve(
+            details("TERMINATED", {state_message: "bad spark config"})
         );
         whenStart().thenResolve({});
 
@@ -179,9 +188,104 @@ describe(__filename, function () {
             startPromise,
             (e: Error) =>
                 e instanceof ClusterStartError &&
-                /lost the cluster/.test(e.message)
+                /bad spark config/.test(e.message)
         );
-        await fakeTimer.runToLastAsync();
+        await fakeTimer.runAllAsync();
         await rejection;
+
+        verifyStarted(3);
+    });
+
+    it("stops re-starting once the deadline is exhausted by backoff", async () => {
+        // A short timeout: after the first failure the jittered backoff (>=10s)
+        // is capped to the remaining deadline and consumes it, so the loop must
+        // not issue a second start().
+        whenGet().thenResolve(placementFailure());
+        whenStart().thenResolve({});
+
+        const startPromise = startCluster(
+            instance(mockedClient),
+            clusterId,
+            new Time(5, TimeUnits.seconds)
+        );
+        const rejection = assert.rejects(
+            startPromise,
+            (e: Error) =>
+                e instanceof ClusterStartError &&
+                /Timeout while placing nodes/.test(e.message)
+        );
+        await fakeTimer.runAllAsync();
+        await rejection;
+
+        verifyStarted(1);
+    });
+
+    it("re-checks through a start race on a retry, then reaches RUNNING", async () => {
+        // A post-start terminal triggers a retry; the retry's start() races a
+        // sibling and throws, the re-check finds it coming up (PENDING), and the
+        // poll reaches RUNNING.
+        whenGet().thenResolve(
+            details("TERMINATED"),
+            placementFailure(),
+            details("PENDING"),
+            details("RUNNING")
+        );
+        whenStart()
+            .thenResolve({})
+            .thenReject(
+                new Error(
+                    `Cluster ${clusterId} is in unexpected state Pending.`
+                )
+            );
+
+        const startPromise = startCluster(instance(mockedClient), clusterId);
+        await fakeTimer.runAllAsync();
+        await startPromise;
+
+        verifyStarted(2);
+    });
+
+    it("surfaces a stuck-PENDING poll timeout as-is, without retrying", async () => {
+        // A cluster that never leaves PENDING is out of scope: the poll times
+        // out (a non-ClusterStartError), which must propagate without a re-start.
+        whenGet().thenResolve(details("TERMINATED"), details("PENDING"));
+        whenStart().thenResolve({});
+
+        const startPromise = startCluster(
+            instance(mockedClient),
+            clusterId,
+            new Time(30, TimeUnits.seconds)
+        );
+        const rejection = assert.rejects(
+            startPromise,
+            (e: Error) => !(e instanceof ClusterStartError)
+        );
+        await fakeTimer.runAllAsync();
+        await rejection;
+
+        // One start(), then the poll timed out — no retry.
+        verifyStarted(1);
+    });
+
+    it("rejects without starting when the deadline is already spent on entry", async () => {
+        // Degenerate timeout: the loop's first guard trips before any start(),
+        // so the fallback error surfaces rather than throwing an undefined.
+        whenGet().thenResolve(details("TERMINATED"));
+
+        const startPromise = startCluster(
+            instance(mockedClient),
+            clusterId,
+            new Time(0, TimeUnits.milliseconds)
+        );
+        const rejection = assert.rejects(
+            startPromise,
+            (e: Error) =>
+                e instanceof ClusterStartError &&
+                /did not reach RUNNING/.test(e.message)
+        );
+        await fakeTimer.runAllAsync();
+        await rejection;
+
+        verifyStarted(0);
     });
 });
