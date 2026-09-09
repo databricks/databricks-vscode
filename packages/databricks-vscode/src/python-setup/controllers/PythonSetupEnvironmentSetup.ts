@@ -34,7 +34,7 @@ import {
     PythonSetupAttempt,
     PythonSetupResultReporter,
 } from "../../telemetry/pythonSetupExtensions";
-import {PythonSetupRunTrigger} from "../../telemetry/constants";
+import type {PythonSetupRunTrigger} from "../../telemetry/constants";
 import {PrimaryManager} from "../../language/packageManagerDetection";
 import {
     isUvSetupSuitable,
@@ -534,7 +534,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // (nothing to restore) or would loop (a run that already skipped pins).
             const conflictBackupPath =
                 result.error?.code === "E_PROVISION_CONFLICT" &&
-                !invocation.skipConstraints
+                !invocation.skipConstraints &&
+                // Truthiness, not just `!== undefined`: a (contract-forbidden)
+                // empty backupPath has nothing to restore, so it must fall
+                // through rather than offer a Retry that could only throw.
+                result.backupPath
                     ? result.backupPath
                     : undefined;
             const recoverableConflict = conflictBackupPath !== undefined;

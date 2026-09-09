@@ -2201,4 +2201,37 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         // Not a self-service toast without the Retry button, so Show Logs stays.
         expect(seenOptions[0]).to.equal(undefined);
     });
+
+    it("does not offer Retry when backupPath is an empty string", async () => {
+        // The CLI marks backupPath omitempty, so "" shouldn't occur — but if it
+        // did, offering Retry would hand the user a button that can only throw
+        // (restore rejects an empty path) while hiding Show Logs. Treat empty as
+        // "no backup": fall through to the ordinary doc-link handling.
+        const emptyBackup: PythonSetupResult = {
+            ...conflictResult(),
+            backupPath: "",
+        };
+        const shown: {actions?: PythonSetupErrorAction[]}[] = [];
+        const seenOptions: Array<{includeShowLogs?: boolean} | undefined> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: emptyBackup}),
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, actions, options) => {
+                    shown.push({actions});
+                    seenOptions.push(options);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(shown[0].actions).to.deep.equal([
+            {
+                label: "Resolve dependency conflicts",
+                url: "https://docs.astral.sh/uv/concepts/resolution/",
+            },
+        ]);
+        expect(seenOptions[0]).to.equal(undefined);
+    });
 });
