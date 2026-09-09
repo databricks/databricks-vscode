@@ -173,16 +173,26 @@ export const INSTALL_UV_COMMAND_ID = "databricks.environment.installUv";
 
 /**
  * An optional remediation button to attach to a failure popup. Exactly one of
- * `url` / `command` is set — a discriminated union (`?: never` on the other arm)
- * forbids both/neither at compile time, while still letting callers read
- * `action.url` / `action.command` as `string | undefined` without narrowing.
- * `url` opens an external page (docs, issue); `command` runs a VS Code command
- * (e.g. the one-click switch to manual setup). Kept alongside
- * {@link getPythonSetupErrorMessage} so the copy and its call-to-action live together.
+ * `url` / `command` / `run` is set — a discriminated union (`?: never` on the
+ * other arms) forbids more than one at compile time, while still letting callers
+ * read `action.url` / `action.command` as `string | undefined` without
+ * narrowing. `url` opens an external page (docs, issue); `command` runs a VS
+ * Code command (e.g. the one-click switch to manual setup); `run` invokes an
+ * in-process callback for a button whose behavior needs runtime state and so
+ * can't be expressed as a static url/command (the constraint-conflict
+ * "Retry DB Connect setup" / "Open pyproject.toml" buttons, built by the
+ * orchestrator). Kept alongside {@link getPythonSetupErrorMessage} so the copy
+ * and its call-to-action live together.
  */
 export type PythonSetupErrorAction =
-    | {label: string; url: string; command?: never}
-    | {label: string; command: string; url?: never};
+    | {label: string; url: string; command?: never; run?: never}
+    | {label: string; command: string; url?: never; run?: never}
+    | {
+          label: string;
+          run: () => void | Promise<void>;
+          url?: never;
+          command?: never;
+      };
 
 /* eslint-disable @typescript-eslint/naming-convention */
 const BASE_MESSAGE: Record<
@@ -220,6 +230,9 @@ const BASE_MESSAGE: Record<
     E_PROVISION: () =>
         "uv could not resolve the project's dependencies (a version conflict). " +
         "Review the conflict in the logs and adjust your dependencies.",
+    E_PROVISION_CONFLICT: () =>
+        "The cluster dependencies conflict with your local dependencies, so uv " +
+        "sync couldn't resolve the environment.",
     E_VALIDATE: () =>
         "The provisioned environment did not match the selected runtime.",
 };
@@ -293,6 +306,14 @@ const DOC_LINKS: Partial<Record<PythonSetupErrorCode, PythonSetupErrorAction>> =
             url: UV_PROJECTS_DOCS_URL,
         },
         E_PROVISION: {
+            label: "Resolve dependency conflicts",
+            url: UV_RESOLUTION_DOCS_URL,
+        },
+        // The Full-preset flow builds its own retry/open buttons in the
+        // orchestrator; this is the fallback link for a conflict that reaches the
+        // generic path instead — a run that already skipped constraints, or one
+        // with no backup to restore.
+        E_PROVISION_CONFLICT: {
             label: "Resolve dependency conflicts",
             url: UV_RESOLUTION_DOCS_URL,
         },
@@ -463,11 +484,18 @@ export function formatSetupFailureDetail(
                 'setting to "manual". The extension then uses your existing interpreter/.venv as-is.'
         );
     }
-    // A genuine E_PROVISION conflict gets no report button (it is usually the
-    // user's own dependencies). But if the *published constraints* are what
-    // conflict, that is a defect worth reporting — so offer a soft, conditional
-    // pointer here. Excludes the blocked-index variant, a local network issue.
-    if (err.code === "E_PROVISION" && !isIndexUnreachableFailure(result)) {
+    // A dependency conflict gets no report button (it is usually the user's own
+    // dependencies). But if the *published constraints* are what conflict, that
+    // is a defect worth reporting — so offer a soft, conditional pointer here.
+    // Covers both the generic E_PROVISION conflict and the distinct
+    // E_PROVISION_CONFLICT (a pins-vs-local conflict is exactly where the
+    // published constraints may be at fault, and it was E_PROVISION — carrying
+    // this pointer — before the CLI split the code out). Excludes the
+    // blocked-index variant, a local network issue.
+    if (
+        (err.code === "E_PROVISION" || err.code === "E_PROVISION_CONFLICT") &&
+        !isIndexUnreachableFailure(result)
+    ) {
         lines.push(
             "",
             "If you believe this conflict comes from the published runtime " +

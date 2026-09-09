@@ -1,4 +1,7 @@
 import {expect} from "chai";
+import {mkdtemp, readdir, readFile, rm, writeFile} from "fs/promises";
+import {tmpdir} from "os";
+import path from "path";
 import {commands, env, QuickPick, QuickPickItem, Uri, window} from "vscode";
 import {
     makePythonSetupDeps,
@@ -917,6 +920,215 @@ describe("makePythonSetupDeps showError", () => {
                 original;
             (env as unknown as {openExternal: unknown}).openExternal =
                 originalOpen;
+        }
+    });
+
+    it("runs a run-action's callback when its button is picked", async () => {
+        // A run-action carries an in-process closure (the constraint-conflict
+        // "Retry DB Connect setup" / "Open pyproject.toml" buttons need runtime
+        // state, so they can't be a static url/command).
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        let ran = 0;
+        reply = "Retry DB Connect setup";
+
+        await deps.showError("conflict copy", "detail", [
+            {label: "Retry DB Connect setup", run: async () => void ran++},
+        ]);
+
+        expect(ran).to.equal(1);
+    });
+
+    it("omits the Show Logs button when includeShowLogs is false", async () => {
+        // A self-service toast (the recoverable constraint conflict) drops the
+        // trailing Show Logs so its own action buttons fit; the channel is still
+        // revealed, so the log stays reachable.
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        reply = undefined;
+
+        await deps.showError(
+            "conflict copy",
+            "detail",
+            [
+                {label: "Retry DB Connect setup", run: async () => {}},
+                {label: "Open pyproject.toml", run: async () => {}},
+            ],
+            {includeShowLogs: false}
+        );
+
+        expect(shownWith[0].actions).to.deep.equal([
+            "Retry DB Connect setup",
+            "Open pyproject.toml",
+        ]);
+        expect(shownWith[0].actions).to.not.contain("Show Logs");
+    });
+
+    it("does not run a run-action's callback when its button is not picked", async () => {
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        let ran = 0;
+        reply = "Show Logs";
+
+        await deps.showError("conflict copy", "detail", [
+            {label: "Retry DB Connect setup", run: async () => void ran++},
+        ]);
+
+        expect(ran).to.equal(0);
+    });
+
+    it("does not reject when a run-action's callback throws", async () => {
+        // showError is the failure-reporting path and its one caller does not
+        // wrap it, so a throwing callback must be contained (logged), not escape.
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+        reply = "Retry DB Connect setup";
+
+        await deps.showError("conflict copy", "detail", [
+            {
+                label: "Retry DB Connect setup",
+                run: async () => {
+                    throw new Error("retry blew up");
+                },
+            },
+        ]);
+
+        expect(appended.join("")).to.contain("retry blew up");
+    });
+});
+
+describe("makePythonSetupDeps openProjectFile", () => {
+    let originalShow: typeof window.showTextDocument;
+    let opened: string[];
+
+    beforeEach(() => {
+        originalShow = window.showTextDocument;
+        opened = [];
+        (window as unknown as {showTextDocument: unknown}).showTextDocument =
+            async (uri: Uri) => {
+                opened.push(uri.fsPath);
+                return {} as any;
+            };
+    });
+
+    afterEach(() => {
+        (window as unknown as {showTextDocument: unknown}).showTextDocument =
+            originalShow;
+    });
+
+    it("opens the project's pyproject.toml in an editor", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+
+        await deps.openProjectFile("/proj");
+
+        expect(opened).to.have.length(1);
+        expect(opened[0]).to.match(/[/\\]proj[/\\]pyproject\.toml$/);
+    });
+});
+
+describe("makePythonSetupDeps restoreProjectFile", () => {
+    it("copies the CLI's backup over the project's pyproject.toml", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
+        try {
+            const pyproject = path.join(dir, "pyproject.toml");
+            const backup = path.join(dir, "pyproject.toml.bak");
+            // The failed run's conflicting file, and the pre-merge backup.
+            await writeFile(pyproject, "conflicting = true\n");
+            await writeFile(backup, "original = true\n");
+
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.restoreProjectFile(dir, backup);
+
+            // pyproject.toml now holds the backup's (original) contents again.
+            expect(await readFile(pyproject, "utf8")).to.equal(
+                "original = true\n"
+            );
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("leaves no temp artifact behind after a successful restore", async () => {
+        // The restore writes atomically (copy to a temp sibling, then rename),
+        // so no stray *.tmp file may survive a successful run.
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
+        try {
+            const backup = path.join(dir, "pyproject.toml.bak");
+            await writeFile(path.join(dir, "pyproject.toml"), "conflicting\n");
+            await writeFile(backup, "original\n");
+
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.restoreProjectFile(dir, backup);
+
+            const entries = await readdir(dir);
+            expect(entries.sort()).to.deep.equal([
+                "pyproject.toml",
+                "pyproject.toml.bak",
+            ]);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("refuses to restore from a backup outside the project (and leaves the file untouched)", async () => {
+        // backupPath comes from the CLI result; a path outside the project must
+        // never be copied over pyproject.toml.
+        const project = await mkdtemp(path.join(tmpdir(), "vpex-proj-"));
+        const outside = await mkdtemp(path.join(tmpdir(), "vpex-out-"));
+        try {
+            const pyproject = path.join(project, "pyproject.toml");
+            await writeFile(pyproject, "conflicting\n");
+            const foreign = path.join(outside, "secrets.bak");
+            await writeFile(foreign, "SHOULD NOT LAND\n");
+
+            const deps = makePythonSetupDeps(makeWiring());
+            let threw = false;
+            try {
+                await deps.restoreProjectFile(project, foreign);
+            } catch {
+                threw = true;
+            }
+
+            expect(threw).to.equal(true);
+            // pyproject.toml is untouched; the foreign file never lands.
+            expect(await readFile(pyproject, "utf8")).to.equal("conflicting\n");
+        } finally {
+            await rm(project, {recursive: true, force: true});
+            await rm(outside, {recursive: true, force: true});
+        }
+    });
+
+    it("leaves pyproject.toml untouched and cleans up when the copy fails", async () => {
+        // A missing backup (in-project path, so it passes the guard) makes the
+        // copy fail: the destination must be untouched and no temp left behind.
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
+        try {
+            const pyproject = path.join(dir, "pyproject.toml");
+            await writeFile(pyproject, "conflicting\n");
+            const missing = path.join(dir, "pyproject.toml.bak"); // never created
+
+            const deps = makePythonSetupDeps(makeWiring());
+            let threw = false;
+            try {
+                await deps.restoreProjectFile(dir, missing);
+            } catch {
+                threw = true;
+            }
+
+            expect(threw).to.equal(true);
+            expect(await readFile(pyproject, "utf8")).to.equal("conflicting\n");
+            // No *.tmp artifact survived the failed copy.
+            const entries = await readdir(dir);
+            expect(entries).to.deep.equal(["pyproject.toml"]);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
         }
     });
 });
