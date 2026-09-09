@@ -206,10 +206,17 @@ describe("Set up local Python environment (uv) on serverless", async function ()
     it("should set up the environment with uv (setup-local)", async () => {
         // The router command; a clean (uv-suitable) project routes it to the uv
         // flow, which shells out to `databricks environments setup-local`.
-        // Compute + version are already resolved, so no prompt.
+        // Compute + version are already resolved, so the preset picker below is
+        // the only prompt.
         await executeCommandWhenAvailable(
             "Databricks: Setup python environment"
         );
+
+        // Once compute is resolved the flow asks which preset to provision; take
+        // the recommended Full tier (starred, first) so the full environment is
+        // set up (matching Python + Databricks Connect + pinned dependencies).
+        const presetInput = await waitForQuickInput();
+        await presetInput.selectQuickPick(0);
 
         await waitForVenvInterpreter(projectDir);
 
@@ -262,11 +269,21 @@ describe("Set up local Python environment (uv) on serverless", async function ()
         // executeCommand resolves when the (re-entrancy-guarded) run settles; a
         // re-run over an already-provisioned env is a warm uv sync, so it returns
         // quickly rather than paying another cold provision.
-        await browser.executeWorkbench(async (vscode) => {
-            await vscode.commands.executeCommand(
+        // rerunPythonEnv is palette-hidden (when:false), so fire it by id — but
+        // do NOT await it inside executeWorkbench: the command now blocks on the
+        // preset picker (driven just below), so awaiting here would deadlock —
+        // the callback can't return while the picker is open, so the picker
+        // could never be answered.
+        await browser.executeWorkbench((vscode) => {
+            void vscode.commands.executeCommand(
                 "databricks.environment.rerunPythonEnv"
             );
         });
+
+        // Take the recommended Full tier again so the re-run provisions the same
+        // environment.
+        const rerunPresetInput = await waitForQuickInput();
+        await rerunPresetInput.selectQuickPick(0);
 
         // A fresh "Python environment ready" toast is the re-run-SPECIFIC success
         // signal. A failed run never clears readiness (readyRoots/state persist)

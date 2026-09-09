@@ -40,6 +40,7 @@ describe(__filename, () => {
             targetType: "serverless",
             serverlessVersion: "5",
             mode: "default",
+            setupPreset: "full",
             isGreenfield: true,
             trigger: "initial",
         });
@@ -58,6 +59,7 @@ describe(__filename, () => {
             "event.targetType": "serverless",
             "event.serverlessVersion": "5",
             "event.mode": "default",
+            "event.setupPreset": "full",
             "event.isGreenfield": "true",
             "event.trigger": "initial",
         });
@@ -75,6 +77,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         });
         reportResult({outcome: "ok"});
@@ -96,6 +99,7 @@ describe(__filename, () => {
             packageManager: "pip",
             targetType: "cluster",
             mode: "constraints-only",
+            setupPreset: "python",
             serverlessVersion: undefined,
             isGreenfield: undefined,
             trigger: "initial",
@@ -114,6 +118,7 @@ describe(__filename, () => {
             "event.packageManager": "pip",
             "event.targetType": "cluster",
             "event.mode": "constraints-only",
+            "event.setupPreset": "python",
             "event.trigger": "initial",
         });
         expect(events[1].props).to.deep.equal({
@@ -134,6 +139,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             isGreenfield: false,
             trigger: "initial",
         });
@@ -162,6 +168,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         });
         reportResult({
@@ -181,6 +188,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         });
         reportResult({outcome: "failed", failurePhase: "provision"});
@@ -195,6 +203,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         });
         reportResult({outcome: "ok"});
@@ -221,6 +230,7 @@ describe(__filename, () => {
                 packageManager: "uv",
                 targetType: "cluster",
                 mode: "default",
+                setupPreset: "full",
                 trigger: "initial",
             })({outcome: "ok", pythonSetupFlow});
 
@@ -244,6 +254,7 @@ describe(__filename, () => {
                 packageManager: "uv",
                 targetType: "cluster",
                 mode: "default",
+                setupPreset: "full",
                 trigger: "initial",
             })({outcome: "ok", envKey});
             expect(events[1].props["event.envKey"]).to.equal(envKey);
@@ -272,6 +283,7 @@ describe(__filename, () => {
                 packageManager: "uv",
                 targetType: "cluster",
                 mode: "default",
+                setupPreset: "full",
                 trigger: "initial",
             })({outcome: "ok", envKey});
             expect(events[1].props["event.envKey"]).to.equal("other");
@@ -286,6 +298,7 @@ describe(__filename, () => {
             targetType: "serverless",
             serverlessVersion: "5",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         })({
             outcome: "ok",
@@ -327,6 +340,7 @@ describe(__filename, () => {
             targetType: "serverless",
             serverlessVersion: "5",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         })({outcome: "ok", envKey: "serverless/serverless-v5", warnings: []});
 
@@ -344,6 +358,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         })({
             outcome: "ok",
@@ -380,6 +395,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         })({outcome: "cancelled"});
 
@@ -399,6 +415,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
             clusterId: "0710-142042-secretcluster",
             projectPath: "/Users/jane/projects/acme",
@@ -417,6 +434,7 @@ describe(__filename, () => {
         expect(Object.keys(events[0].props).sort()).to.deep.equal([
             "event.mode",
             "event.packageManager",
+            "event.setupPreset",
             "event.targetType",
             "event.trigger",
             "version",
@@ -454,6 +472,7 @@ describe(__filename, () => {
             packageManager: "uv",
             targetType: "cluster",
             mode: "default",
+            setupPreset: "full",
             trigger: "initial",
         });
 
