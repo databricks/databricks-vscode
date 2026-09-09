@@ -561,8 +561,10 @@ export class EventTypes {
                 "environment already provisioned this session, e.g. via the ready row's Re-run " +
                 "button), or conflict_retry (a Full-preset run hit a cluster-vs-local dependency " +
                 "conflict and the user clicked 'Retry DB Connect setup', which re-runs with " +
-                "--no-constraints). conflict_retry counts conflict-recovery clicks; pair it with " +
-                "the matching result's outcome for the recovery success rate. Session-scoped: a " +
+                "--no-constraints). conflict_retry counts conflict-recovery runs that started " +
+                "(a click whose pre-retry pyproject.toml restore fails, coalesces, or no-ops " +
+                "records none); pair it with the matching result's outcome for the recovery " +
+                "success rate. Session-scoped: a " +
                 "run after a window reload reads as initial again",
         },
         packageManager: {

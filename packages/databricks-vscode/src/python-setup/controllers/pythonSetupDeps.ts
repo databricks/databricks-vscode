@@ -1,5 +1,6 @@
+import {randomBytes} from "crypto";
 import {existsSync} from "fs";
-import {copyFile} from "fs/promises";
+import {copyFile, rename, rm} from "fs/promises";
 import path from "path";
 import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
@@ -287,12 +288,33 @@ export function makePythonSetupDeps(
             );
         },
         restoreProjectFile: async (projectRoot: string, backupPath: string) => {
-            // Copy the CLI's pre-merge backup over pyproject.toml (the seam's doc
-            // covers why the DB Connect retry needs this).
-            await copyFile(
-                backupPath,
-                path.join(projectRoot, "pyproject.toml")
-            );
+            // Restore the CLI's pre-merge backup over pyproject.toml (the seam's
+            // doc covers why the DB Connect retry needs this).
+            const root = path.resolve(projectRoot);
+            // backupPath comes from the CLI result: refuse anything resolving
+            // outside the project so a malformed/unexpected path can't copy an
+            // arbitrary file over pyproject.toml. Lexical containment (path is
+            // from the trusted local CLI, so symlink canonicalization is not
+            // warranted).
+            const rel = path.relative(root, path.resolve(backupPath));
+            if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+                throw new Error(
+                    `Refusing to restore pyproject.toml from a backup outside the project: ${backupPath}`
+                );
+            }
+            // Write atomically: copy to a temp sibling on the same filesystem,
+            // then rename over pyproject.toml, so an interrupted or failed copy
+            // can never leave the project file truncated. Clean the temp up if
+            // either step throws (rename consumes it on success).
+            const dest = path.join(root, "pyproject.toml");
+            const tmp = `${dest}.${randomBytes(6).toString("hex")}.tmp`;
+            try {
+                await copyFile(backupPath, tmp);
+                await rename(tmp, dest);
+            } catch (e) {
+                await rm(tmp, {force: true});
+                throw e;
+            }
         },
         // Stamp the persisted state with the completion time here (the
         // orchestrator supplies the env identity; the timestamp is a wiring

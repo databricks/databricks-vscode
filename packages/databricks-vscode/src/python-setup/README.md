@@ -19,6 +19,9 @@ the mapped message alone (see `reportSetupIssue.ts` for the closed routing list)
 such a conflict is usually the user's own declared dependencies. When the
 published constraints are what conflict, that genuine case is served by a soft,
 conditional pointer in the output log instead (see `formatSetupFailureDetail`).
+`E_PROVISION_CONFLICT` (the CLI's distinct pins-vs-local code) follows the same
+policy; the Full-preset flow additionally offers a restore-and-retry recovery
+(see `buildConflictRecoveryActions`).
 
 **Privacy posture.** The issue body carries build metadata (error code, phase,
 env key, package manager, extension/CLI versions, OS) plus the CLI's stderr. The
