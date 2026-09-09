@@ -369,7 +369,6 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         const compute = resolved.compute;
 
         const invocation: SetupLocalInvocation = {
-            mode: "default",
             compute,
         };
 
@@ -635,7 +634,9 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 targetType: compute.kind,
                 serverlessVersion:
                     compute.kind === "serverless" ? compute.version : undefined,
-                mode: invocation.mode,
+                // --no-dbconnect is the orthogonal spelling of the legacy
+                // --constraints-only, so it maps to that telemetry mode.
+                mode: invocation.skipDbconnect ? "constraints-only" : "default",
                 isGreenfield,
                 // A run against a project already marked ready this session is a
                 // re-run (the ready row's Re-run button / row click); anything

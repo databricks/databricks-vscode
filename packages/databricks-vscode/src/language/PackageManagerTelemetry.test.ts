@@ -68,6 +68,7 @@ describe(__filename, () => {
             projectRoot: string;
             compute?: "cluster" | "serverless" | "none";
             connected?: boolean;
+            setupMode?: "auto" | "manual";
         }
     ) {
         return new PackageManagerTelemetry(
@@ -75,7 +76,8 @@ describe(__filename, () => {
             noInterpreter,
             () => opts.projectRoot,
             () => opts.compute ?? "none",
-            () => opts.connected ?? true
+            () => opts.connected ?? true,
+            () => opts.setupMode ?? "auto"
         );
     }
 
@@ -102,6 +104,42 @@ describe(__filename, () => {
         expect(e.props["event.targetCompute"]).to.equal("cluster");
         expect(e.props["event.setupTrigger"]).to.equal("explicit_command");
         expect(e.props["event.interpreterSource"]).to.equal("unknown");
+        // primaryManager is uv, yet a real pip signal (requirements-dev.txt)
+        // makes the project not uv-suitable, so the flow is pip — setupMode
+        // tracks the effective flow, not the primary manager.
+        expect(e.props["event.setupMode"]).to.equal("pip");
+    });
+
+    it("reports setupMode=uv for a clean, auto uv project", async () => {
+        const {telemetry, events} = makeTelemetry("all");
+        const projectRoot = makeProject([["uv.lock", "version = 1\n"]]);
+        const pmt = makePmt(telemetry, {projectRoot}); // setupMode defaults to auto
+
+        await emit(pmt, "auto_open");
+
+        expect(events[0].props["event.setupMode"]).to.equal("uv");
+    });
+
+    it("reports setupMode=pip for an auto, non-uv (requirements) project", async () => {
+        const {telemetry, events} = makeTelemetry("all");
+        const projectRoot = makeProject([["requirements.txt", "requests\n"]]);
+        const pmt = makePmt(telemetry, {projectRoot}); // setupMode defaults to auto
+
+        await emit(pmt, "auto_open");
+
+        expect(events[0].props["event.primaryManager"]).to.equal("pip");
+        expect(events[0].props["event.setupMode"]).to.equal("pip");
+    });
+
+    it("reports setupMode=fallback-pip when the user opted out (manual)", async () => {
+        const {telemetry, events} = makeTelemetry("all");
+        // A clean uv project that would be "uv" on auto — manual still wins.
+        const projectRoot = makeProject([["uv.lock", "version = 1\n"]]);
+        const pmt = makePmt(telemetry, {projectRoot, setupMode: "manual"});
+
+        await emit(pmt, "auto_open");
+
+        expect(events[0].props["event.setupMode"]).to.equal("fallback-pip");
     });
 
     it("deduplicates per (trigger, projectRoot) within a session", async () => {

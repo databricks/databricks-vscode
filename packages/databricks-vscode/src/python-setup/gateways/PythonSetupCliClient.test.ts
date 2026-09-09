@@ -63,7 +63,6 @@ function fakeSpawn(script: {
 }
 
 const inv = {
-    mode: "default" as const,
     compute: {kind: "serverless" as const, version: "5"},
 };
 
