@@ -288,10 +288,7 @@ export async function createWorkspaceClient(
     host: URL
 ): Promise<WorkspaceClient> {
     applyProxyStrictSSLEnv();
-    const agent = await getDatabricksHttpAgent(
-        host,
-        config.httpTimeoutSeconds
-    );
+    const agent = await getDatabricksHttpAgent(host, config.httpTimeoutSeconds);
     return new WorkspaceClient(config, {
         product: "databricks-vscode",
         productVersion: extensionVersion,
