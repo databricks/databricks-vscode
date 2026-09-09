@@ -4069,6 +4069,7 @@ __metadata:
     "@vscode/proxy-agent": ^0.44.0
     "@vscode/test-electron": ^3.1.0
     "@vscode/webview-ui-toolkit": ^1.4.0
+    "@vscode/windows-ca-certs": ^0.3.1
     "@wdio/cli": ^9.29.0
     "@wdio/local-runner": ^9.29.0
     "@wdio/mocha-framework": ^9.29.0
@@ -4106,6 +4107,9 @@ __metadata:
     winston: ^3.11.0
     yaml: ^2.8.3
     yargs: ^17.7.2
+  dependenciesMeta:
+    "@vscode/windows-ca-certs":
+      optional: true
   languageName: unknown
   linkType: soft
 
