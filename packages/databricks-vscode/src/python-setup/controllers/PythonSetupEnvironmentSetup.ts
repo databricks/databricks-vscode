@@ -29,6 +29,7 @@ import {
 } from "../utils/reportSetupIssue";
 import {isReauthRequiredError} from "../utils/authErrors";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
+import {presetToFlags, SetupPreset} from "../utils/pythonSetupPresetPicker";
 import {
     PythonSetupAttempt,
     PythonSetupResultReporter,
@@ -122,6 +123,18 @@ export interface PythonSetupSetupDeps {
      * version prompts for one.
      */
     resolveCompute: () => Promise<ResolvedCompute>;
+
+    /**
+     * Ask the user which preset to provision for the resolved compute (Full /
+     * DB Connect / Python). Returns the chosen preset, or `undefined` when the
+     * picker is dismissed — a deliberate bail-out before any run starts, so the
+     * flow stops silently and records no attempt, mirroring a dismissed
+     * serverless-version prompt. Called after compute resolves so the picker's
+     * title can name the resolved target.
+     */
+    pickSetupPreset: (
+        compute: SetupCompute
+    ) => Promise<SetupPreset | undefined>;
 
     /**
      * Point the MS Python extension at the provisioned venv interpreter for
@@ -368,8 +381,17 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         }
         const compute = resolved.compute;
 
+        // A dismissed picker is a deliberate bail-out before any run starts, so
+        // return silently and record no attempt — like the dismissed
+        // serverless-version prompt above.
+        const preset = await this.deps.pickSetupPreset(compute);
+        if (preset === undefined) {
+            return;
+        }
+
         const invocation: SetupLocalInvocation = {
             compute,
+            ...presetToFlags(preset),
         };
 
         // From here a run really happens, so the attempt is recorded and every
@@ -378,7 +400,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // spawn and interpreter adoption.
         const {reportResult, packageManager} = await this.recordAttempt(
             invocation,
-            cwd
+            cwd,
+            preset
         );
         // Per-run report context: the static build info plus this run's manager.
         const reportEnv: ReportEnvironment = {
@@ -593,7 +616,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      */
     private async recordAttempt(
         invocation: SetupLocalInvocation,
-        projectRoot: string
+        projectRoot: string,
+        setupPreset: SetupPreset
     ): Promise<{
         reportResult: PythonSetupResultReporter;
         packageManager: PrimaryManager;
@@ -635,8 +659,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 serverlessVersion:
                     compute.kind === "serverless" ? compute.version : undefined,
                 // --no-dbconnect is the orthogonal spelling of the legacy
-                // --constraints-only, so it maps to that telemetry mode.
+                // --constraints-only, so it maps to that telemetry mode. The
+                // richer, unambiguous axis is `setupPreset`; `mode` is kept for
+                // dashboard continuity.
                 mode: invocation.skipDbconnect ? "constraints-only" : "default",
+                setupPreset,
                 isGreenfield,
                 // A run against a project already marked ready this session is a
                 // re-run (the ready row's Re-run button / row click); anything

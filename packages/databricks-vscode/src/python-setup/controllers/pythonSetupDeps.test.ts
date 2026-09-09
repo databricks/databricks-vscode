@@ -1,11 +1,12 @@
 import {expect} from "chai";
-import {commands, env, Uri, window} from "vscode";
+import {commands, env, QuickPick, QuickPickItem, Uri, window} from "vscode";
 import {
     makePythonSetupDeps,
     makePythonSetupVisibility,
     PythonSetupWiringDeps,
     resolveComputeFrom,
 } from "./pythonSetupDeps";
+import {PresetPickItem} from "../utils/pythonSetupPresetPicker";
 import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {SetupCompute} from "./PythonSetupEnvironmentSetup";
 import {Telemetry} from "../../telemetry";
@@ -165,6 +166,64 @@ describe("resolveComputeFrom", () => {
     });
 });
 
+/**
+ * A minimal scriptable QuickPick stand-in (see `AiToolsCommands.test.ts`).
+ * `onShow` decides which item is selected, or dismisses.
+ */
+class FakeQuickPick {
+    title?: string;
+    placeholder?: string;
+    items: readonly QuickPickItem[] = [];
+    selectedItems: readonly QuickPickItem[] = [];
+    private acceptCbs: Array<() => void> = [];
+    private hideCbs: Array<() => void> = [];
+    constructor(
+        private readonly onShow: (
+            pick: FakeQuickPick
+        ) => {selected: readonly QuickPickItem[]} | "dismiss"
+    ) {}
+    onDidAccept(cb: () => void) {
+        this.acceptCbs.push(cb);
+        return {dispose() {}};
+    }
+    onDidHide(cb: () => void) {
+        this.hideCbs.push(cb);
+        return {dispose() {}};
+    }
+    show() {
+        const r = this.onShow(this);
+        if (r === "dismiss") {
+            this.hideCbs.forEach((cb) => cb());
+            return;
+        }
+        this.selectedItems = r.selected;
+        this.acceptCbs.forEach((cb) => cb());
+    }
+    hide() {
+        this.hideCbs.forEach((cb) => cb());
+    }
+    dispose() {}
+}
+
+/**
+ * A `createQuickPick` factory (typed as the real `window.createQuickPick`
+ * seam) that scripts the widget's outcome and records the created instances so
+ * a test can read the title the wiring set.
+ */
+function fakeCreateQuickPick(
+    onShow: (
+        pick: FakeQuickPick
+    ) => {selected: readonly QuickPickItem[]} | "dismiss"
+) {
+    const created: FakeQuickPick[] = [];
+    const create = (() => {
+        const pick = new FakeQuickPick(onShow);
+        created.push(pick);
+        return pick as unknown as QuickPick<PresetPickItem>;
+    }) as <T extends QuickPickItem>() => QuickPick<T>;
+    return {create, created};
+}
+
 function makeWiring(
     overrides: Partial<PythonSetupWiringDeps> = {}
 ): PythonSetupWiringDeps {
@@ -185,6 +244,8 @@ function makeWiring(
         promptServerlessVersion: async () => "4",
         persistServerlessVersion: async () => {},
         promptSelectCompute: async () => undefined,
+        createQuickPick: fakeCreateQuickPick(() => "dismiss").create,
+        clusterDbrVersion: async () => undefined,
         setActiveInterpreter: async () => {},
         persistSetupState: () => {},
         log: {append: () => {}, show: () => {}},
@@ -1039,5 +1100,60 @@ describe("makePythonSetupDeps showReauthPrompt", () => {
         await deps.showReauthPrompt();
 
         expect(executed).to.have.length(0);
+    });
+});
+
+describe("makePythonSetupDeps pickSetupPreset", () => {
+    it("titles the picker with the serverless target and returns the picked preset", async () => {
+        const {create, created} = fakeCreateQuickPick((pick) => ({
+            // Pick the DB Connect row (the second one).
+            selected: [pick.items[1]],
+        }));
+        const deps = makePythonSetupDeps(makeWiring({createQuickPick: create}));
+
+        const preset = await deps.pickSetupPreset({
+            kind: "serverless",
+            version: "5",
+        });
+
+        expect(preset).to.equal("dbconnect");
+        expect(created[0].title).to.equal(
+            "Set up Python environment for serverless v5"
+        );
+    });
+
+    it("titles the picker with the cluster's runtime, resolved from its DBR", async () => {
+        const requested: string[] = [];
+        const {create, created} = fakeCreateQuickPick(() => "dismiss");
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                createQuickPick: create,
+                clusterDbrVersion: async (id) => {
+                    requested.push(id);
+                    return [17, 3, "x"];
+                },
+            })
+        );
+
+        await deps.pickSetupPreset({kind: "cluster", clusterId: "0710-abc"});
+
+        // The DBR is looked up for the resolved cluster id, and its major.minor
+        // becomes the runtime shown in the title.
+        expect(requested).to.deep.equal(["0710-abc"]);
+        expect(created[0].title).to.equal(
+            "Set up Python environment for Runtime 17.3"
+        );
+    });
+
+    it("returns undefined when the picker is dismissed", async () => {
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                createQuickPick: fakeCreateQuickPick(() => "dismiss").create,
+            })
+        );
+
+        expect(
+            await deps.pickSetupPreset({kind: "serverless", version: "5"})
+        ).to.equal(undefined);
     });
 });

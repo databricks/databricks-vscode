@@ -17,6 +17,7 @@ import {
 } from "../models/fixtures/setupLocalResults";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
+import {SetupPreset} from "../utils/pythonSetupPresetPicker";
 import {
     PythonSetupAttempt,
     PythonSetupOutcomeReport,
@@ -136,6 +137,10 @@ function makeDeps(
         // Mirror the production wrapper: hand the task a log sink and a
         // (never-cancelled) progress token.
         withProgress: async (_title, task) => task(() => {}, makeToken()),
+        // Default: the user picks the recommended Full preset, so a run happens
+        // with no skip flags (matching the pre-picker behaviour these tests were
+        // written against). Tests that exercise other presets override this.
+        pickSetupPreset: async () => "full",
         // Telemetry defaults to a no-op sink; tests that assert on events pass
         // a recorder instead.
         recordSetupAttempt: () => () => {},
@@ -1067,6 +1072,7 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 targetType: "serverless",
                 serverlessVersion: "5",
                 mode: "default",
+                setupPreset: "full",
                 // hasPyprojectToml defaults to true, so this is not greenfield.
                 isGreenfield: false,
                 // First run for the project: not yet ready.
@@ -1590,5 +1596,102 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
                 warnings: SUCCESS_REAL_RUN.warnings,
             },
         ]);
+    });
+});
+
+describe("PythonSetupEnvironmentSetup.setup preset selection", () => {
+    /** Assert on the invocation the CLI was actually handed. */
+    function invocationFor(preset: SetupPreset) {
+        const cli = makeCli();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({cli, pickSetupPreset: async () => preset})
+        );
+        return setup.setup().then(() => cli.calls[0]);
+    }
+
+    it("runs the full preset with no skip flags", async () => {
+        const invocation = await invocationFor("full");
+        expect(invocation.skipConstraints).to.equal(undefined);
+        expect(invocation.skipDbconnect).to.equal(undefined);
+    });
+
+    it("runs the dbconnect preset with --no-constraints only", async () => {
+        const invocation = await invocationFor("dbconnect");
+        expect(invocation.skipConstraints).to.equal(true);
+        expect(invocation.skipDbconnect).to.equal(undefined);
+    });
+
+    it("runs the python preset with both --no-constraints and --no-dbconnect", async () => {
+        const invocation = await invocationFor("python");
+        expect(invocation.skipConstraints).to.equal(true);
+        expect(invocation.skipDbconnect).to.equal(true);
+    });
+
+    it("passes the resolved compute to the preset picker", async () => {
+        const seen: Array<SetupLocalInvocation["compute"]> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                resolveCompute: async () => ({
+                    status: "ok",
+                    compute: {kind: "cluster", clusterId: "0710-abc"},
+                }),
+                pickSetupPreset: async (compute) => {
+                    seen.push(compute);
+                    return "full";
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(seen).to.deep.equal([{kind: "cluster", clusterId: "0710-abc"}]);
+    });
+
+    it("does not run the CLI or record an attempt when the picker is dismissed", async () => {
+        const cli = makeCli();
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                ...telemetry,
+                pickSetupPreset: async () => undefined,
+            })
+        );
+
+        await setup.setup();
+
+        // Dismissing the picker is a deliberate bail-out before any run starts,
+        // so nothing is spawned and no attempt is recorded (mirroring a
+        // dismissed serverless-version prompt).
+        expect(cli.calls).to.have.length(0);
+        expect(telemetry.attempts).to.have.length(0);
+        expect(telemetry.results).to.have.length(0);
+        expect(setup.ready).to.equal(false);
+    });
+
+    it("records the chosen preset on the attempt (dbconnect keeps mode default)", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({...telemetry, pickSetupPreset: async () => "dbconnect"})
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts[0].setupPreset).to.equal("dbconnect");
+        // dbconnect skips only the pins (databricks-connect stays), so the
+        // legacy mode dimension is still "default".
+        expect(telemetry.attempts[0].mode).to.equal("default");
+    });
+
+    it("maps the python preset to the constraints-only telemetry mode", async () => {
+        const telemetry = makeTelemetryRecorder();
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({...telemetry, pickSetupPreset: async () => "python"})
+        );
+
+        await setup.setup();
+
+        expect(telemetry.attempts[0].setupPreset).to.equal("python");
+        expect(telemetry.attempts[0].mode).to.equal("constraints-only");
     });
 });

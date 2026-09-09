@@ -11,6 +11,10 @@ import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {ReportEnvironment} from "../utils/reportSetupIssue";
 import {isUvSetupSuitable} from "../utils/pythonSetupGate";
 import {withElapsedProgress} from "../utils/setupProgress";
+import {
+    computeTargetLabel,
+    pickSetupPreset,
+} from "../utils/pythonSetupPresetPicker";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {readVenvProjectName} from "../utils/venvProjectName";
@@ -159,6 +163,22 @@ export interface PythonSetupWiringDeps {
      * propagates asynchronously, so an immediate re-read would race it.
      */
     promptSelectCompute: () => Promise<SetupCompute | undefined>;
+    /**
+     * The explicit-lifecycle QuickPick factory (`window.createQuickPick`),
+     * injected so the preset picker can be driven in tests without a VS Code
+     * host.
+     */
+    createQuickPick: (typeof window)["createQuickPick"];
+    /**
+     * The DBR version of the attached cluster, as `[major, minor, patch]` (see
+     * `Cluster.dbrVersion`), for the preset picker's title. `undefined` when it
+     * cannot be resolved (unknown cluster, custom image), in which case the
+     * title falls back to a generic cluster label. Only consulted for a cluster
+     * target.
+     */
+    clusterDbrVersion: (
+        clusterId: string
+    ) => Promise<Array<number | "x"> | undefined>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -237,6 +257,18 @@ export function makePythonSetupDeps(
                 // wiring surfaces the failure itself.)
             }
             return {status: "ok", compute: {kind: "serverless", version}};
+        },
+        pickSetupPreset: async (compute) => {
+            // A cluster's runtime label needs its DBR version; serverless
+            // carries its version directly, so no lookup is needed there.
+            const dbrVersion =
+                compute.kind === "cluster"
+                    ? await wiring.clusterDbrVersion(compute.clusterId)
+                    : undefined;
+            return pickSetupPreset(
+                computeTargetLabel(compute, dbrVersion),
+                wiring.createQuickPick
+            );
         },
         adoptInterpreter: async (venvPath: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
