@@ -1,3 +1,11 @@
+# Release: v2.17.1
+
+## packages/databricks-vscode
+
+## (2026-09-10)
+
+-   Revert to the v2.16.0 baseline to fix an SSH connectivity regression introduced in v2.17.0. The v2.17.0 improvements will return in a later release once the underlying fix is in place.
+
 # Release: v2.16.0
 
 ## packages/databricks-vscode
