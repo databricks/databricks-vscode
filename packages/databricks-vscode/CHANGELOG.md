@@ -1,3 +1,20 @@
+# Release: v2.17.0
+
+## packages/databricks-vscode
+
+## (2026-09-10)
+
+-   feat(python-setup): add the Python-setup preset picker (Full / DB Connect / Python) (#2179) ([f7e0004](https://github.com/databricks/databricks-vscode/commit/f7e0004)), closes [#2179](https://github.com/databricks/databricks-vscode/issues/2179)
+-   feat(python-setup): recover from a constraint conflict with a Retry-as-DB-Connect fallback (#2186) ([06cfbf1](https://github.com/databricks/databricks-vscode/commit/06cfbf1)), closes [#2186](https://github.com/databricks/databricks-vscode/issues/2186) [#2181](https://github.com/databricks/databricks-vscode/issues/2181)
+-   feat(python-setup): report manual-setup opt-out telemetry (#2170) ([2d893a7](https://github.com/databricks/databricks-vscode/commit/2d893a7)), closes [#2170](https://github.com/databricks/databricks-vscode/issues/2170) [#2158](https://github.com/databricks/databricks-vscode/issues/2158)
+-   Add recovery UX for Python download failures (#2164) ([ea38e82](https://github.com/databricks/databricks-vscode/commit/ea38e82)), closes [#2164](https://github.com/databricks/databricks-vscode/issues/2164) [databricks/cli#6457](https://github.com/databricks/cli/issues/6457)
+-   Migrate setup-local invocation to orthogonal --no-constraints/--no-dbconnect flags (#2176) ([eaec588](https://github.com/databricks/databricks-vscode/commit/eaec588)), closes [#2176](https://github.com/databricks/databricks-vscode/issues/2176)
+-   Retry shared e2e cluster start on transient node-placement failures (#2182) ([fc8338f](https://github.com/databricks/databricks-vscode/commit/fc8338f)), closes [#2182](https://github.com/databricks/databricks-vscode/issues/2182)
+-   Update Databricks CLI to v1.15.0 (#2175) ([98cdd1e](https://github.com/databricks/databricks-vscode/commit/98cdd1e)), closes [#2175](https://github.com/databricks/databricks-vscode/issues/2175)
+-   Update Databricks CLI to v1.16.0 (#2183) ([51c8bc6](https://github.com/databricks/databricks-vscode/commit/51c8bc6)), closes [#2183](https://github.com/databricks/databricks-vscode/issues/2183)
+-   fix(python-setup): actionable error for E_MERGE on a [project]-less pyproject (#2180) ([685670e](https://github.com/databricks/databricks-vscode/commit/685670e)), closes [#2180](https://github.com/databricks/databricks-vscode/issues/2180) [#2177](https://github.com/databricks/databricks-vscode/issues/2177) [#2177](https://github.com/databricks/databricks-vscode/issues/2177) [#2177](https://github.com/databricks/databricks-vscode/issues/2177)
+-   fix(run): preserve script stdout when an Upload-and-Run file fails (#2171) ([05ebc1c](https://github.com/databricks/databricks-vscode/commit/05ebc1c)), closes [#2171](https://github.com/databricks/databricks-vscode/issues/2171)
+
 # Release: v2.16.0
 
 ## packages/databricks-vscode
