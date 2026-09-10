@@ -6,6 +6,7 @@ import {commands, Uri} from "vscode";
 import path from "path";
 import {
     AiToolsAgent,
+    AiToolsInstallOutput,
     AiToolsListResult,
     CliWrapper,
     ProcessError,
@@ -66,6 +67,17 @@ function listResult(
         agents,
     };
 }
+
+const installSuccessOutput: AiToolsInstallOutput = {
+    scope: "global",
+    agents: [
+        {
+            name: "claude-code",
+            delivery: "plugin",
+            status: "installed",
+        },
+    ],
+};
 
 // The project root the WorkspaceFolderManager mock reports; the global root is
 // the real home dir (the manager derives it from getHomedir()). The injected
@@ -421,6 +433,7 @@ describe(__filename, () => {
             mockCli.aitoolsInstall("global", anything(), anything(), anything())
         ).thenCall(async () => {
             loaders.global = loadSuccess;
+            return {output: installSuccessOutput, error: undefined};
         });
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
@@ -437,6 +450,223 @@ describe(__filename, () => {
         verify(
             mockCli.aitoolsInstall("global", anything(), anything(), anything())
         ).once();
+        assert.strictEqual(manager.model.state.installLocation, "global");
+        assert.strictEqual(manager.model.state.updateStatus, "upToDate");
+    });
+
+    it("records a clean success from the CLI's JSON result", async () => {
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli, stubTelemetry} = setup(loaders);
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenCall(async () => {
+            loaders.global = loadSuccess;
+            return {output: installSuccessOutput, error: undefined};
+        });
+        when(mockCli.aitoolsList(anything())).thenResolve(listResult([]));
+
+        await manager.install("global", "sidePane", ["claude-code"]);
+
+        const [installEvent] = stubTelemetry.eventsOfType(
+            Events.AITOOLS_INSTALL
+        );
+        assert.strictEqual(installEvent.props.result, "success");
+        // No error fields on a clean install.
+        assert.strictEqual(installEvent.props.globalErrorCategory, undefined);
+        assert.strictEqual(installEvent.props.agentErrors, undefined);
+    });
+
+    it("records per-agent error categories and surfaces a JSON-reported failure", async () => {
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli, stubTelemetry} = setup(loaders);
+        // The CLI exits non-zero on failure but still prints the structured
+        // result, so aitoolsInstall resolves with it rather than throwing.
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenResolve({
+            output: {
+                scope: "global",
+                agents: [
+                    {
+                        name: "claude-code",
+                        delivery: "plugin",
+                        status: "installed",
+                    },
+                    {
+                        name: "copilot",
+                        delivery: "plugin",
+                        status: "failed",
+                        error_category: "PLUGIN_INSTALL_FAILED",
+                        message: "gh CLI is not on PATH",
+                    },
+                ],
+            },
+            error: new Error("Command failed"),
+        });
+        when(mockCli.aitoolsList(anything())).thenResolve(listResult([]));
+
+        // A reported failure is surfaced to the command layer as a ProcessError
+        // whose (local-only) message folds in the failing agent's CLI message, so
+        // "Show Logs" has real detail even though --output json leaves stderr empty.
+        await assert.rejects(
+            () =>
+                manager.install("global", "sidePane", [
+                    "claude-code",
+                    "copilot",
+                ]),
+            (e: unknown) =>
+                e instanceof ProcessError &&
+                e.message.includes("copilot: gh CLI is not on PATH")
+        );
+
+        const [installEvent] = stubTelemetry.eventsOfType(
+            Events.AITOOLS_INSTALL
+        );
+        assert.strictEqual(installEvent.props.result, "error");
+        // Only the failing agent's category is recorded, keyed by agent id, with
+        // no free-form message.
+        assert.deepStrictEqual(installEvent.props.agentErrors, {
+            copilot: "PLUGIN_INSTALL_FAILED",
+        });
+        assert.strictEqual(installEvent.props.globalErrorCategory, undefined);
+    });
+
+    it("records a top-level error category from the CLI's JSON result", async () => {
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli, stubTelemetry} = setup(loaders);
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenResolve({
+            output: {
+                scope: "global",
+                agents: [],
+                error: 'skill "__nope__" not found',
+                error_category: "SKILL_NOT_FOUND",
+            },
+            error: new Error("Command failed"),
+        });
+        when(mockCli.aitoolsList(anything())).thenResolve(listResult([]));
+
+        await assert.rejects(
+            () => manager.install("global", "sidePane", ["claude-code"]),
+            (e: unknown) =>
+                e instanceof ProcessError &&
+                e.message.includes('skill "__nope__" not found')
+        );
+
+        const [installEvent] = stubTelemetry.eventsOfType(
+            Events.AITOOLS_INSTALL
+        );
+        assert.strictEqual(installEvent.props.result, "error");
+        assert.strictEqual(
+            installEvent.props.globalErrorCategory,
+            "SKILL_NOT_FOUND"
+        );
+        assert.strictEqual(installEvent.props.agentErrors, undefined);
+    });
+
+    it("handles unparseable JSON output (success)", async () => {
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli, stubTelemetry} = setup(loaders);
+        // An older CLI ignores --output json and prints text; aitoolsInstall
+        // resolves with undefined on its success exit.
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenCall(async () => {
+            loaders.global = loadSuccess;
+            return {output: undefined, error: undefined};
+        });
+        when(mockCli.aitoolsList(anything())).thenResolve(listResult([]));
+
+        await manager.install("global", "sidePane", ["claude-code"]);
+
+        const [installEvent] = stubTelemetry.eventsOfType(
+            Events.AITOOLS_INSTALL
+        );
+        assert.strictEqual(installEvent.props.result, "success");
+        assert.strictEqual(installEvent.props.agentErrors, undefined);
+    });
+
+    it("handles unparseable JSON output (failure)", async () => {
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli, stubTelemetry} = setup(loaders);
+        // An older CLI ignores --output json and prints text; aitoolsInstall
+        // resolves with undefined on its success exit.
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenCall(async () => {
+            loaders.global = loadSuccess;
+            return {output: undefined, error: new Error("Command failed")};
+        });
+        when(mockCli.aitoolsList(anything())).thenResolve(listResult([]));
+
+        await assert.rejects(
+            () => manager.install("global", "sidePane", ["claude-code"]),
+            (e: unknown) =>
+                e instanceof Error && e.message.includes("Command failed")
+        );
+
+        const [installEvent] = stubTelemetry.eventsOfType(
+            Events.AITOOLS_INSTALL
+        );
+        assert.strictEqual(installEvent.props.result, "error");
+        assert.strictEqual(installEvent.props.agentErrors, undefined);
+    });
+
+    it("reconciles per-agent state after a JSON-reported partial failure", async () => {
+        // A partial failure still lands some tools, so the panel must be
+        // reconciled afterwards. `loaders.global` resolving means the install
+        // wrote its state file (some agent succeeded); the manager's `finally`
+        // should then run detect + resolve and pick up the CLI's real state.
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli} = setup(loaders);
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenCall(async () => {
+            loaders.global = loadSuccess;
+            return {
+                output: {
+                    scope: "global",
+                    agents: [
+                        {
+                            name: "claude-code",
+                            delivery: "plugin",
+                            status: "installed",
+                        },
+                        {
+                            name: "copilot",
+                            delivery: "plugin",
+                            status: "failed",
+                            error_category: "PLUGIN_INSTALL_FAILED",
+                        },
+                    ],
+                },
+                error: new Error("Command failed"),
+            };
+        });
+        when(mockCli.aitoolsList(anything())).thenResolve(
+            listResult([
+                {
+                    name: "databricks-core",
+                    latest_version: "0.1.0",
+                    installed: {global: "0.1.0"},
+                },
+            ])
+        );
+
+        await assert.rejects(
+            () =>
+                manager.install("global", "sidePane", [
+                    "claude-code",
+                    "copilot",
+                ]),
+            ProcessError
+        );
+
+        // The reconcile ran despite the throw: `aitoolsList` was consumed and the
+        // model reflects the CLI's real post-install state rather than staying
+        // stale.
+        verify(mockCli.aitoolsList(anything())).atLeast(1);
         assert.strictEqual(manager.model.state.installLocation, "global");
         assert.strictEqual(manager.model.state.updateStatus, "upToDate");
     });
@@ -478,7 +708,7 @@ describe(__filename, () => {
                     anything(),
                     anything()
                 )
-            ).thenResolve();
+            ).thenResolve({output: installSuccessOutput, error: undefined});
             when(mockCli.aitoolsList(anything())).thenResolve(
                 listResult([
                     {
@@ -561,7 +791,7 @@ describe(__filename, () => {
                     anything(),
                     anything()
                 )
-            ).thenResolve();
+            ).thenResolve({output: installSuccessOutput, error: undefined});
             when(mockCli.aitoolsList(anything())).thenResolve(
                 listResult([
                     {
@@ -634,7 +864,7 @@ describe(__filename, () => {
                 anything(),
                 anything()
             )
-        ).thenResolve();
+        ).thenResolve({output: installSuccessOutput, error: undefined});
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
                 {
@@ -691,7 +921,7 @@ describe(__filename, () => {
                 anything(),
                 anything()
             )
-        ).thenReject(new ProcessError("boom", 1));
+        ).thenResolve({output: undefined, error: new Error("boom!")});
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
                 {
@@ -716,9 +946,8 @@ describe(__filename, () => {
         when(
             mockCli.aitoolsInstall("global", anything(), anything(), anything())
         ).thenCall(async () => {
-            // Simulate a partial install: some tools landed before the failure.
             loaders.global = loadSuccess;
-            throw new ProcessError("boom", 1);
+            return {output: undefined, error: new Error("boom")};
         });
         when(mockCli.aitoolsList(anything())).thenResolve(
             listResult([
@@ -1008,6 +1237,7 @@ describe(__filename, () => {
                 )
             ).thenCall(async () => {
                 loaders.global = loadSuccess;
+                return {output: installSuccessOutput, error: undefined};
             });
             when(mockCli.aitoolsList(anything())).thenResolve(
                 listResult([

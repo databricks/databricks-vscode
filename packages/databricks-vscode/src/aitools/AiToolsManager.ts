@@ -6,7 +6,12 @@ import {
     AiToolsScope,
     AiToolsSkill,
     CliWrapper,
+    ProcessError,
 } from "../cli/CliWrapper";
+import {
+    describeAiToolsInstallFailure,
+    summarizeAiToolsInstallErrors,
+} from "./aiToolsInstallOutput";
 import {Mutex} from "../locking";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
@@ -15,6 +20,7 @@ import {Telemetry} from "../telemetry";
 import {
     AiToolsCursorPluginSource,
     AiToolsInstallSource,
+    EventReporter,
     Events,
 } from "../telemetry/constants";
 import {Loggers} from "../logger";
@@ -469,28 +475,13 @@ export class AiToolsManager implements Disposable {
 
         const recordEvent = this.telemetry.start(Events.AITOOLS_INSTALL);
         try {
-            await this.cli.aitoolsInstall(
+            await this.runInstallCli(
                 scope,
-                this.cwdForScope(scope),
-                token,
-                agentsToInstall
+                agentsToInstall,
+                recordEvent,
+                {source, cursorPlugin},
+                token
             );
-            recordEvent({
-                result: "success",
-                scope,
-                source,
-                agents: agentsToInstall,
-                cursorPlugin,
-            });
-        } catch (e) {
-            recordEvent({
-                result: "error",
-                scope,
-                source,
-                agents: agentsToInstall,
-                cursorPlugin,
-            });
-            throw e;
         } finally {
             // Always reconcile: a failed install often still installed some
             // tools (e.g. one agent's CLI was missing), so refresh the panel to
@@ -498,6 +489,68 @@ export class AiToolsManager implements Disposable {
             // Call the `*Impl` helpers directly — we already hold the mutex.
             await this.detectInstallImpl();
             await this.resolveInstalledImpl();
+        }
+    }
+
+    /**
+     * Run `aitools install` for `agents` in `scope`, record the AITOOLS_INSTALL
+     * outcome (success/error plus any error categories), and — on a non-zero exit
+     * — throw a {@link ProcessError} so {@link AiToolsCommands} surfaces it,
+     * folding in and logging the CLI's own JSON detail when it explains the
+     * failure. `recordEvent` is the caller's already-started reporter (so
+     * `duration` covers the whole flow); `baseProps` carries the source and, for
+     * the batch install, the Cursor-plugin flag. The caller reconciles model
+     * state in its own `finally`.
+     */
+    private async runInstallCli(
+        scope: AiToolsScope,
+        agents: string[],
+        recordEvent: EventReporter<Events.AITOOLS_INSTALL>,
+        baseProps: {source: AiToolsInstallSource; cursorPlugin?: boolean},
+        token?: CancellationToken
+    ): Promise<void> {
+        const {output, error} = await this.cli.aitoolsInstall(
+            scope,
+            this.cwdForScope(scope),
+            token,
+            agents
+        );
+
+        const summarizedErrors = summarizeAiToolsInstallErrors(output);
+        recordEvent({
+            result: error !== undefined ? "error" : "success",
+            scope,
+            agents,
+            source: baseProps.source,
+            ...(baseProps.cursorPlugin !== undefined
+                ? {cursorPlugin: baseProps.cursorPlugin}
+                : {}),
+            ...(summarizedErrors.globalErrorCategory !== undefined
+                ? {globalErrorCategory: summarizedErrors.globalErrorCategory}
+                : {}),
+            ...(summarizedErrors.agentErrors !== undefined
+                ? {agentErrors: summarizedErrors.agentErrors}
+                : {}),
+        });
+
+        if (error !== undefined) {
+            const errorCode =
+                "code" in error && typeof error.code === "number"
+                    ? error.code
+                    : null;
+            const message = describeAiToolsInstallFailure(output);
+            if (message) {
+                // The CLI reported the install failed in its JSON (non-zero exit, but
+                // a parseable result). Under `--output json` the CLI's stderr is empty,
+                // so log the folded detail here, then surface it to the UI by throwing.
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    `Databricks AI tools install failed:\n${message}`
+                );
+                throw new ProcessError(message, errorCode);
+            }
+            // There was no parseable JSON output, so fallback to the pre-JSON behaviour
+            // of throwing a `ProcessError`
+            throw new ProcessError(error.message, errorCode);
         }
     }
 
@@ -519,26 +572,13 @@ export class AiToolsManager implements Disposable {
         }
         const recordEvent = this.telemetry.start(Events.AITOOLS_INSTALL);
         try {
-            await this.cli.aitoolsInstall(
+            await this.runInstallCli(
                 scope,
-                this.cwdForScope(scope),
-                token,
-                [agentId]
+                [agentId],
+                recordEvent,
+                {source: "sidePane"},
+                token
             );
-            recordEvent({
-                result: "success",
-                scope,
-                source: "sidePane",
-                agents: [agentId],
-            });
-        } catch (e) {
-            recordEvent({
-                result: "error",
-                scope,
-                source: "sidePane",
-                agents: [agentId],
-            });
-            throw e;
         } finally {
             // Reconcile the row even on failure: the install may have partially
             // succeeded. Call the `*Impl` helper directly — we already hold the
