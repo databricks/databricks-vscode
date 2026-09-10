@@ -1,4 +1,6 @@
+import {randomBytes} from "crypto";
 import {existsSync} from "fs";
+import {copyFile, rename, rm} from "fs/promises";
 import path from "path";
 import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
@@ -276,6 +278,44 @@ export function makePythonSetupDeps(
                 Uri.file(projectRoot)
             );
         },
+        openProjectFile: async (projectRoot: string) => {
+            // Open the pyproject.toml the conflicting run merged into, so the
+            // user can inspect/adjust the dependencies that clashed. A
+            // constraint conflict always mutates disk (constraints are merged
+            // before provisioning fails), so the file exists.
+            await window.showTextDocument(
+                Uri.file(path.join(projectRoot, "pyproject.toml"))
+            );
+        },
+        restoreProjectFile: async (projectRoot: string, backupPath: string) => {
+            // Restore the CLI's pre-merge backup over pyproject.toml (the seam's
+            // doc covers why the DB Connect retry needs this).
+            const root = path.resolve(projectRoot);
+            // backupPath comes from the CLI result: refuse anything resolving
+            // outside the project so a malformed/unexpected path can't copy an
+            // arbitrary file over pyproject.toml. Lexical containment (path is
+            // from the trusted local CLI, so symlink canonicalization is not
+            // warranted).
+            const rel = path.relative(root, path.resolve(backupPath));
+            if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+                throw new Error(
+                    `Refusing to restore pyproject.toml from a backup outside the project: ${backupPath}`
+                );
+            }
+            // Write atomically: copy to a temp sibling on the same filesystem,
+            // then rename over pyproject.toml, so an interrupted or failed copy
+            // can never leave the project file truncated. Clean the temp up if
+            // either step throws (rename consumes it on success).
+            const dest = path.join(root, "pyproject.toml");
+            const tmp = `${dest}.${randomBytes(6).toString("hex")}.tmp`;
+            try {
+                await copyFile(backupPath, tmp);
+                await rename(tmp, dest);
+            } catch (e) {
+                await rm(tmp, {force: true});
+                throw e;
+            }
+        },
         // Stamp the persisted state with the completion time here (the
         // orchestrator supplies the env identity; the timestamp is a wiring
         // concern) and hand it to the injected store for drift detection.
@@ -307,7 +347,8 @@ export function makePythonSetupDeps(
         showError: async (
             message: string,
             detail?: string,
-            actions: PythonSetupErrorAction[] = []
+            actions: PythonSetupErrorAction[] = [],
+            options?: {includeShowLogs?: boolean}
         ) => {
             // The mapped one-liner is deliberately concise and drops the CLI's
             // own explanation; write that detail into the channel so the log the
@@ -336,10 +377,15 @@ export function makePythonSetupDeps(
             });
             // Lead with the remediation buttons (e.g. "Install uv", then
             // "Installation guide") in order, so the action the user most likely
-            // wants comes first; "Show Logs" always trails.
-            const buttons = [...remediations.map((a) => a.label), showLogs];
+            // wants comes first; "Show Logs" trails, unless the caller opted it
+            // out (a self-service toast whose own buttons are the remedy) — the
+            // channel is revealed above regardless, so the log stays reachable.
+            const includeShowLogs = options?.includeShowLogs !== false;
+            const buttons = includeShowLogs
+                ? [...remediations.map((a) => a.label), showLogs]
+                : remediations.map((a) => a.label);
             const picked = await window.showErrorMessage(message, ...buttons);
-            if (picked === showLogs) {
+            if (includeShowLogs && picked === showLogs) {
                 wiring.log.show();
                 return;
             }
@@ -369,11 +415,18 @@ export function makePythonSetupDeps(
                             `\nCould not open ${chosen.url} in a browser.\n`
                         );
                     }
+                } else if (chosen.run) {
+                    // A run-action (the constraint-conflict "Retry DB Connect setup"
+                    // / "Open pyproject.toml" buttons) invokes an in-process
+                    // callback the orchestrator built with the run's live state.
+                    await chosen.run();
                 }
             } catch (e) {
                 const what = chosen.command
                     ? `run ${chosen.command}`
-                    : `open ${chosen.url}`;
+                    : chosen.url
+                      ? `open ${chosen.url}`
+                      : `run the "${chosen.label}" action`;
                 wiring.log.append(
                     `\nFailed to ${what}: ${
                         e instanceof Error ? e.message : String(e)

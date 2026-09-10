@@ -139,6 +139,15 @@ describe("getPythonSetupErrorMessage", () => {
         expect(msg).to.not.match(/UV_INDEX_URL|pip\.conf/i);
     });
 
+    it("maps E_PROVISION_CONFLICT to a cluster-vs-local conflict message", () => {
+        // The distinct constraint-conflict code (only the Full preset pins
+        // cluster deps) gets its own actionable copy, not E_PROVISION's generic
+        // "adjust your dependencies" text.
+        const msg = getPythonSetupErrorMessage(failure("E_PROVISION_CONFLICT"));
+        expect(msg).to.match(/cluster dependencies conflict/i);
+        expect(msg).to.match(/local dependencies/i);
+    });
+
     it("maps E_FETCH to an offline/unreachable message", () => {
         expect(getPythonSetupErrorMessage(failure("E_FETCH"))).to.match(
             /reach|offline|network/i
@@ -338,6 +347,18 @@ describe("getPythonSetupErrorAction", () => {
                 url: "https://docs.astral.sh/uv/concepts/resolution/",
             }
         );
+    });
+
+    it("points an E_PROVISION_CONFLICT at the uv resolution docs (generic fallback)", () => {
+        // The Full-preset flow builds its own retry/open buttons in the
+        // orchestrator; this code-keyed link is the fallback for a conflict that
+        // somehow arrives on a run that already dropped the pins.
+        expect(
+            getPythonSetupErrorAction(failure("E_PROVISION_CONFLICT"))
+        ).to.deep.equal({
+            label: "Resolve dependency conflicts",
+            url: "https://docs.astral.sh/uv/concepts/resolution/",
+        });
     });
 
     it("points E_MANAGER_UNSUPPORTED at the uv projects docs", () => {
@@ -635,6 +656,23 @@ describe("formatSetupFailureDetail", () => {
         // A soft, conditional pointer — no button — so a user who believes the
         // published constraints are at fault can report it, without labelling
         // an ordinary (user-owned) dependency conflict as a product defect.
+        expect(detail).to.match(/constraint/i);
+        expect(detail).to.contain(
+            "https://github.com/databricks/environments/issues/new"
+        );
+    });
+
+    it("keeps the constraints-report hint for E_PROVISION_CONFLICT", () => {
+        // A constraint conflict was E_PROVISION before the CLI split out the
+        // distinct code; the soft "if you think it's the published constraints,
+        // report it" log pointer must not silently vanish, since a pins-vs-local
+        // conflict is exactly the case where the published constraints may be at
+        // fault.
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION_CONFLICT", {
+                message: "No solution found when resolving dependencies",
+            })
+        );
         expect(detail).to.match(/constraint/i);
         expect(detail).to.contain(
             "https://github.com/databricks/environments/issues/new"
