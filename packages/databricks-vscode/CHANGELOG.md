@@ -1,3 +1,16 @@
+# Release: v2.17.0
+
+## packages/databricks-vscode
+
+## (2026-09-10)
+
+-   Add a Python environment setup preset picker to choose a Full, DB Connect, or Python-only environment (#2179) ([f7e0004](https://github.com/databricks/databricks-vscode/commit/f7e0004))
+-   Recover from a dependency constraint conflict during Python setup by offering to retry as a DB Connect environment (#2186) ([06cfbf1](https://github.com/databricks/databricks-vscode/commit/06cfbf1))
+-   Add recovery UX for Python download failures (#2164) ([ea38e82](https://github.com/databricks/databricks-vscode/commit/ea38e82))
+-   Show an actionable error when Python setup hits a merge conflict on a `pyproject.toml` without a `[project]` table (#2180) ([685670e](https://github.com/databricks/databricks-vscode/commit/685670e))
+-   Preserve script stdout when an Upload-and-Run file fails (#2171) ([05ebc1c](https://github.com/databricks/databricks-vscode/commit/05ebc1c))
+-   Update Databricks CLI to v1.16.0 (#2175, #2183) ([51c8bc6](https://github.com/databricks/databricks-vscode/commit/51c8bc6)) — see the [CLI release notes](https://github.com/databricks/cli/releases) for changes
+
 # Release: v2.16.0
 
 ## packages/databricks-vscode

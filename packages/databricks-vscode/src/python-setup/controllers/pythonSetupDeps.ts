@@ -1,4 +1,6 @@
+import {randomBytes} from "crypto";
 import {existsSync} from "fs";
+import {copyFile, rename, rm} from "fs/promises";
 import path from "path";
 import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
@@ -11,6 +13,10 @@ import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {ReportEnvironment} from "../utils/reportSetupIssue";
 import {isUvSetupSuitable} from "../utils/pythonSetupGate";
 import {withElapsedProgress} from "../utils/setupProgress";
+import {
+    computeTargetLabel,
+    pickSetupPreset,
+} from "../utils/pythonSetupPresetPicker";
 import {formatSetupLog, formatSetupNotification} from "../utils/setupSummary";
 import {venvInterpreterPath} from "../utils/venvInterpreterPath";
 import {readVenvProjectName} from "../utils/venvProjectName";
@@ -159,6 +165,22 @@ export interface PythonSetupWiringDeps {
      * propagates asynchronously, so an immediate re-read would race it.
      */
     promptSelectCompute: () => Promise<SetupCompute | undefined>;
+    /**
+     * The explicit-lifecycle QuickPick factory (`window.createQuickPick`),
+     * injected so the preset picker can be driven in tests without a VS Code
+     * host.
+     */
+    createQuickPick: (typeof window)["createQuickPick"];
+    /**
+     * The DBR version of the attached cluster, as `[major, minor, patch]` (see
+     * `Cluster.dbrVersion`), for the preset picker's title. `undefined` when it
+     * cannot be resolved (unknown cluster, custom image), in which case the
+     * title falls back to a generic cluster label. Only consulted for a cluster
+     * target.
+     */
+    clusterDbrVersion: (
+        clusterId: string
+    ) => Promise<Array<number | "x"> | undefined>;
     /** Point the MS Python extension at an interpreter path (project-scoped). */
     setActiveInterpreter: (interpreterPath: string, root: Uri) => Promise<void>;
     /** Persist the post-setup state (workspace-scoped) for drift detection. */
@@ -238,11 +260,61 @@ export function makePythonSetupDeps(
             }
             return {status: "ok", compute: {kind: "serverless", version}};
         },
+        pickSetupPreset: async (compute) => {
+            // A cluster's runtime label needs its DBR version; serverless
+            // carries its version directly, so no lookup is needed there.
+            const dbrVersion =
+                compute.kind === "cluster"
+                    ? await wiring.clusterDbrVersion(compute.clusterId)
+                    : undefined;
+            return pickSetupPreset(
+                computeTargetLabel(compute, dbrVersion),
+                wiring.createQuickPick
+            );
+        },
         adoptInterpreter: async (venvPath: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
                 venvInterpreterPath(venvPath),
                 Uri.file(projectRoot)
             );
+        },
+        openProjectFile: async (projectRoot: string) => {
+            // Open the pyproject.toml the conflicting run merged into, so the
+            // user can inspect/adjust the dependencies that clashed. A
+            // constraint conflict always mutates disk (constraints are merged
+            // before provisioning fails), so the file exists.
+            await window.showTextDocument(
+                Uri.file(path.join(projectRoot, "pyproject.toml"))
+            );
+        },
+        restoreProjectFile: async (projectRoot: string, backupPath: string) => {
+            // Restore the CLI's pre-merge backup over pyproject.toml (the seam's
+            // doc covers why the DB Connect retry needs this).
+            const root = path.resolve(projectRoot);
+            // backupPath comes from the CLI result: refuse anything resolving
+            // outside the project so a malformed/unexpected path can't copy an
+            // arbitrary file over pyproject.toml. Lexical containment (path is
+            // from the trusted local CLI, so symlink canonicalization is not
+            // warranted).
+            const rel = path.relative(root, path.resolve(backupPath));
+            if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+                throw new Error(
+                    `Refusing to restore pyproject.toml from a backup outside the project: ${backupPath}`
+                );
+            }
+            // Write atomically: copy to a temp sibling on the same filesystem,
+            // then rename over pyproject.toml, so an interrupted or failed copy
+            // can never leave the project file truncated. Clean the temp up if
+            // either step throws (rename consumes it on success).
+            const dest = path.join(root, "pyproject.toml");
+            const tmp = `${dest}.${randomBytes(6).toString("hex")}.tmp`;
+            try {
+                await copyFile(backupPath, tmp);
+                await rename(tmp, dest);
+            } catch (e) {
+                await rm(tmp, {force: true});
+                throw e;
+            }
         },
         // Stamp the persisted state with the completion time here (the
         // orchestrator supplies the env identity; the timestamp is a wiring
@@ -275,7 +347,8 @@ export function makePythonSetupDeps(
         showError: async (
             message: string,
             detail?: string,
-            actions: PythonSetupErrorAction[] = []
+            actions: PythonSetupErrorAction[] = [],
+            options?: {includeShowLogs?: boolean}
         ) => {
             // The mapped one-liner is deliberately concise and drops the CLI's
             // own explanation; write that detail into the channel so the log the
@@ -304,10 +377,15 @@ export function makePythonSetupDeps(
             });
             // Lead with the remediation buttons (e.g. "Install uv", then
             // "Installation guide") in order, so the action the user most likely
-            // wants comes first; "Show Logs" always trails.
-            const buttons = [...remediations.map((a) => a.label), showLogs];
+            // wants comes first; "Show Logs" trails, unless the caller opted it
+            // out (a self-service toast whose own buttons are the remedy) — the
+            // channel is revealed above regardless, so the log stays reachable.
+            const includeShowLogs = options?.includeShowLogs !== false;
+            const buttons = includeShowLogs
+                ? [...remediations.map((a) => a.label), showLogs]
+                : remediations.map((a) => a.label);
             const picked = await window.showErrorMessage(message, ...buttons);
-            if (picked === showLogs) {
+            if (includeShowLogs && picked === showLogs) {
                 wiring.log.show();
                 return;
             }
@@ -337,11 +415,18 @@ export function makePythonSetupDeps(
                             `\nCould not open ${chosen.url} in a browser.\n`
                         );
                     }
+                } else if (chosen.run) {
+                    // A run-action (the constraint-conflict "Retry DB Connect setup"
+                    // / "Open pyproject.toml" buttons) invokes an in-process
+                    // callback the orchestrator built with the run's live state.
+                    await chosen.run();
                 }
             } catch (e) {
                 const what = chosen.command
                     ? `run ${chosen.command}`
-                    : `open ${chosen.url}`;
+                    : chosen.url
+                      ? `open ${chosen.url}`
+                      : `run the "${chosen.label}" action`;
                 wiring.log.append(
                     `\nFailed to ${what}: ${
                         e instanceof Error ? e.message : String(e)

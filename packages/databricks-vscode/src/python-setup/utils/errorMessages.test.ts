@@ -6,6 +6,7 @@ import {
     getPythonSetupErrorMessage,
     INSTALL_UV_COMMAND_ID,
     isIndexUnreachableFailure,
+    isMissingProjectTableFailure,
     USE_MANUAL_SETUP_COMMAND_ID,
 } from "./errorMessages";
 import {
@@ -26,6 +27,15 @@ const INDEX_UNREACHABLE_CLI_MSG =
     "Using CPython 3.12.8\n" +
     "error: Failed to fetch: `https://pypi.org/simple/ipykernel/`\n" +
     "  Caused by: tcp connect error: Connection refused (os error 61)";
+
+/**
+ * The real CLI text for `errNoProjectTable` (libs/localenv): the merge phase
+ * refuses to write requires-python because the pyproject.toml has no [project]
+ * table. Wrapped by the "merge managed regions failed:" prefix exactly as it
+ * reaches the user (see databricks/databricks-vscode#2177).
+ */
+const NO_PROJECT_TABLE_CLI_MSG =
+    "merge managed regions failed: pyproject.toml has no [project] table to hold requires-python";
 
 /** Build a minimal failed result carrying a specific error. */
 function failure(
@@ -129,6 +139,15 @@ describe("getPythonSetupErrorMessage", () => {
         expect(msg).to.not.match(/UV_INDEX_URL|pip\.conf/i);
     });
 
+    it("maps E_PROVISION_CONFLICT to a cluster-vs-local conflict message", () => {
+        // The distinct constraint-conflict code (only the Full preset pins
+        // cluster deps) gets its own actionable copy, not E_PROVISION's generic
+        // "adjust your dependencies" text.
+        const msg = getPythonSetupErrorMessage(failure("E_PROVISION_CONFLICT"));
+        expect(msg).to.match(/cluster dependencies conflict/i);
+        expect(msg).to.match(/local dependencies/i);
+    });
+
     it("maps E_FETCH to an offline/unreachable message", () => {
         expect(getPythonSetupErrorMessage(failure("E_FETCH"))).to.match(
             /reach|offline|network/i
@@ -151,6 +170,31 @@ describe("getPythonSetupErrorMessage", () => {
         expect(getPythonSetupErrorMessage(failure("E_VALIDATE"))).to.match(
             /match|mismatch/i
         );
+    });
+
+    it("maps a [project]-less E_MERGE to actionable copy, not the generic merge text", () => {
+        // The errNoProjectTable variant: a valid dependency-groups-only manifest,
+        // so the copy names the concrete fix instead of the generic merge failure.
+        const msg = getPythonSetupErrorMessage(
+            failure("E_MERGE", {
+                message: NO_PROJECT_TABLE_CLI_MSG,
+                failurePhase: "merge",
+            })
+        );
+        expect(msg).to.match(/\[project\] table/i);
+        expect(msg).to.match(/requires-python/i);
+        expect(msg).to.contain("databricks.python.environmentSetup");
+        expect(msg).to.not.match(/failed to merge the runtime constraints/i);
+    });
+
+    it("keeps the generic merge copy for an E_MERGE that is not the [project]-table case", () => {
+        const msg = getPythonSetupErrorMessage(
+            failure("E_MERGE", {
+                message: "cannot merge: unsupported TOML multi-line string",
+                failurePhase: "merge",
+            })
+        );
+        expect(msg).to.match(/failed to merge the runtime constraints/i);
     });
 
     it("reassures nothing changed when diskMutated is false", () => {
@@ -305,6 +349,18 @@ describe("getPythonSetupErrorAction", () => {
         );
     });
 
+    it("points an E_PROVISION_CONFLICT at the uv resolution docs (generic fallback)", () => {
+        // The Full-preset flow builds its own retry/open buttons in the
+        // orchestrator; this code-keyed link is the fallback for a conflict that
+        // somehow arrives on a run that already dropped the pins.
+        expect(
+            getPythonSetupErrorAction(failure("E_PROVISION_CONFLICT"))
+        ).to.deep.equal({
+            label: "Resolve dependency conflicts",
+            url: "https://docs.astral.sh/uv/concepts/resolution/",
+        });
+    });
+
     it("points E_MANAGER_UNSUPPORTED at the uv projects docs", () => {
         expect(
             getPythonSetupErrorAction(
@@ -386,6 +442,20 @@ describe("getPythonSetupErrorAction", () => {
             label: "Use manual setup",
             command: USE_MANUAL_SETUP_COMMAND_ID,
         });
+    });
+
+    it("offers no remediation button for a [project]-less E_MERGE (the fix is a manual edit)", () => {
+        // Option A: the primary fix (add a [project] table) is a manual edit with
+        // no one-click command, so this variant carries no button — its guidance
+        // lives in the message and the output-channel detail instead.
+        expect(
+            getPythonSetupErrorAction(
+                failure("E_MERGE", {
+                    message: NO_PROJECT_TABLE_CLI_MSG,
+                    failurePhase: "merge",
+                })
+            )
+        ).to.equal(undefined);
     });
 
     it("offers no action for codes with no clear remediation doc", () => {
@@ -541,6 +611,33 @@ describe("formatSetupFailureDetail", () => {
         expect(detail).to.not.contain("databricks.python.environmentSetup");
     });
 
+    it("spells out the [project]-table + manual-mode fixes for a [project]-less E_MERGE", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_MERGE", {
+                message: NO_PROJECT_TABLE_CLI_MSG,
+                failurePhase: "merge",
+            })
+        );
+        // Still carries the raw CLI error …
+        expect(detail).to.contain("requires-python");
+        // … plus both remediation paths (a concrete [project] table + manual mode).
+        expect(detail).to.contain("[project]");
+        expect(detail).to.contain("databricks.python.environmentSetup");
+        expect(detail).to.match(/manual/i);
+        // This variant has no button (Option A), so no "label: undefined" line.
+        expect(detail).to.not.contain("undefined");
+    });
+
+    it("adds no [project]-table block for a generic E_MERGE", () => {
+        const detail = formatSetupFailureDetail(
+            failure("E_MERGE", {
+                message: "cannot merge: unsupported TOML multi-line string",
+            })
+        );
+        expect(detail).to.not.match(/add a minimal \[project\] table/i);
+        expect(detail).to.not.contain("databricks.python.environmentSetup");
+    });
+
     it("adds no remediation block for a non-connectivity E_PROVISION", () => {
         const detail = formatSetupFailureDetail(
             failure("E_PROVISION", {
@@ -559,6 +656,23 @@ describe("formatSetupFailureDetail", () => {
         // A soft, conditional pointer — no button — so a user who believes the
         // published constraints are at fault can report it, without labelling
         // an ordinary (user-owned) dependency conflict as a product defect.
+        expect(detail).to.match(/constraint/i);
+        expect(detail).to.contain(
+            "https://github.com/databricks/environments/issues/new"
+        );
+    });
+
+    it("keeps the constraints-report hint for E_PROVISION_CONFLICT", () => {
+        // A constraint conflict was E_PROVISION before the CLI split out the
+        // distinct code; the soft "if you think it's the published constraints,
+        // report it" log pointer must not silently vanish, since a pins-vs-local
+        // conflict is exactly the case where the published constraints may be at
+        // fault.
+        const detail = formatSetupFailureDetail(
+            failure("E_PROVISION_CONFLICT", {
+                message: "No solution found when resolving dependencies",
+            })
+        );
         expect(detail).to.match(/constraint/i);
         expect(detail).to.contain(
             "https://github.com/databricks/environments/issues/new"
@@ -782,5 +896,54 @@ describe("isIndexUnreachableFailure", () => {
         const ok = failure("E_PROVISION");
         ok.error = null;
         expect(isIndexUnreachableFailure(ok)).to.equal(false);
+    });
+});
+
+describe("isMissingProjectTableFailure", () => {
+    it("is true for E_MERGE whose message names a missing [project] table", () => {
+        expect(
+            isMissingProjectTableFailure(
+                failure("E_MERGE", {message: NO_PROJECT_TABLE_CLI_MSG})
+            )
+        ).to.equal(true);
+    });
+
+    it("is false for a generic E_MERGE (e.g. a multiline-string rejection)", () => {
+        expect(
+            isMissingProjectTableFailure(
+                failure("E_MERGE", {
+                    message: "cannot merge: unsupported TOML multi-line string",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false for an E_MERGE that references a [project] table without saying there is none", () => {
+        // Guards the match against a hypothetical future merge defect whose
+        // message merely mentions the [project] table (e.g. an invalid value in
+        // it): that is a real bug and must keep its generic copy and bug-report
+        // prompt, not be relabeled as the user-fixable missing-table case.
+        expect(
+            isMissingProjectTableFailure(
+                failure("E_MERGE", {
+                    message: "failed to rewrite [project] table: invalid TOML",
+                })
+            )
+        ).to.equal(false);
+    });
+
+    it("is false for a non-E_MERGE code even with a matching message", () => {
+        // Scoped to E_MERGE: only the merge phase produces errNoProjectTable.
+        expect(
+            isMissingProjectTableFailure(
+                failure("E_WRITE", {message: NO_PROJECT_TABLE_CLI_MSG})
+            )
+        ).to.equal(false);
+    });
+
+    it("is false when there is no error object", () => {
+        const ok = failure("E_MERGE");
+        ok.error = null;
+        expect(isMissingProjectTableFailure(ok)).to.equal(false);
     });
 });

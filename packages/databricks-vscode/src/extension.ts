@@ -15,6 +15,7 @@ import {ConnectionManager} from "./configuration/ConnectionManager";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
+import {Cluster} from "./sdk-extensions/Cluster";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
 import {composePythonSetupEntry} from "./ui/configuration-view/pythonSetupEntry";
 import {routeEnvironmentSetup} from "./language/pythonSetupRouting";
@@ -1024,6 +1025,32 @@ export async function activate(
                         "databricks.connection.attachClusterQuickPick"
                     )
                 ),
+            createQuickPick: (...args) => window.createQuickPick(...args),
+            // The preset picker's title names the resolved runtime. Reuse the
+            // attached cluster's already-loaded DBR when its id matches;
+            // otherwise (e.g. a cluster just picked inline, whose attach has not
+            // propagated yet) fetch it by id so the title always carries the
+            // runtime. Any failure degrades to a generic title, so it must not
+            // reject into the setup flow.
+            clusterDbrVersion: async (clusterId) => {
+                try {
+                    const attached = connectionManager.cluster;
+                    if (attached?.id === clusterId) {
+                        return attached.dbrVersion;
+                    }
+                    const apiClient = connectionManager.apiClient;
+                    if (apiClient === undefined) {
+                        return undefined;
+                    }
+                    const cluster = await Cluster.fromClusterId(
+                        apiClient,
+                        clusterId
+                    );
+                    return cluster.dbrVersion;
+                } catch {
+                    return undefined;
+                }
+            },
             setActiveInterpreter: async (interpreterPath, root) => {
                 await pythonExtensionWrapper.api.environments.updateActiveEnvironmentPath(
                     interpreterPath,

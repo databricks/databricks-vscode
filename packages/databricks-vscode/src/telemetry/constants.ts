@@ -134,7 +134,7 @@ export type SetupTrigger = "auto_open" | "explicit_command" | "run" | "debug";
  * again. One event, one enum dimension — so re-runs stay analysable without
  * fingerprinting on the command id.
  */
-export type PythonSetupRunTrigger = "initial" | "rerun";
+export type PythonSetupRunTrigger = "initial" | "rerun" | "conflict_retry";
 
 /** Categorical outcome of Python acquisition and its user recovery path. */
 export type PythonSetupFlow =
@@ -154,6 +154,11 @@ import type {
     PythonSetupErrorCode,
 } from "../python-setup/models/PythonSetupResult";
 export type {PythonSetupMode, PythonSetupErrorCode};
+// The setup preset is an extension-side concept (the picker's tiers), not part
+// of the CLI wire contract, so it is owned by the picker util. Type-only, for
+// the attempt event's schema.
+import type {SetupPreset} from "../python-setup/utils/pythonSetupPresetPicker";
+export type {SetupPreset};
 
 /**
  * How a setup run ended.
@@ -562,6 +567,7 @@ export class EventTypes {
         targetType: ComputeType;
         serverlessVersion?: string;
         mode: PythonSetupMode;
+        setupPreset: SetupPreset;
         isGreenfield?: boolean;
         trigger: PythonSetupRunTrigger;
     }> = {
@@ -572,9 +578,15 @@ export class EventTypes {
             "IDs/names, paths, or package names.",
         trigger: {
             comment:
-                "initial (first setup for the project this session) or rerun (re-running over an " +
+                "initial (first setup for the project this session), rerun (re-running over an " +
                 "environment already provisioned this session, e.g. via the ready row's Re-run " +
-                "button). Session-scoped: a run after a window reload reads as initial again",
+                "button), or conflict_retry (a Full-preset run hit a cluster-vs-local dependency " +
+                "conflict and the user clicked 'Retry DB Connect setup', which re-runs with " +
+                "--no-constraints). conflict_retry counts conflict-recovery runs that started " +
+                "(a click whose pre-retry pyproject.toml restore fails, coalesces, or no-ops " +
+                "records none); pair it with the matching result's outcome for the recovery " +
+                "success rate. Session-scoped: a " +
+                "run after a window reload reads as initial again",
         },
         packageManager: {
             comment:
@@ -590,6 +602,14 @@ export class EventTypes {
         mode: {
             comment:
                 "Whether databricks-connect is included (default) or only the runtime constraints (constraints-only)",
+        },
+        setupPreset: {
+            comment:
+                "The preset tier the user picked: full (matching Python + Databricks Connect + " +
+                "pinned cluster dependencies), dbconnect (matching Python + Databricks Connect, " +
+                "no pins), or python (matching Python only). Disambiguates the two orthogonal " +
+                "skip axes that the two-value mode field cannot: a dbconnect run skips the pins " +
+                "yet reports mode=default",
         },
         isGreenfield: {
             comment:
