@@ -1,5 +1,5 @@
 import {execFileSync, spawn} from "node:child_process";
-import {mkdtempSync} from "node:fs";
+import {existsSync, mkdtempSync} from "node:fs";
 import {createRequire} from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -24,7 +24,9 @@ const env = {...process.env};
 env.PATH = `${path.dirname(process.execPath)}${path.delimiter}${
     env.PATH || ""
 }`;
-env.TEST_E2E_ROOT ||= mkdtempSync(path.join(os.tmpdir(), "vscode-e2e-"));
+if (!env.CI) {
+    env.TEST_E2E_ROOT ||= mkdtempSync(path.join(os.tmpdir(), "vscode-e2e-"));
+}
 
 function cliJson(args) {
     try {
@@ -81,12 +83,17 @@ if (
     );
 }
 
-console.log(`E2E files and logs: ${env.TEST_E2E_ROOT}`);
-const runner = path.join(
-    path.dirname(require.resolve("@wdio/cli/package.json")),
-    "bin",
-    "wdio.js"
-);
+console.log(`E2E logs: ${env.TEST_E2E_ROOT || packageRoot}/logs`);
+// WDIO 9 exports its entry point but keeps package.json private.
+let runnerRoot = path.dirname(require.resolve("@wdio/cli"));
+while (!existsSync(path.join(runnerRoot, "bin", "wdio.js"))) {
+    const parent = path.dirname(runnerRoot);
+    if (parent === runnerRoot) {
+        throw new Error("Cannot locate the WebdriverIO CLI executable");
+    }
+    runnerRoot = parent;
+}
+const runner = path.join(runnerRoot, "bin", "wdio.js");
 const child = spawn(
     process.execPath,
     [
