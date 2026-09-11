@@ -20,7 +20,7 @@ import {
 import {tmpdir} from "node:os";
 import packageJson from "../../../package.json" with {type: "json"};
 import {sleep} from "wdio-vscode-service";
-import {glob} from "glob";
+import {glob, globSync} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
 import {
@@ -204,44 +204,59 @@ export const config: WebdriverIO.Config = {
     // https://saucelabs.com/platform/platform-configurator
     //
     get capabilities() {
-        return [
-            {
-                "browserName": "vscode",
-                // Remote SSH must support the CLI's current connection settings.
-                "browserVersion": process.env.VSCODE_TEST_VERSION || "stable",
-                "wdio:vscodeOptions": {
-                    binary: process.env.VSCODE_TEST_BINARY,
-                    extensionPath: path.resolve(
-                        __dirname,
-                        "resources",
-                        "dummy-test"
-                    ),
-                    storagePath: VSCODE_STORAGE_DIR,
-                    vscodeArgs: {
-                        extensionsDir: EXTENSIONS_DIR,
-                        disableExtensions: false,
-                    },
-                    workspacePath: WORKSPACE_PATH,
-                    userSettings: {
-                        "editor.fontSize": 14,
-                        "files.simpleDialog.enable": true,
-                        "workbench.editor.enablePreview": true,
-                        "window.newWindowDimensions": "default",
-                        "window.openFoldersInNewWindow": "off",
-                        "extensions.autoCheckUpdates": false,
-                        "extensions.autoUpdate": false,
-                        // ms-python.python is a hard extensionDependency, so its
-                        // language server always loads. In the headless CI display
-                        // the Jedi server repeatedly fails to connect and crashes,
-                        // and its "Python Jedi server crashed" toasts overlay UI
-                        // targets (e.g. the Output-channel <select title="Tasks">),
-                        // intercepting clicks. We don't need language features in
-                        // e2e, so disable the server (and experiments) at the source.
-                        "python.languageServer": "None",
-                        "python.experiments.enabled": false,
-                    },
+        const sshSpec = path.join(__dirname, "ssh_connection.ucws.e2e.ts");
+        const otherSpecs = globSync("**/*.e2e.ts", {
+            cwd: __dirname,
+            absolute: true,
+        })
+            .map((spec) => path.resolve(spec))
+            .filter((spec) => spec !== sshSpec);
+        const capability = (version: string, exclude: string[]) => ({
+            "browserName": "vscode",
+            "browserVersion": version,
+            "wdio:exclude": exclude,
+            "wdio:vscodeOptions": {
+                binary: process.env.VSCODE_TEST_BINARY,
+                extensionPath: path.resolve(
+                    __dirname,
+                    "resources",
+                    "dummy-test"
+                ),
+                storagePath: VSCODE_STORAGE_DIR,
+                vscodeArgs: {
+                    extensionsDir: EXTENSIONS_DIR,
+                    disableExtensions: false,
+                },
+                workspacePath: WORKSPACE_PATH,
+                userSettings: {
+                    "editor.fontSize": 14,
+                    "files.simpleDialog.enable": true,
+                    "workbench.editor.enablePreview": true,
+                    "window.newWindowDimensions": "default",
+                    "window.openFoldersInNewWindow": "off",
+                    "extensions.autoCheckUpdates": false,
+                    "extensions.autoUpdate": false,
+                    // ms-python.python is a hard extensionDependency, so its
+                    // language server always loads. In the headless CI display
+                    // the Jedi server repeatedly fails to connect and crashes,
+                    // and its "Python Jedi server crashed" toasts overlay UI
+                    // targets (e.g. the Output-channel <select title="Tasks">),
+                    // intercepting clicks. We don't need language features in
+                    // e2e, so disable the server (and experiments) at the source.
+                    "python.languageServer": "None",
+                    "python.experiments.enabled": false,
                 },
             },
+        });
+        // Existing specs keep their original editor; only SSH needs a newer Remote SSH host.
+        return [
+            capability(
+                process.env.VSCODE_TEST_BINARY
+                    ? process.env.VSCODE_TEST_VERSION || "stable"
+                    : packageJson.engines.vscode.replace("^", ""),
+                [sshSpec]
+            ),
+            capability(process.env.VSCODE_TEST_VERSION || "stable", otherSpecs),
         ];
     },
 
@@ -354,14 +369,29 @@ export const config: WebdriverIO.Config = {
      * @param {Object} config wdio configuration object
      * @param {Array.<Object>} capabilities list of capabilities details
      */
-    onPrepare: async function (runnerConfig) {
-        const sshOnly = runnerConfig.specs
-            ?.flat()
-            .every(
-                (spec) =>
-                    typeof spec === "string" &&
-                    spec.endsWith("ssh_connection.ucws.e2e.ts")
+    onPrepare: async function (runnerConfig, capabilities) {
+        const selectedSpecs = (runnerConfig.specs ?? [])
+            .flat()
+            .flatMap((spec) =>
+                spec.startsWith("file:")
+                    ? [fileURLToPath(spec)]
+                    : globSync(spec, {absolute: true}).map((file) =>
+                          path.resolve(file)
+                      )
             );
+        const sshSpec = path.join(__dirname, "ssh_connection.ucws.e2e.ts");
+        const sshOnly =
+            selectedSpecs.length > 0 &&
+            selectedSpecs.every((spec) => spec === sshSpec);
+        const includesSsh = selectedSpecs.includes(sshSpec);
+        if (Array.isArray(capabilities)) {
+            // Avoid downloading an unused editor for single-spec CI jobs.
+            if (sshOnly) {
+                capabilities.splice(0, 1);
+            } else if (!includesSsh) {
+                capabilities.splice(1, 1);
+            }
+        }
         try {
             console.log("Extensions dir:", EXTENSIONS_DIR);
             mkdirSync(EXTENSIONS_DIR, {recursive: true});
