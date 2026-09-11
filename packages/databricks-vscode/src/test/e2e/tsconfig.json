@@ -8,6 +8,7 @@
             "wdio-vscode-service"
         ],
         "noEmit": true,
+        "rootDir": "../../..",
         "moduleResolution": "bundler",
         "allowImportingTsExtensions": true,
         "resolveJsonModule": true,
