@@ -4,7 +4,7 @@
 
 ## (2026-09-11)
 
--   Update Databricks CLI to v1.16.1 (#2189) ([abc516c](https://github.com/databricks/databricks-vscode/commit/abc516c)), closes [#2189](https://github.com/databricks/databricks-vscode/issues/2189)
+-   Update Databricks CLI to v1.16.1 (#2189) ([abc516c](https://github.com/databricks/databricks-vscode/commit/abc516c)) — fixes an SSH transfer regression affecting transfers larger than 1 MiB; see the [CLI release notes](https://github.com/databricks/cli/releases) for details
 
 # Release: v2.17.0
 
