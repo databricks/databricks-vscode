@@ -360,7 +360,7 @@ export const config: WebdriverIO.Config = {
             .every(
                 (spec) =>
                     typeof spec === "string" &&
-                    spec.endsWith("ssh_connection.e2e.ts")
+                    spec.endsWith("ssh_connection.ucws.e2e.ts")
             );
         try {
             console.log("Extensions dir:", EXTENSIONS_DIR);
@@ -483,7 +483,7 @@ export const config: WebdriverIO.Config = {
      */
     beforeSession: async function (config, capabilities, specs) {
         const sshTest = specs.some((spec) =>
-            spec.endsWith("ssh_connection.e2e.ts")
+            spec.endsWith("ssh_connection.ucws.e2e.ts")
         );
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
@@ -550,6 +550,7 @@ export const config: WebdriverIO.Config = {
             ...extensionDependencies,
             "--install-extension",
             VSIX_PATH,
+            ...(sshTest ? ["--do-not-include-pack-dependencies"] : []),
             "--force",
         ]);
 
