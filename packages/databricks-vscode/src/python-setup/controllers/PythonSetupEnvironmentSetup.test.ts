@@ -17,7 +17,7 @@ import {
 } from "../models/fixtures/setupLocalResults";
 import {PythonSetupErrorAction} from "../utils/errorMessages";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
-import {SetupPreset} from "../utils/pythonSetupPresetPicker";
+import {SetupPreset, SetupPresetFlags} from "../utils/pythonSetupPresetPicker";
 import {
     PythonSetupAttempt,
     PythonSetupOutcomeReport,
@@ -1627,6 +1627,37 @@ describe("PythonSetupEnvironmentSetup.setup preset selection", () => {
         const invocation = await invocationFor("python");
         expect(invocation.skipConstraints).to.equal(true);
         expect(invocation.skipDbconnect).to.equal(true);
+    });
+
+    /** Capture the flags handed to showSuccess on a successful run. */
+    function flagsAtShowSuccess(preset: SetupPreset) {
+        let seen: SetupPresetFlags | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                pickSetupPreset: async () => preset,
+                showSuccess: async (_r, flags) => {
+                    seen = flags;
+                },
+            })
+        );
+        return setup.setup().then(() => seen);
+    }
+
+    it("hands showSuccess the Full preset's flags so the panel reports the pins", async () => {
+        expect(await flagsAtShowSuccess("full")).to.deep.equal({});
+    });
+
+    it("hands showSuccess the DB Connect preset's flags so the panel omits the pins", async () => {
+        expect(await flagsAtShowSuccess("dbconnect")).to.deep.equal({
+            skipConstraints: true,
+        });
+    });
+
+    it("hands showSuccess the Python preset's flags so the panel omits pins and databricks-connect", async () => {
+        expect(await flagsAtShowSuccess("python")).to.deep.equal({
+            skipConstraints: true,
+            skipDbconnect: true,
+        });
     });
 
     it("passes the resolved compute to the preset picker", async () => {
