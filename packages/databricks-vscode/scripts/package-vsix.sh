@@ -58,6 +58,14 @@ if [ $ARCH != "win32-arm64" ]; then
 fi
 
 yarn run prettier package.json --write
+
+# Ship the native Windows CA reader (@vscode/windows-ca-certs) only in the win32
+# VSIXs. vscode:prepublish reads this to decide whether to copy the module into
+# out/ (see scripts/copy-windows-ca-certs.sh).
+case $ARCH in
+  win32-*) export INCLUDE_WINDOWS_CA_CERTS=1 ;;
+esac
+
 TAG="release-v$(cat package.json | jq -r .version)" yarn run package -t $VSXI_ARCH
 
 git checkout -- package.json

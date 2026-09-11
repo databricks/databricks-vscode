@@ -1,22 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
-    Config,
-    ProductVersion,
-    WorkspaceClient,
-    logging,
-} from "@databricks/sdk-experimental";
+import {Config, WorkspaceClient, logging} from "@databricks/sdk-experimental";
 import {CancellationToken, ProgressLocation, window} from "vscode";
 import {normalizeHost} from "../../utils/urlUtils";
 import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const extensionVersion = require("../../../package.json")
-    .version as ProductVersion;
 
 import {AzureCliCheck} from "./AzureCliCheck";
 import {DatabricksCliCheck} from "./DatabricksCliCheck";
 import {Loggers} from "../../logger";
 import {CliWrapper} from "../../cli/CliWrapper";
+import {createWorkspaceClient} from "../../utils/network/proxyAgent";
 
 // TODO: Resolve this with SDK's AuthType.
 export type AuthType =
@@ -52,11 +44,7 @@ export abstract class AuthProvider {
 
     async getWorkspaceClient(): Promise<WorkspaceClient> {
         const config = await this.getSdkConfig();
-
-        return new WorkspaceClient(config, {
-            product: "databricks-vscode",
-            productVersion: extensionVersion,
-        });
+        return createWorkspaceClient(config, this.host);
     }
 
     /**

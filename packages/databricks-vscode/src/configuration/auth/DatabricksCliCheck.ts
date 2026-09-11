@@ -1,8 +1,6 @@
 import {
     CancellationToken,
     Context,
-    ProductVersion,
-    WorkspaceClient,
     logging,
 } from "@databricks/sdk-experimental";
 import {
@@ -14,10 +12,7 @@ import {DatabricksCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {Loggers} from "../../logger";
 import {execFile} from "../../cli/CliWrapper";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const extensionVersion = require("../../../package.json")
-    .version as ProductVersion;
+import {createWorkspaceClient} from "../../utils/network/proxyAgent";
 
 type StepName = "tryLogin" | "login";
 
@@ -111,7 +106,7 @@ export class DatabricksCliCheck implements Disposable {
     private async tryLogin(
         cancellationToken?: CancellationToken
     ): Promise<boolean> {
-        const workspaceClient = new WorkspaceClient(
+        const workspaceClient = await createWorkspaceClient(
             {
                 host: this.authProvider.host.toString(),
                 authType: "databricks-cli",
@@ -121,10 +116,7 @@ export class DatabricksCliCheck implements Disposable {
                     ? {workspaceId: this.authProvider.workspaceId}
                     : {}),
             },
-            {
-                product: "databricks-vscode",
-                productVersion: extensionVersion,
-            }
+            this.authProvider.host
         );
 
         try {

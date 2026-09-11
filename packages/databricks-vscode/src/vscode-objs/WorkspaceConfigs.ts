@@ -181,6 +181,51 @@ export const workspaceConfigs = {
 
         return new Time(config, TimeUnits.minutes).toMillSeconds().value;
     },
+
+    /**
+     * Whether TLS certificates must be verified for the extension's SDK HTTP
+     * calls. `databricks.proxy.strictSSL`, when explicitly set, overrides the
+     * built-in `http.proxyStrictSSL`; both default to `true`.
+     */
+    get proxyStrictSSL(): boolean {
+        const override = workspace
+            .getConfiguration("databricks")
+            .get<boolean | null>("proxy.strictSSL");
+        if (override !== undefined && override !== null) {
+            return override;
+        }
+        return (
+            workspace.getConfiguration("http").get<boolean>("proxyStrictSSL") ??
+            true
+        );
+    },
+
+    /** The `http.proxy` VS Code setting, mirrored for the SDK proxy resolver. */
+    get httpProxy(): string | undefined {
+        return (
+            workspace.getConfiguration("http").get<string>("proxy") || undefined
+        );
+    },
+
+    /** The `http.noProxy` VS Code setting, mirrored for the SDK proxy resolver. */
+    get httpNoProxy(): string[] {
+        return workspace.getConfiguration("http").get<string[]>("noProxy", []);
+    },
+
+    /**
+     * Absolute path to a PEM bundle of additional CA certificates to trust for
+     * the extension's SDK calls, merged with the OS trust store and Node's
+     * built-in roots. An escape hatch for corporate CAs that can't be read from
+     * the system store (e.g. older runtimes where the native reader is
+     * unavailable).
+     */
+    get proxyCaCert(): string | undefined {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<string>("proxy.caCert") || undefined
+        );
+    },
 };
 
 export type WorkspaceConfigs = typeof workspaceConfigs;
