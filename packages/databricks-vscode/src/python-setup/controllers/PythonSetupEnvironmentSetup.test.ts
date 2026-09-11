@@ -1877,6 +1877,36 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         expect(setup.ready).to.equal(true);
     });
 
+    it("hands showSuccess the DB Connect flags after a Full-preset conflict retry, so the panel omits the pins line", async () => {
+        const cli = makeScriptedCli([conflictResult(), SUCCESS_REAL_RUN]);
+        let successFlags: SetupPresetFlags | undefined;
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                pickSetupPreset: async () => "full",
+                showSuccess: async (_r, flags) => {
+                    successFlags = flags;
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        // The success panel must describe the retry that actually ran (DB
+        // Connect, no pins), not the user's original Full pick. showSuccess
+        // fires only on the successful retry, and its flags come from the same
+        // presetToFlags the retry invocation used — this locks the regression
+        // the whole fix guards against.
+        expect(successFlags).to.deep.equal({skipConstraints: true});
+    });
+
     it("records the retry as a dbconnect run with the conflict_retry trigger", async () => {
         const cli = makeScriptedCli([conflictResult(), SUCCESS_REAL_RUN]);
         const telemetry = makeTelemetryRecorder();

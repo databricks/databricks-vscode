@@ -209,6 +209,14 @@ export interface PythonSetupSetupDeps {
         options?: {includeShowLogs?: boolean}
     ) => Promise<void>;
 
+    /**
+     * Present the success outcome. `flags` are the resolved skip flags of the
+     * run that actually happened (from {@link presetToFlags}), passed
+     * explicitly because `PythonSetupResult` alone cannot say which preset ran:
+     * `result.mode` encodes only the databricks-connect axis, so a Full and a
+     * DB Connect run are indistinguishable in it. The panel needs them to state
+     * truthfully whether constraints were written.
+     */
     showSuccess: (
         result: PythonSetupResult,
         flags: SetupPresetFlags
