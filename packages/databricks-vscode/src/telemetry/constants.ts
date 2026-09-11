@@ -402,6 +402,8 @@ export class EventTypes {
             source?: AiToolsInstallSource;
             agents?: string[];
             cursorPlugin?: boolean;
+            globalErrorCategory?: string;
+            agentErrors?: Record<string, string>;
         } & DurationMeasurement
     > = {
         comment: "Install Databricks AI tools",
@@ -423,6 +425,25 @@ export class EventTypes {
         cursorPlugin: {
             comment:
                 "In Cursor, whether the Databricks marketplace plugin (a superset of the Cursor skills) was installed as part of this flow, rather than the cursor skills via the CLI",
+        },
+        globalErrorCategory: {
+            comment:
+                "The CLI's classification of a top-level install failure that has no per-agent " +
+                "entry (e.g. a skills-group install or reference-lookup failure), from " +
+                "'aitools install --output json'. A closed category token (e.g. SKILL_NOT_FOUND, " +
+                "PLUGIN_INSTALL_FAILED); an unrecognised token collapses to 'other'. Never the " +
+                "CLI's free-form error message. Omitted when there was no top-level failure, or " +
+                "when the bundled CLI predates JSON install output",
+        },
+        agentErrors: {
+            comment:
+                "Per-agent install errors as a map of agent id to its categorical error, for " +
+                'each requested agent that did not install (failed or skipped) — e.g. {"codex":' +
+                '"UNSUPPORTED_SCOPE"}. Keyed on the agent id so a category can be attributed to a ' +
+                "specific agent (exploded into one row per agent downstream). Categories are the " +
+                "CLI's closed set; an unrecognised token collapses to 'other'. Never the free-form " +
+                "per-agent message. JSON-stringified into a property by recordEvent. Omitted when " +
+                "every requested agent installed, or when the bundled CLI predates JSON install output",
         },
     };
     [Events.AITOOLS_UPDATE]: EventType<

@@ -223,6 +223,94 @@ export interface AiToolsListResult {
     agents: AiToolsAgent[];
 }
 
+/**
+ * Delivery method for an agent in `aitools install --output json`, mirroring the
+ * CLI's `delivery` enum: the databricks `plugin`, raw `skills`, or `skip` (the
+ * agent was not acted on).
+ */
+export type AiToolsInstallDelivery = "plugin" | "skills" | "skip";
+
+/** Per-agent outcome status in `aitools install --output json`. */
+export type AiToolsInstallStatus = "installed" | "skipped" | "failed";
+
+/** A single agent entry from `databricks aitools install --output json`. */
+export interface AiToolsInstallAgentResult {
+    name: string;
+    delivery: AiToolsInstallDelivery;
+    status: AiToolsInstallStatus;
+    /**
+     * Present only for a non-installed agent (skipped/failed); a closed category
+     * token. The sibling `message` is free-form and must never reach telemetry.
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    error_category?: string;
+    message?: string;
+}
+
+/**
+ * Parsed output of `databricks aitools install --output json`, mirroring the
+ * CLI's `installOutput` struct. On success every agent is `installed` and both
+ * `error` fields are absent; on failure the CLI exits non-zero but still prints
+ * this document — a top-level failure (skills group, ref lookup) populates
+ * `error`/`error_category`, while a per-agent failure stays in `agents` and
+ * leaves the top-level fields empty.
+ *
+ * `agents` is normalized to `[]` by {@link parseAiToolsInstallOutput}: a
+ * top-level failure has no per-agent entries, and Go's `omitempty` can drop the
+ * key entirely, so it is not safe to assume the wire document carries it.
+ */
+export interface AiToolsInstallOutput {
+    scope: string;
+    agents: AiToolsInstallAgentResult[];
+    error?: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    error_category?: string;
+}
+
+/**
+ * Parse the JSON document `aitools install --output json` prints on stdout,
+ * returning undefined when stdout is not a parseable install result. Two callers
+ * rely on the undefined case: a success exit from a CLI old enough to ignore
+ * `--output json` (it prints human-readable text — a successful install with no
+ * structured result), and a non-zero exit with no JSON (a hard failure the caller
+ * turns into a {@link ProcessError}).
+ *
+ * A document counts as a result when it carries an `agents` array *or* a string
+ * `error`/`error_category` — a top-level failure marshals its nil `agents` slice
+ * away under Go's `omitempty`, so an error document may omit the key entirely;
+ * `agents` is defaulted to `[]` in that case. This is enough to tell a result
+ * from stray text without rejecting the very error shapes this parsing feeds.
+ */
+export function parseAiToolsInstallOutput(
+    stdout: string
+): AiToolsInstallOutput | undefined {
+    let obj: unknown;
+    try {
+        obj = JSON.parse(stdout);
+    } catch {
+        return undefined;
+    }
+    if (typeof obj !== "object" || obj === null) {
+        return undefined;
+    }
+    const rec = obj as {
+        agents?: unknown;
+        error?: unknown;
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        error_category?: unknown;
+    };
+    const hasAgents = Array.isArray(rec.agents);
+    const hasError =
+        typeof rec.error === "string" || typeof rec.error_category === "string";
+    if (!hasAgents && !hasError) {
+        return undefined;
+    }
+    return {
+        ...(obj as AiToolsInstallOutput),
+        agents: hasAgents ? (rec.agents as AiToolsInstallAgentResult[]) : [],
+    };
+}
+
 export class ProcessError extends Error {
     constructor(
         message: string,
@@ -600,10 +688,18 @@ export class CliWrapper {
      *
      * `cwd` selects the install root: the project root for `--scope project`
      * (installs into `.databricks/aitools/skills` under the workspace) or the
-     * home dir for `--scope global` (see AiToolsManager.cwdForScope). The CLI
-     * prints human-readable text (it ignores `--output json` for this
-     * subcommand), so success/failure is determined by the exit code (a non-zero
-     * exit rejects with a {@link ProcessError}).
+     * home dir for `--scope global` (see AiToolsManager.cwdForScope).
+     *
+     * Runs with `--output json` and never throws: it resolves with `{output,
+     * error}` and leaves it to the caller ({@link AiToolsManager}) to record the
+     * categories and decide how to surface a failure. `output` is the parsed
+     * {@link AiToolsInstallOutput}, or `undefined` when stdout carries no
+     * structured result — an empty `agents` request, or a success from a CLI old
+     * enough to ignore `--output json` (human text on stdout). `error` is the
+     * non-zero-exit error (`undefined` on a success exit); a JSON-capable CLI
+     * still prints the structured result on a failing exit, so both `output` and
+     * `error` can be present, letting per-agent and top-level failures reach
+     * telemetry with their categories.
      */
     @withLogContext(Loggers.Extension)
     public async aitoolsInstall(
@@ -612,9 +708,12 @@ export class CliWrapper {
         cancellationToken: CancellationToken | undefined,
         agents: string[],
         @context ctx?: Context
-    ): Promise<void> {
+    ): Promise<{
+        output: AiToolsInstallOutput | undefined;
+        error: Error | undefined;
+    }> {
         if (agents.length === 0) {
-            return;
+            return {output: undefined, error: undefined};
         }
 
         const args = [
@@ -624,18 +723,34 @@ export class CliWrapper {
             scope,
             "--agents",
             agents.join(","),
+            "--output",
+            "json",
         ];
         try {
-            await execFile(
+            const res = await execFile(
                 this.cliPath,
                 args,
                 {cwd, env: this.aitoolsEnv()},
                 cancellationToken,
                 {closeStdin: true}
             );
-        } catch (e: any) {
-            ctx?.logger?.error("Failed to install Databricks AI tools", e);
-            throw new ProcessError(e.message, e.code ?? null);
+            return {
+                output: parseAiToolsInstallOutput(res.stdout),
+                error: undefined,
+            };
+        } catch (error: unknown) {
+            ctx?.logger?.error("Failed to install Databricks AI tools", error);
+            if (!(error instanceof Error)) {
+                return {output: undefined, error: new Error(String(error))};
+            }
+            // A JSON-capable CLI prints the structured result on stdout even when
+            // the install fails (non-zero exit). Hand it back for the caller to
+            // inspect and record.
+            const output =
+                "stdout" in error && typeof error.stdout === "string"
+                    ? parseAiToolsInstallOutput(error.stdout)
+                    : undefined;
+            return {output, error};
         }
     }
 
@@ -690,13 +805,16 @@ export class CliWrapper {
     }
 
     /**
-     * List Databricks AI tools components as structured JSON.
-     *
-     * `aitools list` is the only aitools subcommand that emits real JSON
-     * (`aitools update --check` and `install` print text). We use it both to
+     * List Databricks AI tools components as structured JSON. We use it both to
      * detect whether an update is available (any installed skill whose
      * `installed[scope]` differs from `latest_version`) and to read the current
      * release.
+     *
+     * `aitools list` output is trusted and cast directly (`aitools update --check`
+     * still prints text). `aitools install` also emits JSON under `--output json`,
+     * but on a non-zero exit and from a CLI old enough to ignore the flag, so
+     * {@link aitoolsInstall} parses it defensively via
+     * {@link parseAiToolsInstallOutput} instead of casting.
      */
     @withLogContext(Loggers.Extension)
     public async aitoolsList(
