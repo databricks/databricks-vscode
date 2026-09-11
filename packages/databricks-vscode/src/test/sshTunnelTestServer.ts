@@ -1,7 +1,7 @@
 import {generateKeyPairSync} from "node:crypto";
 import {createServer} from "node:http";
 import type {AddressInfo} from "node:net";
-import {WebSocket, WebSocketServer} from "ws";
+import {WebSocketServer} from "ws";
 
 /** Local workspace/driver-proxy peer; the CLI's byte-stream transport stays real. */
 export async function createSshTunnelTestServer() {
@@ -19,7 +19,6 @@ export async function createSshTunnelTestServer() {
         sshString(rawPublicKey),
     ]).toString("base64")}`;
     const unexpectedRequests: string[] = [];
-    const timers: NodeJS.Timeout[] = [];
     let receivedBytes = 0;
     let connections = 0;
 
@@ -84,8 +83,6 @@ export async function createSshTunnelTestServer() {
         if (request.headers.authorization !== "Bearer local-test-token") {
             unexpectedRequests.push("WebSocket auth was not forwarded");
         }
-        const resumable = url.searchParams.has("delivered");
-        let acknowledgedBytes = 0;
         socket.on("error", (error) =>
             unexpectedRequests.push(`WebSocket error: ${error.message}`)
         );
@@ -100,19 +97,6 @@ export async function createSshTunnelTestServer() {
                   : Buffer.from(data);
             receivedBytes += bytes.length;
             socket.send(bytes, {binary: true});
-            if (resumable && receivedBytes - acknowledgedBytes >= 64 * 1024) {
-                acknowledgedBytes = receivedBytes;
-                const delivered = receivedBytes;
-                // Match the protocol's 64 KiB acknowledgements with 50 ms latency.
-                // Healthy in-flight data must not be mistaken for a dead peer.
-                timers.push(
-                    setTimeout(() => {
-                        if (socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({delivered}));
-                        }
-                    }, 50)
-                );
-            }
         });
     });
     await new Promise<void>((resolve, reject) => {
@@ -129,7 +113,6 @@ export async function createSshTunnelTestServer() {
             return connections;
         },
         async dispose() {
-            timers.forEach(clearTimeout);
             sockets.clients.forEach((socket) => socket.terminate());
             sockets.close();
             server.closeAllConnections();

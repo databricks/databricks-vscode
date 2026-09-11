@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {randomBytes} from "node:crypto";
+import {existsSync} from "node:fs";
 import {mkdtemp, rm, writeFile} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -29,7 +30,22 @@ const PAYLOAD_BYTES = 8 * 1024 * 1024;
 describe("SSH tunnel command transfer", function () {
     this.timeout(30_000);
 
-    it("transfers the complete IDE-sized payload through the bundled CLI without reconnecting", async () => {
+    it("transfers the complete IDE-sized payload through the bundled CLI without reconnecting", async function () {
+        const context = mock<ExtensionContext>();
+        when(context.asAbsolutePath(anything())).thenCall((relative: string) =>
+            path.resolve(__dirname, "../..", relative)
+        );
+        const cli = new CliWrapper(
+            instance(context),
+            instance(mock(LoggerManager))
+        );
+        if (!existsSync(cli.cliPath)) {
+            assert(
+                !process.env.CI,
+                "Bundled CLI missing: run yarn workspace databricks run package:cli:fetch"
+            );
+            this.skip();
+        }
         const directory = await mkdtemp(
             path.join(os.tmpdir(), "ssh-transfer-")
         );
@@ -47,14 +63,6 @@ describe("SSH tunnel command transfer", function () {
             await writeFile(
                 configFile,
                 `[ssh-test]\nhost = ${peer.host}\ntoken = local-test-token\nauth_type = pat\n`
-            );
-            const context = mock<ExtensionContext>();
-            when(context.asAbsolutePath(anything())).thenCall(
-                (relative: string) => path.resolve(__dirname, "../..", relative)
-            );
-            const cli = new CliWrapper(
-                instance(context),
-                instance(mock(LoggerManager))
             );
             const auth = mock<AuthProvider>();
             /* eslint-disable @typescript-eslint/naming-convention */
