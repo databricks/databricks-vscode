@@ -527,13 +527,22 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 result.pythonResolution === "installed_fallback"
                     ? "manual_selection_requested"
                     : result.pythonResolution;
-            // A constraint conflict is recoverable only when this run carried the
-            // pins (Full preset) AND the CLI saved a pre-merge backup to roll them
-            // back to. Without either, fall through to the ordinary doc-link
-            // handling rather than offer a "retry as DB Connect" that can't work
-            // (nothing to restore) or would loop (a run that already skipped pins).
-            const conflictBackupPath =
-                result.error?.code === "E_PROVISION_CONFLICT" &&
+            // A Full-preset run (one that pinned cluster constraints) that fails
+            // provisioning is recoverable by retrying as DB Connect: the pinned
+            // deps are the prime suspect. This covers both the CLI's provable,
+            // pre-sync E_PROVISION_CONFLICT and a generic E_PROVISION uv-sync
+            // failure — a transitive clash, or one against databricks-connect's
+            // own dependency tree, that only surfaces during the sync. Both need
+            // the run to have carried the pins (Full, `!skipConstraints`) AND a
+            // pre-merge backup to roll them back to. Without either, fall through
+            // to the ordinary doc-link handling rather than offer a "retry as DB
+            // Connect" that can't work (nothing to restore) or would loop (a run
+            // that already skipped the pins). Gating on the specific `E_PROVISION`
+            // code, not just the provision phase, leaves `E_PYTHON_INSTALL` on its
+            // own "Select Python interpreter" remediation below.
+            const recoveryBackupPath =
+                (result.error?.code === "E_PROVISION_CONFLICT" ||
+                    result.error?.code === "E_PROVISION") &&
                 !invocation.skipConstraints &&
                 // Truthiness, not just `!== undefined`: a (contract-forbidden)
                 // empty backupPath has nothing to restore, so it must fall
@@ -541,12 +550,13 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 result.backupPath
                     ? result.backupPath
                     : undefined;
-            const recoverableConflict = conflictBackupPath !== undefined;
-            const actions = recoverableConflict
+            const recoverableProvisionFailure =
+                recoveryBackupPath !== undefined;
+            const actions = recoverableProvisionFailure
                 ? this.buildConflictRecoveryActions(
                       compute,
                       cwd,
-                      conflictBackupPath
+                      recoveryBackupPath
                   )
                 : remediationActions.some(
                         (candidate) =>
@@ -576,11 +586,13 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                         reportRepo ? reportLogLink(reportRepo) : undefined
                     ),
                     actions,
-                    // The recoverable conflict is self-service via its Retry /
-                    // Open buttons, so drop the trailing "Show Logs" to keep the
-                    // notification's button row short (the channel is revealed
-                    // regardless).
-                    recoverableConflict ? {includeShowLogs: false} : undefined
+                    // A recoverable provision failure is self-service via its
+                    // Retry / Open buttons, so drop the trailing "Show Logs" to
+                    // keep the notification's button row short (the channel is
+                    // revealed regardless).
+                    recoverableProvisionFailure
+                        ? {includeShowLogs: false}
+                        : undefined
                 )
             );
             return;
@@ -687,12 +699,14 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     }
 
     /**
-     * The two recovery buttons for a Full-preset constraint conflict, both
+     * The two recovery buttons for a recoverable Full-preset provisioning
+     * failure — a provable `E_PROVISION_CONFLICT`, or a generic `E_PROVISION`
+     * uv-sync failure where the pinned cluster deps are the prime suspect — both
      * run-actions (their behavior needs the run's live compute/cwd):
      *
      * - "Retry DB Connect setup" restores pyproject.toml from the CLI's pre-merge
      *   `backupPath`, then re-runs as DB Connect (`--no-constraints`). The restore
-     *   is load-bearing: the conflict fails *after* the pins were merged to disk,
+     *   is load-bearing: provisioning fails *after* the pins were merged to disk,
      *   so `--no-constraints` alone would leave the conflicting pins in place and
      *   only skip re-adding them. It runs through {@link runGuarded} — so a click
      *   can't race an in-flight run, and the restore only fires when the retry
