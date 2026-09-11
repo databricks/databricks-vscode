@@ -121,6 +121,36 @@ at an existing profile (for example `export DATABRICKS_CONFIG_PROFILE=DEFAULT`);
 also build a `.vsix` package as part of `test:integ:prepare`, so make sure you
 have run `yarn build` first.
 
+### Running one end-to-end spec
+
+After `yarn build` and `yarn workspace databricks run test:integ:prepare`, use
+`test:integ:run` to run a selected file. Replace the example path with any
+`.e2e.ts` spec:
+
+```sh
+yarn workspace databricks run test:integ:run \
+  --spec src/test/e2e/auth.e2e.ts
+```
+
+For a local OAuth login, add `--profile <name>`; the runner obtains a token from
+that CLI profile. In CI, it uses the existing credential environment. Use
+`test:integ:extension` instead to rebuild the test VSIX before running.
+
+To use an existing VS Code installation and locally downloaded extension VSIXs
+(for example, when marketplace downloads fail), run:
+
+```sh
+VSCODE_TEST_VERSION='<installed-vscode-version>' \
+VSCODE_TEST_BINARY='/absolute/path/to/Visual Studio Code.app/Contents/MacOS/Code' \
+EXTENSION_VSIX_DIR='/absolute/path/to/extension-vsixs' \
+yarn workspace databricks run test:integ:run \
+  --profile <name> \
+  --spec src/test/e2e/auth.e2e.ts
+```
+
+Replace the placeholders with your local values and keep the quoted binary path
+on one line. Without these overrides, the runner downloads VS Code and extensions.
+
 ## Code style
 
 Formatting and linting are enforced by prettier and eslint. Auto-fix

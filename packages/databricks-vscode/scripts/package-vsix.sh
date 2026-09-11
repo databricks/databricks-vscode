@@ -5,6 +5,11 @@ set -ex
 # get path of the script
 cd $(dirname $(realpath $0))/..
 
+# Packaging temporarily edits metadata; preserve the caller's uncommitted changes.
+PACKAGE_BACKUP=$(mktemp)
+cp package.json "$PACKAGE_BACKUP"
+trap 'cp "$PACKAGE_BACKUP" package.json; rm -f "$PACKAGE_BACKUP"' EXIT
+
 ARCH=$1
 
 case $ARCH in
@@ -59,7 +64,3 @@ fi
 
 yarn run prettier package.json --write
 TAG="release-v$(cat package.json | jq -r .version)" yarn run package -t $VSXI_ARCH
-
-git checkout -- package.json
-
-

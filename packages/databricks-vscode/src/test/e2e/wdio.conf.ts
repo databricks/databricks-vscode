@@ -18,7 +18,7 @@ import {
     rmSync,
 } from "node:fs";
 import {tmpdir} from "node:os";
-import packageJson from "../../../package.json" assert {type: "json"};
+import packageJson from "../../../package.json" with {type: "json"};
 import {sleep} from "wdio-vscode-service";
 import {glob} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
@@ -31,6 +31,7 @@ import {
     formatRecoveredSpecsReport,
 } from "../retry.ts";
 import {SpecRetryTracker} from "../SpecRetryTracker.ts";
+import {prepareSshEditor} from "./utils/sshE2eUtils.ts";
 
 // WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
 // NODE_OPTIONS for every worker process. wdio-vscode-service installs the
@@ -53,10 +54,14 @@ if (
     ).trim();
 }
 
-const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
+const TEST_ROOT = process.env.TEST_E2E_ROOT || tmpdir();
+const TEST_LOGS = process.env.TEST_E2E_ROOT
+    ? path.join(TEST_ROOT, "logs")
+    : "logs";
+const WORKSPACE_PATH = path.resolve(TEST_ROOT, "test-root");
 
 // wdio's `outputDir`; also where onWorkerEnd parks a crashed attempt's logs.
-const LOGS_DIR = "logs";
+const LOGS_DIR = TEST_LOGS;
 
 // Records spec outcomes across specFileRetries (see specFileRetriesForPlatform)
 // so a spec that passes only on a retry is surfaced in onComplete rather than
@@ -66,9 +71,8 @@ const specRetryTracker = new SpecRetryTracker();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const {engines} = packageJson;
 
-const EXTENSIONS_DIR = path.resolve(tmpdir(), "extension test", "extension");
+const EXTENSIONS_DIR = path.resolve(TEST_ROOT, "extension test", "extension");
 const PACKAGE_ROOT = path.resolve(__dirname, "..", "..", "..");
 const VSIX_PATH = path.resolve(
     PACKAGE_ROOT,
@@ -77,7 +81,9 @@ const VSIX_PATH = path.resolve(
         "utf-8"
     ).trim()
 );
-const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
+const VSCODE_STORAGE_DIR = path.resolve(TEST_ROOT, "user-data-dir");
+const VSCODE_CACHE_DIR = path.join(process.cwd(), "tmp", "wdio-vscode-service");
+mkdirSync(VSCODE_CACHE_DIR, {recursive: true});
 
 const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
 
@@ -201,8 +207,10 @@ export const config: WebdriverIO.Config = {
         return [
             {
                 "browserName": "vscode",
-                "browserVersion": engines.vscode.replace("^", ""),
+                // Remote SSH must support the CLI's current connection settings.
+                "browserVersion": process.env.VSCODE_TEST_VERSION || "stable",
                 "wdio:vscodeOptions": {
+                    binary: process.env.VSCODE_TEST_BINARY,
                     extensionPath: path.resolve(
                         __dirname,
                         "resources",
@@ -287,15 +295,10 @@ export const config: WebdriverIO.Config = {
     // Services take over a specific job you don't want to take care of. They enhance
     // your test setup with almost no effort. Unlike plugins, they don't add new
     // commands. Instead, they hook themselves up into the test process.
-    services: [
-        [
-            "vscode",
-            {cachePath: path.join(process.cwd(), "tmp", "wdio-vscode-service")},
-        ],
-    ],
+    services: [["vscode", {cachePath: VSCODE_CACHE_DIR}]],
 
     // cahePath above is for vscode binaries, this one is for the chromedriver
-    cacheDir: path.join(process.cwd(), "tmp", "wdio-vscode-service"),
+    cacheDir: VSCODE_CACHE_DIR,
 
     // Framework you want to run your specs with.
     // The following are supported: Mocha, Jasmine, and Cucumber
@@ -351,7 +354,14 @@ export const config: WebdriverIO.Config = {
      * @param {Object} config wdio configuration object
      * @param {Array.<Object>} capabilities list of capabilities details
      */
-    onPrepare: async function () {
+    onPrepare: async function (runnerConfig) {
+        const sshOnly = runnerConfig.specs
+            ?.flat()
+            .every(
+                (spec) =>
+                    typeof spec === "string" &&
+                    spec.endsWith("ssh_connection.e2e.ts")
+            );
         try {
             console.log("Extensions dir:", EXTENSIONS_DIR);
             mkdirSync(EXTENSIONS_DIR, {recursive: true});
@@ -371,25 +381,26 @@ export const config: WebdriverIO.Config = {
                 "Config must have a token or a clientId with clientSecret"
             );
 
-            assert(
-                process.env["TEST_DEFAULT_CLUSTER_ID"],
-                "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
-            );
+            if (!sshOnly) {
+                assert(
+                    process.env.TEST_DEFAULT_CLUSTER_ID,
+                    "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
+                );
+            }
 
             await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
             console.log(`Creating vscode workspace folder: ${WORKSPACE_PATH}`);
             await fs.mkdir(WORKSPACE_PATH, {recursive: true});
 
-            const client = getWorkspaceClient(config);
-            // Import lazily (only in the launcher's onPrepare): a static import
-            // pulls startCluster's SDK deps into every worker's config load and
-            // breaks wdio-vscode-service registration ("Unknown browser name
-            // vscode"). onPrepare never runs in workers, so this keeps it out.
-            const {startCluster} = await import("../startCluster.ts");
-            await startCluster(
-                client.apiClient,
-                process.env["TEST_DEFAULT_CLUSTER_ID"]
-            );
+            if (!sshOnly) {
+                const client = getWorkspaceClient(config);
+                // Keep SDK imports out of worker config loading.
+                const {startCluster} = await import("../startCluster.ts");
+                await startCluster(
+                    client.apiClient,
+                    process.env.TEST_DEFAULT_CLUSTER_ID!
+                );
+            }
 
             process.env.DATABRICKS_HOST = config.host!;
             process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
@@ -470,7 +481,10 @@ export const config: WebdriverIO.Config = {
      * @param {Array.<String>} specs List of spec file paths that are to be run
      * @param {String} cid worker id (e.g. 0-0)
      */
-    beforeSession: async function (config, capabilities) {
+    beforeSession: async function (config, capabilities, specs) {
+        const sshTest = specs.some((spec) =>
+            spec.endsWith("ssh_connection.e2e.ts")
+        );
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
         let cli: string = "";
@@ -492,7 +506,11 @@ export const config: WebdriverIO.Config = {
         // resolve extensions from that directory instead of the marketplace.
         const vsixDir = process.env.EXTENSION_VSIX_DIR;
         const extensionDependencies: string[] = [];
-        for (const extId of packageJson.extensionDependencies) {
+        const dependencies = [...packageJson.extensionDependencies];
+        if (sshTest) {
+            dependencies.push("ms-vscode-remote.remote-ssh");
+        }
+        for (const extId of dependencies) {
             if (vsixDir) {
                 const targetPlatform = `${process.platform}-${process.arch}`;
                 const files = readdirSync(vsixDir);
@@ -536,6 +554,44 @@ export const config: WebdriverIO.Config = {
         ]);
 
         console.log(res.stdout, res.stderr);
+        if (sshTest) {
+            const sshConfig = await prepareSshEditor(
+                cli,
+                EXTENSIONS_DIR,
+                VSCODE_STORAGE_DIR,
+                path.join(__dirname, "resources")
+            );
+            // The service has already written settings before this user hook runs.
+            const settingsFile = path.join(
+                VSCODE_STORAGE_DIR,
+                "settings",
+                "User",
+                "settings.json"
+            );
+            const settings = JSON.parse(
+                await fs.readFile(settingsFile, "utf8")
+            );
+            await fs.writeFile(
+                settingsFile,
+                JSON.stringify({
+                    ...settings,
+                    "remote.SSH.configFile": sshConfig,
+                    "security.workspace.trust.enabled": false,
+                    "terminal.integrated.shellIntegration.enabled": false,
+                    "terminal.integrated.profiles.osx": {
+                        "SSH test": {path: "/bin/sh", args: []},
+                    },
+                    "terminal.integrated.defaultProfile.osx": "SSH test",
+                    "terminal.integrated.profiles.linux": {
+                        "SSH test": {path: "/bin/sh", args: []},
+                    },
+                    "terminal.integrated.defaultProfile.linux": "SSH test",
+                    "terminal.integrated.env.linux": {PATH: process.env.PATH},
+                    "terminal.integrated.env.osx": {PATH: process.env.PATH},
+                    "terminal.integrated.env.windows": {PATH: process.env.PATH},
+                })
+            );
+        }
     },
 
     /**
@@ -679,7 +735,7 @@ export const config: WebdriverIO.Config = {
                 cpSync(
                     file,
                     path.join(
-                        "logs",
+                        TEST_LOGS,
                         `vscode-logs-${specs
                             .map((spec) => spec.split(path.sep).at(-1))
                             .join("-")}`,
