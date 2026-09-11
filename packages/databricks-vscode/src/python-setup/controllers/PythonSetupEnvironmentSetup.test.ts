@@ -2234,4 +2234,136 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         ]);
         expect(seenOptions[0]).to.equal(undefined);
     });
+
+    /**
+     * A Full-preset run whose uv sync fails with the *generic* E_PROVISION code
+     * (not the merge-phase E_PROVISION_CONFLICT) — e.g. a transitive conflict or
+     * a clash with databricks-connect's own dependency tree, which the CLI can
+     * only surface during the sync. Constraints were merged before the failure,
+     * so disk is mutated and a pre-merge backup exists — making the pinned
+     * cluster deps the prime suspect and the DB Connect retry a sensible offer.
+     */
+    function provisionFailureResult(): PythonSetupResult {
+        return {
+            ...conflictResult(),
+            error: {
+                code: "E_PROVISION",
+                failurePhase: "provision",
+                message:
+                    "error: No solution found when resolving dependencies: " +
+                    "databricks-connect depends on grpcio<1.60 but your project " +
+                    "requires grpcio==1.62",
+                diskMutated: true,
+            },
+        };
+    }
+
+    it("offers the same DB Connect recovery on a generic E_PROVISION failure of a Full run", async () => {
+        const shown: {actions?: PythonSetupErrorAction[]}[] = [];
+        const seenOptions: Array<{includeShowLogs?: boolean} | undefined> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: provisionFailureResult()}),
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, actions, options) => {
+                    shown.push({actions});
+                    seenOptions.push(options);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        // Identical recovery to the provable conflict: the same two buttons…
+        expect(shown[0].actions?.map((a) => a.label)).to.deep.equal([
+            "Retry DB Connect setup",
+            "Open pyproject.toml",
+        ]);
+        // …and the same self-service treatment (Show Logs hidden).
+        expect(seenOptions[0]).to.deep.equal({includeShowLogs: false});
+    });
+
+    it("re-runs with --no-constraints (and adopts) when Retry is picked after a generic E_PROVISION failure", async () => {
+        const cli = makeScriptedCli([
+            provisionFailureResult(),
+            SUCCESS_REAL_RUN,
+        ]);
+        const adopted: string[] = [];
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                pickSetupPreset: async () => "full",
+                adoptInterpreter: async (venvPath) => {
+                    adopted.push(venvPath);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        expect(retryAction).to.not.equal(undefined);
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(cli.calls).to.have.length(2);
+        expect(cli.calls[1].skipConstraints).to.equal(true);
+        expect(adopted).to.have.length(1);
+    });
+
+    it("does not offer the generic-E_PROVISION recovery on a run that already dropped the pins", async () => {
+        // A dbconnect run already passed --no-constraints, so the pins aren't the
+        // suspect and a "Retry DB Connect setup" would be a no-op that could loop.
+        // Fall through to the ordinary handling and keep Show Logs.
+        const shown: {actions?: PythonSetupErrorAction[]}[] = [];
+        const seenOptions: Array<{includeShowLogs?: boolean} | undefined> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: provisionFailureResult()}),
+                pickSetupPreset: async () => "dbconnect",
+                showError: async (_message, _detail, actions, options) => {
+                    shown.push({actions});
+                    seenOptions.push(options);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(
+            shown[0].actions?.some((a) => a.label === "Retry DB Connect setup")
+        ).to.equal(false);
+        expect(seenOptions[0]).to.equal(undefined);
+    });
+
+    it("does not offer the generic-E_PROVISION recovery when there is no backup to restore", async () => {
+        // Greenfield (no pre-existing pyproject) → no backupPath → nothing to roll
+        // the merged pins back to, so fall through to ordinary handling.
+        const noBackup: PythonSetupResult = {
+            ...provisionFailureResult(),
+            backupPath: undefined,
+        };
+        const shown: {actions?: PythonSetupErrorAction[]}[] = [];
+        const seenOptions: Array<{includeShowLogs?: boolean} | undefined> = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: noBackup}),
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, actions, options) => {
+                    shown.push({actions});
+                    seenOptions.push(options);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(
+            shown[0].actions?.some((a) => a.label === "Retry DB Connect setup")
+        ).to.equal(false);
+        expect(seenOptions[0]).to.equal(undefined);
+    });
 });
