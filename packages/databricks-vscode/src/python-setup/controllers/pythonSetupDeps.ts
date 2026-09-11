@@ -434,7 +434,7 @@ export function makePythonSetupDeps(
                 );
             }
         },
-        showSuccess: async (result) => {
+        showSuccess: async (result, flags) => {
             // Write the full breakdown to the log channel: in --output json
             // mode the CLI streams little or nothing to stderr on success, so
             // the channel would otherwise be empty. This is where the details
@@ -444,7 +444,7 @@ export function makePythonSetupDeps(
             const projectName = result.venvPath
                 ? await readVenvProjectName(result.venvPath)
                 : undefined;
-            wiring.log.append(formatSetupLog(result, projectName));
+            wiring.log.append(formatSetupLog(result, flags, projectName));
             // Reveal the output channel automatically so those details are in
             // front of the user, then still raise the notification (with its
             // "View Details" button) as before.

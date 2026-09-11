@@ -3,6 +3,7 @@ import {
     PythonSetupComputeInfo,
     PythonSetupResult,
 } from "../models/PythonSetupResult";
+import {SetupPresetFlags} from "./pythonSetupPresetPicker";
 import {venvInterpreterPath} from "./venvInterpreterPath";
 
 /**
@@ -39,6 +40,14 @@ export function formatSetupNotification(result: PythonSetupResult): string {
  * messages) — necessary because in `--output json` mode the CLI streams little
  * or nothing to stderr on success, so without this the channel would be empty.
  *
+ * `flags` are the run's two orthogonal skip flags, resolved from the preset the
+ * user picked. They — not `result.mode` — decide what the panel claims was done:
+ * `mode` encodes only the databricks-connect axis (`default` vs
+ * `constraints-only`), so a DB Connect run (`--no-constraints`) is byte-identical
+ * to a Full run in that field and reading it would mis-report the constraints
+ * axis. `skipDbconnect` selects the databricks-connect vs plain-Python wording;
+ * `skipConstraints` gates the "added constraints" line.
+ *
  * `projectName` is the human-readable name uv associated with the venv (from
  * pyproject's `[project].name`, else the project folder name), surfaced by the
  * caller from `.venv/pyvenv.cfg`. It is shown in parentheses beside the venv
@@ -53,23 +62,25 @@ export function formatSetupNotification(result: PythonSetupResult): string {
  */
 export function formatSetupLog(
     result: PythonSetupResult,
+    flags: SetupPresetFlags,
     projectName?: string,
     platform: NodeJS.Platform = process.platform
 ): string {
-    const isDefault = result.mode === "default";
+    const withDbconnect = !flags.skipDbconnect;
+    const constraintsApplied = !flags.skipConstraints;
     // The venv folder is always `.venv`; when the caller resolved the project
     // name, show it alongside so the line reads like the label VS Code puts on
     // the interpreter (e.g. ".venv (my-project)").
     const venvLabel = projectName ? `.venv (${projectName})` : ".venv";
     const lines: string[] = [
-        isDefault
+        withDbconnect
             ? "Python environment ready for Databricks Connect."
-            : "Python environment ready — constraints applied.",
+            : "Python environment ready.",
         "",
     ];
 
     lines.push(`Python:             ${result.resolved?.pythonVersion ?? ""}`);
-    if (isDefault && result.resolved?.dbconnectVersion) {
+    if (withDbconnect && result.resolved?.dbconnectVersion) {
         lines.push(`databricks-connect: ${result.resolved.dbconnectVersion}`);
     }
     const compute = computeLabel(result.compute);
@@ -78,7 +89,11 @@ export function formatSetupLog(
     }
 
     lines.push("", "What was done:");
-    lines.push("  • Added matching Databricks constraints to pyproject.toml");
+    if (constraintsApplied) {
+        lines.push(
+            "  • Added matching Databricks constraints to pyproject.toml"
+        );
+    }
     lines.push(
         `  • Built a new virtual environment with uv sync called ${venvLabel}`
     );
