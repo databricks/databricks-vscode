@@ -12,7 +12,14 @@ import {writeRootBundleConfig} from "./utils/dabsFixtures.ts";
 describe("Remote SSH connection", function () {
     this.timeout(12 * 60_000);
 
-    it("opens a real remote window and preserves large transfers over time", async () => {
+    it("opens a real remote window and preserves large transfers over time", async function () {
+        // beforeSession installs Remote SSH separately and reports here when it
+        // couldn't, so a missing extension reads as a skip rather than as a
+        // failure of the tunnel this spec is meant to cover.
+        if (process.env.TEST_SSH_SKIP_REASON) {
+            console.log(`Skipping: ${process.env.TEST_SSH_SKIP_REASON}`);
+            this.skip();
+        }
         const root = process.env.WORKSPACE_PATH;
         const resultPath = process.env.TEST_SSH_RESULT_PATH;
         assert(

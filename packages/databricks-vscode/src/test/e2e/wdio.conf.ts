@@ -535,94 +535,119 @@ export const config: WebdriverIO.Config = {
         // When EXTENSION_VSIX_DIR is set (CI with vendored VSIX files),
         // resolve extensions from that directory instead of the marketplace.
         const vsixDir = process.env.EXTENSION_VSIX_DIR;
-        const extensionDependencies: string[] = [];
-        const dependencies = [...packageJson.extensionDependencies];
-        if (sshTest) {
-            dependencies.push("ms-vscode-remote.remote-ssh");
-        }
-        for (const extId of dependencies) {
-            if (vsixDir) {
-                const targetPlatform = `${process.platform}-${process.arch}`;
-                const files = readdirSync(vsixDir);
-                const prefix = `${extId}-`;
-                const vsix =
-                    files.find(
-                        (f) =>
-                            f.startsWith(prefix) &&
-                            f.endsWith(`-${targetPlatform}.vsix`)
-                    ) ??
-                    files.find(
-                        (f) =>
-                            f.startsWith(prefix) &&
-                            f.endsWith("-universal.vsix")
-                    );
-                if (vsix) {
-                    console.log(`Using vendored VSIX for ${extId}: ${vsix}`);
-                    extensionDependencies.push(
-                        "--install-extension",
-                        path.resolve(vsixDir, vsix)
-                    );
-                } else {
-                    console.log(
-                        `WARNING: no vendored VSIX for ${extId}, falling back to marketplace`
-                    );
-                    extensionDependencies.push("--install-extension", extId);
-                }
-            } else {
-                extensionDependencies.push("--install-extension", extId);
+        const resolveExtension = (extId: string) => {
+            if (!vsixDir) {
+                return extId;
             }
-        }
+            const targetPlatform = `${process.platform}-${process.arch}`;
+            const files = readdirSync(vsixDir);
+            const prefix = `${extId}-`;
+            const vsix =
+                files.find(
+                    (f) =>
+                        f.startsWith(prefix) &&
+                        f.endsWith(`-${targetPlatform}.vsix`)
+                ) ??
+                files.find(
+                    (f) => f.startsWith(prefix) && f.endsWith("-universal.vsix")
+                );
+            if (!vsix) {
+                console.log(
+                    `WARNING: no vendored VSIX for ${extId}, falling back to marketplace`
+                );
+                return extId;
+            }
+            console.log(`Using vendored VSIX for ${extId}: ${vsix}`);
+            return path.resolve(vsixDir, vsix);
+        };
+        // wdio only logs a beforeSession rejection, so the CLI's own output is
+        // the only explanation of an install failure that reaches the job log.
+        const install = async (args: string[]) => {
+            try {
+                const res = await execFile(cli, [
+                    "--extensions-dir",
+                    EXTENSIONS_DIR,
+                    ...args,
+                    "--force",
+                ]);
+                console.log(res.stdout, res.stderr);
+            } catch (e) {
+                const {stdout, stderr} = e as {
+                    stdout?: string;
+                    stderr?: string;
+                };
+                console.log(stdout ?? "", stderr ?? "");
+                throw e;
+            }
+        };
 
         console.log("running vscode cli");
-        const res = await execFile(cli, [
-            "--extensions-dir",
-            EXTENSIONS_DIR,
-            ...extensionDependencies,
+        await install([
+            ...packageJson.extensionDependencies.flatMap((extId) => [
+                "--install-extension",
+                resolveExtension(extId),
+            ]),
             "--install-extension",
             VSIX_PATH,
-            ...(sshTest ? ["--do-not-include-pack-dependencies"] : []),
-            "--force",
         ]);
 
-        console.log(res.stdout, res.stderr);
-        if (sshTest) {
-            const sshConfig = await prepareSshEditor(
-                cli,
-                EXTENSIONS_DIR,
-                VSCODE_STORAGE_DIR,
-                path.join(__dirname, "resources")
-            );
-            // The service has already written settings before this user hook runs.
-            const settingsFile = path.join(
-                VSCODE_STORAGE_DIR,
-                "settings",
-                "User",
-                "settings.json"
-            );
-            const settings = JSON.parse(
-                await fs.readFile(settingsFile, "utf8")
-            );
-            await fs.writeFile(
-                settingsFile,
-                JSON.stringify({
-                    ...settings,
-                    "remote.SSH.configFile": sshConfig,
-                    "security.workspace.trust.enabled": false,
-                    "terminal.integrated.shellIntegration.enabled": false,
-                    "terminal.integrated.profiles.osx": {
-                        "SSH test": {path: "/bin/sh", args: []},
-                    },
-                    "terminal.integrated.defaultProfile.osx": "SSH test",
-                    "terminal.integrated.profiles.linux": {
-                        "SSH test": {path: "/bin/sh", args: []},
-                    },
-                    "terminal.integrated.defaultProfile.linux": "SSH test",
-                    "terminal.integrated.env.linux": {PATH: process.env.PATH},
-                    "terminal.integrated.env.osx": {PATH: process.env.PATH},
-                    "terminal.integrated.env.windows": {PATH: process.env.PATH},
-                })
-            );
+        if (!sshTest) {
+            return;
         }
+        // Remote SSH is only needed by the SSH spec, and CI has no marketplace
+        // access, so install it on its own and let the spec skip itself when it
+        // isn't available. Vendoring its VSIX in EXTENSION_VSIX_DIR makes the
+        // spec run; batching it with the extensions above would instead let one
+        // marketplace failure take out every install, including the VSIX under
+        // test.
+        try {
+            await install([
+                "--install-extension",
+                resolveExtension("ms-vscode-remote.remote-ssh"),
+                // The pack's other members are optional for the tunnel.
+                "--do-not-include-pack-dependencies",
+            ]);
+        } catch (e) {
+            console.log("WARNING: failed to install Remote SSH", e);
+            process.env.TEST_SSH_SKIP_REASON =
+                "ms-vscode-remote.remote-ssh is not installed";
+            return;
+        }
+
+        const sshConfig = await prepareSshEditor(
+            cli,
+            EXTENSIONS_DIR,
+            VSCODE_STORAGE_DIR,
+            path.join(__dirname, "resources")
+        );
+        // The service has already written settings before this user hook runs.
+        const settingsFile = path.join(
+            VSCODE_STORAGE_DIR,
+            "settings",
+            "User",
+            "settings.json"
+        );
+        const settings = JSON.parse(await fs.readFile(settingsFile, "utf8"));
+        await fs.writeFile(
+            settingsFile,
+            JSON.stringify({
+                ...settings,
+                "remote.SSH.configFile": sshConfig,
+                "security.workspace.trust.enabled": false,
+                "terminal.integrated.shellIntegration.enabled": false,
+                "terminal.integrated.profiles.osx": {
+                    "SSH test": {path: "/bin/sh", args: []},
+                },
+                "terminal.integrated.defaultProfile.osx": "SSH test",
+                "terminal.integrated.profiles.linux": {
+                    "SSH test": {path: "/bin/sh", args: []},
+                },
+                "terminal.integrated.defaultProfile.linux": "SSH test",
+                "terminal.integrated.env.linux": {PATH: process.env.PATH},
+                "terminal.integrated.env.osx": {PATH: process.env.PATH},
+                "terminal.integrated.env.windows": {PATH: process.env.PATH},
+            })
+        );
     },
 
     /**
