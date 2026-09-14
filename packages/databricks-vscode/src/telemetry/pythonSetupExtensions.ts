@@ -309,6 +309,12 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
         reported = true;
         reportResult({
             outcome: report.outcome,
+            // Also stamped on the result (not only the attempt) so provision
+            // errors and outcomes can be split by setup mode without an
+            // attempt<->result correlation join. Always present here -- the
+            // closure captured the attempt; only the standalone no_compute
+            // result (no attempt) omits it.
+            setupPreset: attempt.setupPreset,
             ...(report.pythonSetupFlow !== undefined
                 ? {pythonSetupFlow: report.pythonSetupFlow}
                 : {}),
