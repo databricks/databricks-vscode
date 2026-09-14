@@ -66,6 +66,7 @@ describe(__filename, () => {
         expect(events[1].props).to.deep.equal({
             "version": "1.0",
             "event.outcome": "ok",
+            "event.setupPreset": "full",
             "event.envKey": "serverless/serverless-v5",
         });
     });
@@ -124,6 +125,7 @@ describe(__filename, () => {
         expect(events[1].props).to.deep.equal({
             "version": "1.0",
             "event.outcome": "cancelled",
+            "event.setupPreset": "python",
         });
         // The failure mode this guards against: recordEvent stringifies an
         // explicit undefined, which would pollute the schema.
@@ -154,6 +156,7 @@ describe(__filename, () => {
         expect(events[1].props).to.deep.equal({
             "version": "1.0",
             "event.outcome": "failed",
+            "event.setupPreset": "full",
             "event.failurePhase": "provision",
             "event.errorCode": "E_PROVISION",
             "event.envKey": "dbr/15.4.x-scala2.12",
@@ -442,6 +445,7 @@ describe(__filename, () => {
         expect(Object.keys(events[1].props).sort()).to.deep.equal([
             "event.envKey",
             "event.outcome",
+            "event.setupPreset",
             "version",
         ]);
     });
