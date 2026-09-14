@@ -67,7 +67,7 @@ export class ResourceTypeHeaderTreeNode
             label: humaniseResourceType(this.resourceType),
             iconPath: this.getIconPath(this.resourceType),
             contextValue: `${this.resourceType}-header`,
-            collapsibleState: TreeItemCollapsibleState.Expanded,
+            collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }
 
