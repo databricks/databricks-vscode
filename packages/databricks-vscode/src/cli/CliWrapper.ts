@@ -166,7 +166,6 @@ export interface ConfigEntry {
     workspaceId?: string;
     cloud: Cloud;
     authType: string;
-    valid: boolean;
 }
 
 export type SyncType = "full" | "incremental";
@@ -479,6 +478,10 @@ export class CliWrapper {
     }
 
     private getListProfilesCommand(): Command {
+        // Keep --skip-validate: older CLIs still validate every profile here,
+        // which makes listing slow and can hang on an unreachable host. Newer
+        // CLIs never validate and accept the flag as a hidden no-op, so passing
+        // it is correct for both (see databricks/cli#5216).
         return {
             command: this.cliPath,
             args: [
@@ -544,7 +547,6 @@ export class CliWrapper {
                     workspaceId: profile.workspace_id,
                     cloud: profile.cloud,
                     authType: profile.auth_type,
-                    valid: profile.valid,
                 });
             } catch (e: unknown) {
                 let msg: string;
