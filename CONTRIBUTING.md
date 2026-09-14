@@ -151,6 +151,27 @@ yarn workspace databricks run test:integ:run \
 Replace the placeholders with your local values and keep the quoted binary path
 on one line. Without these overrides, the runner downloads VS Code and extensions.
 
+### Running the SSH spec
+
+`src/test/e2e/ssh_connection.ucws.e2e.ts` opens a real Remote SSH window over a
+serverless tunnel, so it needs more than the other specs: a workspace that offers
+Serverless SSH compute, a tunnel port that workspace permits, and an installable
+`ms-vscode-remote.remote-ssh` (from the marketplace, or vendored into
+`EXTENSION_VSIX_DIR`). It is therefore opt-in and is excluded from every run that
+does not ask for it:
+
+```sh
+TEST_SSH_E2E=true \
+yarn workspace databricks run test:integ:run \
+  --profile <name> \
+  --spec src/test/e2e/ssh_connection.ucws.e2e.ts
+```
+
+With the flag set nothing is skipped: a Remote SSH that will not install fails
+the run rather than reporting success with no SSH coverage. This spec also runs
+on a current VS Code release rather than the extension's minimum supported
+version, because Remote SSH requires one.
+
 ## Code style
 
 Formatting and linting are enforced by prettier and eslint. Auto-fix

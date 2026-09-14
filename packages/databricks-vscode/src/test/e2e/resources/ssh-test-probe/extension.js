@@ -2,6 +2,27 @@ const vscode = require("vscode");
 const fs = require("node:fs/promises");
 const {randomBytes, randomUUID, createHash} = require("node:crypto");
 
+// A remote call that never settles would hang this probe past every wait the
+// spec has, leaving the remote window and tunnel open with nothing left to close
+// them. Bound each one so a stuck call still reaches the report and closeWindow
+// below. Generous: a healthy 8 MiB round trip takes seconds.
+const OP_TIMEOUT_MS = 60_000;
+
+async function withTimeout(operation, label) {
+    const seconds = OP_TIMEOUT_MS / 1000;
+    let timer;
+    const expiry = new Promise((resolve, reject) => {
+        timer = setTimeout(() => {
+            reject(new Error(`${label} did not finish within ${seconds}s`));
+        }, OP_TIMEOUT_MS);
+    });
+    try {
+        return await Promise.race([operation, expiry]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 // UI placement keeps node:fs local; workspace.fs crosses the real SSH connection.
 exports.activate = async function () {
     const resultPath = process.env.TEST_SSH_RESULT_PATH;
@@ -48,8 +69,14 @@ exports.activate = async function () {
     try {
         await report({phase: "connected", authority: folder.uri.authority});
         for (let round = 0; round < 3; round++) {
-            await vscode.workspace.fs.writeFile(file, payload);
-            const returned = await vscode.workspace.fs.readFile(file);
+            await withTimeout(
+                vscode.workspace.fs.writeFile(file, payload),
+                `Remote write ${round + 1}`
+            );
+            const returned = await withTimeout(
+                vscode.workspace.fs.readFile(file),
+                `Remote read ${round + 1}`
+            );
             if (
                 returned.length !== payload.length ||
                 hash(returned) !== expectedHash
@@ -63,8 +90,14 @@ exports.activate = async function () {
                 await new Promise((resolve) => setTimeout(resolve, 15_000));
             }
         }
-        await vscode.workspace.fs.writeFile(textFile, Buffer.from(editorText));
-        await vscode.commands.executeCommand("revealInExplorer", textFile);
+        await withTimeout(
+            vscode.workspace.fs.writeFile(textFile, Buffer.from(editorText)),
+            "Remote write of the editor file"
+        );
+        await withTimeout(
+            vscode.commands.executeCommand("revealInExplorer", textFile),
+            "revealInExplorer"
+        );
         await report({
             phase: "ui-ready",
             fileName: textFile.path.split("/").pop(),
@@ -98,9 +131,15 @@ exports.activate = async function () {
         failure = String(error);
     } finally {
         try {
-            await vscode.workspace.fs.delete(file);
+            await withTimeout(
+                vscode.workspace.fs.delete(file),
+                "Remote delete of the payload file"
+            );
             try {
-                await vscode.workspace.fs.delete(textFile);
+                await withTimeout(
+                    vscode.workspace.fs.delete(textFile),
+                    "Remote delete of the editor file"
+                );
             } catch (error) {
                 if (error.code !== "FileNotFound") {
                     throw error;

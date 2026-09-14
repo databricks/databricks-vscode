@@ -38,6 +38,9 @@ export async function prepareSshEditor(
         path.join(resourcesDir, "ssh-test-probe"),
     ];
     if (process.platform === "win32") {
+        // Unexercised: the spec runs on posix, and wdio.conf.ts pins a default
+        // terminal profile only for linux and osx, so the tunnel's shell would
+        // not be pinned here either. Kept for whenever Windows is enabled.
         const command = args.map((arg) => `"${arg}"`).join(" ");
         await fs.writeFile(
             path.join(bin, "code.cmd"),

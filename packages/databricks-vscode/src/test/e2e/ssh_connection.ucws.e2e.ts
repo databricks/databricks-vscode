@@ -10,16 +10,14 @@ import {
 import {writeRootBundleConfig} from "./utils/dabsFixtures.ts";
 
 describe("Remote SSH connection", function () {
-    this.timeout(12 * 60_000);
+    // Above the sum of the waits below, so a slow but progressing run is
+    // reported by the wait that stalled — with its targeted timeoutMsg — and
+    // still runs the cleanup in the `finally`. Budget: login 120 + input 10 +
+    // picker 30 + window 180 + probe 480 + explorer 30 + editor 30 + close 30 +
+    // probe cleanup 30 = 940s.
+    this.timeout(18 * 60_000);
 
     it("opens a real remote window and preserves large transfers over time", async function () {
-        // beforeSession installs Remote SSH separately and reports here when it
-        // couldn't, so a missing extension reads as a skip rather than as a
-        // failure of the tunnel this spec is meant to cover.
-        if (process.env.TEST_SSH_SKIP_REASON) {
-            console.log(`Skipping: ${process.env.TEST_SSH_SKIP_REASON}`);
-            this.skip();
-        }
         const root = process.env.WORKSPACE_PATH;
         const resultPath = process.env.TEST_SSH_RESULT_PATH;
         assert(
@@ -69,8 +67,9 @@ describe("Remote SSH connection", function () {
             editorText?: string;
         } = {};
         let uiPassed = false;
+        let remoteWindow: string | undefined;
         try {
-            const remoteWindow = await browser.waitUntil(
+            remoteWindow = await browser.waitUntil(
                 async () => {
                     const handles = await browser.getWindowHandles();
                     return handles.find(
@@ -173,6 +172,24 @@ describe("Remote SSH connection", function () {
                 `${resultPath}.ui-complete`,
                 uiPassed ? "passed" : "failed"
             );
+            if (!uiPassed && remoteWindow) {
+                // The "failed" marker makes the probe delete its remote files
+                // and close this window itself, so wait for that first; force
+                // it shut only if the probe is wedged past its own watchdogs,
+                // since nothing else closes it on this path. The tunnel goes
+                // away with the local window's extension host.
+                try {
+                    await browser.waitUntil(
+                        async () => {
+                            const handles = await browser.getWindowHandles();
+                            return !handles.includes(remoteWindow!);
+                        },
+                        {timeout: 30_000, interval: 1000}
+                    );
+                } catch {
+                    await browser.closeWindow().catch(() => {});
+                }
+            }
             await browser.switchToWindow(localWindow);
         }
         await browser.waitUntil(
@@ -194,19 +211,32 @@ describe("Remote SSH connection", function () {
     });
 });
 
-/** Dismiss optional VS Code onboarding without using a personal editor account. */
+/**
+ * Dismiss optional VS Code onboarding without using a personal editor account.
+ *
+ * Best-effort: called from `waitUntil` conditions, where a rejection aborts the
+ * whole wait, and the onboarding UI is racy — elements go stale mid-click and
+ * buttons don't always vanish once clicked. Log and let the next poll retry.
+ */
 async function dismissRemoteWelcome() {
     for (const label of ["continue without signing in", "get started"]) {
-        const actions = await browser.$$(
-            `//*[self::button or @role='button' or self::a][translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='${label}']`
-        );
-        for (const action of actions) {
-            if (await action.isDisplayed()) {
-                await action.click();
-                await action.waitForDisplayed({reverse: true, timeout: 10_000});
-                console.log(`Remote welcome: clicked "${label}"`);
-                break;
+        try {
+            const actions = await browser.$$(
+                `//*[self::button or @role='button' or self::a][translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='${label}']`
+            );
+            for (const action of actions) {
+                if (await action.isDisplayed()) {
+                    await action.click();
+                    await action.waitForDisplayed({
+                        reverse: true,
+                        timeout: 10_000,
+                    });
+                    console.log(`Remote welcome: clicked "${label}"`);
+                    break;
+                }
             }
+        } catch (error) {
+            console.log(`Remote welcome: "${label}" not dismissed: ${error}`);
         }
     }
 }

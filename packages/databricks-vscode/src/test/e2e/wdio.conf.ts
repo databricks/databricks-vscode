@@ -85,6 +85,23 @@ const VSCODE_STORAGE_DIR = path.resolve(TEST_ROOT, "user-data-dir");
 const VSCODE_CACHE_DIR = path.join(process.cwd(), "tmp", "wdio-vscode-service");
 mkdirSync(VSCODE_CACHE_DIR, {recursive: true});
 
+// The SSH spec needs a workspace that offers Serverless SSH compute, a tunnel
+// port that workspace permits, and a Remote SSH install, so it is opt-in. That
+// keeps apart two cases a skip inside the spec conflated: without the flag it is
+// excluded outright, instead of being swept in by the default glob and failing
+// at `findQuickPick("Serverless")`; with it nothing skips, so a missing Remote
+// SSH fails the run instead of going green with no SSH coverage at all.
+const SSH_SPEC_FILE = "ssh_connection.ucws.e2e.ts";
+const SSH_SPEC = path.join(__dirname, SSH_SPEC_FILE);
+const SSH_E2E_ENABLED = process.env.TEST_SSH_E2E === "true";
+
+/**
+ * Identify the SSH spec by file name, so the capability router and beforeSession
+ * cannot disagree about which spec it is where absolute paths differ — a
+ * symlinked temp root, a case-insensitive filesystem.
+ */
+const isSshSpec = (spec: string) => path.basename(spec) === SSH_SPEC_FILE;
+
 const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
 
 export function escapeCommand(arg: string): string {
@@ -176,9 +193,9 @@ export const config: WebdriverIO.Config = {
     //
     specs: [path.join(__dirname, "**", "*.e2e.ts")],
     // Patterns to exclude.
-    exclude: [
-        // 'path/to/excluded/files'
-    ],
+    // Keep the opt-in SSH spec out of any run that did not ask for it, however
+    // it got selected: the glob above, a directory glob, or `--spec`.
+    exclude: SSH_E2E_ENABLED ? [] : [SSH_SPEC],
 
     //
     // ============
@@ -204,13 +221,12 @@ export const config: WebdriverIO.Config = {
     // https://saucelabs.com/platform/platform-configurator
     //
     get capabilities() {
-        const sshSpec = path.join(__dirname, "ssh_connection.ucws.e2e.ts");
         const otherSpecs = globSync("**/*.e2e.ts", {
             cwd: __dirname,
             absolute: true,
         })
             .map((spec) => path.resolve(spec))
-            .filter((spec) => spec !== sshSpec);
+            .filter((spec) => !isSshSpec(spec));
         const capability = (version: string, exclude: string[]) => ({
             "browserName": "vscode",
             "browserVersion": version,
@@ -254,7 +270,7 @@ export const config: WebdriverIO.Config = {
                 process.env.VSCODE_TEST_BINARY
                     ? process.env.VSCODE_TEST_VERSION || "stable"
                     : packageJson.engines.vscode.replace("^", ""),
-                [sshSpec]
+                [SSH_SPEC]
             ),
             capability(process.env.VSCODE_TEST_VERSION || "stable", otherSpecs),
         ];
@@ -379,11 +395,23 @@ export const config: WebdriverIO.Config = {
                           path.resolve(file)
                       )
             );
-        const sshSpec = path.join(__dirname, "ssh_connection.ucws.e2e.ts");
-        const sshOnly =
+        // `exclude` dropped it, so a run that asked for nothing else has no
+        // specs left. Name the missing flag rather than report an empty run.
+        if (
+            !SSH_E2E_ENABLED &&
             selectedSpecs.length > 0 &&
-            selectedSpecs.every((spec) => spec === sshSpec);
-        const includesSsh = selectedSpecs.includes(sshSpec);
+            selectedSpecs.every(isSshSpec)
+        ) {
+            console.error(
+                `${SSH_SPEC_FILE} runs only with TEST_SSH_E2E=true, against a workspace that offers Serverless SSH compute and with Remote SSH installable (see CONTRIBUTING.md).`
+            );
+            process.exit(1);
+        }
+        const sshOnly =
+            SSH_E2E_ENABLED &&
+            selectedSpecs.length > 0 &&
+            selectedSpecs.every(isSshSpec);
+        const includesSsh = SSH_E2E_ENABLED && selectedSpecs.some(isSshSpec);
         if (Array.isArray(capabilities)) {
             // Avoid downloading an unused editor for single-spec CI jobs.
             if (sshOnly) {
@@ -512,9 +540,7 @@ export const config: WebdriverIO.Config = {
      * @param {String} cid worker id (e.g. 0-0)
      */
     beforeSession: async function (config, capabilities, specs) {
-        const sshTest = specs.some((spec) =>
-            spec.endsWith("ssh_connection.ucws.e2e.ts")
-        );
+        const sshTest = specs.some(isSshSpec);
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
         let cli: string = "";
@@ -594,25 +620,17 @@ export const config: WebdriverIO.Config = {
         if (!sshTest) {
             return;
         }
-        // Remote SSH is only needed by the SSH spec, and CI has no marketplace
-        // access, so install it on its own and let the spec skip itself when it
-        // isn't available. Vendoring its VSIX in EXTENSION_VSIX_DIR makes the
-        // spec run; batching it with the extensions above would instead let one
-        // marketplace failure take out every install, including the VSIX under
-        // test.
-        try {
-            await install([
-                "--install-extension",
-                resolveExtension("ms-vscode-remote.remote-ssh"),
-                // The pack's other members are optional for the tunnel.
-                "--do-not-include-pack-dependencies",
-            ]);
-        } catch (e) {
-            console.log("WARNING: failed to install Remote SSH", e);
-            process.env.TEST_SSH_SKIP_REASON =
-                "ms-vscode-remote.remote-ssh is not installed";
-            return;
-        }
+        // Install Remote SSH on its own: batching it with the extensions above
+        // would let one failure take out every install, including the VSIX under
+        // test. CI has no marketplace and resolves it from EXTENSION_VSIX_DIR.
+        // Fatal on purpose — turning a missing dependency into a skip would let
+        // the job report success without exercising the tunnel at all.
+        await install([
+            "--install-extension",
+            resolveExtension("ms-vscode-remote.remote-ssh"),
+            // The pack's other members are optional for the tunnel.
+            "--do-not-include-pack-dependencies",
+        ]);
 
         const sshConfig = await prepareSshEditor(
             cli,
@@ -620,33 +638,49 @@ export const config: WebdriverIO.Config = {
             VSCODE_STORAGE_DIR,
             path.join(__dirname, "resources")
         );
-        // The service has already written settings before this user hook runs.
+        const sshSettings = {
+            "remote.SSH.configFile": sshConfig,
+            "security.workspace.trust.enabled": false,
+            "terminal.integrated.shellIntegration.enabled": false,
+            "terminal.integrated.profiles.osx": {
+                "SSH test": {path: "/bin/sh", args: []},
+            },
+            "terminal.integrated.defaultProfile.osx": "SSH test",
+            "terminal.integrated.profiles.linux": {
+                "SSH test": {path: "/bin/sh", args: []},
+            },
+            "terminal.integrated.defaultProfile.linux": "SSH test",
+            "terminal.integrated.env.linux": {PATH: process.env.PATH},
+            "terminal.integrated.env.osx": {PATH: process.env.PATH},
+            "terminal.integrated.env.windows": {PATH: process.env.PATH},
+        };
+        // wdio-vscode-service writes this same file from its own hooks, so put
+        // the settings in both places rather than depend on which runs first:
+        // the capability covers a service write after this hook, the file covers
+        // one that already happened.
+        const vscodeOptions = capabilities["wdio:vscodeOptions"];
+        vscodeOptions.userSettings = {
+            ...vscodeOptions.userSettings,
+            ...sshSettings,
+        };
         const settingsFile = path.join(
             VSCODE_STORAGE_DIR,
             "settings",
             "User",
             "settings.json"
         );
-        const settings = JSON.parse(await fs.readFile(settingsFile, "utf8"));
+        const settings = await fs
+            .readFile(settingsFile, "utf8")
+            .then((raw) => JSON.parse(raw) as Record<string, unknown>)
+            .catch((error) => {
+                // Not yet written, or unreadable. The capability copy above is
+                // what makes the settings arrive in that case.
+                console.log(`Could not read ${settingsFile}: ${error}`);
+                return {};
+            });
         await fs.writeFile(
             settingsFile,
-            JSON.stringify({
-                ...settings,
-                "remote.SSH.configFile": sshConfig,
-                "security.workspace.trust.enabled": false,
-                "terminal.integrated.shellIntegration.enabled": false,
-                "terminal.integrated.profiles.osx": {
-                    "SSH test": {path: "/bin/sh", args: []},
-                },
-                "terminal.integrated.defaultProfile.osx": "SSH test",
-                "terminal.integrated.profiles.linux": {
-                    "SSH test": {path: "/bin/sh", args: []},
-                },
-                "terminal.integrated.defaultProfile.linux": "SSH test",
-                "terminal.integrated.env.linux": {PATH: process.env.PATH},
-                "terminal.integrated.env.osx": {PATH: process.env.PATH},
-                "terminal.integrated.env.windows": {PATH: process.env.PATH},
-            })
+            JSON.stringify({...settings, ...sshSettings})
         );
     },
 
