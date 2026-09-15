@@ -602,6 +602,7 @@ export class EventTypes {
     };
     [Events.PYTHON_ENV_SETUP_RESULT]: EventType<{
         outcome: PythonSetupOutcome;
+        setupPreset?: SetupPreset;
         pythonSetupFlow?: PythonSetupFlow;
         failurePhase?: PythonSetupFailurePhase;
         errorCode?: PythonSetupErrorCode;
@@ -630,6 +631,14 @@ export class EventTypes {
             comment:
                 "ok | failed | cancelled (user aborted) | not_started (the CLI produced no " +
                 "result) | no_compute (the CTA was a dead end: nothing was attached to set up for)",
+        },
+        setupPreset: {
+            comment:
+                "The preset tier the user picked (full / dbconnect / python), mirrored from the " +
+                "matching attempt so provision errors and outcomes can be split by setup mode " +
+                "without joining to python_env.setup.attempt. Present on every result except " +
+                "no_compute, which is emitted without a preceding attempt. See the attempt " +
+                "event's setupPreset for the tier semantics",
         },
         pythonSetupFlow: {
             comment:
