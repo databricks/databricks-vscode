@@ -45,8 +45,8 @@ export async function findViewSection(name: ViewSectionType) {
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
     for (const v of views) {
         let title = await v.getTitle();
-        if (title === null) {
-            // VSCode 1.120+ no longer sets the 'title' HTML attribute on .title elements;
+        if (!title) {
+            // Newer VS Code versions leave the title attribute missing or empty;
             // fall back to reading the element's text content.
             title = await (v as any).title$.getText();
         }
