@@ -1192,7 +1192,7 @@ describe("makePythonSetupDeps showSuccess", () => {
             })
         );
 
-        await deps.showSuccess(SUCCESS_DEFAULT);
+        await deps.showSuccess(SUCCESS_DEFAULT, {});
 
         expect(appended.join("")).to.have.length.greaterThan(0);
         // The automatic reveal fires regardless of what the user clicks.
@@ -1205,7 +1205,7 @@ describe("makePythonSetupDeps showSuccess", () => {
     it("raises an info toast (never a warning) when the run had warnings", async () => {
         const deps = makePythonSetupDeps(makeWiring());
 
-        await deps.showSuccess(SUCCESS_WITH_WARNINGS);
+        await deps.showSuccess(SUCCESS_WITH_WARNINGS, {});
 
         // A successful run is informational even when it carried warnings;
         // the warning count is in the message and the details behind it.
@@ -1229,7 +1229,7 @@ describe("makePythonSetupDeps showSuccess", () => {
         );
         reply = "View Details";
 
-        await deps.showSuccess(SUCCESS_DEFAULT);
+        await deps.showSuccess(SUCCESS_DEFAULT, {});
 
         // Once on the automatic reveal, again when the button is picked.
         expect(shown).to.equal(2);

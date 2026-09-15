@@ -29,7 +29,11 @@ import {
 } from "../utils/reportSetupIssue";
 import {isReauthRequiredError} from "../utils/authErrors";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
-import {presetToFlags, SetupPreset} from "../utils/pythonSetupPresetPicker";
+import {
+    presetToFlags,
+    SetupPreset,
+    SetupPresetFlags,
+} from "../utils/pythonSetupPresetPicker";
 import {
     PythonSetupAttempt,
     PythonSetupResultReporter,
@@ -205,7 +209,18 @@ export interface PythonSetupSetupDeps {
         options?: {includeShowLogs?: boolean}
     ) => Promise<void>;
 
-    showSuccess: (result: PythonSetupResult) => Promise<void>;
+    /**
+     * Present the success outcome. `flags` are the resolved skip flags of the
+     * run that actually happened (from {@link presetToFlags}), passed
+     * explicitly because `PythonSetupResult` alone cannot say which preset ran:
+     * `result.mode` encodes only the databricks-connect axis, so a Full and a
+     * DB Connect run are indistinguishable in it. The panel needs them to state
+     * truthfully whether constraints were written.
+     */
+    showSuccess: (
+        result: PythonSetupResult,
+        flags: SetupPresetFlags
+    ) => Promise<void>;
 
     /**
      * Static build context (extension/CLI versions, OS) stamped into a
@@ -446,9 +461,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     ): Promise<void> {
         const {cli, withProgress} = this.deps;
 
+        const flags = presetToFlags(preset);
         const invocation: SetupLocalInvocation = {
             compute,
-            ...presetToFlags(preset),
+            ...flags,
         };
 
         // From here a run really happens, so the attempt is recorded and every
@@ -683,7 +699,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             warnings: result.warnings,
         });
 
-        this.present(this.deps.showSuccess(result));
+        this.present(this.deps.showSuccess(result, flags));
     }
 
     /**
