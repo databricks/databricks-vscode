@@ -116,8 +116,8 @@ such as `package:bundle-schema:write`, also replace the override.
 #### Previewing SSH client and server changes
 
 SSH uses a local client and a Linux server uploaded to the workspace. `./task build`
-only builds the local CLI; use `./task snapshot-release` to build matching clients
-and Linux server archives. This requires the CLI repository's GoReleaser setup.
+only builds the local CLI; use `./task snapshot-release` to build the Linux server
+archives. This requires the CLI repository's GoReleaser setup.
 
 Set the absolute CLI checkout path, then build the snapshot:
 
@@ -126,19 +126,10 @@ CLI_CHECKOUT=/absolute/path/to/cli
 (cd "$CLI_CHECKOUT" && ./task snapshot-release)
 ```
 
-Bundle the client from that same snapshot. This example is for macOS ARM64;
-choose the archive for your host OS and architecture from `dist/`:
-
-```sh
-rm -f packages/databricks-vscode/bin/databricks
-unzip -o "$CLI_CHECKOUT/dist/databricks_cli_darwin_arm64.zip" databricks \
-  -d packages/databricks-vscode/bin
-./packages/databricks-vscode/bin/databricks version
-```
-
 Before using the extension's SSH action, connect once with `--releases-dir` to
-upload the snapshot's server binaries. Choose an authenticated workspace profile
-explicitly. This command starts a serverless SSH job and runs a smoke command:
+upload the snapshot's server binaries. The client built and linked above can be
+used for this command. Choose an authenticated workspace profile explicitly. This
+command starts a serverless SSH job and runs a smoke command:
 
 ```sh
 CLI_PROFILE=your-profile
@@ -161,8 +152,8 @@ version. Repeat the upload step for each workspace you test.
 Server uploads are cached by CLI version. Rebuilding uncommitted changes can keep
 the same version and silently reuse an earlier server binary, even with a new
 `--name`. For another server revision, create a new local CLI commit, run
-`./task --force snapshot-release`, replace the bundled client, and repeat the
-upload step. Stop the previous preview's SSH job so a running server is not reused.
+`./task --force snapshot-release`, rebuild the linked client, and repeat the upload
+step. Stop the previous preview's SSH job so a running server is not reused.
 
 If you launch VS Code with a custom `--user-data-dir`, also copy the Remote-SSH
 settings the CLI adds to your normal VS Code user settings into that profile's
