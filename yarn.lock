@@ -2073,9 +2073,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vscode/proxy-agent@npm:^0.44.0":
-  version: 0.44.0
-  resolution: "@vscode/proxy-agent@npm:0.44.0"
+"@vscode/proxy-agent@npm:^0.28.0":
+  version: 0.28.0
+  resolution: "@vscode/proxy-agent@npm:0.28.0"
   dependencies:
     "@tootallnate/once": ^3.0.0
     "@vscode/windows-ca-certs": ^0.3.1
@@ -2084,11 +2084,11 @@ __metadata:
     http-proxy-agent: ^7.0.0
     https-proxy-agent: ^7.0.2
     socks-proxy-agent: ^8.0.1
-    undici: ^7.2.0
+    undici: ^6.20.1
   dependenciesMeta:
     "@vscode/windows-ca-certs":
       optional: true
-  checksum: 4ebf8fd3c1764c1bb94665e4c70ff7c43eedfebac3a0af29e2912349076a530b3956908ab91b860745f49f64707717187b1d21c14445d8966c07195c2ffb5b7d
+  checksum: dc1124d52f9ab684a8e4c109b2e91598c069beebfe2826fb38ce6f8c7ef38e9e77843a7254dbb177d499ef9474bf7dbdf4240deb1f3ed5070b37dbd7b19031e3
   languageName: node
   linkType: hard
 
@@ -4067,7 +4067,7 @@ __metadata:
     "@typescript-eslint/utils": ^8.62.0
     "@vscode/debugadapter": ^1.64.0
     "@vscode/extension-telemetry": ^1.5.2
-    "@vscode/proxy-agent": ^0.44.0
+    "@vscode/proxy-agent": ^0.28.0
     "@vscode/test-electron": ^3.1.0
     "@vscode/webview-ui-toolkit": ^1.4.0
     "@vscode/windows-ca-certs": ^0.3.1
@@ -10397,17 +10397,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"undici@npm:^6.20.1":
+  version: 6.28.1
+  resolution: "undici@npm:6.28.1"
+  checksum: 25f7398989c7f6d22b4120bb97ac2d8449e5bd30fe0c5eb9265537786a9950c35a0b363a74770729d94084784689f1304744e3e02cff32c614385d5dd4172af7
+  languageName: node
+  linkType: hard
+
 "undici@npm:^7.19.0":
   version: 7.28.0
   resolution: "undici@npm:7.28.0"
   checksum: 57c77c4ee75e166ef361ad238fcd88816fbc0d058aeadf4c0f689194bd17eb6d63ce25b89bd4f4d65a380ebbde784bf4886ec51acc9f8c826ecab01d8f63aaac
-  languageName: node
-  linkType: hard
-
-"undici@npm:^7.2.0":
-  version: 7.29.0
-  resolution: "undici@npm:7.29.0"
-  checksum: b3327e05259e66c61d3e05242bf63899c68d277302208f4fc1c7c0b880a9ba82651b8b3215584ffd424d8c8410f0114b6c3a89e6af604c703dc33009daa99ed3
   languageName: node
   linkType: hard
 

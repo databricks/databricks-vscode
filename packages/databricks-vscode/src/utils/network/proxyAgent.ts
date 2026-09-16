@@ -29,26 +29,6 @@ const extensionVersion = require("../../../package.json")
 const KEEP_ALIVE_MSECS = 15000;
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 5;
 
-/**
- * Whether to let @vscode/proxy-agent read the OS trust store via Node's
- * `tls.getCACertificates`.
- *
- * That API was added in Node 22.15. proxy-agent's "from Node" path calls it
- * unconditionally, so on older runtimes (shipped by many supported VS Code
- * builds) it throws and we lose the OS trust store. When it's missing we return
- * `false` so proxy-agent instead uses its native readers (the
- * `@vscode/windows-ca-certs` module on Windows, `security` on macOS, PEM bundle
- * files on Linux), which work on every Node version.
- *
- * Evaluated per call (not cached) so tests can simulate an older runtime.
- */
-export function loadSystemCertificatesFromNode(): boolean {
-    return (
-        typeof (tls as {getCACertificates?: unknown}).getCACertificates ===
-        "function"
-    );
-}
-
 function getLog(): Log {
     const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
     return {
@@ -68,8 +48,8 @@ function getLog(): Log {
  * Build the params @vscode/proxy-agent needs to resolve a proxy the same way
  * VS Code core does: `http.proxy` setting first, then the `http(s)_proxy` env
  * vars, honouring `http.noProxy` and `NO_PROXY`. System/PAC auto-detection is
- * intentionally disabled (`isUseHostProxyEnabled: false`) — it needs Electron's
- * proxy resolver, which the extension host doesn't expose.
+ * intentionally disabled (`useHostProxy: false`) — it needs Electron's proxy
+ * resolver, which the extension host doesn't expose.
  */
 function getProxyAgentParams(): ProxyAgentParams {
     const log = getLog();
@@ -79,15 +59,13 @@ function getProxyAgentParams(): ProxyAgentParams {
         getProxySupport: () => "on",
         getNoProxyConfig: () => getNoProxyConfig(),
         isAdditionalFetchSupportEnabled: () => false,
-        isWebSocketPatchEnabled: () => false,
         addCertificatesV1: () => false,
         addCertificatesV2: () => true,
-        loadSystemCertificatesFromNode,
         loadAdditionalCertificates: async () => [],
         log,
         getLogLevel: () => LogLevel.Error,
         proxyResolveTelemetry: () => {},
-        isUseHostProxyEnabled: () => false,
+        useHostProxy: false,
         env: process.env,
     };
 }
@@ -106,29 +84,32 @@ function getNoProxyConfig(): string[] {
 
 let systemCertificatesPromise: Promise<string[] | undefined> | undefined;
 
+// The system-certificate reader, indirected through a module-level binding so
+// tests can simulate an unreadable OS store. @vscode/proxy-agent's own reader
+// catches internally and reads the host machine's real store, so there's no
+// other seam to force the failure path.
+let loadSystemCertificatesImpl: (params: {log: Log}) => Promise<string[]> =
+    loadSystemCertificates;
+
 /**
- * Load and cache the OS certificate trust store (Windows/macOS/Linux) plus
- * Node's bundled CAs. Cached for the session; call {@link resetProxyAgentCaches}
- * in tests.
+ * Load and cache the OS certificate trust store (Windows/macOS/Linux). Cached
+ * for the session; call {@link resetProxyAgentCaches} in tests.
  *
- * Returns `undefined` (never a rejected/empty promise) when the store can't be
- * read. @vscode/proxy-agent reads it either via Node's `tls.getCACertificates`
- * (Node >= 22.15) or, on older runtimes, its native readers (the
- * `@vscode/windows-ca-certs` module on Windows, `security` on macOS, PEM files
- * on Linux) — see {@link loadSystemCertificatesFromNode}. If that native module is
- * absent (e.g. not shipped for this platform) the read can still fail; swallowing
- * it here lets the caller fall back to Node's bundled roots instead of failing
- * the whole SDK request. A missing custom CA is recoverable (users can point
- * `databricks.proxy.caCert` at their PEM, or opt out via
- * `databricks.proxy.strictSSL`), a broken agent is not.
+ * Returns `undefined` (never a rejected promise) when the store can't be read.
+ * @vscode/proxy-agent reads it via its native readers — the
+ * `@vscode/windows-ca-certs` module on Windows, `security` on macOS, PEM bundle
+ * files on Linux — which work on every Node version the extension targets. If
+ * that native module is absent (e.g. not shipped for this platform) the read
+ * can still fail; swallowing it here lets the caller fall back to Node's bundled
+ * roots instead of failing the whole SDK request. A missing custom CA is
+ * recoverable (users can point `databricks.proxy.caCert` at their PEM, or opt
+ * out via `databricks.proxy.strictSSL`), a broken agent is not.
  */
 async function getSystemCertificates(
     params: ProxyAgentParams
 ): Promise<string[] | undefined> {
     if (!systemCertificatesPromise) {
-        systemCertificatesPromise = loadSystemCertificates({
-            loadSystemCertificatesFromNode:
-                params.loadSystemCertificatesFromNode,
+        systemCertificatesPromise = loadSystemCertificatesImpl({
             log: params.log,
         }).catch((e) => {
             params.log.error(
@@ -147,6 +128,18 @@ async function getSystemCertificates(
 
 /** Reset the cached system certificates. Test-only. */
 export function resetProxyAgentCaches() {
+    systemCertificatesPromise = undefined;
+}
+
+/**
+ * Override the system-certificate loader (and drop the cache). Test-only: lets
+ * tests exercise the "OS store unreadable" fallback without depending on the
+ * host machine's real trust store. Pass `undefined` to restore the default.
+ */
+export function setSystemCertificatesLoaderForTests(
+    loader?: (params: {log: Log}) => Promise<string[]>
+) {
+    loadSystemCertificatesImpl = loader ?? loadSystemCertificates;
     systemCertificatesPromise = undefined;
 }
 
@@ -212,7 +205,10 @@ function buildCaBundle(
     systemCerts: string[] | undefined,
     configuredCaCert: string | undefined
 ): string[] | undefined {
-    if (!systemCerts && !configuredCaCert) {
+    // @vscode/proxy-agent swallows a failed OS-store read and returns `[]`, so
+    // treat empty the same as unreadable: nothing to add on top of Node's
+    // bundled roots.
+    if (!systemCerts?.length && !configuredCaCert) {
         return undefined;
     }
     return [

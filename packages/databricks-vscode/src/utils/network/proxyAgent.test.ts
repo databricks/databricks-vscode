@@ -14,8 +14,8 @@ import {
     applyProxyStrictSSLEnv,
     createWorkspaceClient,
     getDatabricksHttpAgent,
-    loadSystemCertificatesFromNode,
     resetProxyAgentCaches,
+    setSystemCertificatesLoaderForTests,
     strictSSL,
 } from "./proxyAgent";
 
@@ -41,6 +41,7 @@ describe(__filename, () => {
 
     afterEach(() => {
         reset(configsSpy);
+        setSystemCertificatesLoaderForTests();
         process.env = existingEnv;
     });
 
@@ -197,29 +198,21 @@ describe(__filename, () => {
         });
 
         it("falls back to Node's bundled CAs when the system store can't be read", async () => {
-            // @vscode/proxy-agent reads the store via tls.getCACertificates,
-            // which is absent/throws on older runtimes. Simulate that failure
-            // on the shared (required) tls module proxy-agent also sees.
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const tls = require("node:tls");
-            const original = tls.getCACertificates;
-            tls.getCACertificates = () => {
-                throw new Error("getCACertificates unavailable");
-            };
-            try {
-                const agent = (await getDatabricksHttpAgent(
-                    new URL("https://example.com")
-                )) as https.Agent;
-                // `ca` must be omitted (not [] / undefined) so Node keeps its
-                // bundled roots instead of trusting nothing.
-                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
-                assert.strictEqual(
-                    (agent.options as https.AgentOptions).rejectUnauthorized,
-                    true
-                );
-            } finally {
-                tls.getCACertificates = original;
-            }
+            // @vscode/proxy-agent's own reader catches internally and reads the
+            // host's real store, so swap the loader for one that rejects.
+            setSystemCertificatesLoaderForTests(async () => {
+                throw new Error("system store unavailable");
+            });
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            // `ca` must be omitted (not [] / undefined) so Node keeps its
+            // bundled roots instead of trusting nothing.
+            assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+            assert.strictEqual(
+                (agent.options as https.AgentOptions).rejectUnauthorized,
+                true
+            );
         });
 
         it("merges databricks.proxy.caCert onto the trust store", async () => {
@@ -246,12 +239,9 @@ describe(__filename, () => {
             const pemPath = path.join(dir, "corp-ca.pem");
             fs.writeFileSync(pemPath, FAKE_CA_PEM);
             when(configsSpy.proxyCaCert).thenReturn(pemPath);
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const tlsMod = require("node:tls");
-            const original = tlsMod.getCACertificates;
-            tlsMod.getCACertificates = () => {
-                throw new Error("getCACertificates unavailable");
-            };
+            setSystemCertificatesLoaderForTests(async () => {
+                throw new Error("system store unavailable");
+            });
             try {
                 const agent = (await getDatabricksHttpAgent(
                     new URL("https://example.com")
@@ -261,7 +251,6 @@ describe(__filename, () => {
                 assert.ok(ca.includes(FAKE_CA_PEM));
                 assert.ok(ca.includes(tls.rootCertificates[0]));
             } finally {
-                tlsMod.getCACertificates = original;
                 fs.rmSync(dir, {recursive: true, force: true});
             }
         });
@@ -276,23 +265,6 @@ describe(__filename, () => {
             )) as https.Agent;
             const ca = (agent.options as https.AgentOptions).ca as string[];
             assert.ok(!ca || !ca.includes(FAKE_CA_PEM));
-        });
-    });
-
-    describe("loadSystemCertificatesFromNode", () => {
-        it("is true when tls.getCACertificates exists, false when it doesn't", () => {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const tlsMod = require("node:tls");
-            const original = tlsMod.getCACertificates;
-            try {
-                tlsMod.getCACertificates = () => [];
-                assert.strictEqual(loadSystemCertificatesFromNode(), true);
-
-                tlsMod.getCACertificates = undefined;
-                assert.strictEqual(loadSystemCertificatesFromNode(), false);
-            } finally {
-                tlsMod.getCACertificates = original;
-            }
         });
     });
 
