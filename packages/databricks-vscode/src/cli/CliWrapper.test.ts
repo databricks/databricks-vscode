@@ -11,6 +11,7 @@ import {
     CliWrapper,
     ProcessError,
     getSshConnectCommand,
+    parseAiToolsInstallOutput,
 } from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
@@ -103,6 +104,59 @@ describe(__filename, function () {
         } finally {
             await rm(tmpDir, {recursive: true, force: true});
         }
+    });
+
+    it("parseAiToolsInstallOutput parses the install result shapes", () => {
+        // Success: every agent installed, no error fields.
+        assert.deepStrictEqual(
+            parseAiToolsInstallOutput(
+                '{"scope":"global","agents":[{"name":"claude-code","delivery":"plugin","status":"installed"}]}'
+            ),
+            {
+                scope: "global",
+                agents: [
+                    {
+                        name: "claude-code",
+                        delivery: "plugin",
+                        status: "installed",
+                    },
+                ],
+            }
+        );
+
+        // Per-agent failure carries a category and a (local-only) message.
+        const skip = parseAiToolsInstallOutput(
+            '{"scope":"project","agents":[{"name":"codex","delivery":"skip","status":"skipped","error_category":"UNSUPPORTED_SCOPE","message":"user-only"}]}'
+        );
+        assert.strictEqual(skip?.agents[0].error_category, "UNSUPPORTED_SCOPE");
+
+        // Top-level failure: empty agents plus error/error_category.
+        const topLevel = parseAiToolsInstallOutput(
+            '{"scope":"global","agents":[],"error":"skill not found","error_category":"SKILL_NOT_FOUND"}'
+        );
+        assert.strictEqual(topLevel?.error_category, "SKILL_NOT_FOUND");
+
+        // A top-level failure may omit `agents` entirely (Go's omitempty on a nil
+        // slice); it is still a result, with agents defaulted to [].
+        const noAgents = parseAiToolsInstallOutput(
+            '{"scope":"global","error":"skill not found","error_category":"SKILL_NOT_FOUND"}'
+        );
+        assert.deepStrictEqual(noAgents?.agents, []);
+        assert.strictEqual(noAgents?.error_category, "SKILL_NOT_FOUND");
+    });
+
+    it("parseAiToolsInstallOutput returns undefined for non-result output", () => {
+        // A CLI old enough to ignore `--output json` prints human text.
+        assert.strictEqual(
+            parseAiToolsInstallOutput("Installed the plugin for 1 agent."),
+            undefined
+        );
+        // Valid JSON that is neither an install result nor an error document.
+        assert.strictEqual(
+            parseAiToolsInstallOutput('{"release":"0.1.0"}'),
+            undefined
+        );
+        assert.strictEqual(parseAiToolsInstallOutput(""), undefined);
     });
 
     it("should resolve the platform-specific CLI binary name", () => {
