@@ -299,7 +299,8 @@ export function parseAiToolsInstallOutput(
         // eslint-disable-next-line @typescript-eslint/naming-convention
         error_category?: unknown;
     };
-    const hasAgents = Array.isArray(rec.agents);
+    const hasAgents =
+        Array.isArray(rec.agents) && rec.agents.every(isInstallAgentResult);
     const hasError =
         typeof rec.error === "string" || typeof rec.error_category === "string";
     if (!hasAgents && !hasError) {
@@ -309,6 +310,32 @@ export function parseAiToolsInstallOutput(
         ...(obj as AiToolsInstallOutput),
         agents: hasAgents ? (rec.agents as AiToolsInstallAgentResult[]) : [],
     };
+}
+
+function isInstallAgentResult(agent: unknown) {
+    if (typeof agent !== "object" || agent === null) {
+        return false;
+    }
+    for (const key of ["name", "delivery", "status"]) {
+        if (
+            !(
+                key in agent &&
+                typeof agent[key as keyof typeof agent] === "string"
+            )
+        ) {
+            return false;
+        }
+    }
+    for (const key of ["error_category", "message"]) {
+        if (
+            key in agent &&
+            typeof agent[key as keyof typeof agent] !== "string" &&
+            agent[key as keyof typeof agent] !== undefined
+        ) {
+            return false;
+        }
+    }
+    return true;
 }
 
 export class ProcessError extends Error {
@@ -701,13 +728,11 @@ export class CliWrapper {
      * `error` can be present, letting per-agent and top-level failures reach
      * telemetry with their categories.
      */
-    @withLogContext(Loggers.Extension)
     public async aitoolsInstall(
         scope: AiToolsScope,
         cwd: string,
         cancellationToken: CancellationToken | undefined,
-        agents: string[],
-        @context ctx?: Context
+        agents: string[]
     ): Promise<{
         output: AiToolsInstallOutput | undefined;
         error: Error | undefined;
@@ -739,7 +764,6 @@ export class CliWrapper {
                 error: undefined,
             };
         } catch (error: unknown) {
-            ctx?.logger?.error("Failed to install Databricks AI tools", error);
             if (!(error instanceof Error)) {
                 return {output: undefined, error: new Error(String(error))};
             }

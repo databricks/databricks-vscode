@@ -1,6 +1,7 @@
 import path from "path";
 import {CancellationToken, commands, Disposable} from "vscode";
 import {logging} from "@databricks/sdk-experimental";
+import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {
     AiToolsAgent,
     AiToolsScope,
@@ -502,12 +503,14 @@ export class AiToolsManager implements Disposable {
      * the batch install, the Cursor-plugin flag. The caller reconciles model
      * state in its own `finally`.
      */
+    @logging.withLogContext(Loggers.Extension)
     private async runInstallCli(
         scope: AiToolsScope,
         agents: string[],
         recordEvent: EventReporter<Events.AITOOLS_INSTALL>,
         baseProps: {source: AiToolsInstallSource; cursorPlugin?: boolean},
-        token?: CancellationToken
+        token?: CancellationToken,
+        @context ctx?: Context
     ): Promise<void> {
         const {output, error} = await this.cli.aitoolsInstall(
             scope,
@@ -542,14 +545,13 @@ export class AiToolsManager implements Disposable {
             if (message) {
                 // The CLI reported the install failed in its JSON (non-zero exit, but
                 // a parseable result). Under `--output json` the CLI's stderr is empty,
-                // so log the folded detail here, then surface it to the UI by throwing.
-                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                    `Databricks AI tools install failed:\n${message}`
-                );
-                throw new ProcessError(message, errorCode);
+                // so add the message we computed to the end of `error.message` where
+                // stderr would be
+                error.message += message;
             }
-            // There was no parseable JSON output, so fallback to the pre-JSON behaviour
-            // of throwing a `ProcessError`
+
+            ctx?.logger?.error("Failed to install Databricks AI tools", error);
+            // Throw to surface the error to the UI in a toast
             throw new ProcessError(error.message, errorCode);
         }
     }

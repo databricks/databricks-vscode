@@ -531,6 +531,49 @@ describe(__filename, () => {
         assert.strictEqual(installEvent.props.globalErrorCategory, undefined);
     });
 
+    // Currently doesn't happen since `--agents` flag causes any skip/failure to be fatal,
+    // but codify the expected behaviour anyway so this can't regress
+    it("records agent error categories for clean exit", async () => {
+        const loaders: ScopeLoaders = {};
+        const {manager, mockCli, stubTelemetry} = setup(loaders);
+        when(
+            mockCli.aitoolsInstall("global", anything(), anything(), anything())
+        ).thenResolve({
+            output: {
+                scope: "global",
+                agents: [
+                    {
+                        name: "claude-code",
+                        delivery: "plugin",
+                        status: "installed",
+                    },
+                    {
+                        name: "copilot",
+                        delivery: "plugin",
+                        status: "failed",
+                        error_category: "PLUGIN_INSTALL_FAILED",
+                        message: "gh CLI is not on PATH",
+                    },
+                ],
+            },
+            error: undefined,
+        });
+        when(mockCli.aitoolsList(anything())).thenResolve(listResult([]));
+
+        await manager.install("global", "sidePane", ["claude-code", "copilot"]);
+
+        const [installEvent] = stubTelemetry.eventsOfType(
+            Events.AITOOLS_INSTALL
+        );
+        assert.strictEqual(installEvent.props.result, "success");
+        // Only the failing agent's category is recorded, keyed by agent id, with
+        // no free-form message.
+        assert.deepStrictEqual(installEvent.props.agentErrors, {
+            copilot: "PLUGIN_INSTALL_FAILED",
+        });
+        assert.strictEqual(installEvent.props.globalErrorCategory, undefined);
+    });
+
     it("records a top-level error category from the CLI's JSON result", async () => {
         const loaders: ScopeLoaders = {};
         const {manager, mockCli, stubTelemetry} = setup(loaders);
