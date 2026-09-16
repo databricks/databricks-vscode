@@ -35,6 +35,9 @@ yarn workspace databricks run package:cli:fetch
 
 After that you are ready to build and test the `databricks-vscode` extension.
 
+To test changes from a local CLI checkout in the extension, see
+[Previewing local CLI changes](CONTRIBUTING.md#previewing-local-cli-changes).
+
 ### Found an issue?
 
 If you find an issue/bug or have a feature request, please file an issue here: https://github.com/databricks/databricks-vscode/issues/new
