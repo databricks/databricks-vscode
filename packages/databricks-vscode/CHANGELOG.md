@@ -4,12 +4,8 @@
 
 ## (2026-09-17)
 
--   Update Databricks CLI to v1.17.0 (#2200) ([313a4c1](https://github.com/databricks/databricks-vscode/commit/313a4c1)), closes [#2200](https://github.com/databricks/databricks-vscode/issues/2200)
--   feat(aitools): record install error categories from CLI JSON output (#2188) ([c8de43a](https://github.com/databricks/databricks-vscode/commit/c8de43a)), closes [#2188](https://github.com/databricks/databricks-vscode/issues/2188)
--   feat(telemetry): emit setupPreset on the python_env.setup.result event (#2197) ([392fc38](https://github.com/databricks/databricks-vscode/commit/392fc38)), closes [#2197](https://github.com/databricks/databricks-vscode/issues/2197)
--   test(e2e): verify serverless SSH remote window and file transfers (#2194) ([4850897](https://github.com/databricks/databricks-vscode/commit/4850897)), closes [#2194](https://github.com/databricks/databricks-vscode/issues/2194)
--   test(ssh): catch bundled CLI truncation and reconnect regressions (#2195) ([bc07008](https://github.com/databricks/databricks-vscode/commit/bc07008)), closes [#2195](https://github.com/databricks/databricks-vscode/issues/2195)
--   fix(python-setup): report the chosen preset in the setup success panel (#2192) ([b4cf108](https://github.com/databricks/databricks-vscode/commit/b4cf108)), closes [#2192](https://github.com/databricks/databricks-vscode/issues/2192)
+-   Report the chosen preset in the Python setup success panel (#2192) ([b4cf108](https://github.com/databricks/databricks-vscode/commit/b4cf108))
+-   Update Databricks CLI to v1.17.0 (#2200) ([313a4c1](https://github.com/databricks/databricks-vscode/commit/313a4c1)) - allows SSH sessions to survive transient disconnects; see the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.17.0) for details
 
 # Release: v2.17.2
 
