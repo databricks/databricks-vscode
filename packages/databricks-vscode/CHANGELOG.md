@@ -1,3 +1,12 @@
+# Release: v2.18.0
+
+## packages/databricks-vscode
+
+## (2026-09-17)
+
+-   Report the chosen preset in the Python setup success panel (#2192) ([b4cf108](https://github.com/databricks/databricks-vscode/commit/b4cf108))
+-   Update Databricks CLI to v1.17.0 (#2200) ([313a4c1](https://github.com/databricks/databricks-vscode/commit/313a4c1)) - allows SSH sessions to survive transient disconnects; see the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.17.0) for details
+
 # Release: v2.17.2
 
 ## packages/databricks-vscode
