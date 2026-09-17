@@ -51,8 +51,13 @@ function getLog(): Log {
  * intentionally disabled (`useHostProxy: false`) — it needs Electron's proxy
  * resolver, which the extension host doesn't expose.
  */
-function getProxyAgentParams(): ProxyAgentParams {
+function getProxyAgentParams(host: URL): ProxyAgentParams {
     const log = getLog();
+    const env = {...process.env};
+    if (host.protocol === "http:") {
+        delete env.HTTPS_PROXY;
+        delete env.https_proxy;
+    }
     return {
         resolveProxy: async () => undefined,
         getProxyURL: () => workspaceConfigs.httpProxy,
@@ -66,7 +71,7 @@ function getProxyAgentParams(): ProxyAgentParams {
         getLogLevel: () => LogLevel.Error,
         proxyResolveTelemetry: () => {},
         useHostProxy: false,
-        env: process.env,
+        env,
     };
 }
 
@@ -240,7 +245,7 @@ export async function getDatabricksHttpAgent(
     host: URL,
     httpTimeoutSeconds?: number
 ): Promise<http.Agent | https.Agent> {
-    const params = getProxyAgentParams();
+    const params = getProxyAgentParams(host);
     const isHttps = host.protocol === "https:";
 
     // Independent reads (OS trust store vs the configured PEM) — run them
@@ -254,6 +259,9 @@ export async function getDatabricksHttpAgent(
 
     const resolver = createProxyResolver(params);
     const proxyUrl = await resolver.resolveProxyURL(host.toString());
+    const usesTls =
+        isHttps ||
+        (proxyUrl !== undefined && new URL(proxyUrl).protocol === "https:");
 
     // Only set `ca` when we have certs to add on top of Node's bundled roots
     // (which `buildCaBundle` already folds in). On the fallback path `ca` is
@@ -263,7 +271,7 @@ export async function getDatabricksHttpAgent(
         keepAlive: true,
         keepAliveMsecs: KEEP_ALIVE_MSECS,
         timeout: (httpTimeoutSeconds || DEFAULT_HTTP_TIMEOUT_SECONDS) * 1000,
-        ...(isHttps ? {rejectUnauthorized, ...(ca ? {ca} : {})} : {}),
+        ...(usesTls ? {rejectUnauthorized, ...(ca ? {ca} : {})} : {}),
     };
 
     if (proxyUrl) {

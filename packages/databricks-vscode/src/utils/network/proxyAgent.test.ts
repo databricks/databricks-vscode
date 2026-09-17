@@ -96,6 +96,22 @@ describe(__filename, () => {
             assert.ok(agent instanceof HttpProxyAgent);
         });
 
+        it("uses HTTP_PROXY for http hosts when env proxies differ", async () => {
+            process.env.HTTP_PROXY = "http://127.0.0.1:8080";
+            process.env.HTTPS_PROXY = "http://127.0.0.1:8443";
+            delete process.env.http_proxy;
+            delete process.env.https_proxy;
+            delete process.env.NO_PROXY;
+            delete process.env.no_proxy;
+
+            const agent = (await getDatabricksHttpAgent(
+                new URL("http://example.com")
+            )) as HttpProxyAgent<string>;
+
+            assert.ok(agent instanceof HttpProxyAgent);
+            assert.strictEqual(agent.proxy.href, "http://127.0.0.1:8080/");
+        });
+
         it("returns a plain agent when the host matches noProxy", async () => {
             when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
             when(configsSpy.httpNoProxy).thenReturn(["example.com"]);
@@ -203,6 +219,29 @@ describe(__filename, () => {
                 (agent.options as https.AgentOptions).rejectUnauthorized,
                 false
             );
+        });
+
+        it("applies TLS options when an http host uses an https proxy", async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "corp-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            when(configsSpy.httpProxy).thenReturn("https://127.0.0.1:8443");
+            when(configsSpy.proxyCaCert).thenReturn(pemPath);
+            when(configsSpy.proxyStrictSSL).thenReturn(false);
+            setSystemCertificatesLoaderForTests(async () => []);
+
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("http://example.com")
+                )) as HttpProxyAgent<string>;
+                const ca = agent.connectOpts.ca as string[];
+
+                assert.ok(agent instanceof HttpProxyAgent);
+                assert.ok(ca.includes(FAKE_CA_PEM));
+                assert.strictEqual(agent.connectOpts.rejectUnauthorized, false);
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
         });
 
         it("falls back to Node's bundled CAs when the system store can't be read", async () => {
