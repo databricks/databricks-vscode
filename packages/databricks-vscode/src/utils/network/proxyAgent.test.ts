@@ -162,6 +162,14 @@ describe(__filename, () => {
         });
 
         it("merges the system trust store with Node's bundled roots (never replaces them)", async () => {
+            // Inject the system store instead of reading the host's: CI runners
+            // (notably headless Windows) can return an empty OS store, which
+            // would legitimately omit `ca` and make this merge assertion flaky.
+            // Re-listing a bundled root also exercises the dedupe path below.
+            setSystemCertificatesLoaderForTests(async () => [
+                FAKE_CA_PEM,
+                tls.rootCertificates[0],
+            ]);
             const agent = (await getDatabricksHttpAgent(
                 new URL("https://example.com")
             )) as https.Agent;
