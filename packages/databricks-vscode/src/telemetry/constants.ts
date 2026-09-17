@@ -402,6 +402,8 @@ export class EventTypes {
             source?: AiToolsInstallSource;
             agents?: string[];
             cursorPlugin?: boolean;
+            globalErrorCategory?: string;
+            agentErrors?: Record<string, string>;
         } & DurationMeasurement
     > = {
         comment: "Install Databricks AI tools",
@@ -423,6 +425,14 @@ export class EventTypes {
         cursorPlugin: {
             comment:
                 "In Cursor, whether the Databricks marketplace plugin (a superset of the Cursor skills) was installed as part of this flow, rather than the cursor skills via the CLI",
+        },
+        globalErrorCategory: {
+            comment:
+                "The CLI's classification of a top-level install failure that has no per-agent entry (e.g. a skills-group install). A closed category token (e.g. SKILL_NOT_FOUND, PLUGIN_INSTALL_FAILED), never the CLI's free-form error message. Omitted when there was no top-level failure.",
+        },
+        agentErrors: {
+            comment:
+                "Per-agent install errors as a map of agent id to its categorical error, for each requested agent that did not install (failed or skipped). Categories are the CLI's closed set, never the free-form per-agent message. Omitted when every requested agent installed.",
         },
     };
     [Events.AITOOLS_UPDATE]: EventType<
