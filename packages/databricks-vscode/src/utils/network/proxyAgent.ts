@@ -243,8 +243,12 @@ export async function getDatabricksHttpAgent(
     const params = getProxyAgentParams();
     const isHttps = host.protocol === "https:";
 
-    const systemCerts = await getSystemCertificates(params);
-    const configuredCaCert = await loadConfiguredCaCert();
+    // Independent reads (OS trust store vs the configured PEM) — run them
+    // together rather than serially.
+    const [systemCerts, configuredCaCert] = await Promise.all([
+        getSystemCertificates(params),
+        loadConfiguredCaCert(),
+    ]);
     const ca = buildCaBundle(systemCerts, configuredCaCert);
     const rejectUnauthorized = strictSSL();
 
