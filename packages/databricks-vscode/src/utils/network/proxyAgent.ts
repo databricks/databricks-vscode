@@ -99,18 +99,20 @@ let loadSystemCertificatesImpl: (params: {log: Log}) => Promise<string[]> =
     loadSystemCertificates;
 
 /**
- * Load and cache the OS certificate trust store (Windows/macOS/Linux). Cached
- * for the session; call {@link resetProxyAgentCaches} in tests.
+ * Load and cache the OS certificate trust store. Cached for the session; call
+ * {@link resetProxyAgentCaches} in tests.
  *
  * Returns `undefined` (never a rejected promise) when the store can't be read.
- * @vscode/proxy-agent reads it via its native readers — the
- * `@vscode/windows-ca-certs` module on Windows, `security` on macOS, PEM bundle
- * files on Linux — which work on every Node version the extension targets. If
- * that native module is absent (e.g. not shipped for this platform) the read
- * can still fail; swallowing it here lets the caller fall back to Node's bundled
- * roots instead of failing the whole SDK request. A missing custom CA is
- * recoverable (users can point `databricks.proxy.caCert` at their PEM, or opt
- * out via `databricks.proxy.strictSSL`), a broken agent is not.
+ * @vscode/proxy-agent reads it via native readers: `security` on macOS and PEM
+ * bundle files on Linux, which work out of the box. On Windows the store is read
+ * through the native `@vscode/windows-ca-certs` addon — which we deliberately do
+ * *not* ship (it publishes no prebuilds and can't be cross-compiled on the Linux
+ * release runner), so on Windows that read throws and we fall back here. When the
+ * read fails we swallow it so the caller uses Node's bundled roots instead of
+ * failing the whole SDK request. Windows users behind an internal CA point
+ * `databricks.proxy.caCert` at their PEM (or opt out via
+ * `databricks.proxy.strictSSL`): a missing custom CA is recoverable, a broken
+ * agent is not.
  */
 async function getSystemCertificates(
     params: ProxyAgentParams

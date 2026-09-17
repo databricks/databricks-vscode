@@ -1863,7 +1863,7 @@
                     },
                     "databricks.proxy.caCert": {
                         "type": "string",
-                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with the OS trust store and Node's built-in roots. Use when a corporate CA cannot be read from the system store."
+                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with the OS trust store and Node's built-in roots. Use when a corporate CA cannot be read from the system store — in particular on Windows, where the extension does not read the system certificate store and relies on this setting for internal CAs."
                     }
                 }
             }
@@ -1883,7 +1883,7 @@
         "version": "1.17.0"
     },
     "scripts": {
-        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run package:copy-windows-ca-certs && yarn run generate-telemetry",
+        "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
         "package": "vsce package --baseContentUrl https://github.com/databricks/databricks-vscode/blob/${TAG:-main}/packages/databricks-vscode --baseImagesUrl https://raw.githubusercontent.com/databricks/databricks-vscode/${TAG:-main}/packages/databricks-vscode",
         "package:linux:x64": "./scripts/package-vsix.sh linux-x64",
         "package:linux:arm64": "./scripts/package-vsix.sh linux-arm64",
@@ -1901,7 +1901,6 @@
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "package:copy-markdown-it": "cp ./node_modules/markdown-it/dist/browser/markdown-it.umd.min.js ./out/markdown-it.min.js",
         "package:copy-highlight": "esbuild ./node_modules/highlight.js/lib/common.js --bundle --format=iife --global-name=hljs --outfile=out/highlight.min.js --minify",
-        "package:copy-windows-ca-certs": "bash ./scripts/copy-windows-ca-certs.sh",
         "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:@vscode/windows-ca-certs --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
         "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && tsc --build --watch --verbose",
@@ -1941,9 +1940,6 @@
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
         "yaml": "^2.8.3"
-    },
-    "optionalDependencies": {
-        "@vscode/windows-ca-certs": "^0.3.1"
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
