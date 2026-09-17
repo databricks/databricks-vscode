@@ -5,6 +5,7 @@ import {logging, Headers} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {TerraformMetadata} from "./terraformUtils";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
+import {mergeNoProxy} from "./network/proxyAgent";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require("../../package.json");
@@ -166,16 +167,10 @@ export function getProxyEnvVars() {
     const httpsProxy =
         settingProxy || process.env.HTTPS_PROXY || process.env.https_proxy;
 
-    // Merge the `http.noProxy` setting (an array) with the comma-separated
-    // NO_PROXY env var, deduping at host granularity.
-    const envNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
-    const noProxyParts = [
-        ...workspaceConfigs.httpNoProxy,
-        ...envNoProxy.split(","),
-    ]
-        .map((v) => v.trim())
-        .filter((v) => v.length > 0);
-    const noProxy = [...new Set(noProxyParts)].join(",") || undefined;
+    // Merge the `http.noProxy` setting with the NO_PROXY env var (shared with
+    // the in-process SDK proxy resolver), then join back to the comma-separated
+    // form the CLI expects.
+    const noProxy = mergeNoProxy().join(",") || undefined;
 
     return {
         /* eslint-disable @typescript-eslint/naming-convention */

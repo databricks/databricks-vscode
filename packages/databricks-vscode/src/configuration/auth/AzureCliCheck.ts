@@ -3,13 +3,12 @@ import {CancellationToken, commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
-import {ShellUtils} from "../../utils";
+import {ProxyAgent, ShellUtils} from "../../utils";
 import {cancellableExecFile} from "../../cli/CliWrapper";
 import {
     FileNotFoundException,
     isFileNotFound,
 } from "@databricks/sdk-experimental/dist/config/execUtils";
-import {createWorkspaceClient} from "../../utils/network/proxyAgent";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -204,7 +203,7 @@ export class AzureCliCheck implements Disposable {
         expired: boolean;
         error?: Error;
     }> {
-        const workspaceClient = await createWorkspaceClient(
+        const workspaceClient = await ProxyAgent.createWorkspaceClient(
             {
                 host: host.toString(),
                 authType: "azure-cli",

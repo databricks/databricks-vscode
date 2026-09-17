@@ -57,7 +57,7 @@ function getProxyAgentParams(): ProxyAgentParams {
         resolveProxy: async () => undefined,
         getProxyURL: () => workspaceConfigs.httpProxy,
         getProxySupport: () => "on",
-        getNoProxyConfig: () => getNoProxyConfig(),
+        getNoProxyConfig: () => mergeNoProxy(),
         isAdditionalFetchSupportEnabled: () => false,
         addCertificatesV1: () => false,
         addCertificatesV2: () => true,
@@ -70,7 +70,14 @@ function getProxyAgentParams(): ProxyAgentParams {
     };
 }
 
-function getNoProxyConfig(): string[] {
+/**
+ * Merge the `http.noProxy` VS Code setting (an array) with the comma-separated
+ * `NO_PROXY`/`no_proxy` env var into a deduped host list. The two are *unioned*
+ * (not overridden) since a bypass list is only ever safer when it's broader.
+ * Shared by the in-process SDK proxy resolver here and the CLI env-var builder
+ * (`getProxyEnvVars` in envVarGenerators.ts) so both resolve the same list.
+ */
+export function mergeNoProxy(): string[] {
     const envNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
     const noProxyParts = [
         ...workspaceConfigs.httpNoProxy,

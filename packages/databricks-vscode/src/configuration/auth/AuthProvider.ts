@@ -8,7 +8,7 @@ import {AzureCliCheck} from "./AzureCliCheck";
 import {DatabricksCliCheck} from "./DatabricksCliCheck";
 import {Loggers} from "../../logger";
 import {CliWrapper} from "../../cli/CliWrapper";
-import {createWorkspaceClient} from "../../utils/network/proxyAgent";
+import {ProxyAgent} from "../../utils";
 
 // TODO: Resolve this with SDK's AuthType.
 export type AuthType =
@@ -44,7 +44,7 @@ export abstract class AuthProvider {
 
     async getWorkspaceClient(): Promise<WorkspaceClient> {
         const config = await this.getSdkConfig();
-        return createWorkspaceClient(config, this.host);
+        return ProxyAgent.createWorkspaceClient(config, this.host);
     }
 
     /**

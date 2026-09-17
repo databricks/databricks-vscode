@@ -34,6 +34,7 @@ import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {
     FileUtils,
     PackageJsonUtils,
+    ProxyAgent,
     TerraformUtils,
     UrlUtils,
     UtilsCommands,
@@ -109,7 +110,6 @@ import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
-import {applyProxyStrictSSLEnv} from "./utils/network/proxyAgent";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {PackageManagerTelemetry} from "./language/PackageManagerTelemetry";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
@@ -681,11 +681,11 @@ export async function activate(
     // path uses (databricks.proxy.strictSSL -> http.proxyStrictSSL -> true), so
     // both writers of DATABRICKS_SDK_PROXY_STRICT_SSL agree and verification
     // stays on by default when nothing is configured.
-    applyProxyStrictSSLEnv();
+    ProxyAgent.applyProxyStrictSSLEnv();
     context.subscriptions.push(
         workspace.onDidChangeConfiguration(() => {
             updateFeatureContexts();
-            applyProxyStrictSSLEnv();
+            ProxyAgent.applyProxyStrictSSLEnv();
         })
     );
 
