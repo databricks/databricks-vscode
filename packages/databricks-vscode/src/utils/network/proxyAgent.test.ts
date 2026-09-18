@@ -221,27 +221,64 @@ describe(__filename, () => {
             );
         });
 
-        it("applies TLS options when an http host uses an https proxy", async () => {
-            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
-            const pemPath = path.join(dir, "corp-ca.pem");
-            fs.writeFileSync(pemPath, FAKE_CA_PEM);
-            when(configsSpy.httpProxy).thenReturn("https://127.0.0.1:8443");
-            when(configsSpy.proxyCaCert).thenReturn(pemPath);
-            when(configsSpy.proxyStrictSSL).thenReturn(false);
-            setSystemCertificatesLoaderForTests(async () => []);
-
+        // Drive an https:// target through a proxy and assert the CA / strict-SSL
+        // land on the *endpoint* tunnel (the per-request `opts` that reach
+        // `tls.connect` for the Databricks host), not just the proxy socket
+        // (`connectOpts`). The base agent applies constructor options only to the
+        // proxy connection, so a merged `ca` there never verifies the host — this
+        // is the regression the CA-aware subclass fixes.
+        async function captureEndpointConnectOpts(
+            agent: HttpsProxyAgent<string>
+        ) {
+            let capturedOpts: https.AgentOptions | undefined;
+            const superConnect = HttpsProxyAgent.prototype.connect;
+            // `super.connect` in the subclass resolves to this at call time; stub
+            // it so no real proxy connection is attempted.
+            HttpsProxyAgent.prototype.connect = async function (_req, opts) {
+                capturedOpts = opts as https.AgentOptions;
+                return {} as never;
+            };
             try {
-                const agent = (await getDatabricksHttpAgent(
-                    new URL("http://example.com")
-                )) as HttpProxyAgent<string>;
-                const ca = agent.connectOpts.ca as string[];
-
-                assert.ok(agent instanceof HttpProxyAgent);
-                assert.ok(ca.includes(FAKE_CA_PEM));
-                assert.strictEqual(agent.connectOpts.rejectUnauthorized, false);
+                await agent.connect(
+                    {} as never,
+                    {
+                        secureEndpoint: true,
+                        host: "example.com",
+                        port: 443,
+                    } as never
+                );
             } finally {
-                fs.rmSync(dir, {recursive: true, force: true});
+                HttpsProxyAgent.prototype.connect = superConnect;
             }
+            return capturedOpts;
+        }
+
+        it("applies the CA to the endpoint TLS handshake through a proxy", async () => {
+            when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+            setSystemCertificatesLoaderForTests(async () => [FAKE_CA_PEM]);
+
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as HttpsProxyAgent<string>;
+            assert.ok(agent instanceof HttpsProxyAgent);
+
+            const opts = await captureEndpointConnectOpts(agent);
+            const ca = opts?.ca as string[];
+            assert.ok(Array.isArray(ca));
+            assert.ok(ca.includes(FAKE_CA_PEM));
+            assert.strictEqual(opts?.rejectUnauthorized, true);
+        });
+
+        it("disables endpoint verification through a proxy when strict SSL is off", async () => {
+            when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+            when(configsSpy.proxyStrictSSL).thenReturn(false);
+
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as HttpsProxyAgent<string>;
+
+            const opts = await captureEndpointConnectOpts(agent);
+            assert.strictEqual(opts?.rejectUnauthorized, false);
         });
 
         it("falls back to Node's bundled CAs when the system store can't be read", async () => {
@@ -305,6 +342,38 @@ describe(__filename, () => {
         it("ignores an unreadable databricks.proxy.caCert path", async () => {
             when(configsSpy.proxyCaCert).thenReturn(
                 path.join(os.tmpdir(), "does-not-exist-xyz.pem")
+            );
+            // Must not throw; falls back to the rest of the trust store.
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            const ca = (agent.options as https.AgentOptions).ca as string[];
+            assert.ok(!ca || !ca.includes(FAKE_CA_PEM));
+        });
+
+        it("folds NODE_EXTRA_CA_CERTS into the trust store", async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "extra-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            process.env.NODE_EXTRA_CA_CERTS = pemPath;
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(Array.isArray(ca));
+                assert.ok(ca.includes(FAKE_CA_PEM));
+                // Still anchored on the bundled roots.
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
+        it("ignores an unreadable NODE_EXTRA_CA_CERTS path", async () => {
+            process.env.NODE_EXTRA_CA_CERTS = path.join(
+                os.tmpdir(),
+                "does-not-exist-extra-xyz.pem"
             );
             // Must not throw; falls back to the rest of the trust store.
             const agent = (await getDatabricksHttpAgent(

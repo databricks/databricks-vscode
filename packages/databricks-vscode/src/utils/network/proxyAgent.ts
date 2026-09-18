@@ -202,27 +202,56 @@ async function loadConfiguredCaCert(): Promise<string | undefined> {
 }
 
 /**
+ * Read the PEM bundle(s) named by `NODE_EXTRA_CA_CERTS`, if set. Node only
+ * merges this file into its *default* trust store, and only at process startup —
+ * so once we set an explicit `ca` (which replaces the default store), any CA a
+ * user trusts solely via `NODE_EXTRA_CA_CERTS` would silently stop being trusted
+ * after upgrade. Folding it back into the bundle preserves that trust.
+ *
+ * A bad path shouldn't break every TLS handshake, so we log and fall back to the
+ * rest of the trust store (same policy as {@link loadConfiguredCaCert}).
+ */
+async function loadNodeExtraCaCerts(): Promise<string | undefined> {
+    const extraCaCertsPath = process.env.NODE_EXTRA_CA_CERTS;
+    if (!extraCaCertsPath) {
+        return undefined;
+    }
+    try {
+        return await readFile(extraCaCertsPath, "utf8");
+    } catch (e) {
+        getLog().error(
+            `Failed to read NODE_EXTRA_CA_CERTS from "${extraCaCertsPath}"; ` +
+                "ignoring it. The certificate it points at will not be trusted.",
+            e
+        );
+        return undefined;
+    }
+}
+
+/**
  * Assemble the CA trust list for the SDK's HTTPS agent, or `undefined` to leave
  * Node's default store in place.
  *
  * Any list we build is anchored on `tls.rootCertificates` (Node's bundled public
- * roots) and then extended with the OS trust store and the configured PEM.
- * Setting `ca` *replaces* Node's defaults, so if we set it to only the extra
- * certs, public-root TLS would break — hence the merge. When we have nothing to
- * add (system store unreadable and no `caCert`), return `undefined` so the
- * caller omits `ca` and Node keeps its defaults.
+ * roots) and then extended with the OS trust store, the configured PEM, and the
+ * `NODE_EXTRA_CA_CERTS` bundle. Setting `ca` *replaces* Node's defaults, so if we
+ * set it to only the extra certs, public-root TLS would break — hence the merge.
+ * When we have nothing to add (system store unreadable, no `caCert`, no
+ * `NODE_EXTRA_CA_CERTS`), return `undefined` so the caller omits `ca` and Node
+ * keeps its defaults.
  *
  * Deduped because the OS store commonly re-lists the public roots already in
  * `tls.rootCertificates`; a `Set` keeps the handed-off list minimal.
  */
 function buildCaBundle(
     systemCerts: string[] | undefined,
-    configuredCaCert: string | undefined
+    configuredCaCert: string | undefined,
+    nodeExtraCaCerts: string | undefined
 ): string[] | undefined {
     // @vscode/proxy-agent swallows a failed OS-store read and returns `[]`, so
     // treat empty the same as unreadable: nothing to add on top of Node's
     // bundled roots.
-    if (!systemCerts?.length && !configuredCaCert) {
+    if (!systemCerts?.length && !configuredCaCert && !nodeExtraCaCerts) {
         return undefined;
     }
     return [
@@ -230,8 +259,52 @@ function buildCaBundle(
             ...tls.rootCertificates,
             ...(systemCerts ?? []),
             ...(configuredCaCert ? [configuredCaCert] : []),
+            ...(nodeExtraCaCerts ? [nodeExtraCaCerts] : []),
         ]),
     ];
+}
+
+// The per-request options `agent-base` hands to `connect`. Derived from the
+// agent's own `connect` signature so we don't take a direct dependency on
+// `agent-base` (it resolves only transitively via the proxy agents).
+type ProxyConnectOpts = Parameters<HttpsProxyAgent<string>["connect"]>[1];
+
+/**
+ * `HttpsProxyAgent`, but with the CA bundle / strict-SSL setting applied to the
+ * *endpoint* TLS handshake, not just the connection to the proxy.
+ *
+ * `https-proxy-agent`'s constructor options only govern the TLS socket to the
+ * proxy (`this.connectOpts`). The final handshake to the Databricks host is
+ * `tls.connect({...opts, socket})`, where `opts` is the SDK's per-request object
+ * — which carries no `ca`. So a merged `ca` passed to the constructor never
+ * reaches the endpoint, and an internal CA is silently ignored whenever a proxy
+ * is set. We fold the trust material into `opts` here (which *does* flow to the
+ * endpoint `tls.connect`) before delegating to the base implementation.
+ */
+class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
+    constructor(
+        proxy: string,
+        opts: https.AgentOptions,
+        private readonly endpointCa: string[] | undefined,
+        private readonly endpointRejectUnauthorized: boolean
+    ) {
+        super(proxy, opts);
+    }
+
+    override async connect(
+        req: Parameters<HttpsProxyAgent<string>["connect"]>[0],
+        opts: ProxyConnectOpts
+    ) {
+        // Only for the endpoint TLS handshake (`secureEndpoint`); the proxy
+        // socket already trusts the same bundle via the constructor options.
+        if (opts.secureEndpoint) {
+            opts.rejectUnauthorized = this.endpointRejectUnauthorized;
+            if (this.endpointCa) {
+                opts.ca = this.endpointCa;
+            }
+        }
+        return super.connect(req, opts);
+    }
 }
 
 /**
@@ -248,13 +321,16 @@ export async function getDatabricksHttpAgent(
     const params = getProxyAgentParams(host);
     const isHttps = host.protocol === "https:";
 
-    // Independent reads (OS trust store vs the configured PEM) — run them
-    // together rather than serially.
-    const [systemCerts, configuredCaCert] = await Promise.all([
-        getSystemCertificates(params),
-        loadConfiguredCaCert(),
-    ]);
-    const ca = buildCaBundle(systemCerts, configuredCaCert);
+    // Independent reads (OS trust store, the configured PEM, the
+    // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
+    const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
+        [
+            getSystemCertificates(params),
+            loadConfiguredCaCert(),
+            loadNodeExtraCaCerts(),
+        ]
+    );
+    const ca = buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts);
     const rejectUnauthorized = strictSSL();
 
     const resolver = createProxyResolver(params);
@@ -275,8 +351,17 @@ export async function getDatabricksHttpAgent(
     };
 
     if (proxyUrl) {
+        // For an https endpoint the CA/strict-SSL must also land on the endpoint
+        // handshake, not just the proxy socket — the base agent only applies the
+        // constructor options to the proxy connection. An http endpoint through a
+        // proxy never does an endpoint TLS handshake, so the plain agent is fine.
         return isHttps
-            ? new HttpsProxyAgent(proxyUrl, agentOptions)
+            ? new CaAwareHttpsProxyAgent(
+                  proxyUrl,
+                  agentOptions,
+                  ca,
+                  rejectUnauthorized
+              )
             : new HttpProxyAgent(proxyUrl, agentOptions);
     }
 
