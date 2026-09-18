@@ -63,4 +63,5 @@ if [ $ARCH != "win32-arm64" ]; then
 fi
 
 yarn run prettier package.json --write
+
 TAG="release-v$(cat package.json | jq -r .version)" yarn run package -t $VSXI_ARCH
