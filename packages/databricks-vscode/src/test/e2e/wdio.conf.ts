@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-console */
-import type {Options} from "@wdio/types";
-
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import video from "wdio-video-reporter";
 import path from "node:path";
@@ -11,29 +9,98 @@ import fs from "fs/promises";
 import {Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
 import {execFile as execFileCb} from "node:child_process";
-import {cpSync, mkdirSync, rmSync} from "node:fs";
+import {
+    cpSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+} from "node:fs";
 import {tmpdir} from "node:os";
-import packageJson from "../../../package.json" assert {type: "json"};
+import packageJson from "../../../package.json" with {type: "json"};
 import {sleep} from "wdio-vscode-service";
-import {glob} from "glob";
+import {glob, globSync} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
 import {promisify} from "node:util";
+import {
+    specFileRetriesForPlatform,
+    specFileRetriesDelayForPlatform,
+    shouldPreserveFailedAttemptLogs,
+    failedAttemptLogRenames,
+    formatRecoveredSpecsReport,
+} from "../retry.ts";
+import {SpecRetryTracker} from "../SpecRetryTracker.ts";
+import {prepareSshEditor} from "./utils/sshE2eUtils.ts";
 
-const WORKSPACE_PATH = path.resolve(tmpdir(), "test-root");
+// WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
+// NODE_OPTIONS for every worker process. wdio-vscode-service installs the
+// Databricks extension by spawning the VS Code (Electron) `code` CLI, which
+// inherits that NODE_OPTIONS — and Electron hard-rejects `--import` in
+// NODE_OPTIONS ("Code.exe: --import is not allowed in NODE_OPTIONS"). The
+// extension install then fails and every spec dies with `Can't find view
+// control "CONFIGURATION"`. By the time this config module loads, tsx has
+// already registered its loader in-process, so we can strip `--import` from
+// the environment that child processes inherit without breaking transpilation.
+// Only do this in workers (WDIO_WORKER_ID is set): the launcher must keep
+// `--import` in NODE_OPTIONS so the workers it spawns still get tsx.
+if (
+    process.env.WDIO_WORKER_ID &&
+    process.env.NODE_OPTIONS?.includes("--import")
+) {
+    process.env.NODE_OPTIONS = process.env.NODE_OPTIONS.replace(
+        /\s*--import(?:=|\s+)\S+/g,
+        ""
+    ).trim();
+}
+
+const TEST_ROOT = process.env.TEST_E2E_ROOT || tmpdir();
+const TEST_LOGS = process.env.TEST_E2E_ROOT
+    ? path.join(TEST_ROOT, "logs")
+    : "logs";
+const WORKSPACE_PATH = path.resolve(TEST_ROOT, "test-root");
+
+// wdio's `outputDir`; also where onWorkerEnd parks a crashed attempt's logs.
+const LOGS_DIR = TEST_LOGS;
+
+// Records spec outcomes across specFileRetries (see specFileRetriesForPlatform)
+// so a spec that passes only on a retry is surfaced in onComplete rather than
+// going silently green. Lives in the launcher process, which is where the
+// onWorkerEnd/onComplete hooks run.
+const specRetryTracker = new SpecRetryTracker();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const {version, name, engines} = packageJson;
 
-const EXTENSIONS_DIR = path.resolve(tmpdir(), "extension test", "extension");
+const EXTENSIONS_DIR = path.resolve(TEST_ROOT, "extension test", "extension");
+const PACKAGE_ROOT = path.resolve(__dirname, "..", "..", "..");
 const VSIX_PATH = path.resolve(
-    __dirname,
-    "..",
-    "..",
-    "..",
-    `${name}-${version}.vsix`
+    PACKAGE_ROOT,
+    readFileSync(
+        path.resolve(PACKAGE_ROOT, ".build", "test-vsix-path"),
+        "utf-8"
+    ).trim()
 );
-const VSCODE_STORAGE_DIR = path.resolve(tmpdir(), "user-data-dir");
+const VSCODE_STORAGE_DIR = path.resolve(TEST_ROOT, "user-data-dir");
+const VSCODE_CACHE_DIR = path.join(process.cwd(), "tmp", "wdio-vscode-service");
+mkdirSync(VSCODE_CACHE_DIR, {recursive: true});
+
+// The SSH spec needs a workspace that offers Serverless SSH compute, a tunnel
+// port that workspace permits, and a Remote SSH install, so it is opt-in. That
+// keeps apart two cases a skip inside the spec conflated: without the flag it is
+// excluded outright, instead of being swept in by the default glob and failing
+// at `findQuickPick("Serverless")`; with it nothing skips, so a missing Remote
+// SSH fails the run instead of going green with no SSH coverage at all.
+const SSH_SPEC_FILE = "ssh_connection.ucws.e2e.ts";
+const SSH_SPEC = path.join(__dirname, SSH_SPEC_FILE);
+const SSH_E2E_ENABLED = process.env.TEST_SSH_E2E === "true";
+
+/**
+ * Identify the SSH spec by file name, so the capability router and beforeSession
+ * cannot disagree about which spec it is where absolute paths differ — a
+ * symlinked temp root, a case-insensitive filesystem.
+ */
+const isSshSpec = (spec: string) => path.basename(spec) === SSH_SPEC_FILE;
 
 const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
 
@@ -91,7 +158,7 @@ const execFile = async (
     return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
 };
 
-export const config: Options.Testrunner = {
+export const config: WebdriverIO.Config = {
     //
     // ====================
     // Runner Configuration
@@ -99,26 +166,14 @@ export const config: Options.Testrunner = {
     //
     //
     // =====================
-    // ts-node Configurations
+    // TypeScript Configuration
     // =====================
     //
-    // You can write tests using TypeScript to get autocompletion and type safety.
-    // You will need typescript and ts-node installed as devDependencies.
-    // WebdriverIO will automatically detect if these dependencies are installed
-    // and will compile your config and tests for you.
-    // If you need to configure how ts-node runs please use the
-    // environment variables for ts-node or use wdio config's autoCompileOpts section.
+    // WebdriverIO v9 transpiles TypeScript config and spec files via `tsx`
+    // (bundled with @wdio/cli). The tsconfig to use is passed on the CLI with
+    // `--tsConfigPath src/test/e2e/tsconfig.json` (see the `test:integ:extension`
+    // npm script), which replaces the v8 `autoCompileOpts`/ts-node mechanism.
     //
-
-    autoCompileOpts: {
-        autoCompile: true,
-        // see https://github.com/TypeStrong/ts-node#cli-and-programmatic-options
-        // for all available options
-        tsNodeOpts: {
-            transpileOnly: true,
-            project: path.join(__dirname, "tsconfig.json"),
-        },
-    },
 
     //
     // ==================
@@ -138,9 +193,9 @@ export const config: Options.Testrunner = {
     //
     specs: [path.join(__dirname, "**", "*.e2e.ts")],
     // Patterns to exclude.
-    exclude: [
-        // 'path/to/excluded/files'
-    ],
+    // Keep the opt-in SSH spec out of any run that did not ask for it, however
+    // it got selected: the glob above, a directory glob, or `--spec`.
+    exclude: SSH_E2E_ENABLED ? [] : [SSH_SPEC],
 
     //
     // ============
@@ -166,33 +221,58 @@ export const config: Options.Testrunner = {
     // https://saucelabs.com/platform/platform-configurator
     //
     get capabilities() {
-        return [
-            {
-                "browserName": "vscode",
-                "browserVersion": engines.vscode.replace(/\^/, ""),
-                "wdio:vscodeOptions": {
-                    extensionPath: path.resolve(
-                        __dirname,
-                        "resources",
-                        "dummy-test"
-                    ),
-                    storagePath: VSCODE_STORAGE_DIR,
-                    vscodeArgs: {
-                        extensionsDir: EXTENSIONS_DIR,
-                        disableExtensions: false,
-                    },
-                    workspacePath: WORKSPACE_PATH,
-                    userSettings: {
-                        "editor.fontSize": 14,
-                        "files.simpleDialog.enable": true,
-                        "workbench.editor.enablePreview": true,
-                        "window.newWindowDimensions": "default",
-                        "window.openFoldersInNewWindow": "off",
-                        "extensions.autoCheckUpdates": false,
-                        "extensions.autoUpdate": false,
-                    },
+        const otherSpecs = globSync("**/*.e2e.ts", {
+            cwd: __dirname,
+            absolute: true,
+        })
+            .map((spec) => path.resolve(spec))
+            .filter((spec) => !isSshSpec(spec));
+        const capability = (version: string, exclude: string[]) => ({
+            "browserName": "vscode",
+            "browserVersion": version,
+            "wdio:exclude": exclude,
+            "wdio:vscodeOptions": {
+                binary: process.env.VSCODE_TEST_BINARY,
+                extensionPath: path.resolve(
+                    __dirname,
+                    "resources",
+                    "dummy-test"
+                ),
+                storagePath: VSCODE_STORAGE_DIR,
+                vscodeArgs: {
+                    extensionsDir: EXTENSIONS_DIR,
+                    disableExtensions: false,
+                },
+                workspacePath: WORKSPACE_PATH,
+                userSettings: {
+                    "editor.fontSize": 14,
+                    "files.simpleDialog.enable": true,
+                    "workbench.editor.enablePreview": true,
+                    "window.newWindowDimensions": "default",
+                    "window.openFoldersInNewWindow": "off",
+                    "extensions.autoCheckUpdates": false,
+                    "extensions.autoUpdate": false,
+                    // ms-python.python is a hard extensionDependency, so its
+                    // language server always loads. In the headless CI display
+                    // the Jedi server repeatedly fails to connect and crashes,
+                    // and its "Python Jedi server crashed" toasts overlay UI
+                    // targets (e.g. the Output-channel <select title="Tasks">),
+                    // intercepting clicks. We don't need language features in
+                    // e2e, so disable the server (and experiments) at the source.
+                    "python.languageServer": "None",
+                    "python.experiments.enabled": false,
                 },
             },
+        });
+        // Existing specs keep their original editor; only SSH needs a newer Remote SSH host.
+        return [
+            capability(
+                process.env.VSCODE_TEST_BINARY
+                    ? process.env.VSCODE_TEST_VERSION || "stable"
+                    : packageJson.engines.vscode.replace("^", ""),
+                [SSH_SPEC]
+            ),
+            capability(process.env.VSCODE_TEST_VERSION || "stable", otherSpecs),
         ];
     },
 
@@ -205,7 +285,7 @@ export const config: Options.Testrunner = {
     // Level of logging verbosity: trace | debug | info | warn | error | silent
     logLevel: "debug",
 
-    outputDir: "logs",
+    outputDir: LOGS_DIR,
 
     //
     // Set specific log levels per logger
@@ -246,15 +326,10 @@ export const config: Options.Testrunner = {
     // Services take over a specific job you don't want to take care of. They enhance
     // your test setup with almost no effort. Unlike plugins, they don't add new
     // commands. Instead, they hook themselves up into the test process.
-    services: [
-        [
-            "vscode",
-            {cachePath: path.join(process.cwd(), "tmp", "wdio-vscode-service")},
-        ],
-    ],
+    services: [["vscode", {cachePath: VSCODE_CACHE_DIR}]],
 
     // cahePath above is for vscode binaries, this one is for the chromedriver
-    cacheDir: path.join(process.cwd(), "tmp", "wdio-vscode-service"),
+    cacheDir: VSCODE_CACHE_DIR,
 
     // Framework you want to run your specs with.
     // The following are supported: Mocha, Jasmine, and Cucumber
@@ -264,11 +339,14 @@ export const config: Options.Testrunner = {
     // before running any tests.
     framework: "mocha",
     //
-    // The number of times to retry the entire specfile when it fails as a whole
-    specFileRetries: 0,
+    // The number of times to retry the entire specfile when it fails as a whole.
+    // Windows-only (see specFileRetriesForPlatform): recovers the WS-1006
+    // whole-session window crashes that no in-test wait can, by re-running the
+    // spec in a fresh VS Code session.
+    specFileRetries: specFileRetriesForPlatform(process.platform),
     //
     // Delay in seconds between the spec file retry attempts
-    specFileRetriesDelay: 0,
+    specFileRetriesDelay: specFileRetriesDelayForPlatform(process.platform),
     //
     // Whether or not retried specfiles should be retried immediately or deferred to the end of the queue
     specFileRetriesDeferred: true,
@@ -307,7 +385,41 @@ export const config: Options.Testrunner = {
      * @param {Object} config wdio configuration object
      * @param {Array.<Object>} capabilities list of capabilities details
      */
-    onPrepare: async function () {
+    onPrepare: async function (runnerConfig, capabilities) {
+        const selectedSpecs = (runnerConfig.specs ?? [])
+            .flat()
+            .flatMap((spec) =>
+                spec.startsWith("file:")
+                    ? [fileURLToPath(spec)]
+                    : globSync(spec, {absolute: true}).map((file) =>
+                          path.resolve(file)
+                      )
+            );
+        // `exclude` dropped it, so a run that asked for nothing else has no
+        // specs left. Name the missing flag rather than report an empty run.
+        if (
+            !SSH_E2E_ENABLED &&
+            selectedSpecs.length > 0 &&
+            selectedSpecs.every(isSshSpec)
+        ) {
+            console.error(
+                `${SSH_SPEC_FILE} runs only with TEST_SSH_E2E=true, against a workspace that offers Serverless SSH compute and with Remote SSH installable (see CONTRIBUTING.md).`
+            );
+            process.exit(1);
+        }
+        const sshOnly =
+            SSH_E2E_ENABLED &&
+            selectedSpecs.length > 0 &&
+            selectedSpecs.every(isSshSpec);
+        const includesSsh = SSH_E2E_ENABLED && selectedSpecs.some(isSshSpec);
+        if (Array.isArray(capabilities)) {
+            // Avoid downloading an unused editor for single-spec CI jobs.
+            if (sshOnly) {
+                capabilities.splice(0, 1);
+            } else if (!includesSsh) {
+                capabilities.splice(1, 1);
+            }
+        }
         try {
             console.log("Extensions dir:", EXTENSIONS_DIR);
             mkdirSync(EXTENSIONS_DIR, {recursive: true});
@@ -327,17 +439,26 @@ export const config: Options.Testrunner = {
                 "Config must have a token or a clientId with clientSecret"
             );
 
-            assert(
-                process.env["TEST_DEFAULT_CLUSTER_ID"],
-                "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
-            );
+            if (!sshOnly) {
+                assert(
+                    process.env.TEST_DEFAULT_CLUSTER_ID,
+                    "Environment variable TEST_DEFAULT_CLUSTER_ID must be set"
+                );
+            }
 
             await fs.rm(WORKSPACE_PATH, {recursive: true, force: true});
             console.log(`Creating vscode workspace folder: ${WORKSPACE_PATH}`);
             await fs.mkdir(WORKSPACE_PATH, {recursive: true});
 
-            const client = getWorkspaceClient(config);
-            await startCluster(client, process.env["TEST_DEFAULT_CLUSTER_ID"]);
+            if (!sshOnly) {
+                const client = getWorkspaceClient(config);
+                // Keep SDK imports out of worker config loading.
+                const {startCluster} = await import("../startCluster.ts");
+                await startCluster(
+                    client.apiClient,
+                    process.env.TEST_DEFAULT_CLUSTER_ID!
+                );
+            }
 
             process.env.DATABRICKS_HOST = config.host!;
             process.env.DATABRICKS_VSCODE_INTEGRATION_TEST = "true";
@@ -383,8 +504,32 @@ export const config: Options.Testrunner = {
      * @param  {[type]} specs    specs to be run in the worker process
      * @param  {Number} retries  number of retries used
      */
-    // onWorkerEnd: function (cid, exitCode, specs, retries) {
-    // },
+    onWorkerEnd: function (cid, exitCode, specs, retries) {
+        // `exitCode` is per worker, not per spec; attributing it to each entry
+        // is correct only because the flat `specs` glob runs exactly one spec
+        // file per worker. If specs are ever grouped, gate this on
+        // `specs.length === 1` to avoid mis-flagging a passing sibling.
+        for (const spec of specs) {
+            specRetryTracker.record(spec, exitCode === 0);
+        }
+        // A retry reuses this cid, so wdio reopens the worker's logs with
+        // flags:"w" and truncates the crash we retried for. Park them first so
+        // the recovered-flake report still has something to point at. The runner
+        // log is named after specs[0] (see failedAttemptLogRenames).
+        if (shouldPreserveFailedAttemptLogs(exitCode, retries) && specs[0]) {
+            for (const {from, to} of failedAttemptLogRenames(
+                LOGS_DIR,
+                cid,
+                specs[0]
+            )) {
+                try {
+                    renameSync(from, to);
+                } catch (error) {
+                    console.error(`Could not preserve ${from}:`, error);
+                }
+            }
+        }
+    },
 
     /**
      * Gets executed just before initialising the webdriver session and test framework. It allows you
@@ -394,7 +539,8 @@ export const config: Options.Testrunner = {
      * @param {Array.<String>} specs List of spec file paths that are to be run
      * @param {String} cid worker id (e.g. 0-0)
      */
-    beforeSession: async function (config, capabilities) {
+    beforeSession: async function (config, capabilities, specs) {
+        const sshTest = specs.some(isSshSpec);
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
         let cli: string = "";
@@ -412,21 +558,130 @@ export const config: Options.Testrunner = {
                 );
                 break;
         }
-        const extensionDependencies = packageJson.extensionDependencies.flatMap(
-            (item) => ["--install-extension", item]
-        );
+        // When EXTENSION_VSIX_DIR is set (CI with vendored VSIX files),
+        // resolve extensions from that directory instead of the marketplace.
+        const vsixDir = process.env.EXTENSION_VSIX_DIR;
+        const resolveExtension = (extId: string) => {
+            if (!vsixDir) {
+                return extId;
+            }
+            const targetPlatform = `${process.platform}-${process.arch}`;
+            const files = readdirSync(vsixDir);
+            const prefix = `${extId}-`;
+            const vsix =
+                files.find(
+                    (f) =>
+                        f.startsWith(prefix) &&
+                        f.endsWith(`-${targetPlatform}.vsix`)
+                ) ??
+                files.find(
+                    (f) => f.startsWith(prefix) && f.endsWith("-universal.vsix")
+                );
+            if (!vsix) {
+                console.log(
+                    `WARNING: no vendored VSIX for ${extId}, falling back to marketplace`
+                );
+                return extId;
+            }
+            console.log(`Using vendored VSIX for ${extId}: ${vsix}`);
+            return path.resolve(vsixDir, vsix);
+        };
+        // wdio only logs a beforeSession rejection, so the CLI's own output is
+        // the only explanation of an install failure that reaches the job log.
+        const install = async (args: string[]) => {
+            try {
+                const res = await execFile(cli, [
+                    "--extensions-dir",
+                    EXTENSIONS_DIR,
+                    ...args,
+                    "--force",
+                ]);
+                console.log(res.stdout, res.stderr);
+            } catch (e) {
+                const {stdout, stderr} = e as {
+                    stdout?: string;
+                    stderr?: string;
+                };
+                console.log(stdout ?? "", stderr ?? "");
+                throw e;
+            }
+        };
 
         console.log("running vscode cli");
-        const res = await execFile(cli, [
-            "--extensions-dir",
-            EXTENSIONS_DIR,
-            ...extensionDependencies,
+        await install([
+            ...packageJson.extensionDependencies.flatMap((extId) => [
+                "--install-extension",
+                resolveExtension(extId),
+            ]),
             "--install-extension",
             VSIX_PATH,
-            "--force",
         ]);
 
-        console.log(res.stdout, res.stderr);
+        if (!sshTest) {
+            return;
+        }
+        // Install Remote SSH on its own: batching it with the extensions above
+        // would let one failure take out every install, including the VSIX under
+        // test. CI has no marketplace and resolves it from EXTENSION_VSIX_DIR.
+        // Fatal on purpose — turning a missing dependency into a skip would let
+        // the job report success without exercising the tunnel at all.
+        await install([
+            "--install-extension",
+            resolveExtension("ms-vscode-remote.remote-ssh"),
+            // The pack's other members are optional for the tunnel.
+            "--do-not-include-pack-dependencies",
+        ]);
+
+        const sshConfig = await prepareSshEditor(
+            cli,
+            EXTENSIONS_DIR,
+            VSCODE_STORAGE_DIR,
+            path.join(__dirname, "resources")
+        );
+        const sshSettings = {
+            "remote.SSH.configFile": sshConfig,
+            "security.workspace.trust.enabled": false,
+            "terminal.integrated.shellIntegration.enabled": false,
+            "terminal.integrated.profiles.osx": {
+                "SSH test": {path: "/bin/sh", args: []},
+            },
+            "terminal.integrated.defaultProfile.osx": "SSH test",
+            "terminal.integrated.profiles.linux": {
+                "SSH test": {path: "/bin/sh", args: []},
+            },
+            "terminal.integrated.defaultProfile.linux": "SSH test",
+            "terminal.integrated.env.linux": {PATH: process.env.PATH},
+            "terminal.integrated.env.osx": {PATH: process.env.PATH},
+            "terminal.integrated.env.windows": {PATH: process.env.PATH},
+        };
+        // wdio-vscode-service writes this same file from its own hooks, so put
+        // the settings in both places rather than depend on which runs first:
+        // the capability covers a service write after this hook, the file covers
+        // one that already happened.
+        const vscodeOptions = capabilities["wdio:vscodeOptions"];
+        vscodeOptions.userSettings = {
+            ...vscodeOptions.userSettings,
+            ...sshSettings,
+        };
+        const settingsFile = path.join(
+            VSCODE_STORAGE_DIR,
+            "settings",
+            "User",
+            "settings.json"
+        );
+        const settings = await fs
+            .readFile(settingsFile, "utf8")
+            .then((raw) => JSON.parse(raw) as Record<string, unknown>)
+            .catch((error) => {
+                // Not yet written, or unreadable. The capability copy above is
+                // what makes the settings arrive in that case.
+                console.log(`Could not read ${settingsFile}: ${error}`);
+                return {};
+            });
+        await fs.writeFile(
+            settingsFile,
+            JSON.stringify({...settings, ...sshSettings})
+        );
     },
 
     /**
@@ -570,7 +825,7 @@ export const config: Options.Testrunner = {
                 cpSync(
                     file,
                     path.join(
-                        "logs",
+                        TEST_LOGS,
                         `vscode-logs-${specs
                             .map((spec) => spec.split(path.sep).at(-1))
                             .join("-")}`,
@@ -595,8 +850,15 @@ export const config: Options.Testrunner = {
      * @param {Array.<Object>} capabilities list of capabilities details
      * @param {<Object>} results object containing test results
      */
-    // onComplete: function (exitCode, config, capabilities, results) {
-    // },
+    onComplete: function () {
+        const lines = formatRecoveredSpecsReport(
+            specRetryTracker.recoveredSpecs,
+            Boolean(process.env.GITHUB_ACTIONS)
+        );
+        if (lines.length > 0) {
+            console.log("\n" + lines.join("\n") + "\n");
+        }
+    },
 
     /**
      * Gets executed when a refresh happens.
@@ -629,48 +891,4 @@ function getWorkspaceClient(config: Config) {
     });
 
     return client;
-}
-
-async function startCluster(
-    workspaceClient: WorkspaceClient,
-    clusterId: string,
-    attempt = 0
-) {
-    console.log(`Cluster ID: ${clusterId}`);
-    if (attempt > 100) {
-        throw new Error("Failed to start the cluster: too many attempts");
-    }
-    const cluster = await workspaceClient.clusters.get({
-        cluster_id: clusterId,
-    });
-    console.log(`Cluster State: ${cluster.state}`);
-    switch (cluster.state) {
-        case "RUNNING":
-            console.log("Cluster is already running");
-            break;
-        case "TERMINATED":
-        case "ERROR":
-        case "UNKNOWN":
-            console.log("Starting the cluster...");
-            await (
-                await workspaceClient.clusters.start({
-                    cluster_id: clusterId,
-                })
-            ).wait({
-                onProgress: async (state) => {
-                    console.log(`Cluster state: ${state.state}`);
-                },
-            });
-            break;
-        case "PENDING":
-        case "RESIZING":
-        case "TERMINATING":
-        case "RESTARTING":
-            console.log("Waiting and retrying...");
-            await sleep(10000);
-            await startCluster(workspaceClient, clusterId, attempt + 1);
-            break;
-        default:
-            throw new Error(`Unknown cluster state: ${cluster.state}`);
-    }
 }

@@ -26,13 +26,16 @@ describe(__filename, function () {
     let mockedClient: ApiClient;
     let mockedCluster: Cluster;
     let testClusterDetails: compute.ClusterDetails;
-    let fakeTimer: FakeTimers.InstalledClock;
+    let fakeTimer: FakeTimers.Clock;
 
     beforeEach(async () => {
         ({mockedCluster, mockedClient, testClusterDetails} =
             await getMockTestCluster());
 
-        fakeTimer = FakeTimers.install();
+        // fake-timers v13+ fakes all timers by default and warns when a native
+        // timer is cleared through the faked clock; opt into auto-cleanup so the
+        // clock silently tolerates native timers created outside the test.
+        fakeTimer = FakeTimers.install({shouldClearNativeTimers: true});
     });
 
     afterEach(() => {

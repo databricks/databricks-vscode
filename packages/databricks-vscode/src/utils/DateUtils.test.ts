@@ -9,7 +9,7 @@ describe("DateUtils", () => {
             // Fallback to a different locale check so we can run these tests on different machines
             try {
                 expect(result).to.equal("5 Oct, 2023 14:48:00");
-            } catch (e) {
+            } catch {
                 expect(result).to.equal("5 Oct, 2023 2:48:00 PM");
             }
         });
@@ -29,7 +29,7 @@ describe("DateUtils", () => {
             const result = toTimeString(date);
             try {
                 expect(result).to.equal("14:48:00");
-            } catch (e) {
+            } catch {
                 expect(result).to.equal("2:48:00 PM");
             }
         });

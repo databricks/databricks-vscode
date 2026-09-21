@@ -42,7 +42,7 @@ export async function activate(context: vscode.ExtensionContext) {
 ### Adding a view to the Databricks activity bar
 
 ```js
-    "contributes" {
+    "contributes": {
         // ...
 		"views": {
 			"databricksBar": [

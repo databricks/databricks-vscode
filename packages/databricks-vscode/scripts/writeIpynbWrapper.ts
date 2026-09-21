@@ -24,7 +24,7 @@ const nbCell: INbCell = {
 };
 
 async function main() {
-    const args = await yargs
+    const args = await yargs(process.argv.slice(2))
         .option("srcFile", {
             alias: "s",
             description: "The source code to be wrapped into a notebook cell",

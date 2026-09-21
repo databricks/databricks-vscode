@@ -69,7 +69,7 @@ export class DocsViewTreeDataProvider
                 type: "configuration_guide",
             },
             {
-                label: "Work with Databricks Asset Bundles",
+                label: "Work with Declarative Automation Bundles",
                 path: "dev-tools/vscode-ext/bundles",
                 type: "bundles_guide",
             },

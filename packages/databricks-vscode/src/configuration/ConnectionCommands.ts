@@ -1,4 +1,5 @@
 import {Cluster} from "../sdk-extensions";
+import {compute, logging} from "@databricks/sdk-experimental";
 import {
     Disposable,
     QuickPickItem,
@@ -23,6 +24,22 @@ import {
 } from "../ui/configuration-view/AuthTypeComponent";
 import {ManualLoginSource} from "../telemetry/constants";
 import {onError} from "../utils/onErrorDecorator";
+import {resolveServerlessVersion} from "../python-setup/utils/serverlessVersionResolver";
+import {pickServerlessVersion} from "../python-setup/utils/serverlessVersionPicker";
+import {collectServerlessVersionObservations} from "../python-setup/utils/serverlessVersionObservations";
+import type {SetupCompute} from "../python-setup/controllers/PythonSetupEnvironmentSetup";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {Loggers} from "../logger";
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const {NamedLogger} = logging;
+
+/**
+ * A compute target picked in the QuickPick. Aliased to the `setup-local` compute
+ * shape so a drift is a compile error, not a silent mismatch through
+ * `executeCommand`'s untyped generic. Serverless is always version-complete.
+ */
+export type SelectedCompute = SetupCompute;
 
 function formatQuickPickClusterSize(sizeInMB: number): string {
     if (sizeInMB > 1024) {
@@ -31,6 +48,20 @@ function formatQuickPickClusterSize(sizeInMB: number): string {
         return `${sizeInMB} MB`;
     }
 }
+// Formats a compute state for display in the picker. RUNNING/TERMINATED map to
+// the softer "Active"/"Inactive" (matching the Workspace UI); other states are
+// title-cased ("PENDING" -> "Pending") so they read less harshly.
+export function formatClusterState(state: compute.State): string {
+    switch (state) {
+        case "RUNNING":
+            return "Active";
+        case "TERMINATED":
+            return "Inactive";
+        default:
+            return state.charAt(0) + state.slice(1).toLowerCase();
+    }
+}
+
 export function formatQuickPickClusterDetails(cluster: Cluster) {
     const details = [];
     if (cluster.memoryMb) {
@@ -63,7 +94,16 @@ export class ConnectionCommands implements Disposable {
         private connectionManager: ConnectionManager,
         private readonly clusterModel: ClusterModel,
         private readonly configModel: ConfigModel,
-        private readonly cli: CliWrapper
+        private readonly cli: CliWrapper,
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        /**
+         * Whether the uv-native Python setup is the active surface for the
+         * current project (i.e. the project is uv-suitable). Only then does
+         * enabling serverless prompt for an environment version to record for
+         * that setup; a project driven by a competing manager keeps the plain,
+         * version-less serverless enable.
+         */
+        private readonly isUvSetupVisible: () => Promise<boolean>
     ) {}
 
     /**
@@ -120,8 +160,14 @@ export class ConnectionCommands implements Disposable {
         };
     }
 
+    /**
+     * Resolves once the picker closes to the attached compute, or `undefined` on
+     * dismissal / "Create New Cluster". The return lets python-setup use the
+     * selection directly rather than re-reading the connection manager (whose
+     * cluster attach is async and would race). Other callers ignore it.
+     */
     attachClusterQuickPickCommand() {
-        return async (title?: string) => {
+        return async (title?: string): Promise<SelectedCompute | undefined> => {
             const workspaceClient = this.connectionManager.workspaceClient;
             const me = this.connectionManager.databricksWorkspace?.userName;
             if (!workspaceClient || !me) {
@@ -133,7 +179,7 @@ export class ConnectionCommands implements Disposable {
                 ClusterItem | QuickPickItem
             >();
             quickPick.title =
-                typeof title === "string" ? title : "Select Cluster";
+                typeof title === "string" ? title : "Select Compute";
             quickPick.keepScrollPosition = true;
             quickPick.busy = true;
             quickPick.canSelectMany = false;
@@ -181,31 +227,130 @@ export class ConnectionCommands implements Disposable {
             refreshQuickPickItems();
             quickPick.show();
 
-            quickPick.onDidAccept(async () => {
-                const selectedItem = quickPick.selectedItems[0];
-                if ("cluster" in selectedItem) {
-                    const cluster = selectedItem.cluster;
-                    await this.connectionManager.attachCluster(cluster.id);
-                } else if (selectedItem.label === "$(cloud) Serverless") {
-                    await this.connectionManager.enableServerless();
-                } else {
-                    await UrlUtils.openExternal(
-                        `${
-                            (
-                                await this.connectionManager.workspaceClient
-                                    ?.apiClient?.host
-                            )?.href ?? ""
-                        }#create/cluster`
-                    );
-                }
-                disposables.forEach((d) => d.dispose());
-            });
+            // `settled` guards a repeated Enter and stops the hide handler
+            // (which also fires when accept disposes the picker) from resolving
+            // before the accept branch's awaits finish.
+            return await new Promise<SelectedCompute | undefined>((resolve) => {
+                let settled = false;
+                quickPick.onDidAccept(async () => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    let selected: SelectedCompute | undefined;
+                    try {
+                        const selectedItem = quickPick.selectedItems[0];
+                        if (selectedItem === undefined) {
+                            // Accepted with nothing highlighted.
+                        } else if ("cluster" in selectedItem) {
+                            const cluster = selectedItem.cluster;
+                            // Best-effort: attachCluster is @onError(throw:false),
+                            // so a failed write pops its own error but doesn't
+                            // throw. We still return the chosen target -- it's all
+                            // setup-local needs and any failure is already shown.
+                            await this.connectionManager.attachCluster(
+                                cluster.id
+                            );
+                            selected = {kind: "cluster", clusterId: cluster.id};
+                        } else if (
+                            selectedItem.label === "$(cloud) Serverless"
+                        ) {
+                            // Dispose the compute QuickPick before opening the
+                            // version sub-picker so they don't stack visually.
+                            disposables.forEach((d) => d.dispose());
+                            const version = await this.selectServerless();
+                            if (version !== undefined) {
+                                selected = {kind: "serverless", version};
+                            }
+                        } else {
+                            await UrlUtils.openExternal(
+                                `${
+                                    (
+                                        await this.connectionManager
+                                            .workspaceClient?.apiClient?.host
+                                    )?.href ?? ""
+                                }#create/cluster`
+                            );
+                        }
+                    } catch (e) {
+                        // Defense-in-depth for an unexpected throw (attach/enable
+                        // are @onError and don't throw): keep it off the unhandled
+                        // path and still settle. `selected` stays undefined.
+                        NamedLogger.getOrCreate(Loggers.Extension).error(
+                            "Compute picker selection failed",
+                            e
+                        );
+                    } finally {
+                        disposables.forEach((d) => d.dispose());
+                        resolve(selected);
+                    }
+                });
 
-            quickPick.onDidHide(() => {
-                disposables.forEach((d) => d.dispose());
-                quickPick.dispose();
+                quickPick.onDidHide(() => {
+                    disposables.forEach((d) => d.dispose());
+                    quickPick.dispose();
+                    if (!settled) {
+                        settled = true;
+                        resolve(undefined);
+                    }
+                });
             });
         };
+    }
+
+    /**
+     * Enable serverless compute. When the uv-native python-setup is the active
+     * surface for this project, first ask the user to confirm the serverless
+     * environment version (ranked from the project's bundle) and persist it with
+     * the selection, so setup need not re-prompt. If they dismiss the version
+     * picker, no compute change is made. For a project the uv setup does not fit
+     * (a competing manager is driving it) this is the plain, unchanged serverless
+     * enable.
+     *
+     * Returns the confirmed version, or `undefined` if the picker was dismissed
+     * or the project is not uv-suitable (serverless enabled but version-less).
+     */
+    private async selectServerless(): Promise<string | undefined> {
+        if (!(await this.isUvSetupVisible())) {
+            await this.connectionManager.enableServerless();
+            return undefined;
+        }
+        const version = await this.pickServerlessVersion();
+        if (version === undefined) {
+            // User dismissed the version picker -- don't switch compute.
+            return undefined;
+        }
+        await this.connectionManager.enableServerless(version);
+        return version;
+    }
+
+    /**
+     * Resolve the serverless environment version: gather the project's version
+     * evidence, score it, and let the user confirm the best-ranked candidate.
+     * Returns the confirmed bare version, or undefined if dismissed. Delegates
+     * to {@link resolveServerlessVersion} so the collect->score->pick pipeline
+     * lives in one place; this call site only supplies where the evidence comes
+     * from and how the user confirms it.
+     */
+    private async pickServerlessVersion(): Promise<string | undefined> {
+        return resolveServerlessVersion({
+            collectObservations: () =>
+                collectServerlessVersionObservations({
+                    getValidateConfig: () =>
+                        this.configModel.get("validateConfig"),
+                    // activeProjectUri throws when no project is active; the
+                    // collector's contract is string | undefined.
+                    projectRoot: () => {
+                        try {
+                            return this.workspaceFolderManager.activeProjectUri
+                                .fsPath;
+                        } catch {
+                            return undefined;
+                        }
+                    },
+                }),
+            pick: pickServerlessVersion,
+        });
     }
 
     /**

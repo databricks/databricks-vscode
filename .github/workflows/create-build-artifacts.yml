@@ -6,23 +6,33 @@ on:
 jobs:
   create-build-artifacts:
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
 
     defaults:
       run:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Obtain JFrog OIDC token
+        run: bash .github/scripts/jfrog-oidc-token.sh
+
+      - name: Configure JFrog npm registry
+        run: bash .github/scripts/configure-npm.sh
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: "yarn"
 
-      - run: yarn install
+      - run: yarn install --immutable
       - run: yarn run build
       - run: yarn run package:all
         working-directory: packages/databricks-vscode
@@ -30,7 +40,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_PLATFORM_ARCH: linux_amd64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: databricks
           path: "packages/databricks-vscode/*.vsix"

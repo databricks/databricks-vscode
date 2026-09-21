@@ -20,10 +20,10 @@ describe(__filename, async function () {
         await tmpdir.cleanup();
     });
 
-    function getWorkspaceFolderManagerMock() {
+    function getWorkspaceFolderManagerMock(projectDir?: string) {
         const mockWorkspaceFolderManager = mock<WorkspaceFolderManager>();
         const mockWorkspaceFolder = mock<WorkspaceFolder>();
-        const uri = Uri.file(tmpdir.path);
+        const uri = Uri.file(projectDir ?? tmpdir.path);
         when(mockWorkspaceFolder.uri).thenReturn(uri);
         when(mockWorkspaceFolderManager.activeWorkspaceFolder).thenReturn(
             instance(mockWorkspaceFolder)
@@ -73,6 +73,115 @@ describe(__filename, async function () {
         expect(await bundleFileSet.getRootFile()).to.be.undefined;
     });
 
+    describe("parent-directory includes", async () => {
+        it("getIncludedFiles should find files referenced via .. paths", async () => {
+            // Structure: tmpdir/shared/config.yml (included), tmpdir/project/sub/ (project root)
+            const sharedDir = path.join(tmpdir.path, "shared");
+            const projectDir = path.join(tmpdir.path, "project", "sub");
+            await fs.mkdir(sharedDir, {recursive: true});
+            await fs.mkdir(projectDir, {recursive: true});
+
+            const sharedFile = path.join(sharedDir, "config.yml");
+            const sharedFile2 = path.join(sharedDir, "config2.yml");
+            await fs.writeFile(sharedFile, "");
+            await fs.writeFile(sharedFile2, "");
+
+            const rootBundleData: BundleSchema = {
+                include: [
+                    "../../shared/config.yml",
+                    "../../shared/config2.yml",
+                ],
+            };
+            await fs.writeFile(
+                path.join(projectDir, "databricks.yml"),
+                yaml.stringify(rootBundleData)
+            );
+
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock(projectDir)
+            );
+
+            const files = await bundleFileSet.getIncludedFiles();
+            expect(files).to.not.be.undefined;
+            expect(files!.map((f) => f.fsPath).sort()).to.deep.equal(
+                [
+                    Uri.file(sharedFile).fsPath,
+                    Uri.file(sharedFile2).fsPath,
+                ].sort()
+            );
+        });
+
+        it("isIncludedBundleFile should return true for files referenced via .. paths", async () => {
+            const sharedDir = path.join(tmpdir.path, "shared");
+            const projectDir = path.join(tmpdir.path, "project", "sub");
+            await fs.mkdir(sharedDir, {recursive: true});
+            await fs.mkdir(projectDir, {recursive: true});
+
+            const sharedFile = path.join(sharedDir, "config.yml");
+            await fs.writeFile(sharedFile, "");
+
+            const rootBundleData: BundleSchema = {
+                include: ["../../shared/config.yml", "local.yml"],
+            };
+            await fs.writeFile(
+                path.join(projectDir, "databricks.yml"),
+                yaml.stringify(rootBundleData)
+            );
+
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock(projectDir)
+            );
+
+            expect(
+                await bundleFileSet.isIncludedBundleFile(Uri.file(sharedFile))
+            ).to.be.true;
+
+            expect(
+                await bundleFileSet.isIncludedBundleFile(
+                    Uri.file(path.join(projectDir, "other.yml"))
+                )
+            ).to.be.false;
+        });
+
+        it("getExternalIncludeWatchTargets should only return bases outside the project root", async () => {
+            const sharedDir = path.join(tmpdir.path, "shared");
+            const projectDir = path.join(tmpdir.path, "project", "sub");
+            await fs.mkdir(sharedDir, {recursive: true});
+            await fs.mkdir(projectDir, {recursive: true});
+
+            const rootBundleData: BundleSchema = {
+                include: [
+                    "../../shared/config.yml",
+                    "../../shared/*.yml",
+                    "local.yml",
+                    "includes/**/*.yml",
+                ],
+            };
+            await fs.writeFile(
+                path.join(projectDir, "databricks.yml"),
+                yaml.stringify(rootBundleData)
+            );
+
+            const bundleFileSet = new BundleFileSet(
+                getWorkspaceFolderManagerMock(projectDir)
+            );
+
+            const targets =
+                await bundleFileSet.getExternalIncludeWatchTargets();
+
+            // Only the two ../../shared patterns escape the project root; the
+            // in-tree patterns (local.yml, includes/**) are covered by the
+            // default recursive watcher and must be excluded.
+            const summary = targets
+                .map((t) => `${t.baseUri.fsPath}|${t.pattern}`)
+                .sort();
+            const sharedBase = Uri.file(sharedDir).fsPath;
+            expect(summary).to.deep.equal(
+                [`${sharedBase}|config.yml`, `${sharedBase}|*.yml`].sort()
+            );
+        });
+    });
+
     describe("file listing", async () => {
         beforeEach(async () => {
             const rootBundleData: BundleSchema = {
@@ -93,30 +202,6 @@ describe(__filename, async function () {
             await fs.writeFile(
                 path.join(tmpdir.path, "includes", "included.yaml"),
                 ""
-            );
-        });
-
-        it("should return correct included files", async () => {
-            const tmpdirUri = Uri.file(tmpdir.path);
-            const bundleFileSet = new BundleFileSet(
-                getWorkspaceFolderManagerMock()
-            );
-
-            expect(await bundleFileSet.getIncludedFilesGlob()).to.equal(
-                `{included.yaml,${path.join("includes", "**", "*.yaml")}}`
-            );
-
-            const actual = (await bundleFileSet.getIncludedFiles())?.map(
-                (v) => v.fsPath
-            );
-            const expected = [
-                Uri.file(path.join(tmpdirUri.fsPath, "included.yaml")),
-                Uri.file(
-                    path.join(tmpdirUri.fsPath, "includes", "included.yaml")
-                ),
-            ].map((v) => v.fsPath);
-            expect(Array.from(new Set(actual).values()).sort()).to.deep.equal(
-                Array.from(new Set(expected).values()).sort()
             );
         });
 

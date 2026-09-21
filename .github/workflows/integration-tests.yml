@@ -11,8 +11,12 @@ jobs:
     name: Check secrets access
 
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
 
     environment: "test-trigger-is"
     outputs:
@@ -29,23 +33,29 @@ jobs:
             echo "has_token=true" >> $GITHUB_OUTPUT
           fi
 
-  trigger-tests:
-    name: Trigger Tests
+  create-check:
+    name: Create Check Run
 
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
 
     needs: check-token
     if: github.event_name == 'pull_request'  && needs.check-token.outputs.has_token == 'true'
     environment: "test-trigger-is"
+    outputs:
+      check_run_id: ${{ steps.create-check.outputs.check_run_id }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Generate GitHub App Token for Check Updates
       id: generate-check-token
-      uses: actions/create-github-app-token@v1
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
       with:
         app-id: ${{ secrets.DECO_TEST_APPROVAL_APP_ID }}
         private-key: ${{ secrets.DECO_TEST_APPROVAL_PRIVATE_KEY }}
@@ -67,9 +77,27 @@ jobs:
         check_run_id=$(echo "$response" | jq -r .id)
         echo "check_run_id=$check_run_id" >> $GITHUB_OUTPUT
 
+  trigger-tests:
+    name: Trigger Tests
+
+    runs-on:
+      group: databricks-release-runner-group-emu-access
+      labels: linux-ubuntu-latest-emu-access
+
+    permissions:
+      id-token: write
+      contents: read
+
+    needs: [check-token, create-check]
+    if: github.event_name == 'pull_request'  && needs.check-token.outputs.has_token == 'true'
+    environment: "test-trigger-is"
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
     - name: Generate GitHub App Token for Workflow Trigger
       id: generate-token
-      uses: actions/create-github-app-token@v1
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
       with:
         app-id: ${{ secrets.DECO_WORKFLOW_TRIGGER_APP_ID }}
         private-key: ${{ secrets.DECO_WORKFLOW_TRIGGER_PRIVATE_KEY }}
@@ -84,7 +112,7 @@ jobs:
         --ref main \
         -f pull_request_number=${{ github.event.pull_request.number }} \
         -f commit_sha=${{ github.event.pull_request.head.sha }} \
-        -f check_run_id=${{ steps.create-check.outputs.check_run_id }}
+        -f check_run_id=${{ needs.create-check.outputs.check_run_id }}
 
   # The hash for the merge queue may not be the same as the hash for the PR.
   # Auto approve the check for the merge queue to avoid running integration tests twice.
@@ -92,16 +120,17 @@ jobs:
     if: github.event_name == 'merge_group'
 
     runs-on:
-      group: databricks-deco-testing-runner-group
-      labels: ubuntu-latest-deco
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
 
     permissions:
+      id-token: write
       checks: write
       contents: read
 
     steps:
       - name: Auto-approve Check for Merge Queue
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             await github.rest.checks.create({

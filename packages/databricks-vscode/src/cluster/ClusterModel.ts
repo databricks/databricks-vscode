@@ -67,6 +67,16 @@ export class ClusterModel implements Disposable {
         );
     }
 
+    /**
+     * All loaded clusters, ignoring the explorer's active filter. Consumers that
+     * need the complete set (e.g. the SSH tunnel picker, which starts stopped
+     * clusters via --auto-start-cluster) must not inherit the explorer's
+     * `ALL`/`ME`/`RUNNING` filter.
+     */
+    public get allRoots(): Cluster[] | undefined {
+        return sortClusters(Array.from(this.clusterLoader.clusters.values()));
+    }
+
     private applyFilter(nodes: Cluster[] | undefined): Cluster[] | undefined {
         if (!nodes) {
             return nodes;

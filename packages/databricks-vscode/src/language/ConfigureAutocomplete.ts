@@ -95,7 +95,7 @@ export class ConfigureAutocomplete implements Disposable {
         try {
             const stats = await stat(builtinsPath);
             builtinsFileExists = stats.isFile();
-        } catch (e) {
+        } catch {
             builtinsFileExists = false;
         }
 

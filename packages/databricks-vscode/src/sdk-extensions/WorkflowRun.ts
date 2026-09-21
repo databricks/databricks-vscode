@@ -99,7 +99,9 @@ export class WorkflowRun {
         const run = await this.submitRun(client, submitRunOptions);
         await run.wait(onProgress, token);
         const output = await run.getOutput();
-        onProgress && onProgress(run.lifeCycleState!, run);
+        if (onProgress) {
+            onProgress(run.lifeCycleState!, run);
+        }
         return output;
     }
 
@@ -156,7 +158,9 @@ export class WorkflowRun {
                 return;
             }
             await this.update();
-            onProgress && onProgress(this.lifeCycleState!, this);
+            if (onProgress) {
+                onProgress(this.lifeCycleState!, this);
+            }
         }
     }
 

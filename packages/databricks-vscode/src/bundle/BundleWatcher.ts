@@ -1,7 +1,14 @@
-import {Disposable, EventEmitter, Uri, workspace} from "vscode";
+import {
+    Disposable,
+    EventEmitter,
+    RelativePattern,
+    Uri,
+    workspace,
+} from "vscode";
 import {BundleFileSet, getAbsoluteGlobPath} from "./BundleFileSet";
 import path from "path";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {Mutex} from "../locking";
 
 export class BundleWatcher implements Disposable {
     private disposables: Disposable[] = [];
@@ -19,15 +26,24 @@ export class BundleWatcher implements Disposable {
     public readonly onDidDelete = this._onDidDelete.event;
 
     private initCleanup: Disposable;
+    // Watchers for include files that resolve outside the active project root.
+    // Tracked separately so they can be rebuilt when the include list changes
+    // without tearing down the main in-tree watcher.
+    private externalWatchersCleanup: Disposable | undefined;
+    // Serializes refreshExternalWatchers() so overlapping invocations (e.g. a
+    // burst of root-file changes) don't leak watchers or create duplicates.
+    private readonly externalWatchersMutex = new Mutex();
     constructor(
         private readonly bundleFileSet: BundleFileSet,
         private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
         this.initCleanup = this.init();
+        void this.refreshExternalWatchers();
         this.disposables.push(
             this.workspaceFolderManager.onDidChangeActiveProjectFolder(() => {
                 this.initCleanup.dispose();
                 this.initCleanup = this.init();
+                void this.refreshExternalWatchers();
                 this.bundleFileSet.bundleDataCache.invalidate();
             })
         );
@@ -61,6 +77,51 @@ export class BundleWatcher implements Disposable {
         };
     }
 
+    /**
+     * (Re)create watchers for include files that live outside the active
+     * project root. The default recursive watcher created in init() only
+     * observes files under the project root, so parent-folder includes
+     * (e.g. "../../shared/databricks-shared.yml") need dedicated watchers
+     * to keep the bundle cache and downstream models in sync.
+     */
+    private async refreshExternalWatchers() {
+        return this.externalWatchersMutex.synchronise(async () => {
+            this.externalWatchersCleanup?.dispose();
+            this.externalWatchersCleanup = undefined;
+
+            const targets =
+                await this.bundleFileSet.getExternalIncludeWatchTargets();
+            if (targets.length === 0) {
+                return;
+            }
+
+            const disposables: Disposable[] = [];
+            for (const {baseUri, pattern} of targets) {
+                const watcher = workspace.createFileSystemWatcher(
+                    new RelativePattern(baseUri, pattern)
+                );
+                disposables.push(
+                    watcher,
+                    watcher.onDidCreate((e) => {
+                        this.yamlFileChangeHandler(e, "CREATE");
+                    }),
+                    watcher.onDidChange((e) => {
+                        this.yamlFileChangeHandler(e, "CHANGE");
+                    }),
+                    watcher.onDidDelete((e) => {
+                        this.yamlFileChangeHandler(e, "DELETE");
+                    })
+                );
+            }
+
+            this.externalWatchersCleanup = {
+                dispose: () => {
+                    disposables.forEach((i) => i.dispose());
+                },
+            };
+        });
+    }
+
     private async yamlFileChangeHandler(
         e: Uri,
         type: "CREATE" | "CHANGE" | "DELETE"
@@ -74,6 +135,9 @@ export class BundleWatcher implements Disposable {
         // to provide additional granularity, we also fire an event when the root bundle file changes
         if (this.bundleFileSet.isRootBundleFile(e)) {
             this._onDidChangeRootFile.fire();
+            // The include list lives in the root file, so its set of external
+            // include locations may have changed. Rebuild those watchers.
+            void this.refreshExternalWatchers();
         }
         switch (type) {
             case "CREATE":
@@ -88,5 +152,6 @@ export class BundleWatcher implements Disposable {
     dispose() {
         this.disposables.forEach((i) => i.dispose());
         this.initCleanup.dispose();
+        this.externalWatchersCleanup?.dispose();
     }
 }

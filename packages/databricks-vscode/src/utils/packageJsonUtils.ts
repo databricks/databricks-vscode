@@ -1,5 +1,12 @@
 import fs from "node:fs/promises";
+import {execFile as execFileCb} from "node:child_process";
+import {promisify} from "node:util";
 import {ExtensionContext, window} from "vscode";
+import {logging} from "@databricks/sdk-experimental";
+import {Loggers} from "../logger";
+import {isDevExtension} from "./developmentUtils";
+
+const execFile = promisify(execFileCb);
 
 type OsType = "windows" | "linux" | "macos";
 type ArchType = "x64" | "arm64" | "x86_32";
@@ -49,6 +56,7 @@ export interface PackageMetaData {
     cliArch?: string;
     vsixArch?: string;
     commitSha?: string;
+    cliVersion?: string;
 }
 
 function getNodeArchDetails(): ArchDetails {
@@ -79,7 +87,49 @@ export async function getMetadata(
         cliArch: jsonData["arch"]?.["cliArch"],
         vsixArch: jsonData["arch"]?.["vsixArch"],
         commitSha: jsonData["commitSha"],
+        cliVersion: jsonData["cli"]?.["version"],
     };
+}
+
+// Returns undefined on unparseable output so callers treat an unreadable version
+// the same as an absent one.
+export function parseCliVersion(stdout: string): string | undefined {
+    try {
+        const version = JSON.parse(stdout)["Version"];
+        return typeof version === "string" ? version : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Reads the version of the CLI binary bundled at `cliPath`, or undefined when it's
+ * missing or unreadable — callers treat that as "unknown" rather than a mismatch.
+ */
+export async function getBundledCliVersion(
+    cliPath: string
+): Promise<string | undefined> {
+    try {
+        const {stdout} = await execFile(cliPath, [
+            "version",
+            "--output",
+            "json",
+        ]);
+        const version = parseCliVersion(stdout);
+        if (version === undefined) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                "Bundled Databricks CLI version output was unparseable",
+                {stdout: stdout.slice(0, 200)}
+            );
+        }
+        return version;
+    } catch (e) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            "Failed to read the bundled Databricks CLI version",
+            e
+        );
+        return undefined;
+    }
 }
 
 export function getCorrectVsixInstallString(
@@ -111,6 +161,38 @@ export function isCompatibleArchitecture(
         return false;
     }
     return true;
+}
+
+/**
+ * Warns when the bundled CLI is not the version `package.json` pins, because a stale
+ * binary otherwise aborts activation opaquely — see "Re-fetch the CLI after pulling"
+ * in AGENTS.md.
+ *
+ * Dev-only. A packaged extension fetches its CLI during the build, so the two
+ * versions can't diverge there.
+ */
+export async function checkBundledCliVersion(
+    cliPath: string,
+    metaData: PackageMetaData
+): Promise<boolean> {
+    if (!isDevExtension() || metaData.cliVersion === undefined) {
+        return true;
+    }
+
+    // An unknown version (CLI unreadable) is treated as "not stale"; the gate
+    // above guarantees metaData.cliVersion is defined here.
+    const actual = await getBundledCliVersion(cliPath);
+    if (actual === undefined || actual === metaData.cliVersion) {
+        return true;
+    }
+
+    const message =
+        `The bundled Databricks CLI is v${actual}, but this checkout pins ` +
+        `v${metaData.cliVersion}. Run "yarn workspace databricks run ` +
+        `package:cli:fetch" and reload the window.`;
+    logging.NamedLogger.getOrCreate(Loggers.Extension).warn(message);
+    window.showWarningMessage(message);
+    return false;
 }
 
 export async function checkArchCompat(context: ExtensionContext) {

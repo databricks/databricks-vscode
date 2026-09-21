@@ -90,7 +90,9 @@ describe(__filename, function () {
 
         setTimeout(() => {
             token.isCancellationRequested = true;
-            listener && listener();
+            if (listener) {
+                listener();
+            }
         }, 100);
 
         // reponse should finish soon after cancellation

@@ -18,7 +18,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const extensionVersion = require("../../../package.json")
     .version as ProductVersion;
 
@@ -280,7 +280,7 @@ export class AzureCliCheck implements Disposable {
             if (stdout.indexOf("azure-cli") !== -1) {
                 return true;
             }
-        } catch (e) {
+        } catch {
             return false;
         }
         return false;
@@ -331,7 +331,7 @@ export class AzureCliCheck implements Disposable {
             if (stderr.indexOf("az login") !== -1) {
                 return false;
             }
-        } catch (e) {
+        } catch {
             return false;
         }
         return true;
@@ -367,14 +367,36 @@ export class AzureCliCheck implements Disposable {
             this.disposables.push(terminal);
             terminal.show();
 
-            const useDeviceCode = this.isCodeSpaces ? "--use-device-code" : "";
+            // The command line has to be written in the dialect of the shell
+            // that will parse it: `;` and `echo` are not cmd.exe syntax. The
+            // terminal is created without `shellPath`, so it runs the resolved
+            // default profile, which is what `currentShellKind` reports.
+            const kind = ShellUtils.currentShellKind();
+
+            const args = [
+                "login",
+                "--allow-no-subscriptions",
+                ...(this.isCodeSpaces ? ["--use-device-code"] : []),
+                // The tenant comes from a token's `iss` claim, so quote it
+                // rather than interpolating it into the command line bare.
+                ...(tenant
+                    ? ["-t", ShellUtils.escapePathArgument(tenant, kind)]
+                    : []),
+            ].join(" ");
 
             terminal.sendText(
-                `${
-                    this.azBinPath
-                } login --allow-no-subscriptions ${useDeviceCode} ${
-                    tenant ? "-t " + tenant : ""
-                }; echo "Press any key to close the terminal and continue ..."; ${ShellUtils.readCmd()}; exit`
+                [
+                    `${ShellUtils.escapeExecutableForTerminal(
+                        this.azBinPath,
+                        kind
+                    )} ${args}`,
+                    ShellUtils.echoLine(
+                        "Press any key to close the terminal and continue ...",
+                        kind
+                    ),
+                    ShellUtils.readCmd(kind),
+                    "exit",
+                ].join(ShellUtils.commandSeparator(kind))
             );
 
             cancellationToken?.onCancellationRequested(() =>

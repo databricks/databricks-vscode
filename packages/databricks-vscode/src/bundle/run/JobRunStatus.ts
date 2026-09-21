@@ -24,7 +24,13 @@ export class JobRunStatus extends BundleRunStatus {
         if (this.runId !== undefined || this.runState !== "unknown") {
             return;
         }
-        const match = output.match(/.*\/run\/(\d*).*/);
+        // The CLI prints a run URL to the terminal, from which we extract the
+        // run id. CLI >= v1.5.0 prints the modern "/jobs/<id>/runs/<id>?o=.."
+        // URL, while older CLIs printed the legacy "#job/<id>/run/<id>"
+        // fragment. `runs?` matches both. `\d+` (not `\d*`) requires at least
+        // one digit, so a stdout chunk that splits right after "/run(s)/" does
+        // not produce an empty capture (parseInt("") === NaN).
+        const match = output.match(/\/runs?\/(\d+)/);
         if (match === null) {
             return;
         }

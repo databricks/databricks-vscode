@@ -2,6 +2,7 @@ import {describe} from "mocha";
 import {ClusterManager} from "./ClusterManager";
 import {
     ApiClient,
+    Config,
     compute,
     Time,
     TimeUnits,
@@ -28,6 +29,9 @@ describe(__filename, async () => {
     beforeEach(async () => {
         ({testClusterDetails} = await ClusterFixtures.getMockTestCluster());
         mockedClient = mock(ApiClient);
+        const mockedConfig = mock(Config);
+        when(mockedConfig.ensureResolved()).thenResolve();
+        when(mockedClient.config).thenReturn(instance(mockedConfig));
         when(
             mockedClient.request(
                 objectContaining({

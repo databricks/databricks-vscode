@@ -24,7 +24,7 @@ import {FileUtils, UrlUtils} from "../utils";
 import {AuthType as SdkAuthType} from "@databricks/sdk-experimental";
 import {randomUUID} from "crypto";
 import ini from "ini";
-import {appendFile, copyFile} from "fs/promises";
+import {appendFile, copyFile, readFile} from "fs/promises";
 import path from "path";
 import os from "os";
 import {createFile} from "fs-extra";
@@ -311,7 +311,8 @@ export class LoginWizard {
                 authProvider = new DatabricksCliAuthProvider(
                     this.state.host!,
                     this.cliWrapper.cliPath,
-                    this.cliWrapper
+                    this.cliWrapper,
+                    profileName
                 );
                 break;
 
@@ -385,12 +386,25 @@ export async function saveNewProfile(
     let shouldBackup = true;
     try {
         await stat(configFilePath);
-    } catch (e) {
+    } catch {
         shouldBackup = false;
         await createFile(configFilePath);
         window.showInformationMessage(
             `Created a new .databrickscfg file at ${configFilePath}`
         );
+    }
+
+    // The Databricks CLI's `auth login --profile <name>` (run during the auth
+    // check for databricks-cli/OAuth profiles) already persists the profile
+    // section itself. Appending our own copy on top of that would create a
+    // second [<name>] section, which is invalid for configparser/SDK consumers
+    // and fails with DuplicateSectionError (databricks-vscode#2129). If the CLI
+    // already wrote the section, reuse it instead of appending a duplicate.
+    if (shouldBackup) {
+        const existing = ini.parse(await readFile(configFilePath, "utf-8"));
+        if (Object.prototype.hasOwnProperty.call(existing, profileName)) {
+            return await ProfileAuthProvider.from(profileName, cli, true);
+        }
     }
 
     const profile: any = {};
@@ -449,7 +463,7 @@ export async function listProfiles(cliWrapper: CliWrapper) {
             const cfgPath = FileUtils.getDatabricksConfigFilePath().fsPath;
             try {
                 await stat(cfgPath);
-            } catch (e) {
+            } catch {
                 return [];
             }
             const allProfiles = await cliWrapper.listProfiles(cfgPath);
@@ -457,7 +471,7 @@ export async function listProfiles(cliWrapper: CliWrapper) {
                 try {
                     UrlUtils.normalizeHost(profile.host!.toString());
                     return true;
-                } catch (e) {
+                } catch {
                     return false;
                 }
             });
@@ -480,7 +494,8 @@ async function validateDatabricksHost(
         if (
             !url.hostname.match(
                 /(\.databricks\.azure\.us|\.databricks\.azure\.cn|\.azuredatabricks\.net|\.gcp\.databricks\.com|\.cloud\.databricks\.com|\.dev\.databricks\.com)$/
-            )
+            ) &&
+            !UrlUtils.isSpogHost(url)
         ) {
             return {
                 message:
@@ -502,7 +517,7 @@ function authMethodsForHostname(host: URL): Array<AuthType> {
         return ["databricks-cli", "google-id", "pat"];
     }
 
-    if (UrlUtils.isAwsHost(host)) {
+    if (UrlUtils.isAwsHost(host) || UrlUtils.isSpogHost(host)) {
         return ["databricks-cli", "pat"];
     }
 

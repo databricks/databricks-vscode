@@ -10,6 +10,7 @@
         "strict": true /* enable all strict type-checking options */,
         "forceConsistentCasingInFileNames": true,
         "experimentalDecorators": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "types": ["node"]
     }
 }

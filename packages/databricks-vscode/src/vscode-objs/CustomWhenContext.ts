@@ -85,16 +85,6 @@ export class CustomWhenContext {
         );
     }
 
-    updateShowWorkspaceView() {
-        commands.executeCommand(
-            "setContext",
-            "databricks.feature.views.workspace",
-            workspaceConfigs.experimetalFeatureOverides.includes(
-                "views.workspace"
-            )
-        );
-    }
-
     setIsActiveFileInActiveWorkspace(value: boolean) {
         commands.executeCommand(
             "setContext",
@@ -115,6 +105,30 @@ export class CustomWhenContext {
         commands.executeCommand(
             "setContext",
             "databricks.context.serverless",
+            value
+        );
+    }
+
+    setRemoteMode(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.remoteMode",
+            value
+        );
+    }
+
+    setAiToolsInstalled(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.aitools.installed",
+            value
+        );
+    }
+
+    setAiToolsShowCursorPlugin(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.aitools.showCursorPlugin",
             value
         );
     }

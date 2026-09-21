@@ -2,7 +2,7 @@ import {workspace} from "vscode";
 import {CustomWhenContext} from "./CustomWhenContext";
 import {StateStorage} from "./StateStorage";
 import {WorkspaceFolderManager} from "./WorkspaceFolderManager";
-import {instance, mock, when} from "ts-mockito";
+import {anything, capture, instance, mock, verify, when} from "ts-mockito";
 import assert from "node:assert";
 import path from "node:path";
 
@@ -66,5 +66,61 @@ describe(__filename, () => {
             workspaceFolderManager.activeWorkspaceFolder.uri,
             workspaceFolder.uri
         );
+    });
+
+    describe("with no folder open", () => {
+        let originalFolders: PropertyDescriptor | undefined;
+
+        beforeEach(() => {
+            // Simulate a folderless window: `workspace.workspaceFolders` is
+            // undefined, so the manager has no active project/workspace folder.
+            originalFolders = Object.getOwnPropertyDescriptor(
+                workspace,
+                "workspaceFolders"
+            );
+            Object.defineProperty(workspace, "workspaceFolders", {
+                value: undefined,
+                configurable: true,
+            });
+        });
+
+        afterEach(() => {
+            if (originalFolders) {
+                Object.defineProperty(
+                    workspace,
+                    "workspaceFolders",
+                    originalFolders
+                );
+            }
+        });
+
+        it("does not throw during construction and reports the file as outside the active workspace", () => {
+            // Regression guard: `setIsActiveFileInActiveProject` runs from the
+            // constructor and must use the non-throwing private field rather
+            // than the `activeProjectUri` getter, which throws when no folder is
+            // open.
+            const stateStorage = mock<StateStorage>();
+            const customWhenContext = mock(CustomWhenContext);
+
+            const manager = new WorkspaceFolderManager(
+                instance(customWhenContext),
+                instance(stateStorage)
+            );
+
+            // The when-context is set to false (no folder -> nothing can be in
+            // the active workspace), and the getter still throws as designed.
+            verify(
+                customWhenContext.setIsActiveFileInActiveWorkspace(false)
+            ).once();
+            const [value] = capture(
+                customWhenContext.setIsActiveFileInActiveWorkspace
+            ).last();
+            assert.strictEqual(value, false);
+            assert.throws(() => manager.activeProjectUri);
+            assert.throws(() => manager.activeWorkspaceFolder);
+            verify(
+                customWhenContext.setIsActiveFileInActiveWorkspace(anything())
+            ).once();
+        });
     });
 });

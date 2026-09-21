@@ -16,8 +16,16 @@ fi
 CLI_DIR=$(mktemp -d -t databricks-XXXXXXXXXX)
 pushd $CLI_DIR
 curl -L -O "https://github.com/databricks/cli/releases/download/v${CLI_VERSION}/databricks_cli_${CLI_VERSION}_${CLI_ARCH}.zip"
+curl -L -O "https://github.com/databricks/cli/releases/download/v${CLI_VERSION}/databricks_cli_${CLI_VERSION}_SHA256SUMS"
+if command -v sha256sum &>/dev/null; then
+    grep "databricks_cli_${CLI_VERSION}_${CLI_ARCH}.zip" "databricks_cli_${CLI_VERSION}_SHA256SUMS" | sha256sum -c -
+else
+    echo "checking sum2"
+    grep "databricks_cli_${CLI_VERSION}_${CLI_ARCH}.zip" "databricks_cli_${CLI_VERSION}_SHA256SUMS" | shasum -a 256 -c -
+fi
 unzip databricks_*_$CLI_ARCH.zip
 rm databricks_*_$CLI_ARCH.zip
+rm databricks_*_SHA256SUMS
 ls
 
 popd

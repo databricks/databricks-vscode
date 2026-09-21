@@ -124,7 +124,7 @@ export class MsPythonExtensionWrapper implements Disposable {
         try {
             await execFile("uv", ["--version"]);
             return fs.existsSync(path.join(this.projectRoot, "uv.lock"));
-        } catch (error) {
+        } catch {
             return false;
         }
     }

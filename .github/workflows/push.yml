@@ -9,12 +9,25 @@ on:
 jobs:
   package:
     name: Package Arm64 VSIX
-    runs-on: "macos-latest"
+    runs-on:
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Obtain JFrog OIDC token
+        run: bash .github/scripts/jfrog-oidc-token.sh
+
+      - name: Configure JFrog npm registry
+        run: bash .github/scripts/configure-npm.sh
 
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22.x
           cache: "yarn"
@@ -37,7 +50,7 @@ jobs:
         working-directory: packages/databricks-vscode
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: VSIX artifacts
           path: packages/databricks-vscode/artifacts

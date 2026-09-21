@@ -1,0 +1,404 @@
+import {Events, Telemetry} from ".";
+import type {
+    ComputeType,
+    PrimaryManager,
+    PythonSetupDriftTrigger,
+    PythonSetupErrorCode,
+    PythonSetupFailurePhase,
+    PythonSetupFlow,
+    PythonSetupMode,
+    PythonSetupOptOutScope,
+    PythonSetupOptOutSource,
+    PythonSetupOutcome,
+    PythonSetupRunTrigger,
+    SetupPreset,
+    TargetCompute,
+} from "./constants";
+import {PythonSetupWarning} from "../python-setup/models/PythonSetupResult";
+
+/**
+ * What a starting setup run is about to do. Everything here is known before the
+ * CLI is spawned: the project's package manager (from the visibility gate's
+ * detection), the compute target, and the provisioning mode.
+ */
+export interface PythonSetupAttempt {
+    packageManager: PrimaryManager;
+    targetType: ComputeType;
+    /** The chosen serverless environment version; absent for clusters. */
+    serverlessVersion?: string;
+    mode: PythonSetupMode;
+    /**
+     * The preset tier the user picked (full | dbconnect | python). Kept
+     * alongside {@link mode} because the two-value mode field cannot represent
+     * the orthogonal skip axes the picker enables: a `dbconnect` run skips the
+     * pins yet still reports `mode: "default"`.
+     */
+    setupPreset: SetupPreset;
+    /**
+     * Whether the project has no `pyproject.toml` yet, or `undefined` when the
+     * signal would be misleading — for a pip/conda project the absence of a
+     * `pyproject.toml` says nothing about greenfield-ness.
+     */
+    isGreenfield?: boolean;
+    /**
+     * Whether this is the first setup for the project this session (`initial`), a
+     * re-run over an environment already provisioned this session (`rerun`), or a
+     * constraint-conflict recovery — the `Retry DB Connect setup` click on a
+     * failed Full-preset run (`conflict_retry`). Session-scoped; same event, one
+     * enum dimension.
+     */
+    trigger: PythonSetupRunTrigger;
+}
+
+/** A detected drift, reduced to the categorical fields we report. */
+export interface PythonSetupDrift {
+    trigger: PythonSetupDriftTrigger;
+    /** The recorded environment key the .venv was provisioned against. */
+    fromEnvKey: string;
+    /** The environment key the currently selected compute resolves to. */
+    toEnvKey: string;
+}
+
+/**
+ * A once-per-session adoption reading for a project with a Python setup on
+ * record: whether the managed environment is still in place, and the compute
+ * kind attached when the reading was taken. Both categorical/boolean.
+ */
+export interface PythonSetupAdoption {
+    /** Whether the project's managed `.venv` interpreter still exists on disk. */
+    venvPresent: boolean;
+    /** The compute kind attached at the time of the reading. */
+    currentTargetType: TargetCompute;
+}
+
+/** How a setup run ended, reduced to the categorical fields we report. */
+export interface PythonSetupOutcomeReport {
+    outcome: PythonSetupOutcome;
+    pythonSetupFlow?: PythonSetupFlow;
+    failurePhase?: PythonSetupFailurePhase;
+    errorCode?: PythonSetupErrorCode;
+    envKey?: string;
+    diskMutated?: boolean;
+    /**
+     * Blocked package index vs. a genuine dependency conflict — both arrive as
+     * `E_PROVISION`, so this splits them to gauge how often proxies bite. Set on
+     * every CLI setup failure (`false` is meaningful — the rate's denominator);
+     * omitted with no CLI result and on post-CLI adopt/persist failures.
+     */
+    indexUnreachable?: boolean;
+    /**
+     * Whether a "Report this problem" affordance was surfaced for this failure.
+     * Present on every failure outcome (`failed` / `not_started`): `true` when a
+     * report was offered (a post-preflight defect), `false` otherwise (including
+     * the never-report-worthy preflight/local/network codes — `false` is the
+     * offer rate's denominator). Omitted for non-failure outcomes. Filter by
+     * `failurePhase` to isolate the post-preflight population.
+     */
+    reportOffered?: boolean;
+    /**
+     * The CLI's merge-phase warnings, verbatim from the result. Present whenever
+     * the CLI produced a result (so `[]` reads as "a run happened with no
+     * warnings"); absent when no result exists (cancelled / not_started /
+     * no_compute). Passed raw — the count and the categorical per-code histogram
+     * are derived at emission (see {@link warningCodeCounts}), the same split as
+     * {@link categoricalEnvKey}.
+     */
+    warnings?: PythonSetupWarning[];
+}
+
+/** Reports the outcome of the run whose attempt returned it. */
+export type PythonSetupResultReporter = (
+    report: PythonSetupOutcomeReport
+) => void;
+
+/**
+ * The env-key shapes the CLI produces: `serverless/serverless-v<N>` and
+ * `dbr/<sparkVersion>` (see `EnvKeyForServerless` / `EnvKeyForSparkVersion`).
+ *
+ * The DBR arm matches the Spark-version grammar (`15.4.x-scala2.12`,
+ * `14.3.x-photon-scala2.12`) rather than "alphanumerics and punctuation": the
+ * looser form would admit a cluster *name*, which is user-chosen and routinely
+ * contains a person's name (`dbr/janes-dev-cluster` would have passed). The
+ * leading `<major>.<minor>.` requirement and the length bound are what keep this
+ * a closed vocabulary.
+ */
+const ENV_KEY_PATTERNS = [
+    /^serverless\/serverless-v\d+$/,
+    /^dbr\/\d+\.\d+\.[A-Za-z0-9.-]{1,30}$/,
+];
+
+/**
+ * Reported in place of an env key that does not match a known shape.
+ */
+const UNRECOGNISED_ENV_KEY = "other";
+
+/**
+ * Constrain `envKey` to the CLI's documented shapes before it is emitted.
+ *
+ * The key is copied from CLI JSON that {@link parsePythonSetupResult}
+ * deliberately validates only minimally, and the DBR arm is a raw
+ * `"dbr/" + sparkVersion` concatenation. Without this, schema drift or an
+ * unexpected runtime string would put unbounded — potentially identifying —
+ * high-cardinality content into a field documented as a closed vocabulary.
+ * Anything unrecognised collapses to {@link UNRECOGNISED_ENV_KEY}, which keeps
+ * the dimension categorical while still flagging that drift happened.
+ */
+function categoricalEnvKey(envKey: string | undefined): string | undefined {
+    if (envKey === undefined) {
+        return undefined;
+    }
+    return ENV_KEY_PATTERNS.some((p) => p.test(envKey))
+        ? envKey
+        : UNRECOGNISED_ENV_KEY;
+}
+
+/**
+ * The CLI's closed set of merge-phase warning codes (see `libs/localenv/result.go`).
+ * All are emitted from the merge phase, where an existing project's pins can
+ * conflict with the environment's managed pins:
+ *
+ * - `W_REQUIRES_PYTHON_OVERRIDDEN` — the user's `requires-python` is replaced.
+ * - `W_DBCONNECT_PIN_OVERRIDDEN` — the user's databricks-connect pin is replaced.
+ * - `W_DBCONNECT_PIN_DUPLICATED` — a retained databricks-connect pin now sits
+ *   alongside the managed one, with no version satisfying both (needs a manual fix).
+ * - `W_DBCONNECT_CONSOLIDATED` — a conflicting databricks-connect pin outside the
+ *   managed dev group (in `[project].dependencies`, an optional-dependency extra, or
+ *   another dependency group) was removed so a single managed pin survives.
+ * - `W_USER_CONSTRAINT_CONFLICT` — a user dependency is provably disjoint from an
+ *   env constraint.
+ *
+ * Held as a set so an unknown code (schema drift, or a code added CLI-side before
+ * this list is updated) collapses to {@link UNRECOGNISED_WARNING_CODE} rather than
+ * silently minting a new histogram bucket -- the same closed-vocabulary discipline
+ * {@link categoricalEnvKey} applies to the env key.
+ */
+const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
+    "W_REQUIRES_PYTHON_OVERRIDDEN",
+    "W_DBCONNECT_PIN_OVERRIDDEN",
+    "W_DBCONNECT_PIN_DUPLICATED",
+    "W_DBCONNECT_CONSOLIDATED",
+    "W_USER_CONSTRAINT_CONFLICT",
+]);
+
+/** Bucket for a warning code outside {@link KNOWN_WARNING_CODES}. */
+const UNRECOGNISED_WARNING_CODE = "other";
+
+/**
+ * Reduce the CLI's warnings to a per-code count, collapsing unknown codes to
+ * `other`. The result is a bounded, categorical histogram (at most one bucket per
+ * known code, plus `other`) — never the free-form warning messages, which carry
+ * package names and version specifiers. Returns an empty object for no warnings,
+ * so the caller can decide whether to emit the field at all.
+ */
+function warningCodeCounts(
+    warnings: PythonSetupWarning[]
+): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const {code} of warnings) {
+        const bucket = KNOWN_WARNING_CODES.has(code)
+            ? code
+            : UNRECOGNISED_WARNING_CODE;
+        counts[bucket] = (counts[bucket] ?? 0) + 1;
+    }
+    return counts;
+}
+
+declare module "." {
+    interface Telemetry {
+        /**
+         * Record the start of a uv-native Python environment setup run, and
+         * return the reporter for its outcome.
+         *
+         * Emits PYTHON_ENV_SETUP_ATTEMPT immediately and returns a reporter for
+         * PYTHON_ENV_SETUP_RESULT whose `duration` is measured from this call —
+         * so the reported time covers the whole run as the user experiences it
+         * (CLI spawn, provisioning, and interpreter adoption), not just the
+         * CLI's internal pipeline. The CLI's own `durationMs` is deliberately
+         * not used: it is documented as reserved and always 0.
+         *
+         * Returning the reporter (rather than exposing two independent record
+         * methods) is what makes the attempt/result pairing structural: an
+         * outcome cannot be reported without an attempt having been recorded.
+         */
+        recordPythonSetupAttempt(
+            attempt: PythonSetupAttempt
+        ): PythonSetupResultReporter;
+
+        /**
+         * Record that the setup CTA was a dead end: it was pressed with no
+         * compute attached (or a serverless session with no chosen version), so
+         * no run could start.
+         *
+         * Emits a lone PYTHON_ENV_SETUP_RESULT with `outcome: "no_compute"` and
+         * no attempt, since no run was attempted. This is the one intentional
+         * exception to the 1:1 pairing, and it exists because the alternative —
+         * relying on `python_env.setup.detected` to cover early aborts — does not
+         * work for this cohort: that event's `explicit_command` trigger fires
+         * only from the *legacy* setup command, and the config view shows the
+         * legacy checklist and the uv-native entry mutually exclusively.
+         */
+        recordPythonSetupNoCompute(): void;
+
+        /**
+         * Record a detected compute drift. Emitted once per newly-detected
+         * distinct mismatch by {@link PythonSetupDriftManager}; both keys are
+         * constrained to the categorical envKey vocabulary before emission.
+         */
+        recordPythonSetupDrift(report: PythonSetupDrift): void;
+
+        /**
+         * Record the once-per-session adoption gauge for a project with a Python
+         * setup on record: whether its managed `.venv` still exists and the
+         * compute kind attached at the time. Emitted only when the project is
+         * VPEX-active (a setup state is persisted), so the event's presence is
+         * itself the adoption-rate denominator.
+         */
+        recordPythonSetupAdoption(report: PythonSetupAdoption): void;
+        /**
+         * Record that the user opted out of automated uv-native setup (switched
+         * `databricks.python.environmentSetup` to `manual`). Call only on a
+         * genuine auto->manual transition, so the count reflects real opt-outs.
+         */
+        recordManualSetupOptOut(report: ManualSetupOptOut): void;
+    }
+}
+
+/** A manual-setup opt-out, reduced to the categorical fields we report. */
+export interface ManualSetupOptOut {
+    scope: PythonSetupOptOutScope;
+    source: PythonSetupOptOutSource;
+}
+
+// Both payloads below name every field explicitly instead of spreading the
+// caller's object. Spreading a *variable* switches off TypeScript's
+// excess-property check, so any field later added to PythonSetupAttempt /
+// PythonSetupOutcomeReport — or any wider object passed through this seam —
+// would be emitted automatically, with objects JSON-stringified by
+// recordEvent's addKeys. That would make this transport silently widen what is
+// collected on a clean build. Enumerating the fields makes the event schema an
+// allowlist the compiler enforces, which is what the privacy claim in this
+// folder's README rests on. Optionals are spread individually so an absent one
+// is omitted rather than serialized as the string "undefined".
+Telemetry.prototype.recordPythonSetupAttempt = function (
+    attempt: PythonSetupAttempt
+): PythonSetupResultReporter {
+    this.recordEvent(Events.PYTHON_ENV_SETUP_ATTEMPT, {
+        packageManager: attempt.packageManager,
+        targetType: attempt.targetType,
+        mode: attempt.mode,
+        setupPreset: attempt.setupPreset,
+        trigger: attempt.trigger,
+        ...(attempt.serverlessVersion !== undefined
+            ? {serverlessVersion: attempt.serverlessVersion}
+            : {}),
+        ...(attempt.isGreenfield !== undefined
+            ? {isGreenfield: attempt.isGreenfield}
+            : {}),
+    });
+
+    // start() stamps the elapsed time onto the result event as `duration`.
+    const reportResult = this.start(Events.PYTHON_ENV_SETUP_RESULT);
+    // Enforce the 1:1 pairing rather than only documenting it: a second call
+    // (from a future refactor that adds a terminal path without returning) is
+    // dropped, so one attempt can never inflate into several results.
+    let reported = false;
+    return (report: PythonSetupOutcomeReport) => {
+        if (reported) {
+            return;
+        }
+        reported = true;
+        reportResult({
+            outcome: report.outcome,
+            // Also stamped on the result (not only the attempt) so provision
+            // errors and outcomes can be split by setup mode without an
+            // attempt<->result correlation join. Always present here -- the
+            // closure captured the attempt; only the standalone no_compute
+            // result (no attempt) omits it.
+            setupPreset: attempt.setupPreset,
+            ...(report.pythonSetupFlow !== undefined
+                ? {pythonSetupFlow: report.pythonSetupFlow}
+                : {}),
+            ...(report.failurePhase !== undefined
+                ? {failurePhase: report.failurePhase}
+                : {}),
+            ...(report.errorCode !== undefined
+                ? {errorCode: report.errorCode}
+                : {}),
+            ...(report.envKey !== undefined
+                ? {envKey: categoricalEnvKey(report.envKey)}
+                : {}),
+            ...(report.diskMutated !== undefined
+                ? {diskMutated: report.diskMutated}
+                : {}),
+            ...(report.indexUnreachable !== undefined
+                ? {indexUnreachable: report.indexUnreachable}
+                : {}),
+            ...(report.reportOffered !== undefined
+                ? {reportOffered: report.reportOffered}
+                : {}),
+            // A present `warnings` array means the CLI produced a result, so the
+            // count is meaningful even at 0 (a clean merge) -- unlike the omitted
+            // fields above, 0 is a value, not "unknown". The per-code histogram is
+            // a categorical map JSON-stringified by recordEvent (objects go to
+            // properties); it is omitted when empty so a no-warning run does not
+            // carry a "{}" string.
+            ...(report.warnings !== undefined
+                ? {
+                      warningsCount: report.warnings.length,
+                      ...(report.warnings.length > 0
+                          ? {
+                                warningCodeCounts: warningCodeCounts(
+                                    report.warnings
+                                ),
+                            }
+                          : {}),
+                  }
+                : {}),
+        });
+    };
+};
+
+Telemetry.prototype.recordPythonSetupNoCompute = function () {
+    // `duration` is deliberately omitted, not 0: nothing ran, and a zero would
+    // drag the setup-time percentiles down. Recorded directly rather than via
+    // start(), which always stamps an elapsed time.
+    this.recordEvent(Events.PYTHON_ENV_SETUP_RESULT, {outcome: "no_compute"});
+};
+
+Telemetry.prototype.recordPythonSetupDrift = function (
+    report: PythonSetupDrift
+): void {
+    this.recordEvent(Events.PYTHON_ENV_DRIFT, {
+        trigger: report.trigger,
+        // Constrain both keys to the closed envKey vocabulary so an unexpected
+        // string can't leak high-cardinality / identifying content. The `!` is
+        // safe: categoricalEnvKey only returns undefined for undefined input, and
+        // both fields are required strings.
+        fromEnvKey: categoricalEnvKey(report.fromEnvKey)!,
+        toEnvKey: categoricalEnvKey(report.toEnvKey)!,
+    });
+};
+
+Telemetry.prototype.recordPythonSetupAdoption = function (
+    report: PythonSetupAdoption
+): void {
+    // Named explicitly (not spread) for the same allowlist reason as the emitters
+    // above. Both fields are required, so there is no optional to spread: a
+    // boolean becomes a "true"/"false" property and the categorical target type a
+    // property, per recordEvent's serialization.
+    this.recordEvent(Events.PYTHON_ENV_ADOPTION, {
+        venvPresent: report.venvPresent,
+        currentTargetType: report.currentTargetType,
+    });
+};
+
+Telemetry.prototype.recordManualSetupOptOut = function (
+    report: ManualSetupOptOut
+): void {
+    // Named explicitly (not spread) for the same allowlist reason as the
+    // emitters above; both fields are required categorical strings.
+    this.recordEvent(Events.PYTHON_ENV_MANUAL_SETUP_OPTOUT, {
+        scope: report.scope,
+        source: report.source,
+    });
+};

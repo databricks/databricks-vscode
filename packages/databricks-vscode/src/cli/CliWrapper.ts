@@ -1,9 +1,4 @@
-import {
-    ChildProcessWithoutNullStreams,
-    SpawnOptionsWithoutStdio,
-    execFile as execFileCb,
-    spawn,
-} from "child_process";
+import {SpawnOptionsWithoutStdio} from "child_process";
 import {
     ExtensionContext,
     window,
@@ -12,81 +7,152 @@ import {
     CancellationToken,
 } from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {promisify} from "node:util";
+import {run as runCli} from "./cliProcess";
 import {logging} from "@databricks/sdk-experimental";
 import {LoggerManager, Loggers} from "../logger";
 import {Context, context} from "@databricks/sdk-experimental/dist/context";
 import {Cloud} from "../utils/constants";
-import {EnvVarGenerators, FileUtils, UrlUtils} from "../utils";
+import {EnvVarGenerators, FileUtils, HostUtils, UrlUtils} from "../utils";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
+import type {AiToolsScope} from "../telemetry/constants";
+export type {AiToolsScope};
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
 import path from "path";
-import {isPowershell} from "../utils/shellUtils";
+import {
+    currentShellKind,
+    escapeExecutableForTerminal,
+    ShellKind,
+} from "../utils/shellUtils";
 
 const withLogContext = logging.withLogContext;
-function getEscapedCommandAndAgrs(
-    cmd: string,
-    args: string[],
-    options: SpawnOptionsWithoutStdio
-) {
-    if (process.platform === "win32") {
-        const cmdArgs = args.slice();
-        args = [
-            "/d", // Disables execution of AutoRun commands, which are like .bashrc commands.
-            "/c", // Carries out the command specified by <string> and then exits the command processor.
-            `""${cmd}" ${cmdArgs.map((a) => `"${a}"`).join(" ")}"`,
-        ];
-        cmd = "cmd.exe";
-        options = {...options, windowsVerbatimArguments: true};
-    }
-    return {cmd, args, options};
+
+export interface ExecFileOptions {
+    /**
+     * Close the child's stdin immediately after spawning. Node gives the child
+     * an open stdin pipe that never receives EOF, so any CLI command that
+     * prompts for confirmation (e.g. `aitools update`) blocks forever waiting
+     * on input. Ending stdin delivers EOF so the prompt resolves instead of
+     * hanging. Only set this for non-interactive commands we never feed input to.
+     */
+    closeStdin?: boolean;
 }
 
+/**
+ * Buffered CLI execution over the shared {@link runCli} seam: run to
+ * completion, then resolve with the full output or throw. The thrown error
+ * mirrors Node's `execFile` rejection so existing callers keep working — its
+ * `message` includes stderr, and `.code`/`.stderr`/`.stdout` are set — which
+ * is what the SDK's `isFileNotFound` and the profile-parsing checks inspect.
+ */
+async function bufferedExec(
+    file: string,
+    args: string[],
+    options: Omit<SpawnOptionsWithoutStdio, "signal">,
+    cancellationToken: CancellationToken | undefined,
+    execOptions: ExecFileOptions,
+    escapeCommandForWindows: boolean
+): Promise<{stdout: string; stderr: string}> {
+    const result = await runCli(file, args, {
+        // SpawnOptions types cwd as string | URL; every caller passes a string.
+        cwd: options.cwd as string | undefined,
+        env: options.env,
+        shell: options.shell as boolean | undefined,
+        token: cancellationToken,
+        closeStdin: execOptions.closeStdin,
+        escapeCommandForWindows,
+    });
+
+    if (result.cancelled) {
+        throw new CancellationError();
+    }
+    if (result.exitCode !== 0) {
+        const error: Error & {
+            code?: number | null;
+            stdout?: string;
+            stderr?: string;
+        } = new Error(
+            `Command failed: ${file} ${args.join(" ")}\n${result.stderr}`
+        );
+        error.code = result.exitCode;
+        error.stdout = result.stdout;
+        error.stderr = result.stderr;
+        throw error;
+    }
+    return {stdout: result.stdout, stderr: result.stderr};
+}
+
+/**
+ * Buffered exec that spawns `file` directly (bare command names resolve via the
+ * PATH / shell). Used by callers that manage their own Windows quoting through
+ * the `shell` option (e.g. the Azure and host-CLI probes).
+ */
 export async function cancellableExecFile(
     file: string,
     args: string[],
     options: Omit<SpawnOptionsWithoutStdio, "signal"> = {},
-    cancellationToken?: CancellationToken
-): Promise<{
-    stdout: string;
-    stderr: string;
-}> {
-    const abortController = new AbortController();
-    cancellationToken?.onCancellationRequested(() => abortController.abort());
-    const signal = abortController.signal;
-
-    const res = await promisify(execFileCb)(file, args, {
-        ...options,
-        signal,
-    });
-    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
+    cancellationToken?: CancellationToken,
+    execOptions: ExecFileOptions = {}
+): Promise<{stdout: string; stderr: string}> {
+    return await bufferedExec(
+        file,
+        args,
+        options,
+        cancellationToken,
+        execOptions,
+        /*escapeCommandForWindows*/ false
+    );
 }
 
+/**
+ * Buffered exec that routes the command through `cmd.exe` on Windows, so a CLI
+ * invoked by a bare name or a path with spaces resolves and quotes correctly.
+ * The default entry point for the extension's own CLI calls.
+ */
 export const execFile = async (
     file: string,
     args: string[],
     options: Omit<SpawnOptionsWithoutStdio, "signal"> = {},
-    cancellationToken?: CancellationToken
-): Promise<{
-    stdout: string;
-    stderr: string;
-}> => {
-    const {
-        cmd,
-        args: escapedArgs,
-        options: escapedOptions,
-    } = getEscapedCommandAndAgrs(file, args, options);
-
-    return await cancellableExecFile(
-        cmd,
-        escapedArgs,
-        escapedOptions,
-        cancellationToken
+    cancellationToken?: CancellationToken,
+    execOptions: ExecFileOptions = {}
+): Promise<{stdout: string; stderr: string}> => {
+    return await bufferedExec(
+        file,
+        args,
+        options,
+        cancellationToken,
+        execOptions,
+        /*escapeCommandForWindows*/ true
     );
 };
+
+/**
+ * Constructs the `databricks ssh connect` command args for opening a remote
+ * IDE window. Serverless is the default when no cluster is given.
+ *
+ * The --ide flag matches the host editor so the CLI opens the right remote
+ * window
+ *
+ * Logging is configured out of band via the DATABRICKS_LOG_* env vars (see
+ * CliWrapper.getSshConnectEnvVars), so we do not pass --log-* flags here.
+ */
+export function getSshConnectCommand(opts: {compute: SshConnectCompute}): {
+    args: string[];
+} {
+    const ide = HostUtils.isCursor() ? "cursor" : "vscode";
+    const args = ["ssh", "connect", `--ide=${ide}`, "--auto-approve"];
+    if (opts.compute.type === "cluster") {
+        // Start a stopped single-user cluster when connecting.
+        args.push(`--cluster=${opts.compute.clusterId}`);
+        args.push("--auto-start-cluster");
+    } else if (opts.compute.accelerator) {
+        // Serverless GPU: request a specific accelerator type.
+        args.push(`--accelerator=${opts.compute.accelerator}`);
+    }
+    return {args};
+}
 
 export interface Command {
     command: string;
@@ -97,12 +163,181 @@ export interface ConfigEntry {
     name: string;
     host?: URL;
     accountId?: string;
+    workspaceId?: string;
     cloud: Cloud;
     authType: string;
     valid: boolean;
 }
 
 export type SyncType = "full" | "incremental";
+
+export type SshConnectCompute =
+    | {type: "serverless"; accelerator?: string}
+    | {type: "cluster"; clusterId: string};
+
+/** A single skill entry from `databricks aitools list --output json`. */
+export interface AiToolsSkill {
+    name: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    latest_version: string;
+    experimental: boolean;
+    /**
+     * Installed versions keyed by scope. Empty when the skill is not installed.
+     * e.g. `{ "project": "0.1.0" }` or `{ "global": "0.1.0" }`.
+     */
+    installed: Partial<Record<AiToolsScope, string>>;
+}
+
+export interface AiToolsAgentInstallation {
+    version: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    native_scope: string;
+    /**
+     * How the agent's AI tools were delivered: as raw `skills` or as a
+     * managed `plugin`. A managed agent can be delivered either way; when it
+     * only received skills the UI annotates the row as "skills only".
+     */
+    delivery?: "skills" | "plugin";
+}
+
+/** A single agent entry from `databricks aitools list --output json`. */
+export interface AiToolsAgent {
+    name: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    display_name: string;
+    managed: boolean;
+    detected: boolean;
+    /**
+     * Whether the agent can be installed at project scope. Older CLIs omit this
+     * field; callers treat its absence as "supported".
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    supports_project_scope?: boolean;
+    installed: Partial<Record<AiToolsScope, AiToolsAgentInstallation>>;
+}
+
+/** Parsed output of `databricks aitools list --output json`. */
+export interface AiToolsListResult {
+    release: string;
+    skills: AiToolsSkill[];
+    agents: AiToolsAgent[];
+}
+
+/**
+ * Delivery method for an agent in `aitools install --output json`, mirroring the
+ * CLI's `delivery` enum: the databricks `plugin`, raw `skills`, or `skip` (the
+ * agent was not acted on).
+ */
+export type AiToolsInstallDelivery = "plugin" | "skills" | "skip";
+
+/** Per-agent outcome status in `aitools install --output json`. */
+export type AiToolsInstallStatus = "installed" | "skipped" | "failed";
+
+/** A single agent entry from `databricks aitools install --output json`. */
+export interface AiToolsInstallAgentResult {
+    name: string;
+    delivery: AiToolsInstallDelivery;
+    status: AiToolsInstallStatus;
+    /**
+     * Present only for a non-installed agent (skipped/failed); a closed category
+     * token. The sibling `message` is free-form and must never reach telemetry.
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    error_category?: string;
+    message?: string;
+}
+
+/**
+ * Parsed output of `databricks aitools install --output json`, mirroring the
+ * CLI's `installOutput` struct. On success every agent is `installed` and both
+ * `error` fields are absent; on failure the CLI exits non-zero but still prints
+ * this document — a top-level failure (skills group, ref lookup) populates
+ * `error`/`error_category`, while a per-agent failure stays in `agents` and
+ * leaves the top-level fields empty.
+ *
+ * `agents` is normalized to `[]` by {@link parseAiToolsInstallOutput}: a
+ * top-level failure has no per-agent entries, and Go's `omitempty` can drop the
+ * key entirely, so it is not safe to assume the wire document carries it.
+ */
+export interface AiToolsInstallOutput {
+    scope: string;
+    agents: AiToolsInstallAgentResult[];
+    error?: string;
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    error_category?: string;
+}
+
+/**
+ * Parse the JSON document `aitools install --output json` prints on stdout,
+ * returning undefined when stdout is not a parseable install result. Two callers
+ * rely on the undefined case: a success exit from a CLI old enough to ignore
+ * `--output json` (it prints human-readable text — a successful install with no
+ * structured result), and a non-zero exit with no JSON (a hard failure the caller
+ * turns into a {@link ProcessError}).
+ *
+ * A document counts as a result when it carries an `agents` array *or* a string
+ * `error`/`error_category` — a top-level failure marshals its nil `agents` slice
+ * away under Go's `omitempty`, so an error document may omit the key entirely;
+ * `agents` is defaulted to `[]` in that case. This is enough to tell a result
+ * from stray text without rejecting the very error shapes this parsing feeds.
+ */
+export function parseAiToolsInstallOutput(
+    stdout: string
+): AiToolsInstallOutput | undefined {
+    let obj: unknown;
+    try {
+        obj = JSON.parse(stdout);
+    } catch {
+        return undefined;
+    }
+    if (typeof obj !== "object" || obj === null) {
+        return undefined;
+    }
+    const rec = obj as {
+        agents?: unknown;
+        error?: unknown;
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        error_category?: unknown;
+    };
+    const hasAgents =
+        Array.isArray(rec.agents) && rec.agents.every(isInstallAgentResult);
+    const hasError =
+        typeof rec.error === "string" || typeof rec.error_category === "string";
+    if (!hasAgents && !hasError) {
+        return undefined;
+    }
+    return {
+        ...(obj as AiToolsInstallOutput),
+        agents: hasAgents ? (rec.agents as AiToolsInstallAgentResult[]) : [],
+    };
+}
+
+function isInstallAgentResult(agent: unknown) {
+    if (typeof agent !== "object" || agent === null) {
+        return false;
+    }
+    for (const key of ["name", "delivery", "status"]) {
+        if (
+            !(
+                key in agent &&
+                typeof agent[key as keyof typeof agent] === "string"
+            )
+        ) {
+            return false;
+        }
+    }
+    for (const key of ["error_category", "message"]) {
+        if (
+            key in agent &&
+            typeof agent[key as keyof typeof agent] !== "string" &&
+            agent[key as keyof typeof agent] !== undefined
+        ) {
+            return false;
+        }
+    }
+    return true;
+}
+
 export class ProcessError extends Error {
     constructor(
         message: string,
@@ -111,7 +346,21 @@ export class ProcessError extends Error {
         super(message);
     }
 
-    showErrorMessage(prefix?: string) {
+    /**
+     * Show an error toast for this CLI failure with a "Show Logs" button.
+     *
+     * `logsCommand` selects which output channel that button opens. It defaults
+     * to the bundle logs (`databricks.bundle.showLogs`), since most CLI commands
+     * are bundle operations, but callers whose command logs elsewhere (e.g. the
+     * AI tools commands, which log to the "Databricks Logs" channel) can pass
+     * `databricks.internal.showOutput` so "Show Logs" lands on the right channel.
+     */
+    showErrorMessage(
+        prefix?: string,
+        logsCommand:
+            | "databricks.bundle.showLogs"
+            | "databricks.internal.showOutput" = "databricks.bundle.showLogs"
+    ) {
         if (this.message.includes("no value assigned to required variable")) {
             window
                 .showErrorMessage(
@@ -139,7 +388,7 @@ export class ProcessError extends Error {
             )
             .then((choice) => {
                 if (choice === "Show Logs") {
-                    commands.executeCommand("databricks.bundle.showLogs");
+                    commands.executeCommand(logsCommand);
                 }
             });
     }
@@ -149,42 +398,6 @@ export class CancellationError extends Error {
     constructor() {
         super("Cancelled");
     }
-}
-
-export async function waitForProcess(
-    p: ChildProcessWithoutNullStreams,
-    onStdOut?: (data: string) => void,
-    onStdError?: (data: string) => void
-) {
-    const stdout: string[] = [];
-    p.stdout.on("data", (data) => {
-        stdout.push(data.toString());
-        if (onStdOut) {
-            onStdOut(data.toString());
-        }
-    });
-
-    const stderr: string[] = [];
-    p.stderr.on("data", (data) => {
-        stderr.push(data.toString());
-        if (onStdError) {
-            onStdError(data.toString());
-        }
-    });
-
-    await new Promise<void>((resolve, reject) => {
-        p.on("close", (code) => {
-            if (code === 0) {
-                resolve();
-            } else {
-                const message = onStdError ? "" : stderr.join("");
-                reject(new ProcessError(message, code));
-            }
-        });
-        p.on("error", (e) => new ProcessError(e.message, null));
-    });
-
-    return {stdout: stdout.join(""), stderr: stderr.join("")};
 }
 
 async function runBundleCommand(
@@ -227,45 +440,50 @@ async function runBundleCommand(
     });
 
     logger?.debug(quote([cmd, ...args]), {bundleOpName});
-    const abortController = new AbortController();
-    let options: SpawnOptionsWithoutStdio = {
-        cwd: workspaceFolder.fsPath,
-        env: removeUndefinedKeys(env),
-        signal: abortController.signal,
-    };
 
-    ({cmd, args, options} = getEscapedCommandAndAgrs(cmd, args, options));
+    let result;
     try {
-        const p = spawn(cmd, args, options);
-        cancellationToken?.onCancellationRequested(() => {
-            if (process.platform === "win32" && p.pid) {
-                // On windows aborting the signal doesn't kill the CLI.
-                // Use taskkill here with the "force" and "tree" flags (to kill sub-processes too)
-                spawn("taskkill", ["/pid", String(p.pid), "/T", "/F"]);
-            } else {
-                abortController.abort();
-            }
+        result = await runCli(cmd, args, {
+            cwd: workspaceFolder.fsPath,
+            env: removeUndefinedKeys(env),
+            token: cancellationToken,
+            escapeCommandForWindows: true,
+            onStdout: onStdOut,
+            onStderr: onStdError,
         });
-        const {stdout, stderr} = await waitForProcess(p, onStdOut, onStdError);
-        logger?.info(displayLogs.end, {
-            bundleOpName,
-        });
-        logger?.debug("output", {stdout, stderr, bundleOpName});
-        return {stdout, stderr};
     } catch (e: any) {
+        // A genuine spawn/stream failure (e.g. the binary is missing).
         if (cancellationToken?.isCancellationRequested) {
             logger?.warn(`${displayLogs.error} Reason: Cancelled`, {
                 bundleOpName,
             });
             throw new CancellationError();
-        } else {
-            logger?.error(`${displayLogs.error} ${e.message ?? ""}`, {
-                ...e,
-                bundleOpName,
-            });
-            throw new ProcessError(e.message, e.code);
         }
+        logger?.error(`${displayLogs.error} ${e.message ?? ""}`, {
+            ...e,
+            bundleOpName,
+        });
+        throw new ProcessError(e.message, e.code ?? null);
     }
+
+    if (result.cancelled) {
+        logger?.warn(`${displayLogs.error} Reason: Cancelled`, {bundleOpName});
+        throw new CancellationError();
+    }
+    if (result.exitCode !== 0) {
+        // stderr was streamed to onStdError (and the logs), so the error itself
+        // carries no message — the detail lives in the "Show Logs" channel.
+        logger?.error(displayLogs.error, {bundleOpName});
+        throw new ProcessError("", result.exitCode);
+    }
+
+    logger?.info(displayLogs.end, {bundleOpName});
+    logger?.debug("output", {
+        stdout: result.stdout,
+        stderr: result.stderr,
+        bundleOpName,
+    });
+    return {stdout: result.stdout, stderr: result.stderr};
 }
 /**
  * Entrypoint for all wrapped CLI commands
@@ -297,7 +515,15 @@ export class CliWrapper {
     }
 
     get cliPath(): string {
-        return this.extensionContext.asAbsolutePath("./bin/databricks");
+        // The bundled binary is named `databricks.exe` on Windows. We must
+        // include the extension here: while spawning the CLI ourselves works
+        // without it (Windows' CreateProcess auto-appends `.exe`), this path is
+        // also forwarded to the Databricks Go SDK / Terraform provider via the
+        // DATABRICKS_CLI_PATH env var, and they do a literal file lookup that
+        // fails on an extensionless path with "databricks CLI not found".
+        const binName =
+            process.platform === "win32" ? "databricks.exe" : "databricks";
+        return this.extensionContext.asAbsolutePath(`./bin/${binName}`);
     }
 
     getLoggingArguments(): string[] {
@@ -327,10 +553,26 @@ export class CliWrapper {
         };
     }
 
+    /**
+     * The CLI path, quoted for a shell we send it to as a command.
+     *
+     * Takes the shell kind explicitly so the escaping matches the shell that
+     * will parse the command line, rather than assuming the default profile's.
+     */
+    escapedCliPathFor(kind: ShellKind): string {
+        return escapeExecutableForTerminal(this.cliPath, kind);
+    }
+
+    /**
+     * The CLI path quoted for the *default* shell.
+     *
+     * Only correct when sending to a terminal created without `shellPath`,
+     * which is what makes the default profile the shell that parses the line.
+     * Don't use it with a reused terminal (`window.activeTerminal`): that can be
+     * running any profile, so prefer `escapedCliPathFor` with a known kind.
+     */
     get escapedCliPath(): string {
-        return isPowershell()
-            ? `& "${this.cliPath.replace('"', '\\"')}"`
-            : `'${this.cliPath.replaceAll("'", "\\'")}'`;
+        return this.escapedCliPathFor(currentShellKind());
     }
 
     /**
@@ -404,10 +646,7 @@ export class CliWrapper {
             return [];
         }
 
-        let profiles = JSON.parse(res.stdout).profiles || [];
-
-        // filter out account profiles
-        profiles = profiles.filter((p: any) => !p.account_id);
+        const profiles = JSON.parse(res.stdout).profiles || [];
 
         const result = [];
         let hasError = false;
@@ -417,6 +656,7 @@ export class CliWrapper {
                     name: profile.name,
                     host: UrlUtils.normalizeHost(profile.host),
                     accountId: profile.account_id,
+                    workspaceId: profile.workspace_id,
                     cloud: profile.cloud,
                     authType: profile.auth_type,
                     valid: profile.valid,
@@ -445,7 +685,9 @@ export class CliWrapper {
                         await FileUtils.openDatabricksConfigFile();
                     }
                     if (choice === "Show Error Logs") {
-                        this.loggerManager.showOutputChannel("Databricks Logs");
+                        await this.loggerManager.showOutputChannel(
+                            "Databricks Logs"
+                        );
                     }
                 });
         }
@@ -459,6 +701,165 @@ export class CliWrapper {
             ...this.getLoggingArguments(),
         ]);
         return stdout;
+    }
+
+    private aitoolsEnv(): Record<string, string | undefined> {
+        return {
+            ...EnvVarGenerators.getEnvVarsForCli(this.extensionContext),
+            ...EnvVarGenerators.getProxyEnvVars(),
+        };
+    }
+
+    /**
+     * Install Databricks AI tools (skills + agent plugins) for the given scope.
+     *
+     * `cwd` selects the install root: the project root for `--scope project`
+     * (installs into `.databricks/aitools/skills` under the workspace) or the
+     * home dir for `--scope global` (see AiToolsManager.cwdForScope).
+     *
+     * Runs with `--output json` and never throws: it resolves with `{output,
+     * error}` and leaves it to the caller ({@link AiToolsManager}) to record the
+     * categories and decide how to surface a failure. `output` is the parsed
+     * {@link AiToolsInstallOutput}, or `undefined` when stdout carries no
+     * structured result — an empty `agents` request, or a success from a CLI old
+     * enough to ignore `--output json` (human text on stdout). `error` is the
+     * non-zero-exit error (`undefined` on a success exit); a JSON-capable CLI
+     * still prints the structured result on a failing exit, so both `output` and
+     * `error` can be present, letting per-agent and top-level failures reach
+     * telemetry with their categories.
+     */
+    public async aitoolsInstall(
+        scope: AiToolsScope,
+        cwd: string,
+        cancellationToken: CancellationToken | undefined,
+        agents: string[]
+    ): Promise<{
+        output: AiToolsInstallOutput | undefined;
+        error: Error | undefined;
+    }> {
+        if (agents.length === 0) {
+            return {output: undefined, error: undefined};
+        }
+
+        const args = [
+            "aitools",
+            "install",
+            "--scope",
+            scope,
+            "--agents",
+            agents.join(","),
+            "--output",
+            "json",
+        ];
+        try {
+            const res = await execFile(
+                this.cliPath,
+                args,
+                {cwd, env: this.aitoolsEnv()},
+                cancellationToken,
+                {closeStdin: true}
+            );
+            return {
+                output: parseAiToolsInstallOutput(res.stdout),
+                error: undefined,
+            };
+        } catch (error: unknown) {
+            if (!(error instanceof Error)) {
+                return {output: undefined, error: new Error(String(error))};
+            }
+            // A JSON-capable CLI prints the structured result on stdout even when
+            // the install fails (non-zero exit). Hand it back for the caller to
+            // inspect and record.
+            const output =
+                "stdout" in error && typeof error.stdout === "string"
+                    ? parseAiToolsInstallOutput(error.stdout)
+                    : undefined;
+            return {output, error};
+        }
+    }
+
+    /**
+     * Update installed Databricks AI tools for the given scope.
+     */
+    @withLogContext(Loggers.Extension)
+    public async aitoolsUpdate(
+        scope: AiToolsScope,
+        cwd: string,
+        cancellationToken?: CancellationToken,
+        @context ctx?: Context
+    ): Promise<void> {
+        const args = ["aitools", "update", "--scope", scope];
+        try {
+            await execFile(
+                this.cliPath,
+                args,
+                {cwd, env: this.aitoolsEnv()},
+                cancellationToken,
+                {closeStdin: true}
+            );
+        } catch (e: any) {
+            ctx?.logger?.error("Failed to update Databricks AI tools", e);
+            throw new ProcessError(e.message, e.code ?? null);
+        }
+    }
+
+    /**
+     * Uninstall Databricks AI tools for the given scope.
+     */
+    @withLogContext(Loggers.Extension)
+    public async aitoolsUninstall(
+        scope: AiToolsScope,
+        cwd: string,
+        cancellationToken?: CancellationToken,
+        @context ctx?: Context
+    ): Promise<void> {
+        const args = ["aitools", "uninstall", "--scope", scope];
+        try {
+            await execFile(
+                this.cliPath,
+                args,
+                {cwd, env: this.aitoolsEnv()},
+                cancellationToken,
+                {closeStdin: true}
+            );
+        } catch (e: any) {
+            ctx?.logger?.error("Failed to uninstall Databricks AI tools", e);
+            throw new ProcessError(e.message, e.code ?? null);
+        }
+    }
+
+    /**
+     * List Databricks AI tools components as structured JSON. We use it both to
+     * detect whether an update is available (any installed skill whose
+     * `installed[scope]` differs from `latest_version`) and to read the current
+     * release.
+     *
+     * `aitools list` output is trusted and cast directly (`aitools update --check`
+     * still prints text). `aitools install` also emits JSON under `--output json`,
+     * but on a non-zero exit and from a CLI old enough to ignore the flag, so
+     * {@link aitoolsInstall} parses it defensively via
+     * {@link parseAiToolsInstallOutput} instead of casting.
+     */
+    @withLogContext(Loggers.Extension)
+    public async aitoolsList(
+        cwd: string,
+        @context ctx?: Context
+    ): Promise<AiToolsListResult> {
+        const args = ["aitools", "list", "--output", "json"];
+        let res;
+        try {
+            res = await execFile(
+                this.cliPath,
+                args,
+                {cwd, env: this.aitoolsEnv()},
+                undefined,
+                {closeStdin: true}
+            );
+        } catch (e: any) {
+            ctx?.logger?.error("Failed to list Databricks AI tools", e);
+            throw new ProcessError(e.message, e.code ?? null);
+        }
+        return JSON.parse(res.stdout) as AiToolsListResult;
     }
 
     async getBundleCommandEnvVars(
@@ -564,6 +965,68 @@ export class CliWrapper {
             ...authProvider.toEnv(),
             // eslint-disable-next-line @typescript-eslint/naming-convention
             DATABRICKS_OUTPUT_FORMAT: "text",
+        });
+    }
+
+    /**
+     * Env vars for interactive CLI commands run in a terminal (e.g. `ssh
+     * connect`). Auth is forwarded via env vars, matching the bundle init flow.
+     */
+    getSshConnectEnvVars(authProvider: AuthProvider) {
+        return removeUndefinedKeys({
+            ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
+                workspaceConfigs.databrickscfgLocation
+            ),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...this.getLogginEnvVars(),
+            ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_OUTPUT_FORMAT: "text",
+        });
+    }
+
+    /**
+     * Env vars for `environments setup-local` (the uv-native Python environment
+     * setup).
+     *
+     * Auth is forwarded the same way as the bundle-init and ssh-connect flows,
+     * so the command provisions against the workspace the extension is actually
+     * connected to: `authProvider.toEnv()` carries the host and profile, and
+     * `getEnvVarsForCli` carries `DATABRICKS_CONFIG_FILE` for users who have
+     * relocated their `.databrickscfg`. Without them the CLI's
+     * `MustWorkspaceClient` falls back to its own default-profile resolution.
+     *
+     * Like the sibling methods this returns only the Databricks vars; the caller
+     * overlays them onto the ambient environment, because `setup-local` shells
+     * out to `uv` and needs the real OS environment (platform paths, `UV_*`
+     * vars) as its base.
+     *
+     * Unlike those two this keeps `getEnvVarsForCli`'s `DATABRICKS_OUTPUT_FORMAT
+     * = json` rather than overriding it to "text": they render CLI output into a
+     * terminal for a human, whereas this run's stdout is parsed as the single
+     * JSON result object (the argv also passes `--output json` explicitly).
+     *
+     * `DATABRICKS_BUNDLE_TARGET` must accompany the profile. `setup-local` runs
+     * `MustWorkspaceClient` without a `--profile` flag, so the CLI does not skip
+     * loading the bundle and selects its *default* target; the profile we inject
+     * then reaches `Workspace.Client`, which rejects the run outright when that
+     * target's host disagrees with the profile's host ("the host in the profile
+     * doesn't match the host configured in the bundle"). Naming the target we
+     * are actually connected to keeps the two in agreement. `dbconnect` forwards
+     * this var for the same reason (see `getCommonDatabricksEnvVars`).
+     */
+    getSetupLocalEnvVars(authProvider: AuthProvider, target?: string) {
+        return removeUndefinedKeys({
+            ...EnvVarGenerators.getEnvVarsForCli(
+                this.extensionContext,
+                workspaceConfigs.databrickscfgLocation
+            ),
+            ...EnvVarGenerators.getProxyEnvVars(),
+            ...this.getLogginEnvVars(),
+            ...authProvider.toEnv(),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            DATABRICKS_BUNDLE_TARGET: target,
         });
     }
 

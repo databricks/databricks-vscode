@@ -1,0 +1,1371 @@
+import {expect} from "chai";
+import {mkdtemp, readdir, readFile, rm, writeFile} from "fs/promises";
+import {tmpdir} from "os";
+import path from "path";
+import {commands, env, QuickPick, QuickPickItem, Uri, window} from "vscode";
+import {
+    makePythonSetupDeps,
+    makePythonSetupVisibility,
+    PythonSetupWiringDeps,
+    resolveComputeFrom,
+} from "./pythonSetupDeps";
+import {PresetPickItem} from "../utils/pythonSetupPresetPicker";
+import {PythonSetupState} from "../../vscode-objs/StateStorage";
+import {SetupCompute} from "./PythonSetupEnvironmentSetup";
+import {Telemetry} from "../../telemetry";
+import {
+    SUCCESS_DEFAULT,
+    SUCCESS_WITH_WARNINGS,
+} from "../models/fixtures/setupLocalResults";
+
+describe("makePythonSetupVisibility", () => {
+    const uvDetection = {
+        primary: "uv" as const,
+        managers: ["uv" as const],
+        signals: [],
+    };
+
+    it("is hidden when there is no open project", async () => {
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => uvDetection,
+            projectRoot: () => undefined,
+            setupMode: () => "auto",
+        });
+        expect(await isVisible()).to.equal(false);
+    });
+
+    it("is visible for a clean uv project", async () => {
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => uvDetection,
+            projectRoot: () => "/proj",
+            setupMode: () => "auto",
+        });
+        expect(await isVisible()).to.equal(true);
+    });
+
+    it("is hidden for a project with a competing manager", async () => {
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => ({
+                primary: "uv" as const,
+                managers: ["uv" as const, "pip" as const],
+                signals: ["requirements.txt" as const],
+            }),
+            projectRoot: () => "/proj",
+            setupMode: () => "auto",
+        });
+        expect(await isVisible()).to.equal(false);
+    });
+
+    it("is hidden for a clean uv project when setup mode is manual", async () => {
+        // The user's opt-out: `manual` disables uv-native setup outright, so a
+        // valid existing environment is used as-is and no fetch to GitHub is
+        // needed. It short-circuits before detection even runs.
+        let detected = false;
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => {
+                detected = true;
+                return uvDetection;
+            },
+            projectRoot: () => "/proj",
+            setupMode: () => "manual",
+        });
+        expect(await isVisible()).to.equal(false);
+        expect(detected).to.equal(false);
+    });
+});
+
+describe("resolveComputeFrom", () => {
+    it("returns a cluster target when a cluster is attached", () => {
+        expect(
+            resolveComputeFrom({
+                serverless: false,
+                cluster: {id: "0101-clusterid"},
+                serverlessVersion: undefined,
+            })
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "0101-clusterid"},
+        });
+    });
+
+    it("returns a serverless target with the persisted version", () => {
+        expect(
+            resolveComputeFrom({
+                serverless: true,
+                cluster: undefined,
+                serverlessVersion: "5",
+            })
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "5"},
+        });
+    });
+
+    it("asks for a version when serverless is attached without one", () => {
+        // The distinguishing state: compute IS selected, only the version is
+        // missing -- so the caller must resolve one rather than claim nothing
+        // is attached.
+        expect(
+            resolveComputeFrom({
+                serverless: true,
+                cluster: undefined,
+                serverlessVersion: undefined,
+            })
+        ).to.deep.equal({status: "needsServerlessVersion"});
+    });
+
+    it("returns none when no compute is selected", () => {
+        expect(
+            resolveComputeFrom({
+                serverless: false,
+                cluster: undefined,
+                serverlessVersion: undefined,
+            })
+        ).to.deep.equal({status: "none"});
+    });
+
+    it("prefers a cluster over a stale serverless version", () => {
+        // Cluster attached wins; the serverless version is irrelevant then.
+        expect(
+            resolveComputeFrom({
+                serverless: false,
+                cluster: {id: "c1"},
+                serverlessVersion: "5",
+            })
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+    });
+
+    it("prefers a cluster even when serverless is also set", () => {
+        // A cluster attachment wins outright regardless of serverless state --
+        // pin the precedence so a future reorder can't silently pick serverless.
+        expect(
+            resolveComputeFrom({
+                serverless: true,
+                cluster: {id: "c1"},
+                serverlessVersion: "5",
+            })
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+    });
+
+    it("never asks for a version when a cluster is attached without one", () => {
+        // Guards the cluster path against the version prompt leaking into it:
+        // a cluster's DBR fully determines the environment.
+        expect(
+            resolveComputeFrom({
+                serverless: true,
+                cluster: {id: "c1"},
+                serverlessVersion: undefined,
+            })
+        ).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+    });
+});
+
+/**
+ * A minimal scriptable QuickPick stand-in (see `AiToolsCommands.test.ts`).
+ * `onShow` decides which item is selected, or dismisses.
+ */
+class FakeQuickPick {
+    title?: string;
+    placeholder?: string;
+    items: readonly QuickPickItem[] = [];
+    selectedItems: readonly QuickPickItem[] = [];
+    private acceptCbs: Array<() => void> = [];
+    private hideCbs: Array<() => void> = [];
+    constructor(
+        private readonly onShow: (
+            pick: FakeQuickPick
+        ) => {selected: readonly QuickPickItem[]} | "dismiss"
+    ) {}
+    onDidAccept(cb: () => void) {
+        this.acceptCbs.push(cb);
+        return {dispose() {}};
+    }
+    onDidHide(cb: () => void) {
+        this.hideCbs.push(cb);
+        return {dispose() {}};
+    }
+    show() {
+        const r = this.onShow(this);
+        if (r === "dismiss") {
+            this.hideCbs.forEach((cb) => cb());
+            return;
+        }
+        this.selectedItems = r.selected;
+        this.acceptCbs.forEach((cb) => cb());
+    }
+    hide() {
+        this.hideCbs.forEach((cb) => cb());
+    }
+    dispose() {}
+}
+
+/**
+ * A `createQuickPick` factory (typed as the real `window.createQuickPick`
+ * seam) that scripts the widget's outcome and records the created instances so
+ * a test can read the title the wiring set.
+ */
+function fakeCreateQuickPick(
+    onShow: (
+        pick: FakeQuickPick
+    ) => {selected: readonly QuickPickItem[]} | "dismiss"
+) {
+    const created: FakeQuickPick[] = [];
+    const create = (() => {
+        const pick = new FakeQuickPick(onShow);
+        created.push(pick);
+        return pick as unknown as QuickPick<PresetPickItem>;
+    }) as <T extends QuickPickItem>() => QuickPick<T>;
+    return {create, created};
+}
+
+function makeWiring(
+    overrides: Partial<PythonSetupWiringDeps> = {}
+): PythonSetupWiringDeps {
+    return {
+        cli: {run: async () => ({}) as any},
+        projectRoot: () => "/proj",
+        detect: async () => ({
+            primary: "uv" as const,
+            managers: ["uv" as const],
+            signals: [],
+        }),
+        setupMode: () => "auto",
+        attachedCompute: () => ({
+            serverless: false,
+            cluster: undefined,
+            serverlessVersion: undefined,
+        }),
+        promptServerlessVersion: async () => "4",
+        persistServerlessVersion: async () => {},
+        promptSelectCompute: async () => undefined,
+        createQuickPick: fakeCreateQuickPick(() => "dismiss").create,
+        clusterDbrVersion: async () => undefined,
+        setActiveInterpreter: async () => {},
+        persistSetupState: () => {},
+        log: {append: () => {}, show: () => {}},
+        reportEnvironment: {
+            extensionVersion: "2.14.1",
+            cliVersion: "1.13.0",
+            platform: "darwin",
+        },
+        // A reporter-less client: recordEvent short-circuits, so the setup
+        // events are inert here (they have their own tests).
+        telemetry: new Telemetry(undefined),
+        ...overrides,
+    };
+}
+
+describe("makePythonSetupDeps resolveCompute", () => {
+    /** A serverless session with no version recorded -- the prompt's reason to exist. */
+    const versionlessServerless = () => ({
+        serverless: true,
+        cluster: undefined,
+        serverlessVersion: undefined,
+    });
+
+    it("prompts for a missing serverless version and persists the answer", async () => {
+        const persisted: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: versionlessServerless,
+                promptServerlessVersion: async () => "4",
+                persistServerlessVersion: async (v) => {
+                    persisted.push(v);
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "4"},
+        });
+        // Persisted so the next run does not ask again.
+        expect(persisted).to.deep.equal(["4"]);
+    });
+
+    it("reports cancelled and persists nothing when the prompt is dismissed", async () => {
+        const persisted: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: versionlessServerless,
+                promptServerlessVersion: async () => undefined,
+                persistServerlessVersion: async (v) => {
+                    persisted.push(v);
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "cancelled",
+        });
+        expect(persisted).to.have.length(0);
+    });
+
+    it("never prompts when a cluster is attached", async () => {
+        let prompted = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => ({
+                    serverless: false,
+                    cluster: {id: "c1"},
+                    serverlessVersion: undefined,
+                }),
+                promptServerlessVersion: async () => {
+                    prompted++;
+                    return "4";
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+        expect(prompted).to.equal(0);
+    });
+
+    it("offers the compute picker (not the version picker) when nothing is attached", async () => {
+        // Nothing attached opens the compute picker, never the version picker.
+        let versionPrompted = 0;
+        let pickerOpened = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                promptSelectCompute: async () => {
+                    pickerOpened++;
+                    return undefined; // dismissed
+                },
+                promptServerlessVersion: async () => {
+                    versionPrompted++;
+                    return "4";
+                },
+            })
+        );
+
+        // Dismissed -> `none`, which the orchestrator turns into guidance.
+        expect(await deps.resolveCompute()).to.deep.equal({status: "none"});
+        expect(pickerOpened).to.equal(1);
+        expect(versionPrompted).to.equal(0);
+    });
+
+    it("runs against the cluster the picker returns, without re-reading state", async () => {
+        // Uses the picker's return value; `attachedCompute` stays `none` to
+        // prove the flow doesn't re-read (which would race the attach).
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => ({
+                    serverless: false,
+                    cluster: undefined,
+                    serverlessVersion: undefined,
+                }),
+                promptSelectCompute: async (): Promise<
+                    SetupCompute | undefined
+                > => ({kind: "cluster", clusterId: "c1"}),
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+    });
+
+    it("runs against the serverless compute the picker returns", async () => {
+        // The picker returns serverless version-complete -- no follow-up prompt.
+        let versionPrompted = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => ({
+                    serverless: false,
+                    cluster: undefined,
+                    serverlessVersion: undefined,
+                }),
+                promptSelectCompute: async (): Promise<
+                    SetupCompute | undefined
+                > => ({kind: "serverless", version: "5"}),
+                promptServerlessVersion: async () => {
+                    versionPrompted++;
+                    return "4";
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "5"},
+        });
+        expect(versionPrompted).to.equal(0);
+    });
+
+    it("does not open the compute picker when a cluster is already attached", async () => {
+        let pickerOpened = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => ({
+                    serverless: false,
+                    cluster: {id: "c1"},
+                    serverlessVersion: undefined,
+                }),
+                promptSelectCompute: async () => {
+                    pickerOpened++;
+                    return undefined;
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "cluster", clusterId: "c1"},
+        });
+        expect(pickerOpened).to.equal(0);
+    });
+
+    it("never prompts when serverless already has a version", async () => {
+        let prompted = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: () => ({
+                    serverless: true,
+                    cluster: undefined,
+                    serverlessVersion: "5",
+                }),
+                promptServerlessVersion: async () => {
+                    prompted++;
+                    return "4";
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "5"},
+        });
+        expect(prompted).to.equal(0);
+    });
+
+    it("still runs when persisting the version fails", async () => {
+        // Persistence only buys "don't ask again"; losing it must not cost the
+        // user the run they asked for.
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                attachedCompute: versionlessServerless,
+                promptServerlessVersion: async () => "4",
+                persistServerlessVersion: async () => {
+                    throw new Error("config write failed");
+                },
+            })
+        );
+
+        expect(await deps.resolveCompute()).to.deep.equal({
+            status: "ok",
+            compute: {kind: "serverless", version: "4"},
+        });
+    });
+});
+
+describe("makePythonSetupDeps saveState", () => {
+    it("stamps a timestamp and forwards the persisted state", () => {
+        const persisted: PythonSetupState[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                persistSetupState: (s) => persisted.push(s),
+            })
+        );
+
+        deps.saveState({
+            envKey: "serverless/serverless-v5",
+            pythonVersion: "3.12",
+        });
+
+        expect(persisted).to.have.length(1);
+        expect(persisted[0].envKey).to.equal("serverless/serverless-v5");
+        expect(persisted[0].pythonVersion).to.equal("3.12");
+        // A wiring-supplied ISO-8601 timestamp is added.
+        expect(persisted[0].timestamp).to.be.a("string");
+        expect(Number.isNaN(Date.parse(persisted[0].timestamp))).to.equal(
+            false
+        );
+    });
+
+    it("adopts the venv interpreter for the passed root, not the live projectRoot", async () => {
+        const adopted: Array<{path: string; root: string}> = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                // The live active project differs from the run's captured root;
+                // adoption must use the root it is given, not re-read this.
+                projectRoot: () => "/other",
+                setActiveInterpreter: async (path, root: Uri) => {
+                    adopted.push({path, root: root.fsPath});
+                },
+            })
+        );
+
+        await deps.adoptInterpreter("/proj/.venv", "/proj");
+
+        expect(adopted).to.have.length(1);
+        expect(adopted[0].path).to.match(/\.venv[\\/](bin[\\/]python|Scripts)/);
+        // The seam receives `Uri.file(root).fsPath`; compare against that rather
+        // than the literal so the assertion holds on Windows (where fsPath is
+        // `\proj`) as well as POSIX (`/proj`).
+        expect(adopted[0].root).to.equal(Uri.file("/proj").fsPath);
+    });
+});
+
+describe("makePythonSetupVisibility error handling", () => {
+    const uvDetection = {
+        primary: "uv" as const,
+        managers: ["uv" as const],
+        signals: [],
+    };
+
+    it("degrades to not-visible when detection rejects (never throws)", async () => {
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => {
+                throw new Error("signal collection blew up");
+            },
+            projectRoot: () => "/proj",
+            setupMode: () => "auto",
+        });
+        // Must resolve false, not reject: a throwing gate would blank the
+        // Environment section instead of showing the legacy checklist.
+        expect(await isVisible()).to.equal(false);
+    });
+
+    it("degrades to not-visible when projectRoot throws", async () => {
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => uvDetection,
+            projectRoot: () => {
+                throw new Error("no active project folder");
+            },
+            setupMode: () => "auto",
+        });
+        expect(await isVisible()).to.equal(false);
+    });
+
+    it("degrades to not-visible when the setup-mode read throws", async () => {
+        const isVisible = makePythonSetupVisibility({
+            detect: async () => uvDetection,
+            projectRoot: () => "/proj",
+            setupMode: () => {
+                throw new Error("config read blew up");
+            },
+        });
+        expect(await isVisible()).to.equal(false);
+    });
+});
+
+describe("makePythonSetupDeps withProgress", () => {
+    it("forwards streamed log chunks to the injected channel", async () => {
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+
+        const result = await deps.withProgress("Setting up", async (log) => {
+            log("chunk-a");
+            log("chunk-b");
+            return "done";
+        });
+
+        expect(result).to.equal("done");
+        expect(appended).to.deep.equal(["chunk-a", "chunk-b"]);
+    });
+
+    it("hands the task a cancellation token (so cancel can tear down)", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+
+        const token = await deps.withProgress(
+            "Setting up",
+            async (_log, token) => token
+        );
+
+        // A real CancellationToken is provided -- the wiring passes
+        // cancellable:true, so this reflects the user's Cancel button.
+        expect(token).to.not.equal(undefined);
+        expect(token.isCancellationRequested).to.equal(false);
+    });
+});
+
+describe("makePythonSetupDeps showError", () => {
+    let originalShowError: typeof window.showErrorMessage;
+    let shownWith: {message: string; actions: string[]}[];
+    let reply: string | undefined;
+
+    beforeEach(() => {
+        originalShowError = window.showErrorMessage;
+        shownWith = [];
+        reply = undefined;
+        // Capture what the error popup is shown with, and control what the user
+        // "clicks". (ts-mockito can't stub the vscode namespace, so swap the fn.)
+        (window as unknown as {showErrorMessage: unknown}).showErrorMessage =
+            async (message: string, ...actions: string[]) => {
+                shownWith.push({message, actions});
+                return reply;
+            };
+    });
+
+    afterEach(() => {
+        (window as unknown as {showErrorMessage: unknown}).showErrorMessage =
+            originalShowError;
+    });
+
+    it("writes the detail into the log channel", async () => {
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+
+        await deps.showError("friendly copy", "raw conflict detail");
+
+        expect(appended.join("")).to.contain("raw conflict detail");
+    });
+
+    it("reveals the channel automatically and offers a Show Logs action", async () => {
+        let shown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        shown++;
+                    },
+                },
+            })
+        );
+        reply = "Show Logs";
+
+        await deps.showError("friendly copy", "detail");
+
+        expect(shownWith).to.have.length(1);
+        expect(shownWith[0].message).to.equal("friendly copy");
+        expect(shownWith[0].actions).to.contain("Show Logs");
+        // Once on the automatic reveal, again when the button is picked.
+        expect(shown).to.equal(2);
+    });
+
+    it("still reveals the channel when the popup is dismissed", async () => {
+        let shown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        shown++;
+                    },
+                },
+            })
+        );
+        reply = undefined; // user dismissed the popup without clicking
+
+        await deps.showError("friendly copy", "detail");
+
+        // The automatic reveal fires regardless of what the user clicks.
+        expect(shown).to.equal(1);
+    });
+
+    it("still offers the button but writes nothing when there is no detail", async () => {
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+
+        await deps.showError("friendly copy");
+
+        expect(appended).to.have.length(0);
+        expect(shownWith[0].actions).to.contain("Show Logs");
+    });
+
+    it("offers the given action button and opens its URL when picked", async () => {
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
+
+            // Order matters: the remediation button leads, "Show Logs" follows.
+            expect(shownWith[0].actions).to.deep.equal([
+                "Install uv",
+                "Show Logs",
+            ]);
+            expect(opened).to.deep.equal([
+                "https://docs.astral.sh/uv/getting-started/installation/",
+            ]);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("ignores a remediation action that reuses the reserved Show Logs label", async () => {
+        // Defensive: the picked value comes back as a bare label string, so two
+        // buttons sharing "Show Logs" would be indistinguishable and the URL
+        // branch would be dead. Such an action is dropped (log-only) rather than
+        // silently mis-dispatched.
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Show Logs";
+
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Show Logs",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
+
+            // Only the single, unambiguous Show Logs button is offered...
+            expect(shownWith[0].actions).to.deep.equal(["Show Logs"]);
+            // ...and clicking it reveals the log, never opening the URL.
+            expect(opened).to.have.length(0);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("logs when the browser cannot open the remediation URL (resolves false)", async () => {
+        // env.openExternal resolves false (rather than rejecting) when VS Code
+        // cannot open the URI; that ineffective click must still be recorded.
+        const originalOpen = env.openExternal;
+        (env as unknown as {openExternal: unknown}).openExternal = async () =>
+            false;
+        const appended: string[] = [];
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({
+                    log: {append: (c) => appended.push(c), show: () => {}},
+                })
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
+
+            expect(appended.join("")).to.match(/could not open/i);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("does not reject when opening the remediation URL fails", async () => {
+        // The popup is the failure-reporting path; a failed browser launch must
+        // not turn it into a rejected promise (the caller does not wrap it).
+        const originalOpen = env.openExternal;
+        (env as unknown as {openExternal: unknown}).openExternal = async () => {
+            throw new Error("no browser available");
+        };
+        const appended: string[] = [];
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({
+                    log: {append: (c) => appended.push(c), show: () => {}},
+                })
+            );
+            reply = "Install uv";
+
+            // Must resolve, not throw.
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
+
+            // The failure is recorded to the log channel rather than swallowed
+            // silently.
+            expect(appended.join("")).to.contain("no browser available");
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("does not open the URL when the action button is not picked", async () => {
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Show Logs";
+
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
+
+            expect(opened).to.have.length(0);
+        } finally {
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("renders two remediation buttons in order, then Show Logs", async () => {
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        reply = undefined; // dismissed — we only assert on the offered buttons
+
+        await deps.showError("uv missing", "detail", [
+            {label: "Install uv", command: "databricks.environment.installUv"},
+            {
+                label: "Installation guide",
+                url: "https://docs.astral.sh/uv/getting-started/installation/",
+            },
+        ]);
+
+        expect(shownWith[0].actions).to.deep.equal([
+            "Install uv",
+            "Installation guide",
+            "Show Logs",
+        ]);
+    });
+
+    it("runs the VS Code command when a command-action button is picked", async () => {
+        const original = commands.executeCommand;
+        const executed: string[] = [];
+        const executedArgs: unknown[] = [];
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            async (command: string, ...args: unknown[]) => {
+                executed.push(command);
+                executedArgs.push(args[0]);
+            };
+        const originalOpen = env.openExternal;
+        const opened: string[] = [];
+        (env as unknown as {openExternal: unknown}).openExternal = async (
+            uri: Uri
+        ) => {
+            opened.push(uri.toString(true));
+            return true;
+        };
+        try {
+            const deps = makePythonSetupDeps(
+                makeWiring({log: {append: () => {}, show: () => {}}})
+            );
+            reply = "Install uv";
+
+            await deps.showError("uv missing", "detail", [
+                {
+                    label: "Install uv",
+                    command: "databricks.environment.installUv",
+                },
+                {
+                    label: "Installation guide",
+                    url: "https://docs.astral.sh/uv/getting-started/installation/",
+                },
+            ]);
+
+            // The command runs; the sibling URL action is untouched.
+            expect(executed).to.deep.equal([
+                "databricks.environment.installUv",
+            ]);
+            // Command-actions are tagged as coming from the error popup, so a
+            // command can distinguish a popup click from a palette invocation.
+            expect(executedArgs).to.deep.equal([{source: "error_popup"}]);
+            expect(opened).to.have.length(0);
+        } finally {
+            (commands as unknown as {executeCommand: unknown}).executeCommand =
+                original;
+            (env as unknown as {openExternal: unknown}).openExternal =
+                originalOpen;
+        }
+    });
+
+    it("runs a run-action's callback when its button is picked", async () => {
+        // A run-action carries an in-process closure (the constraint-conflict
+        // "Retry DB Connect setup" / "Open pyproject.toml" buttons need runtime
+        // state, so they can't be a static url/command).
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        let ran = 0;
+        reply = "Retry DB Connect setup";
+
+        await deps.showError("conflict copy", "detail", [
+            {label: "Retry DB Connect setup", run: async () => void ran++},
+        ]);
+
+        expect(ran).to.equal(1);
+    });
+
+    it("omits the Show Logs button when includeShowLogs is false", async () => {
+        // A self-service toast (the recoverable constraint conflict) drops the
+        // trailing Show Logs so its own action buttons fit; the channel is still
+        // revealed, so the log stays reachable.
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        reply = undefined;
+
+        await deps.showError(
+            "conflict copy",
+            "detail",
+            [
+                {label: "Retry DB Connect setup", run: async () => {}},
+                {label: "Open pyproject.toml", run: async () => {}},
+            ],
+            {includeShowLogs: false}
+        );
+
+        expect(shownWith[0].actions).to.deep.equal([
+            "Retry DB Connect setup",
+            "Open pyproject.toml",
+        ]);
+        expect(shownWith[0].actions).to.not.contain("Show Logs");
+    });
+
+    it("does not run a run-action's callback when its button is not picked", async () => {
+        const deps = makePythonSetupDeps(
+            makeWiring({log: {append: () => {}, show: () => {}}})
+        );
+        let ran = 0;
+        reply = "Show Logs";
+
+        await deps.showError("conflict copy", "detail", [
+            {label: "Retry DB Connect setup", run: async () => void ran++},
+        ]);
+
+        expect(ran).to.equal(0);
+    });
+
+    it("does not reject when a run-action's callback throws", async () => {
+        // showError is the failure-reporting path and its one caller does not
+        // wrap it, so a throwing callback must be contained (logged), not escape.
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {append: (c) => appended.push(c), show: () => {}},
+            })
+        );
+        reply = "Retry DB Connect setup";
+
+        await deps.showError("conflict copy", "detail", [
+            {
+                label: "Retry DB Connect setup",
+                run: async () => {
+                    throw new Error("retry blew up");
+                },
+            },
+        ]);
+
+        expect(appended.join("")).to.contain("retry blew up");
+    });
+});
+
+describe("makePythonSetupDeps openProjectFile", () => {
+    let originalShow: typeof window.showTextDocument;
+    let opened: string[];
+
+    beforeEach(() => {
+        originalShow = window.showTextDocument;
+        opened = [];
+        (window as unknown as {showTextDocument: unknown}).showTextDocument =
+            async (uri: Uri) => {
+                opened.push(uri.fsPath);
+                return {} as any;
+            };
+    });
+
+    afterEach(() => {
+        (window as unknown as {showTextDocument: unknown}).showTextDocument =
+            originalShow;
+    });
+
+    it("opens the project's pyproject.toml in an editor", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+
+        await deps.openProjectFile("/proj");
+
+        expect(opened).to.have.length(1);
+        expect(opened[0]).to.match(/[/\\]proj[/\\]pyproject\.toml$/);
+    });
+});
+
+describe("makePythonSetupDeps restoreProjectFile", () => {
+    it("copies the CLI's backup over the project's pyproject.toml", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
+        try {
+            const pyproject = path.join(dir, "pyproject.toml");
+            const backup = path.join(dir, "pyproject.toml.bak");
+            // The failed run's conflicting file, and the pre-merge backup.
+            await writeFile(pyproject, "conflicting = true\n");
+            await writeFile(backup, "original = true\n");
+
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.restoreProjectFile(dir, backup);
+
+            // pyproject.toml now holds the backup's (original) contents again.
+            expect(await readFile(pyproject, "utf8")).to.equal(
+                "original = true\n"
+            );
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("leaves no temp artifact behind after a successful restore", async () => {
+        // The restore writes atomically (copy to a temp sibling, then rename),
+        // so no stray *.tmp file may survive a successful run.
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
+        try {
+            const backup = path.join(dir, "pyproject.toml.bak");
+            await writeFile(path.join(dir, "pyproject.toml"), "conflicting\n");
+            await writeFile(backup, "original\n");
+
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.restoreProjectFile(dir, backup);
+
+            const entries = await readdir(dir);
+            expect(entries.sort()).to.deep.equal([
+                "pyproject.toml",
+                "pyproject.toml.bak",
+            ]);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("refuses to restore from a backup outside the project (and leaves the file untouched)", async () => {
+        // backupPath comes from the CLI result; a path outside the project must
+        // never be copied over pyproject.toml.
+        const project = await mkdtemp(path.join(tmpdir(), "vpex-proj-"));
+        const outside = await mkdtemp(path.join(tmpdir(), "vpex-out-"));
+        try {
+            const pyproject = path.join(project, "pyproject.toml");
+            await writeFile(pyproject, "conflicting\n");
+            const foreign = path.join(outside, "secrets.bak");
+            await writeFile(foreign, "SHOULD NOT LAND\n");
+
+            const deps = makePythonSetupDeps(makeWiring());
+            let threw = false;
+            try {
+                await deps.restoreProjectFile(project, foreign);
+            } catch {
+                threw = true;
+            }
+
+            expect(threw).to.equal(true);
+            // pyproject.toml is untouched; the foreign file never lands.
+            expect(await readFile(pyproject, "utf8")).to.equal("conflicting\n");
+        } finally {
+            await rm(project, {recursive: true, force: true});
+            await rm(outside, {recursive: true, force: true});
+        }
+    });
+
+    it("leaves pyproject.toml untouched and cleans up when the copy fails", async () => {
+        // A missing backup (in-project path, so it passes the guard) makes the
+        // copy fail: the destination must be untouched and no temp left behind.
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
+        try {
+            const pyproject = path.join(dir, "pyproject.toml");
+            await writeFile(pyproject, "conflicting\n");
+            const missing = path.join(dir, "pyproject.toml.bak"); // never created
+
+            const deps = makePythonSetupDeps(makeWiring());
+            let threw = false;
+            try {
+                await deps.restoreProjectFile(dir, missing);
+            } catch {
+                threw = true;
+            }
+
+            expect(threw).to.equal(true);
+            expect(await readFile(pyproject, "utf8")).to.equal("conflicting\n");
+            // No *.tmp artifact survived the failed copy.
+            const entries = await readdir(dir);
+            expect(entries).to.deep.equal(["pyproject.toml"]);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+});
+
+describe("makePythonSetupDeps showSuccess", () => {
+    let originalInfo: typeof window.showInformationMessage;
+    let originalWarn: typeof window.showWarningMessage;
+    let infoShownWith: {message: string; actions: string[]}[];
+    let warnShownWith: {message: string; actions: string[]}[];
+    let reply: string | undefined;
+
+    beforeEach(() => {
+        originalInfo = window.showInformationMessage;
+        originalWarn = window.showWarningMessage;
+        infoShownWith = [];
+        warnShownWith = [];
+        reply = undefined;
+        // ts-mockito can't stub the vscode namespace, so swap the fns to
+        // capture what each notification is raised with and what the user
+        // "clicks".
+        (
+            window as unknown as {showInformationMessage: unknown}
+        ).showInformationMessage = async (
+            message: string,
+            ...actions: string[]
+        ) => {
+            infoShownWith.push({message, actions});
+            return reply;
+        };
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = async (
+            message: string,
+            ...actions: string[]
+        ) => {
+            warnShownWith.push({message, actions});
+            return reply;
+        };
+    });
+
+    afterEach(() => {
+        (
+            window as unknown as {showInformationMessage: unknown}
+        ).showInformationMessage = originalInfo;
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = originalWarn;
+    });
+
+    it("writes the details, reveals the channel and raises an info toast", async () => {
+        let shown = 0;
+        const appended: string[] = [];
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: (c) => appended.push(c),
+                    show: () => {
+                        shown++;
+                    },
+                },
+            })
+        );
+
+        await deps.showSuccess(SUCCESS_DEFAULT, {});
+
+        expect(appended.join("")).to.have.length.greaterThan(0);
+        // The automatic reveal fires regardless of what the user clicks.
+        expect(shown).to.equal(1);
+        expect(infoShownWith).to.have.length(1);
+        expect(infoShownWith[0].actions).to.contain("View Details");
+        expect(warnShownWith).to.have.length(0);
+    });
+
+    it("raises an info toast (never a warning) when the run had warnings", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+
+        await deps.showSuccess(SUCCESS_WITH_WARNINGS, {});
+
+        // A successful run is informational even when it carried warnings;
+        // the warning count is in the message and the details behind it.
+        expect(infoShownWith).to.have.length(1);
+        expect(infoShownWith[0].message).to.contain("warning");
+        expect(infoShownWith[0].actions).to.contain("View Details");
+        expect(warnShownWith).to.have.length(0);
+    });
+
+    it("reveals the channel again when View Details is picked", async () => {
+        let shown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        shown++;
+                    },
+                },
+            })
+        );
+        reply = "View Details";
+
+        await deps.showSuccess(SUCCESS_DEFAULT, {});
+
+        // Once on the automatic reveal, again when the button is picked.
+        expect(shown).to.equal(2);
+    });
+});
+
+describe("makePythonSetupDeps showReauthPrompt", () => {
+    let originalShowWarning: typeof window.showWarningMessage;
+    let originalExecuteCommand: typeof commands.executeCommand;
+    let shownWith: {message: string; actions: string[]}[];
+    let executed: string[];
+    let reply: string | undefined;
+
+    beforeEach(() => {
+        originalShowWarning = window.showWarningMessage;
+        originalExecuteCommand = commands.executeCommand;
+        shownWith = [];
+        executed = [];
+        reply = undefined;
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = async (
+            message: string,
+            ...actions: string[]
+        ) => {
+            shownWith.push({message, actions});
+            return reply;
+        };
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            async (command: string) => {
+                executed.push(command);
+                return undefined;
+            };
+    });
+
+    afterEach(() => {
+        (
+            window as unknown as {showWarningMessage: unknown}
+        ).showWarningMessage = originalShowWarning;
+        (commands as unknown as {executeCommand: unknown}).executeCommand =
+            originalExecuteCommand;
+    });
+
+    it("shows a warning with a Login action and does not reveal the log", async () => {
+        let logShown = 0;
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                log: {
+                    append: () => {},
+                    show: () => {
+                        logShown++;
+                    },
+                },
+            })
+        );
+
+        await deps.showReauthPrompt();
+
+        expect(shownWith).to.have.length(1);
+        expect(shownWith[0].actions).to.deep.equal(["Login"]);
+        // An expired session is expected, not a defect: no log channel reveal.
+        expect(logShown).to.equal(0);
+    });
+
+    it("runs the re-auth command when Login is picked", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+        reply = "Login";
+
+        await deps.showReauthPrompt();
+
+        expect(executed).to.deep.equal([
+            "databricks.connection.configureLogin",
+        ]);
+    });
+
+    it("runs nothing when the prompt is dismissed", async () => {
+        const deps = makePythonSetupDeps(makeWiring());
+        reply = undefined;
+
+        await deps.showReauthPrompt();
+
+        expect(executed).to.have.length(0);
+    });
+});
+
+describe("makePythonSetupDeps pickSetupPreset", () => {
+    it("titles the picker with the serverless target and returns the picked preset", async () => {
+        const {create, created} = fakeCreateQuickPick((pick) => ({
+            // Pick the DB Connect row (the second one).
+            selected: [pick.items[1]],
+        }));
+        const deps = makePythonSetupDeps(makeWiring({createQuickPick: create}));
+
+        const preset = await deps.pickSetupPreset({
+            kind: "serverless",
+            version: "5",
+        });
+
+        expect(preset).to.equal("dbconnect");
+        expect(created[0].title).to.equal(
+            "Set up Python environment for serverless v5"
+        );
+    });
+
+    it("titles the picker with the cluster's runtime, resolved from its DBR", async () => {
+        const requested: string[] = [];
+        const {create, created} = fakeCreateQuickPick(() => "dismiss");
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                createQuickPick: create,
+                clusterDbrVersion: async (id) => {
+                    requested.push(id);
+                    return [17, 3, "x"];
+                },
+            })
+        );
+
+        await deps.pickSetupPreset({kind: "cluster", clusterId: "0710-abc"});
+
+        // The DBR is looked up for the resolved cluster id, and its major.minor
+        // becomes the runtime shown in the title.
+        expect(requested).to.deep.equal(["0710-abc"]);
+        expect(created[0].title).to.equal(
+            "Set up Python environment for Runtime 17.3"
+        );
+    });
+
+    it("returns undefined when the picker is dismissed", async () => {
+        const deps = makePythonSetupDeps(
+            makeWiring({
+                createQuickPick: fakeCreateQuickPick(() => "dismiss").create,
+            })
+        );
+
+        expect(
+            await deps.pickSetupPreset({kind: "serverless", version: "5"})
+        ).to.equal(undefined);
+    });
+});

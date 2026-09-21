@@ -3,6 +3,24 @@ import {EventEmitter, ExtensionContext, Event} from "vscode";
 import {OverrideableConfigState} from "../configuration/models/OverrideableConfigModel";
 import {Mutex} from "../locking";
 import lodash from "lodash";
+import {StoredFavoriteRef} from "../ui/unity-catalog/types";
+
+/**
+ * Persisted after a successful uv-native Python environment setup, so a later
+ * change of compute target can be detected as drift (the provisioned env no
+ * longer matches the selected target) and surfaced to the user.
+ *
+ * - `envKey`: the CLI's resolved environment key for the target that was set up
+ *   (e.g. `serverless/serverless-v5`), from the setup-local result.
+ * - `pythonVersion`: the interpreter minor version that was provisioned (e.g.
+ *   `3.12`).
+ * - `timestamp`: ISO-8601 time of the successful setup.
+ */
+export interface PythonSetupState {
+    envKey: string;
+    pythonVersion: string;
+    timestamp: string;
+}
 
 /* eslint-disable @typescript-eslint/naming-convention */
 type KeyInfo<V> = {
@@ -66,9 +84,47 @@ const StorageConfigurations = {
         location: "workspace",
     }),
 
+    "databricks.unityCatalog.favorites": withType<StoredFavoriteRef[]>()({
+        location: "workspace",
+        defaultValue: [],
+    }),
+
     "databricks.lastInstalledExtensionVersion": withType<string>()({
         location: "global",
         defaultValue: "0.0.0",
+    }),
+
+    // Per-project: the environment provisioned by the last successful
+    // python-setup run, used to detect drift when the compute target changes.
+    "databricks.pythonSetup.setupState": withType<PythonSetupState>()({
+        location: "workspace",
+    }),
+
+    // Caches where Databricks AI tools were installed ("project" or "global")
+    // so update/list commands know which scope and cwd to use. The presence of
+    // `.databricks/aitools/skills/.state.json` remains the source of truth for
+    // "are they installed?"; this only caches the resolved location.
+    "databricks.aitools.installLocation": withType<"project" | "global">()({
+        location: "global",
+    }),
+
+    // Tracks whether the user has opted out of the prompt offering to install
+    // Databricks AI tools. Only set when the user declines the install *and*
+    // asks not to be shown it again (the "Don't show again" affordance); a plain
+    // dismissal leaves this false so the prompt can reappear on a later
+    // activation.
+    "databricks.aitools.hideInstallPrompt": withType<boolean>()({
+        location: "global",
+        defaultValue: false,
+    }),
+
+    // Set when the user picks "Don't show again" on the deprecation warning for
+    // the Terraform bundle deployment engine, so it stays silenced for this
+    // workspace. A plain dismissal leaves it false so the warning can resurface
+    // on a later session (see BundleEngineManager).
+    "databricks.bundle.hideTerraformEngineWarning": withType<boolean>()({
+        location: "workspace",
+        defaultValue: false,
     }),
 };
 

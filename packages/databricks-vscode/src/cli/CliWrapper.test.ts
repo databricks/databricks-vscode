@@ -1,12 +1,18 @@
 import * as assert from "assert";
-import {Uri} from "vscode";
+import {CancellationTokenSource, commands, Uri, window} from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
 import {withFile} from "tmp-promise";
-import {writeFile, readFile} from "node:fs/promises";
+import {writeFile, readFile, mkdtemp, rm} from "node:fs/promises";
 import {when, spy, reset, instance, mock} from "ts-mockito";
-import {CliWrapper, waitForProcess} from "./CliWrapper";
+import {
+    cancellableExecFile,
+    CliWrapper,
+    ProcessError,
+    getSshConnectCommand,
+    parseAiToolsInstallOutput,
+} from "./CliWrapper";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
@@ -17,13 +23,16 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {isMatch} from "lodash";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {writeFileSync} from "fs";
-import {ChildProcess, ChildProcessWithoutNullStreams} from "child_process";
-import {Readable} from "stream";
 
 const execFile = promisify(execFileCb);
-const cliPath = path.join(__dirname, "../../bin/databricks");
+// Mirror CliWrapper.cliPath: the bundled binary is `databricks.exe` on Windows.
+const cliPath = path.join(
+    __dirname,
+    "../../bin/" +
+        (process.platform === "win32" ? "databricks.exe" : "databricks")
+);
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const extensionVersion = require("../../package.json").version;
 
 function getTempLogFilePath() {
@@ -51,6 +60,130 @@ describe(__filename, function () {
     it("should embed a working databricks CLI", async () => {
         const result = await execFile(cliPath, ["--help"]);
         assert.ok(result.stdout.indexOf("databricks") > 0);
+    });
+
+    it("aitoolsList returns parsed JSON from the bundled CLI", async () => {
+        const cli = createCliWrapper();
+        const tmpDir = await mkdtemp(path.join(os.tmpdir(), "aitools-cli-"));
+        try {
+            const result = await cli.aitoolsList(tmpDir);
+            // The bundled CLI reports the release and the full skill catalog,
+            // each with a latest_version and an installed map, even when nothing
+            // is installed in the (empty) temp dir.
+            assert.ok(typeof result.release === "string", "expected release");
+            assert.ok(Array.isArray(result.skills), "expected skills");
+            assert.ok(result.skills.length > 0, "expected non-empty skills");
+            const skill = result.skills[0];
+            assert.ok(typeof skill.name === "string", "expected skill name");
+            assert.ok(
+                typeof skill.latest_version === "string",
+                "expected skill latest version"
+            );
+            assert.ok(
+                typeof skill.installed === "object",
+                "expected skill installed object"
+            );
+
+            // It also reports the coding agents it knows about, each with a
+            // display name and detection/management flags; the agent picker
+            // relies on these fields.
+            assert.ok(Array.isArray(result.agents));
+            assert.ok(result.agents.length > 0);
+            const agent = result.agents[0];
+            assert.ok(typeof agent.name === "string");
+            assert.ok(typeof agent.display_name === "string");
+            assert.ok(typeof agent.managed === "boolean");
+            assert.ok(typeof agent.detected === "boolean");
+            // Optional: older CLIs omit it, and callers default absence to
+            // "supported" (see computeAgentsStatuses).
+            assert.ok(
+                agent.supports_project_scope === undefined ||
+                    typeof agent.supports_project_scope === "boolean"
+            );
+            assert.ok(typeof agent.installed === "object");
+        } finally {
+            await rm(tmpDir, {recursive: true, force: true});
+        }
+    });
+
+    it("parseAiToolsInstallOutput parses the install result shapes", () => {
+        // Success: every agent installed, no error fields.
+        assert.deepStrictEqual(
+            parseAiToolsInstallOutput(
+                '{"scope":"global","agents":[{"name":"claude-code","delivery":"plugin","status":"installed"}]}'
+            ),
+            {
+                scope: "global",
+                agents: [
+                    {
+                        name: "claude-code",
+                        delivery: "plugin",
+                        status: "installed",
+                    },
+                ],
+            }
+        );
+
+        // Per-agent failure carries a category and a (local-only) message.
+        const skip = parseAiToolsInstallOutput(
+            '{"scope":"project","agents":[{"name":"codex","delivery":"skip","status":"skipped","error_category":"UNSUPPORTED_SCOPE","message":"user-only"}]}'
+        );
+        assert.strictEqual(skip?.agents[0].error_category, "UNSUPPORTED_SCOPE");
+
+        // Top-level failure: empty agents plus error/error_category.
+        const topLevel = parseAiToolsInstallOutput(
+            '{"scope":"global","agents":[],"error":"skill not found","error_category":"SKILL_NOT_FOUND"}'
+        );
+        assert.strictEqual(topLevel?.error_category, "SKILL_NOT_FOUND");
+
+        // A top-level failure may omit `agents` entirely (Go's omitempty on a nil
+        // slice); it is still a result, with agents defaulted to [].
+        const noAgents = parseAiToolsInstallOutput(
+            '{"scope":"global","error":"skill not found","error_category":"SKILL_NOT_FOUND"}'
+        );
+        assert.deepStrictEqual(noAgents?.agents, []);
+        assert.strictEqual(noAgents?.error_category, "SKILL_NOT_FOUND");
+    });
+
+    it("parseAiToolsInstallOutput returns undefined for non-result output", () => {
+        // A CLI old enough to ignore `--output json` prints human text.
+        assert.strictEqual(
+            parseAiToolsInstallOutput("Installed the plugin for 1 agent."),
+            undefined
+        );
+        // Valid JSON that is neither an install result nor an error document.
+        assert.strictEqual(
+            parseAiToolsInstallOutput('{"release":"0.1.0"}'),
+            undefined
+        );
+        assert.strictEqual(parseAiToolsInstallOutput(""), undefined);
+    });
+
+    it("should resolve the platform-specific CLI binary name", () => {
+        const cli = createCliWrapper();
+        const originalPlatform = process.platform;
+        const setPlatform = (platform: NodeJS.Platform) =>
+            Object.defineProperty(process, "platform", {value: platform});
+        try {
+            // On Windows the bundled binary is `databricks.exe`. The `.exe` is
+            // required because cliPath is forwarded to the SDK/Terraform via
+            // DATABRICKS_CLI_PATH, which does a literal (no auto-`.exe`) lookup.
+            setPlatform("win32");
+            assert.ok(
+                cli.cliPath.endsWith(path.join("bin", "databricks.exe")),
+                `expected win32 cliPath to end with bin/databricks.exe, got ${cli.cliPath}`
+            );
+
+            for (const platform of ["linux", "darwin"] as NodeJS.Platform[]) {
+                setPlatform(platform);
+                assert.ok(
+                    cli.cliPath.endsWith(path.join("bin", "databricks")),
+                    `expected ${platform} cliPath to end with bin/databricks, got ${cli.cliPath}`
+                );
+            }
+        } finally {
+            setPlatform(originalPlatform);
+        }
     });
 
     let mocks: any[] = [];
@@ -94,6 +227,45 @@ describe(__filename, function () {
         when(configsSpy.loggingEnabled).thenReturn(false);
         ({command, args} = cli.getSyncCommand("incremental"));
         assert.equal([command, ...args].join(" "), syncCommand);
+    });
+
+    it("should create ssh connect commands", () => {
+        // Logging is configured via env vars, not CLI flags, so no --log-*
+        // args appear on the ssh connect command line.
+
+        // Serverless: no --cluster / --auto-start-cluster.
+        let {args} = getSshConnectCommand({compute: {type: "serverless"}});
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+        ]);
+
+        // Serverless GPU: --accelerator, no --cluster / --auto-start-cluster.
+        ({args} = getSshConnectCommand({
+            compute: {type: "serverless", accelerator: "GPU_1xA10"},
+        }));
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+            "--accelerator=GPU_1xA10",
+        ]);
+
+        // Dedicated cluster: --cluster and --auto-start-cluster.
+        ({args} = getSshConnectCommand({
+            compute: {type: "cluster", clusterId: "1234-clusterid"},
+        }));
+        assert.deepStrictEqual(args, [
+            "ssh",
+            "connect",
+            "--ide=vscode",
+            "--auto-approve",
+            "--cluster=1234-clusterid",
+            "--auto-start-cluster",
+        ]);
     });
 
     it("should list profiles when no config file exists", async () => {
@@ -166,6 +338,34 @@ nothing = true
 
             assert.equal(profiles[1].name, "no-token");
             assert.equal(profiles[1].host, "https://cloud.databricks.com/");
+        });
+    });
+
+    it("should include profiles with account id", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+
+        await withFile(async ({path}) => {
+            writeFileSync(
+                path,
+                `[regular-profile]
+host = https://cloud.databricks.com/
+token = dapitest1234
+
+[profile-with-account-id]
+host = https://accounts.cloud.databricks.com/
+account_id = 1234567890
+token = dapitest5678
+`,
+                "utf-8"
+            );
+
+            const profiles = await cli.listProfiles(path);
+
+            assert.equal(profiles.length, 2);
+            assert.equal(profiles[0].name, "regular-profile");
+            assert.equal(profiles[1].name, "profile-with-account-id");
+            assert.equal(profiles[1].accountId, "1234567890");
         });
     });
 
@@ -248,29 +448,185 @@ nothing = true
             throw e;
         }
     });
+
+    it("should forward auth to the setup-local env vars", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+
+        const env = cli.getSetupLocalEnvVars(authProvider, "dev");
+
+        // The two vars this exists for: the CLI resolves auth itself, so the
+        // profile and host must arrive via the environment.
+        assert.equal(env.DATABRICKS_CONFIG_PROFILE, "PROFILE");
+        assert.equal(env.DATABRICKS_HOST, "https://test.com/");
+        // Inherited from getEnvVarsForCli and left alone: it agrees with the
+        // explicit `--output json` on the argv that the result parser needs.
+        // The bundle-init/ssh-connect flows override this to "text" because they
+        // render CLI output to a terminal; this flow must not.
+        assert.equal(env.DATABRICKS_OUTPUT_FORMAT, "json");
+    });
+
+    it("should pin the bundle target alongside the profile for setup-local", async () => {
+        const logFilePath = getTempLogFilePath();
+        const cli = createCliWrapper(logFilePath);
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+
+        // Without a --profile flag the CLI loads the bundle and picks its
+        // *default* target, then rejects the run when that target's host
+        // disagrees with the injected profile's host. The target must travel
+        // with the profile so the two always refer to the same workspace.
+        assert.equal(
+            cli.getSetupLocalEnvVars(authProvider, "prod")
+                .DATABRICKS_BUNDLE_TARGET,
+            "prod"
+        );
+
+        // No target selected yet: omit the var rather than pass an empty
+        // string, which the CLI would treat as an explicit (invalid) target.
+        assert.ok(
+            !(
+                "DATABRICKS_BUNDLE_TARGET" in
+                cli.getSetupLocalEnvVars(authProvider, undefined)
+            )
+        );
+    });
 });
 
-describe("waitForProcess", () => {
-    it("should return correctly formatted stdout and stderr", async () => {
-        const process = new ChildProcess();
-        const stdoutChunks = [`{"hello": "wor`, `ld"}`];
-        const stderrChunks = [`{"error": "no`, `oo"}`];
-        process.stdout = new Readable({
-            read() {
-                this.push(stdoutChunks.shift());
-            },
+describe("cancellableExecFile closeStdin", () => {
+    // `cat` with no args reads stdin until EOF. Without closeStdin the child's
+    // stdin pipe stays open forever and the call hangs; closeStdin sends EOF so
+    // it completes. This mirrors why `aitools update` hung on launch when it
+    // prompted for confirmation.
+    it("completes a stdin-reading process when closeStdin is set", async () => {
+        const {stdout} = await cancellableExecFile("cat", [], {}, undefined, {
+            closeStdin: true,
         });
-        process.stderr = new Readable({
-            read() {
-                this.push(stderrChunks.shift());
-            },
-        });
-        const waitPromise = waitForProcess(
-            process as ChildProcessWithoutNullStreams
+        assert.strictEqual(stdout, "");
+    });
+
+    it("hangs on a stdin-reading process without closeStdin", async () => {
+        // Drive the process through a cancellation token so we can kill the
+        // lingering `cat` (which would otherwise read stdin forever) once
+        // we've confirmed it hasn't completed on its own.
+        const tokenSource = new CancellationTokenSource();
+        const execPromise = cancellableExecFile(
+            "cat",
+            [],
+            {},
+            tokenSource.token
         );
-        process.emit("close", 0);
-        const {stdout, stderr} = await waitPromise;
-        assert.equal(stdout, `{"hello": "world"}`);
-        assert.equal(stderr, `{"error": "nooo"}`);
+        // Swallow the abort rejection so it doesn't surface as an unhandled
+        // rejection after the test finishes.
+        const settled = execPromise.then(
+            () => "completed",
+            () => "aborted"
+        );
+        try {
+            const raced = await Promise.race([
+                settled,
+                new Promise((resolve) =>
+                    setTimeout(() => resolve("timed-out"), 500)
+                ),
+            ]);
+            assert.strictEqual(raced, "timed-out");
+        } finally {
+            tokenSource.cancel();
+            tokenSource.dispose();
+            await settled;
+        }
+    });
+
+    // On a non-zero exit the thrown error must mirror Node's `execFile`
+    // rejection: stderr in `.message` (the profile parser greps it) plus
+    // numeric `.code` and `.stderr`/`.stdout` (what the SDK's `isFileNotFound`
+    // inspects). Regression guard for the spawn-based reimplementation.
+    it("throws a Node-execFile-shaped error on a non-zero exit", async () => {
+        let caught: any;
+        try {
+            await cancellableExecFile(process.execPath, [
+                "-e",
+                "process.stderr.write('cannot parse config file'); process.stdout.write('partial'); process.exit(3);",
+            ]);
+        } catch (e) {
+            caught = e;
+        }
+        assert.ok(caught, "expected a rejection on non-zero exit");
+        assert.strictEqual(caught.code, 3);
+        assert.strictEqual(caught.stderr, "cannot parse config file");
+        assert.strictEqual(caught.stdout, "partial");
+        assert.ok(
+            caught.message.includes("cannot parse config file"),
+            "stderr must be in the error message for the profile-parse checks"
+        );
+    });
+});
+
+describe("ProcessError.showErrorMessage", () => {
+    let originalShowError: typeof window.showErrorMessage;
+    let originalExecuteCommand: typeof commands.executeCommand;
+    let executed: string[];
+
+    beforeEach(() => {
+        executed = [];
+        originalShowError = window.showErrorMessage;
+        // Resolve as if the user clicked the primary action button (the last
+        // vararg), so both the "Show Logs" and "Assign Values" branches fire.
+        (window as any).showErrorMessage = async (
+            _message: string,
+            ...items: string[]
+        ) => items[items.length - 1];
+        originalExecuteCommand = commands.executeCommand;
+        (commands as any).executeCommand = (command: string) => {
+            executed.push(command);
+        };
+    });
+
+    afterEach(() => {
+        (window as any).showErrorMessage = originalShowError;
+        (commands as any).executeCommand = originalExecuteCommand;
+    });
+
+    // `showErrorMessage` handles the toast promise with `.then` (fire and
+    // forget), so a microtask tick is needed before the executeCommand runs.
+    async function flush() {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    it("opens the bundle logs channel by default", async () => {
+        new ProcessError("boom", 1).showErrorMessage("Prefix.");
+        await flush();
+        assert.deepStrictEqual(executed, ["databricks.bundle.showLogs"]);
+    });
+
+    it("opens the given logs channel when one is passed", async () => {
+        new ProcessError("boom", 1).showErrorMessage(
+            "Prefix.",
+            "databricks.internal.showOutput"
+        );
+        await flush();
+        assert.deepStrictEqual(executed, ["databricks.internal.showOutput"]);
+    });
+
+    it("ignores the logsCommand for the missing-variable path", async () => {
+        // The "no value assigned to required variable" branch has its own
+        // fixed set of commands and never consults logsCommand.
+        new ProcessError(
+            "no value assigned to required variable foo",
+            1
+        ).showErrorMessage("Prefix.", "databricks.internal.showOutput");
+        await flush();
+        assert.ok(!executed.includes("databricks.internal.showOutput"));
+        assert.ok(executed.includes("databricks.bundle.showLogs"));
     });
 });

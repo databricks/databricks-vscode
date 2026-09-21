@@ -21,15 +21,11 @@ Currently, we have the following packages:
 Prepare yarn:
 
 ```
-npm install -g yarn@2
+npm install -g yarn@3
 yarn install
 ```
 
-Prepare Databricks JavaScript SDK:
-
-```
-yarn run install:sdk
-```
+The Databricks JavaScript SDK (`@databricks/sdk-experimental`) is a regular npm dependency and is installed automatically by `yarn install` — no separate step is required.
 
 Prepare Databricks CLI:
 
@@ -38,6 +34,9 @@ yarn workspace databricks run package:cli:fetch
 ```
 
 After that you are ready to build and test the `databricks-vscode` extension.
+
+To test changes from a local CLI checkout in the extension, see
+[Previewing local CLI changes](CONTRIBUTING.md#previewing-local-cli-changes).
 
 ### Found an issue?
 

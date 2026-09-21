@@ -76,15 +76,56 @@ describe("Bundle Init", async function () {
         const initTab = await getTabByTitle(title);
         assert(initTab, "Can't find a tab for project-init terminal wizard");
         await initTab.select();
+
+        // The init wizard runs inside an editor-hosted terminal. Two Windows
+        // races desync it into "Can't complete cli bundle init wizard": (1)
+        // keystrokes fired before the tab is active — or before the xterm holds
+        // keyboard focus — land in the wrong place, and (2) the Python extension
+        // can inject env-setup text into the freshly opened terminal that lands
+        // in the template *search filter* (see
+        // BundleInitWizard.bundleInitInTerminal), so a typed "default-python"
+        // appends to that text, matches no template, and the wizard stalls. The
+        // terminal buffer isn't reliably readable via the wdio API, but the
+        // active-tab title is — gate on the init tab being active, move focus
+        // into the terminal, then clear the filter before typing.
+        await browser.waitUntil(
+            async () => {
+                const activeTab = await editorView.getActiveTab();
+                return (await activeTab?.getTitle()) === title;
+            },
+            {
+                timeout: 20_000,
+                interval: 1_000,
+                timeoutMsg: "Init wizard terminal tab did not become active",
+            }
+        );
+        await sleep(3000);
+
+        // Move keyboard focus into the editor-hosted terminal's input so the
+        // wizard keystrokes below aren't swallowed by the editor-tab chrome.
+        // Return the command so executeWorkbench awaits focus completing.
+        await browser.executeWorkbench((vscode) => {
+            return vscode.commands.executeCommand(
+                "workbench.action.terminal.focus"
+            );
+        });
+        await sleep(1000);
+
+        // Clear the filter before typing (see above); a no-op when it's empty.
+        // Over-provision the backspaces so even a long injected activation line
+        // (a Windows venv/conda activate command with an absolute path) is
+        // fully removed rather than leaving a prefix the template name appends
+        // to.
+        await browser.keys(new Array(200).fill(Key.Backspace));
         await sleep(1000);
 
         //select temaplate type
         await browser.keys("default-python".split(""));
-        await sleep(1000);
+        await sleep(3000);
         await browser.keys([Key.Enter]);
         //enter project name temaplate type
         await browser.keys(projectName.split(""));
-        await sleep(1000);
+        await sleep(3000);
         await browser.keys([Key.Enter]);
         await browser.waitUntil(
             async () => {
@@ -95,7 +136,7 @@ describe("Bundle Init", async function () {
                 await browser.keys([Key.Enter]);
             },
             {
-                timeout: 20_000,
+                timeout: 40_000,
                 interval: 2_000,
                 timeoutMsg: "Can't complete cli bundle init wizard",
             }

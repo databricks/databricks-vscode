@@ -31,7 +31,7 @@ async function isDbnbTextEditor(editor?: TextEditor) {
             (await FileUtils.isNotebook(new LocalUri(editor.document.uri))) ===
                 "PY_DBNB"
         );
-    } catch (e) {
+    } catch {
         return false;
     }
 }

@@ -1,0 +1,850 @@
+import {Disposable, Event, EventEmitter} from "vscode";
+import {logging} from "@databricks/sdk-experimental";
+import {Loggers} from "../../logger";
+import {
+    CancellationLike,
+    PythonSetupCancelledError,
+    RunOptions,
+} from "../gateways/PythonSetupCliClient";
+import {
+    isPythonSetupSuccess,
+    PythonSetupResult,
+} from "../models/PythonSetupResult";
+import {
+    formatSetupFailureDetail,
+    getPythonSetupErrorActions,
+    getPythonSetupErrorMessage,
+    isIndexUnreachableFailure,
+    NO_COMPUTE_TARGET_MESSAGE,
+    PythonSetupErrorAction,
+    SELECT_PYTHON_INTERPRETER_COMMAND_ID,
+} from "../utils/errorMessages";
+import {
+    buildExtensionFailureReportAction,
+    getPythonSetupReportAction,
+    reportLogLink,
+    reportLogMirror,
+    reportRepoForResult,
+    ReportEnvironment,
+} from "../utils/reportSetupIssue";
+import {isReauthRequiredError} from "../utils/authErrors";
+import {SetupLocalInvocation} from "../utils/setupLocalArgs";
+import {
+    presetToFlags,
+    SetupPreset,
+    SetupPresetFlags,
+} from "../utils/pythonSetupPresetPicker";
+import {
+    PythonSetupAttempt,
+    PythonSetupResultReporter,
+} from "../../telemetry/pythonSetupExtensions";
+import type {PythonSetupRunTrigger} from "../../telemetry/constants";
+import {PrimaryManager} from "../../language/packageManagerDetection";
+import {
+    isUvSetupSuitable,
+    SuitabilityDetection,
+} from "../utils/pythonSetupGate";
+
+/**
+ * The one method the orchestrator needs from {@link PythonSetupCliClient}, typed
+ * structurally so the flow is unit-testable without a spawn/`vscode` dependency.
+ */
+export interface CliRunner {
+    run(
+        invocation: SetupLocalInvocation,
+        options: RunOptions
+    ): Promise<PythonSetupResult>;
+}
+
+export type SetupCompute = SetupLocalInvocation["compute"];
+
+/**
+ * What the compute seam resolved to. `cancelled` means the user was asked for a
+ * missing piece (a serverless version) and dismissed the prompt -- a user
+ * action, not a dead end, so it must stay silent and must not be counted as a
+ * no-compute click.
+ */
+export type ResolvedCompute =
+    | {status: "ok"; compute: SetupCompute}
+    | {status: "none"}
+    | {status: "cancelled"};
+
+/** Persisted after a successful setup, for later drift detection. */
+export interface PythonSetupPersistedState {
+    envKey: string;
+    pythonVersion: string;
+}
+
+type ReadyLocalEnvironmentResult = PythonSetupResult &
+    Required<Pick<PythonSetupResult, "venvPath" | "compute" | "resolved">>;
+
+function isLocalEnvironmentReady(
+    r: PythonSetupResult
+): r is ReadyLocalEnvironmentResult {
+    return (
+        isPythonSetupSuccess(r) &&
+        r.venvPath !== undefined &&
+        r.compute !== undefined &&
+        r.resolved !== undefined
+    );
+}
+
+/**
+ * Runs under a progress indicator, forwarding `log` to the client's `onLog` and
+ * `token` to its `RunOptions.token` so a user "Cancel" tears down the CLI. The
+ * production wrapper is `window.withProgress` + an output channel.
+ */
+export type ProgressTask<T> = (
+    log: (chunk: string) => void,
+    token: CancellationLike
+) => Promise<T>;
+
+/**
+ * Injected collaborators for {@link PythonSetupEnvironmentSetup}: seams so the
+ * decision flow is tested without a VS Code host. The extension assembles the
+ * real implementations in `makePythonSetupDeps` (see pythonSetupDeps.ts).
+ */
+export interface PythonSetupSetupDeps {
+    cli: CliRunner;
+
+    /** Absolute path of the open project the CLI runs against, if any. */
+    projectRoot: () => string | undefined;
+
+    /**
+     * Whether the uv-native setup should run for the current project. The
+     * extension wires this to the package-manager gate (`isUvSetupSuitable` over
+     * a live `detect`), so it is false unless the project is a clean
+     * uv/greenfield one with no competing manager.
+     */
+    isVisible: () => Promise<boolean>;
+
+    /**
+     * The compute target to provision for. `none` means nothing is attached
+     * (the CTA is a dead end -- guide the user); `cancelled` means the user
+     * dismissed a prompt for a missing detail and the flow should stop quietly.
+     * The extension resolves this from the attached compute: a cluster maps
+     * directly, a serverless session uses the version the compute picker
+     * persisted (`serverlessVersion`), and a serverless session with no chosen
+     * version prompts for one.
+     */
+    resolveCompute: () => Promise<ResolvedCompute>;
+
+    /**
+     * Ask the user which preset to provision for the resolved compute (Full /
+     * DB Connect / Python). Returns the chosen preset, or `undefined` when the
+     * picker is dismissed — a deliberate bail-out before any run starts, so the
+     * flow stops silently and records no attempt, mirroring a dismissed
+     * serverless-version prompt. Called after compute resolves so the picker's
+     * title can name the resolved target.
+     */
+    pickSetupPreset: (
+        compute: SetupCompute
+    ) => Promise<SetupPreset | undefined>;
+
+    /**
+     * Point the MS Python extension at the provisioned venv interpreter for
+     * `projectRoot`. The root is passed in (not re-read) so adoption always
+     * targets the project the run provisioned, even if the user switched the
+     * active project during the (multi-second) CLI run.
+     */
+    adoptInterpreter: (venvPath: string, projectRoot: string) => Promise<void>;
+
+    /**
+     * Open the project's pyproject.toml in an editor — the "Open pyproject.toml"
+     * button on a constraint-conflict failure, so the user can inspect and
+     * adjust the dependencies that clashed. Takes the run's captured root so it
+     * targets the project the failing run mutated, even after a mid-run switch.
+     */
+    openProjectFile: (projectRoot: string) => Promise<void>;
+
+    /**
+     * Restore `<projectRoot>/pyproject.toml` from the CLI's pre-merge
+     * `backupPath` (see {@link PythonSetupResult.backupPath}) by copying it over
+     * the file. First step of the "Retry DB Connect setup" recovery, whose
+     * rationale lives on {@link buildConflictRecoveryActions}; a rejection there
+     * aborts the retry before any CLI run.
+     */
+    restoreProjectFile: (
+        projectRoot: string,
+        backupPath: string
+    ) => Promise<void>;
+
+    saveState: (state: PythonSetupPersistedState) => void;
+
+    /**
+     * A plain user-facing notification for pre-flight guidance (e.g. no compute
+     * attached), where no CLI ran. Unlike {@link showError} it offers no log
+     * affordance — there is no log to show.
+     */
+    notify: (message: string) => Promise<void>;
+
+    /**
+     * Prompt the user to re-authenticate when setup-local aborted because the
+     * profile's session expired (see {@link isReauthRequiredError}). A plain
+     * warning with a "Login" action that runs the extension's re-auth flow — no
+     * error styling, no log reveal, and no "Report this problem": an expired
+     * session is an expected, self-service condition, not a defect to report.
+     */
+    showReauthPrompt: () => Promise<void>;
+
+    /**
+     * Shows the mapped, user-facing copy — not raw CLI text — with a "Show Logs"
+     * action that reveals the setup output channel. `detail`, when given, is
+     * written to that channel first (see `formatSetupFailureDetail`), so the
+     * button leads to the CLI's full explanation instead of an empty log.
+     * `actions`, when non-empty, add remediation buttons ahead of "Show Logs" —
+     * each opens an external URL or runs a VS Code command. Most failures carry
+     * one; `E_UV_MISSING` carries two ("Install uv" + "Installation guide", see
+     * `getPythonSetupErrorActions`).
+     *
+     * `options.includeShowLogs` defaults to true; pass `false` to omit the
+     * trailing "Show Logs" button — for a self-service toast whose own buttons
+     * are the remedy (the recoverable constraint conflict), so the row stays
+     * short. The channel is still written and revealed, so the log is reachable.
+     */
+    showError: (
+        message: string,
+        detail?: string,
+        actions?: PythonSetupErrorAction[],
+        options?: {includeShowLogs?: boolean}
+    ) => Promise<void>;
+
+    /**
+     * Present the success outcome. `flags` are the resolved skip flags of the
+     * run that actually happened (from {@link presetToFlags}), passed
+     * explicitly because `PythonSetupResult` alone cannot say which preset ran:
+     * `result.mode` encodes only the databricks-connect axis, so a Full and a
+     * DB Connect run are indistinguishable in it. The panel needs them to state
+     * truthfully whether constraints were written.
+     */
+    showSuccess: (
+        result: PythonSetupResult,
+        flags: SetupPresetFlags
+    ) => Promise<void>;
+
+    /**
+     * Static build context (extension/CLI versions, OS) stamped into a
+     * "Report this problem" issue body. The per-run package manager is merged in
+     * by the orchestrator; this carries only what is constant for the session.
+     */
+    reportEnvironment: ReportEnvironment;
+
+    withProgress: <T>(title: string, task: ProgressTask<T>) => Promise<T>;
+
+    /**
+     * Record that a setup run is starting, returning the reporter for its
+     * outcome. Injected (rather than taking a `Telemetry`) so the flow's tests
+     * assert on plain recorded values with no telemetry client in sight.
+     *
+     * Called only once a run is actually about to spawn the CLI, so every
+     * attempt has exactly one outcome. Clicks that stop earlier (no compute
+     * attached, gate closed) are already covered by the
+     * `python_env.setup.detected` event's `explicit_command` trigger.
+     */
+    recordSetupAttempt: (
+        attempt: PythonSetupAttempt
+    ) => PythonSetupResultReporter;
+
+    /**
+     * Record that the CTA was pressed with nothing to set up for, so no run
+     * started. Reported without an attempt (the one exception to the pairing),
+     * because a visible button that dead-ends is worth measuring and no other
+     * event covers it: `python_env.setup.detected`'s `explicit_command` trigger
+     * fires only from the legacy setup command, which the config view shows
+     * mutually exclusively with this entry.
+     */
+    recordNoCompute: () => void;
+
+    /**
+     * The project's package-manager detection, for the attempt event. Reads the
+     * same detection the visibility gate runs — the whole result rather than
+     * just `primary`, because the greenfield signal needs the manager list and
+     * the fired signals to reuse the gate's own suitability predicate.
+     * `undefined` when detection was unavailable, in which case the attempt
+     * reports `unknown` and omits the greenfield flag.
+     */
+    getDetection: () => Promise<
+        (SuitabilityDetection & {primary: PrimaryManager}) | undefined
+    >;
+
+    /**
+     * Whether the project has no `pyproject.toml` yet. Consulted only for a
+     * uv-suitable project — see {@link greenfieldSignal}.
+     */
+    hasPyprojectToml: (projectRoot: string) => Promise<boolean>;
+}
+
+/**
+ * The greenfield flag for the attempt event, or `undefined` to omit it.
+ *
+ * A missing `pyproject.toml` only means "greenfield" for a project that has no
+ * competing manager: pip and conda users may never have one, so for them the
+ * absence says nothing and reporting it would inflate the greenfield rate.
+ *
+ * The population is therefore exactly the one the visibility gate admits, by
+ * construction: both ask {@link isUvSetupSuitable}. Reusing the gate's predicate
+ * rather than re-deriving it from `primary` matters, because a packaging-shaped
+ * `pyproject.toml` is attributed to pip while still being a project we set up —
+ * keying off `primary` alone would blank this field for every freshly-initialised
+ * bundle project, i.e. the exact cohort worth measuring.
+ */
+async function greenfieldSignal(
+    detection: SuitabilityDetection,
+    projectRoot: string,
+    hasPyprojectToml: (projectRoot: string) => Promise<boolean>
+): Promise<boolean | undefined> {
+    if (!isUvSetupSuitable(detection)) {
+        return undefined;
+    }
+    return !(await hasPyprojectToml(projectRoot));
+}
+
+/**
+ * Orchestrates the uv-native "set up Python environment" flow: decide whether
+ * to run, resolve the compute target, invoke the CLI under a progress
+ * indicator, then adopt the provisioned interpreter and persist state on
+ * success — or surface a mapped error on failure.
+ */
+export class PythonSetupEnvironmentSetup implements Disposable {
+    /**
+     * Project roots this session has provisioned successfully. Keyed by root
+     * (not a single flag) so readiness does not leak across projects: switching
+     * the active project to one that was never set up must not render a green
+     * "ready" line for it.
+     */
+    private readonly readyRoots = new Set<string>();
+    /**
+     * True when the currently active project has been set up successfully this
+     * session. Reads the live `projectRoot` so it tracks the active project the
+     * config view renders for.
+     */
+    get ready(): boolean {
+        const root = this.deps.projectRoot();
+        return root !== undefined && this.readyRoots.has(root);
+    }
+
+    private readonly stateEmitter = new EventEmitter<void>();
+    /** Fires when {@link ready} flips to true. */
+    readonly onDidChangeState: Event<void> = this.stateEmitter.event;
+
+    /**
+     * The in-flight run, if any. `setup-local` mutates the project, so
+     * overlapping runs against the same cwd would race each other's writes;
+     * {@link setup} coalesces onto this instead of spawning a second process.
+     */
+    private inFlight: Promise<void> | undefined;
+
+    constructor(private readonly deps: PythonSetupSetupDeps) {}
+
+    /**
+     * Whether the config view should surface the uv-native entry (instead of
+     * the legacy checklist) for the current project. Delegates to the injected
+     * gate so the component can decide dispatch without knowing the gate's
+     * inputs.
+     */
+    isVisible(): Promise<boolean> {
+        return this.deps.isVisible();
+    }
+
+    setup(): Promise<void> {
+        return this.runGuarded(() => this.runSetup());
+    }
+
+    /**
+     * Re-entrancy guard: coalesce concurrent callers onto the running run rather
+     * than spawning a second project-mutating CLI process. The guard releases
+     * when the run's *work* settles; the terminal notification is presented via
+     * {@link present} (fire-and-forget), so a toast left open never wedges the
+     * entry -- see that method. Used both for a fresh {@link setup} and for the
+     * constraint-conflict retry, so a retry click cannot race a run already in
+     * flight.
+     */
+    private runGuarded(run: () => Promise<void>): Promise<void> {
+        if (this.inFlight) {
+            return this.inFlight;
+        }
+        const guarded = run().finally(() => {
+            this.inFlight = undefined;
+        });
+        this.inFlight = guarded;
+        return guarded;
+    }
+
+    /**
+     * Present a terminal user notification without blocking the run. The
+     * re-entrancy guard in {@link setup} must release when the mutating work
+     * (CLI run, interpreter adoption, state write) finishes -- NOT when the user
+     * dismisses the toast. `showError`/`showSuccess`/`notify` each await
+     * `window.show*Message`, which stays pending until the toast is acted on, so
+     * awaiting them inside the guarded run wedged the entry: every later click
+     * returned the still-pending promise until the window was reloaded.
+     * A rejection must not become an unhandled rejection or fail the (already
+     * finished) setup, but it is not silently discarded: `showSuccess`/
+     * `showError` do real work before the toast (reading the venv project name,
+     * formatting the log, writing the output channel), so a throw there is a
+     * genuine bug worth a debug-level trace.
+     */
+    private present(notification: Promise<void>): void {
+        void notification.catch((e) =>
+            logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                "Failed to present python-setup notification",
+                e
+            )
+        );
+    }
+
+    private async runSetup(): Promise<void> {
+        const {projectRoot, isVisible, resolveCompute} = this.deps;
+
+        const cwd = projectRoot();
+        if (cwd === undefined) {
+            return;
+        }
+        // Gate first: never touch the project or prompt when the feature is not
+        // meant to be offered here.
+        if (!(await isVisible())) {
+            return;
+        }
+
+        const resolved = await resolveCompute();
+        if (resolved.status === "cancelled") {
+            // The user was asked for the missing serverless version and
+            // dismissed the prompt. That is a deliberate bail-out, not a dead
+            // end: stay silent (as with a cancelled run) and record nothing, so
+            // the no-compute metric keeps meaning "the CTA had nothing to do".
+            return;
+        }
+        if (resolved.status === "none") {
+            // The entry is visible whenever the project fits (flag + uv shape),
+            // independent of compute — so a user can click the CTA with no
+            // compute attached at all. Tell them what to do instead of silently
+            // no-op'ing the button. Plain notify (not showError): no CLI ran, so
+            // there is no log to reveal.
+            try {
+                this.deps.recordNoCompute();
+            } catch {
+                // Measurement must never break the flow it measures.
+            }
+            this.present(this.deps.notify(NO_COMPUTE_TARGET_MESSAGE));
+            return;
+        }
+        const compute = resolved.compute;
+
+        // A dismissed picker is a deliberate bail-out before any run starts, so
+        // return silently and record no attempt — like the dismissed
+        // serverless-version prompt above.
+        const preset = await this.deps.pickSetupPreset(compute);
+        if (preset === undefined) {
+            return;
+        }
+
+        await this.runResolved(compute, cwd, preset);
+    }
+
+    /**
+     * Run a resolved invocation (compute + preset) to completion: record the
+     * attempt, spawn the CLI under a progress indicator, then adopt the
+     * interpreter and persist state on success — or surface a mapped error on
+     * failure. Split out from {@link runSetup} so the constraint-conflict
+     * "Retry DB Connect setup" recovery can re-enter it with the `dbconnect` preset
+     * directly, without re-prompting the compute or the preset picker.
+     *
+     * `trigger` overrides how the attempt is labeled: the retry passes
+     * `conflict_retry`; the normal path leaves it undefined so
+     * {@link recordAttempt} derives `initial` / `rerun` from readiness.
+     */
+    private async runResolved(
+        compute: SetupCompute,
+        cwd: string,
+        preset: SetupPreset,
+        trigger?: PythonSetupRunTrigger
+    ): Promise<void> {
+        const {cli, withProgress} = this.deps;
+
+        const flags = presetToFlags(preset);
+        const invocation: SetupLocalInvocation = {
+            compute,
+            ...flags,
+        };
+
+        // From here a run really happens, so the attempt is recorded and every
+        // exit below reports an outcome. The reporter also starts the clock:
+        // the duration we publish is the whole user-visible wait, including CLI
+        // spawn and interpreter adoption.
+        const {reportResult, packageManager} = await this.recordAttempt(
+            invocation,
+            cwd,
+            preset,
+            trigger
+        );
+        // Per-run report context: the static build info plus this run's manager.
+        const reportEnv: ReportEnvironment = {
+            ...this.deps.reportEnvironment,
+            packageManager,
+        };
+
+        let result: PythonSetupResult;
+        try {
+            result = await withProgress(
+                "Setting up Python environment",
+                (log, token) => cli.run(invocation, {cwd, onLog: log, token})
+            );
+        } catch (e) {
+            // A cancelled run is a user action, not a failure: stay quiet.
+            if (e instanceof PythonSetupCancelledError) {
+                reportResult({
+                    outcome: "cancelled",
+                    pythonSetupFlow: "cancelled",
+                });
+                return;
+            }
+            // Spawn/parse errors reject with a real Error carrying CLI stderr;
+            // there is no result to map, so surface the message directly. No
+            // result object exists, hence `not_started` rather than `failed`:
+            // there is no phase or error code to attribute the break to. A
+            // spawn/parse break is the extension/CLI's own defect, so it always
+            // offers a report against databricks/databricks-vscode. Normalize a
+            // non-Error rejection so `.message` is never undefined (the redactor
+            // would throw on it, swallowing the original failure).
+            const message = e instanceof Error ? e.message : String(e);
+            // An expired session is expected, not a defect: route it to a
+            // re-login prompt, not the hard error + "Report this problem". A
+            // positive gate — anything unmatched (real defect, network blip)
+            // falls through to the report path.
+            if (isReauthRequiredError(message)) {
+                reportResult({outcome: "not_started", reportOffered: false});
+                this.present(this.deps.showReauthPrompt());
+                return;
+            }
+            const reportAction = buildExtensionFailureReportAction(reportEnv, {
+                phase: "spawn",
+                message,
+            });
+            reportResult({outcome: "not_started", reportOffered: true});
+            this.present(
+                this.deps.showError(
+                    message,
+                    reportLogMirror("databricks/databricks-vscode"),
+                    [reportAction]
+                )
+            );
+            return;
+        }
+
+        if (!isLocalEnvironmentReady(result)) {
+            // Report is the primary button for a report-worthy failure; its doc
+            // link (if any) drops to the log. A non-report-worthy failure keeps
+            // its doc-link button, unchanged.
+            const reportAction = getPythonSetupReportAction(result, reportEnv);
+            const reportRepo = reportRepoForResult(result);
+            const remediationActions = getPythonSetupErrorActions(result);
+            const pythonSetupFlow =
+                result.error?.code === "E_PYTHON_INSTALL" ||
+                result.pythonResolution === "installed_fallback"
+                    ? "manual_selection_requested"
+                    : result.pythonResolution;
+            // A constraint conflict is recoverable only when this run carried the
+            // pins (Full preset) AND the CLI saved a pre-merge backup to roll them
+            // back to. Without either, fall through to the ordinary doc-link
+            // handling rather than offer a "retry as DB Connect" that can't work
+            // (nothing to restore) or would loop (a run that already skipped pins).
+            const conflictBackupPath =
+                result.error?.code === "E_PROVISION_CONFLICT" &&
+                !invocation.skipConstraints &&
+                // Truthiness, not just `!== undefined`: a (contract-forbidden)
+                // empty backupPath has nothing to restore, so it must fall
+                // through rather than offer a Retry that could only throw.
+                result.backupPath
+                    ? result.backupPath
+                    : undefined;
+            const recoverableConflict = conflictBackupPath !== undefined;
+            const actions = recoverableConflict
+                ? this.buildConflictRecoveryActions(
+                      compute,
+                      cwd,
+                      conflictBackupPath
+                  )
+                : remediationActions.some(
+                        (candidate) =>
+                            candidate.command ===
+                            SELECT_PYTHON_INTERPRETER_COMMAND_ID
+                    )
+                  ? remediationActions
+                  : reportAction
+                    ? [reportAction]
+                    : remediationActions;
+            reportResult({
+                outcome: "failed",
+                ...(pythonSetupFlow !== undefined ? {pythonSetupFlow} : {}),
+                failurePhase: result.error?.failurePhase,
+                errorCode: result.error?.code,
+                envKey: result.compute?.envKey,
+                diskMutated: result.error?.diskMutated,
+                indexUnreachable: isIndexUnreachableFailure(result),
+                reportOffered: reportAction !== undefined,
+                warnings: result.warnings,
+            });
+            this.present(
+                this.deps.showError(
+                    getPythonSetupErrorMessage(result),
+                    formatSetupFailureDetail(
+                        result,
+                        reportRepo ? reportLogLink(reportRepo) : undefined
+                    ),
+                    actions,
+                    // The recoverable conflict is self-service via its Retry /
+                    // Open buttons, so drop the trailing "Show Logs" to keep the
+                    // notification's button row short (the channel is revealed
+                    // regardless).
+                    recoverableConflict ? {includeShowLogs: false} : undefined
+                )
+            );
+            return;
+        }
+
+        // Adoption is the point of the flow: without it the venv exists on disk
+        // but is unusable from the editor, so a failure here is a setup failure —
+        // surface it and stay not-ready rather than rejecting with no message.
+        try {
+            // Adopt for the cwd captured at the top of the run, not the live
+            // active project: a mid-run project switch must not point another
+            // project's interpreter setting at this run's venv.
+            await this.deps.adoptInterpreter(result.venvPath, cwd);
+        } catch (e) {
+            // The CLI succeeded, so there is no CLI error to report — but the
+            // flow failed. `adopt` is the extension's own phase, appended to the
+            // CLI's six so the funnel shows breaks that happen after it exits. An
+            // adopt failure is the extension's own defect, so it always offers a
+            // report against databricks/databricks-vscode. Normalize a non-Error
+            // rejection so `.message` is never undefined (the redactor would
+            // throw on it, swallowing the original failure).
+            const message = e instanceof Error ? e.message : String(e);
+            const reportAction = buildExtensionFailureReportAction(reportEnv, {
+                phase: "adopt",
+                message,
+            });
+            reportResult({
+                outcome: "failed",
+                ...(result.pythonResolution !== undefined
+                    ? {pythonSetupFlow: result.pythonResolution}
+                    : {}),
+                failurePhase: "adopt",
+                envKey: result.compute.envKey,
+                reportOffered: true,
+                warnings: result.warnings,
+            });
+            this.present(
+                this.deps.showError(
+                    message,
+                    reportLogMirror("databricks/databricks-vscode"),
+                    [reportAction]
+                )
+            );
+            return;
+        }
+
+        // Do the state bookkeeping *before* reporting success, so a throw here
+        // is never recorded as `ok`.
+        try {
+            this.deps.saveState({
+                envKey: result.compute.envKey,
+                pythonVersion: result.resolved.pythonVersion,
+            });
+            // Record readiness for the project this run provisioned (the
+            // captured cwd), not the live active project — a mid-run switch must
+            // not mark a different project ready.
+            this.readyRoots.add(cwd);
+            this.stateEmitter.fire();
+        } catch (e) {
+            // A persist break happens after the environment already works, so
+            // it is the extension's own defect — surface it and offer a report
+            // (like the adopt path) instead of failing silently. The throw is
+            // preserved so the run is never mis-recorded as ok.
+            const message = e instanceof Error ? e.message : String(e);
+            reportResult({
+                outcome: "failed",
+                ...(result.pythonResolution !== undefined
+                    ? {pythonSetupFlow: result.pythonResolution}
+                    : {}),
+                failurePhase: "persist",
+                envKey: result.compute.envKey,
+                reportOffered: true,
+                warnings: result.warnings,
+            });
+            this.present(
+                this.deps.showError(
+                    message,
+                    reportLogMirror("databricks/databricks-vscode"),
+                    [
+                        buildExtensionFailureReportAction(reportEnv, {
+                            phase: "persist",
+                            message,
+                        }),
+                    ]
+                )
+            );
+            throw e;
+        }
+
+        // Report before presenting success: `duration` should measure the
+        // setup work, not the time the toast sits on screen. `present` is
+        // fire-and-forget, so the run settles here and the re-entrancy guard
+        // releases regardless of whether the user dismisses the notification.
+        reportResult({
+            outcome: "ok",
+            ...(result.pythonResolution !== undefined
+                ? {pythonSetupFlow: result.pythonResolution}
+                : {}),
+            envKey: result.compute.envKey,
+            warnings: result.warnings,
+        });
+
+        this.present(this.deps.showSuccess(result, flags));
+    }
+
+    /**
+     * The two recovery buttons for a Full-preset constraint conflict, both
+     * run-actions (their behavior needs the run's live compute/cwd):
+     *
+     * - "Retry DB Connect setup" restores pyproject.toml from the CLI's pre-merge
+     *   `backupPath`, then re-runs as DB Connect (`--no-constraints`). The restore
+     *   is load-bearing: the conflict fails *after* the pins were merged to disk,
+     *   so `--no-constraints` alone would leave the conflicting pins in place and
+     *   only skip re-adding them. It runs through {@link runGuarded} — so a click
+     *   can't race an in-flight run, and the restore only fires when the retry
+     *   actually runs — and no-ops once the project is ready, so a stale toast's
+     *   Retry can't downgrade an environment a later run provisioned. A failed
+     *   restore throws before the CLI spawns, leaving showError to log it.
+     * - "Open pyproject.toml" opens the merged file so the user can adjust the
+     *   dependencies that clashed.
+     */
+    private buildConflictRecoveryActions(
+        compute: SetupCompute,
+        cwd: string,
+        backupPath: string
+    ): PythonSetupErrorAction[] {
+        return [
+            {
+                label: "Retry DB Connect setup",
+                run: () => {
+                    // A stale Retry (project provisioned by a later run since the
+                    // conflict) must not re-provision and downgrade it.
+                    if (this.readyRoots.has(cwd)) {
+                        return;
+                    }
+                    return this.runGuarded(async () => {
+                        // Restore before re-running; a failure throws here, before
+                        // any attempt is recorded or the CLI spawns.
+                        await this.deps.restoreProjectFile(cwd, backupPath);
+                        await this.runResolved(
+                            compute,
+                            cwd,
+                            "dbconnect",
+                            "conflict_retry"
+                        );
+                    });
+                },
+            },
+            {
+                label: "Open pyproject.toml",
+                run: () => this.deps.openProjectFile(cwd),
+            },
+        ];
+    }
+
+    /**
+     * Emit the attempt event for a run that is about to start and return its
+     * outcome reporter.
+     *
+     * Measurement must never break the flow it measures, so everything here is
+     * best-effort: a failure gathering the attempt's context degrades to
+     * `unknown`/omitted, and a failure in the emit itself is swallowed — the
+     * returned reporter then becomes a no-op rather than throwing mid-run.
+     *
+     * The detected `packageManager` is returned alongside the reporter so the
+     * failure paths can stamp it into a "Report this problem" issue body without
+     * re-running detection.
+     */
+    private async recordAttempt(
+        invocation: SetupLocalInvocation,
+        projectRoot: string,
+        setupPreset: SetupPreset,
+        trigger?: PythonSetupRunTrigger
+    ): Promise<{
+        reportResult: PythonSetupResultReporter;
+        packageManager: PrimaryManager;
+    }> {
+        const {compute} = invocation;
+        // An unavailable detection degrades to "no manager fired", which reads as
+        // a greenfield-suitable project -- the same reading the visibility gate
+        // gives it, so the two stay consistent even on the failure path.
+        let detection: SuitabilityDetection = {managers: [], signals: []};
+        let packageManager: PrimaryManager = "unknown";
+        let isGreenfield: boolean | undefined;
+        // Two independent probes, so they get independent try blocks: a failing
+        // pyproject.toml probe must not discard a package manager that was
+        // detected successfully (that would bias the manager distribution toward
+        // `unknown`). Either failing just narrows the attempt, never breaks the
+        // user's setup run.
+        try {
+            const detected = await this.deps.getDetection();
+            if (detected !== undefined) {
+                detection = detected;
+                packageManager = detected.primary;
+            }
+        } catch {
+            // Keep `unknown` and the greenfield-suitable default.
+        }
+        try {
+            isGreenfield = await greenfieldSignal(
+                detection,
+                projectRoot,
+                this.deps.hasPyprojectToml
+            );
+        } catch {
+            // Leave isGreenfield undefined, i.e. omitted from the event.
+        }
+        try {
+            const reportResult = this.deps.recordSetupAttempt({
+                packageManager,
+                targetType: compute.kind,
+                serverlessVersion:
+                    compute.kind === "serverless" ? compute.version : undefined,
+                // --no-dbconnect is the orthogonal spelling of the legacy
+                // --constraints-only, so it maps to that telemetry mode. The
+                // richer, unambiguous axis is `setupPreset`; `mode` is kept for
+                // dashboard continuity.
+                mode: invocation.skipDbconnect ? "constraints-only" : "default",
+                setupPreset,
+                isGreenfield,
+                // An explicit trigger wins (the constraint-conflict retry passes
+                // `conflict_retry`, so its recovery clicks are countable and not
+                // conflated with a first-time DB Connect pick). Otherwise it is
+                // derived from state: a run against a project already marked ready
+                // this session is a re-run (the ready row's Re-run button / row
+                // click), anything else the first setup. Derived from state, not
+                // the command, so every entry point labels the same event.
+                trigger:
+                    trigger ??
+                    (this.readyRoots.has(projectRoot) ? "rerun" : "initial"),
+            });
+            return {
+                packageManager,
+                reportResult: (report) => {
+                    try {
+                        reportResult(report);
+                    } catch {
+                        // Swallow: the run's outcome has already been decided and
+                        // surfaced to the user by the time this is called.
+                    }
+                },
+            };
+        } catch {
+            return {packageManager, reportResult: () => {}};
+        }
+    }
+
+    dispose(): void {
+        this.stateEmitter.dispose();
+    }
+}

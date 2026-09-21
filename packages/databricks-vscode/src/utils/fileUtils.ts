@@ -59,7 +59,7 @@ export async function expandUriAndType(localUri?: LocalUri): Promise<{
             await stat(check.uri.fsPath);
             check.type = await isNotebook(new LocalUri(check.uri));
             return check;
-        } catch (e) {}
+        } catch {}
     }
     return {};
 }

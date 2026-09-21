@@ -432,6 +432,43 @@ describe(__filename, async () => {
             });
         });
 
+        it("should create wrapper for jupyter notebook with string cell source", async () => {
+            await withFile(async (localFilePath) => {
+                const originalData = {
+                    ...notebookMetadata,
+                    cells: [{...cellMetadata, source: "b = 2"}],
+                };
+                await writeFile(
+                    localFilePath.path,
+                    JSON.stringify(originalData),
+                    "utf-8"
+                );
+
+                await new WorkspaceFsWorkflowWrapper(
+                    instance(mockConnectionManager),
+                    instance(mockExtensionContext)
+                ).createNotebookWrapper(
+                    new LocalUri(localFilePath.path),
+                    new RemoteUri(originalFilePath),
+                    new RemoteUri(testDirPath),
+                    "IPYNB"
+                );
+
+                const wrapperData = await getWrapperData();
+                const expected = {
+                    ...originalData,
+                    cells: [wrapperData].concat([
+                        {...cellMetadata, source: ["b = 2"]},
+                    ]),
+                };
+
+                verifyMockServiceCalledWithExpectedData(
+                    JSON.stringify(expected),
+                    wrappedFilePath
+                );
+            });
+        });
+
         it("should rearrange kernel restart commands to the beginning", async () => {
             await withFile(async (localFilePath) => {
                 const originalData = {

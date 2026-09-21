@@ -144,7 +144,7 @@ export class WorkspaceFsWorkflowWrapper {
         @context ctx?: Context
     ) {
         // eslint-disable-next-line @typescript-eslint/naming-convention
-        type JupyterCell = {source: string[]; cell_type: string};
+        type JupyterCell = {source: string[] | string; cell_type: string};
         const data = await readFile(localFilePath.path, "utf-8");
         const originalJson: {cells: JupyterCell[] | undefined} =
             JSON.parse(data);
@@ -163,14 +163,20 @@ export class WorkspaceFsWorkflowWrapper {
         const cells = [bootstrapJson].concat(originalJson["cells"] ?? []).map(
             // Since each cell.source is a string array where each string can be
             // multiple lines, we need to split each string by \n and then flatten
-            (cell) =>
-                ({
-                    source: cell.source?.flatMap((line) =>
+            (cell) => {
+                const sourceLines = Array.isArray(cell.source)
+                    ? cell.source
+                    : typeof cell.source === "string"
+                      ? [cell.source]
+                      : undefined;
+                return {
+                    source: sourceLines?.flatMap((line) =>
                         line.trimEnd().split(/\r?\n/)
                     ),
                     type: cell.cell_type === "code" ? "code" : "not_code",
                     originalCell: cell,
-                }) as Cell
+                } as Cell;
+            }
         );
         originalJson["cells"] = rearrangeCells(cells).map((cell) => {
             if (cell.type === "not_code") {

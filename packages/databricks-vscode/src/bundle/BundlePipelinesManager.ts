@@ -251,7 +251,7 @@ export class BundlePipelinesManager {
             return this.connectionManager.syncDestinationMapper?.remoteToLocal(
                 new RemoteUri(remotePath)
             );
-        } catch (e) {
+        } catch {
             return undefined;
         }
     }
