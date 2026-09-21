@@ -1856,6 +1856,10 @@
                         "type": "number",
                         "default": 5,
                         "description": "The interval in minutes at which the remote state of the bundle is refreshed."
+                    },
+                    "databricks.overrideDatabricksCLIPath": {
+                        "type": "string",
+                        "description": "Override location for the Databricks CLI (defaults to the CLI bundled with this extension). *Warning:* it is recommended NOT to set this. If you override the CLI to an outdated version this extension may break."
                     }
                 }
             }

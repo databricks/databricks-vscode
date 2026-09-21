@@ -52,6 +52,12 @@ export const workspaceConfigs = {
         return config || process.env.DATABRICKS_CONFIG_FILE || undefined;
     },
 
+    get databricksCliPath() {
+        return workspace
+            .getConfiguration("databricks")
+            .get<string>("overrideDatabricksCLIPath");
+    },
+
     get experimetalFeatureOverides() {
         return workspace
             .getConfiguration("databricks")

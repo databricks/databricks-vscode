@@ -17,6 +17,8 @@ import {AuthProvider} from "../configuration/auth/AuthProvider";
 import type {AiToolsScope} from "../telemetry/constants";
 export type {AiToolsScope};
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
+import {isDevExtension} from "../utils/developmentUtils";
+import type {PackageMetaData} from "../utils/packageJsonUtils";
 import {quote} from "shell-quote";
 import {BundleVariableModel} from "../bundle/models/BundleVariableModel";
 import {MsPythonExtensionWrapper} from "../language/MsPythonExtensionWrapper";
@@ -485,6 +487,106 @@ async function runBundleCommand(
     });
     return {stdout: result.stdout, stderr: result.stderr};
 }
+
+function defaultCliPath(context: ExtensionContext) {
+    // The bundled binary is named `databricks.exe` on Windows. We must
+    // include the extension here: while spawning the CLI ourselves works
+    // without it (Windows' CreateProcess auto-appends `.exe`), this path is
+    // also forwarded to the Databricks Go SDK / Terraform provider via the
+    // DATABRICKS_CLI_PATH env var, and they do a literal file lookup that
+    // fails on an extensionless path with "databricks CLI not found".
+    const binName =
+        process.platform === "win32" ? "databricks.exe" : "databricks";
+    return context.asAbsolutePath(`./bin/${binName}`);
+}
+
+export interface CliVersion {
+    /** Full version string, e.g. "1.17.0". */
+    version: string;
+    /** Version tag, e.g. "v1.17.0". */
+    tag: string;
+    major: number;
+    minor: number;
+    patch: number;
+}
+
+/**
+ * Parses the JSON emitted by `databricks version --output json`. Returns
+ * undefined on malformed JSON or when an expected field is missing or the wrong
+ * type, so callers treat unreadable output the same as an absent version.
+ */
+export function parseCliVersion(stdout: string): CliVersion | undefined {
+    let result: unknown;
+    try {
+        result = JSON.parse(stdout);
+    } catch {
+        return undefined;
+    }
+    if (
+        typeof result === "object" &&
+        result !== null &&
+        "Version" in result &&
+        typeof result.Version === "string" &&
+        "Tag" in result &&
+        typeof result.Tag === "string" &&
+        "Major" in result &&
+        typeof result.Major === "number" &&
+        "Minor" in result &&
+        typeof result.Minor === "number" &&
+        "Patch" in result &&
+        typeof result.Patch === "number"
+    ) {
+        return {
+            version: result.Version,
+            tag: result.Tag,
+            major: result.Major,
+            minor: result.Minor,
+            patch: result.Patch,
+        };
+    }
+    return undefined;
+}
+
+/**
+ * Reads the version of the CLI binary at `cliPath` by running
+ * `version --output json`. Returns undefined when the binary is missing,
+ * unreadable, or its output can't be parsed — callers treat that as an unknown
+ * version rather than a specific one.
+ *
+ * `env` is forwarded to the spawned process; pass it when the CLI needs the
+ * extension's environment (e.g. proxy settings) to run.
+ */
+export async function getCliVersion(
+    cliPath: string,
+    env?: Record<string, string | undefined>
+): Promise<CliVersion | undefined> {
+    let stdout: string;
+    try {
+        ({stdout} = await execFile(
+            cliPath,
+            ["version", "--output", "json"],
+            {env},
+            undefined,
+            {closeStdin: true}
+        ));
+    } catch (e) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            "Failed to read the Databricks CLI version",
+            e
+        );
+        return undefined;
+    }
+
+    const version = parseCliVersion(stdout);
+    if (version === undefined) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+            "Databricks CLI version output was unparseable",
+            {stdout: stdout.slice(0, 200)}
+        );
+    }
+    return version;
+}
+
 /**
  * Entrypoint for all wrapped CLI commands
  *
@@ -515,15 +617,10 @@ export class CliWrapper {
     }
 
     get cliPath(): string {
-        // The bundled binary is named `databricks.exe` on Windows. We must
-        // include the extension here: while spawning the CLI ourselves works
-        // without it (Windows' CreateProcess auto-appends `.exe`), this path is
-        // also forwarded to the Databricks Go SDK / Terraform provider via the
-        // DATABRICKS_CLI_PATH env var, and they do a literal file lookup that
-        // fails on an extensionless path with "databricks CLI not found".
-        const binName =
-            process.platform === "win32" ? "databricks.exe" : "databricks";
-        return this.extensionContext.asAbsolutePath(`./bin/${binName}`);
+        return (
+            workspaceConfigs.databricksCliPath ||
+            defaultCliPath(this.extensionContext)
+        );
     }
 
     getLoggingArguments(): string[] {
@@ -1191,5 +1288,80 @@ export class CliWrapper {
                 env,
             },
         };
+    }
+
+    // Show a warning if the user has overriden the CLI path, and the overriden
+    // CLI version is older than the bundled version
+    async warnOverridenCliDrift(): Promise<void> {
+        const overridePath = workspaceConfigs.databricksCliPath;
+        if (!overridePath) {
+            return;
+        }
+
+        const env = {
+            ...EnvVarGenerators.getEnvVarsForCli(this.extensionContext),
+            ...EnvVarGenerators.getProxyEnvVars(),
+        };
+        const [overrideResult, bundledResult] = await Promise.all([
+            getCliVersion(overridePath, env),
+            getCliVersion(defaultCliPath(this.extensionContext), env),
+        ]);
+
+        // This is just a best effort warning, so if either command fails then skip
+        if (!overrideResult || !bundledResult) {
+            return;
+        }
+
+        // skip if override is same version or newer than bundled CLI
+        if (
+            overrideResult.major > bundledResult.major ||
+            (overrideResult.major === bundledResult.major &&
+                overrideResult.minor > bundledResult.minor) ||
+            (overrideResult.major === bundledResult.major &&
+                overrideResult.minor === bundledResult.minor &&
+                overrideResult.patch >= bundledResult.patch)
+        ) {
+            return;
+        }
+
+        window.showWarningMessage(
+            `Your overridden Databricks CLI is out of date (${overrideResult.tag}). Please update to ${bundledResult.tag} or later, otherwise you may encounter errors with the Databricks extension.`,
+            "Ok" // showing an item allows the warning text to wrap
+        );
+    }
+
+    /**
+     * Warns when the bundled CLI is not the version `package.json` pins, because a
+     * stale binary otherwise aborts activation opaquely — see "Re-fetch the CLI
+     * after pulling" in AGENTS.md. Returns false when it warned, true otherwise.
+     *
+     * Dev-only. A packaged extension fetches its CLI during the build, so the two
+     * versions can't diverge there.
+     */
+    async checkBundledCliVersionForDev(metaData: PackageMetaData): Promise<boolean> {
+        if (
+            !isDevExtension() ||
+            metaData.cliVersion === undefined ||
+            !!workspaceConfigs.databricksCliPath
+        ) {
+            return true;
+        }
+
+        // An unknown version (CLI unreadable) is treated as "not stale"; the gate
+        // above guarantees metaData.cliVersion is defined here.
+        const actual = (
+            await getCliVersion(defaultCliPath(this.extensionContext))
+        )?.version;
+        if (actual === undefined || actual === metaData.cliVersion) {
+            return true;
+        }
+
+        const message =
+            `The bundled Databricks CLI is v${actual}, but this checkout pins ` +
+            `v${metaData.cliVersion}. Run "yarn workspace databricks run ` +
+            `package:cli:fetch" and reload the window.`;
+        logging.NamedLogger.getOrCreate(Loggers.Extension).warn(message);
+        window.showWarningMessage(message);
+        return false;
     }
 }
