@@ -37,6 +37,7 @@
         "url": "https://github.com/databricks/databricks-vscode.git"
     },
     "activationEvents": [
+        "onLanguageModelChatProvider:databricks",
         "onLanguage:python",
         "onCommand:databricks.*",
         "onTaskType:databricks",
@@ -51,7 +52,27 @@
     "main": "out/extension.js",
     "types": "out/extension.d.ts",
     "contributes": {
+        "languageModelChatProviders": [
+            {
+                "vendor": "databricks",
+                "displayName": "Databricks",
+                "managementCommand": "databricks.lmChat.configure"
+            }
+        ],
         "commands": [
+            {
+                "command": "databricks.lmChat.configure",
+                "title": "Configure authentication for models in Chat",
+                "category": "Databricks",
+                "icon": "$(sign-in)"
+            },
+            {
+                "command": "databricks.lmChat.signOut",
+                "title": "Sign out of models in Chat",
+                "category": "Databricks",
+                "icon": "$(sign-out)",
+                "enablement": "databricks.context.lmChat.connected && !databricks.context.remoteMode"
+            },
             {
                 "command": "databricks.ssh.startTunnel",
                 "title": "Start SSH tunnel",
@@ -870,6 +891,11 @@
             },
             {
                 "view": "configurationView",
+                "contents": "Use Databricks models in Copilot Chat.\n[Sign in to Databricks Chat](command:databricks.lmChat.configure)",
+                "when": "!databricks.context.remoteMode && !databricks.context.lmChat.connected"
+            },
+            {
+                "view": "configurationView",
                 "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
             },
             {
@@ -879,6 +905,16 @@
         ],
         "menus": {
             "view/title": [
+                {
+                    "command": "databricks.lmChat.configure",
+                    "group": "navigation@0",
+                    "when": "view == configurationView && !databricks.context.remoteMode && !databricks.context.lmChat.connected"
+                },
+                {
+                    "command": "databricks.lmChat.signOut",
+                    "group": "navigation@0",
+                    "when": "view == configurationView && !databricks.context.remoteMode && databricks.context.lmChat.connected"
+                },
                 {
                     "command": "databricks.quickstart.open",
                     "when": "view == configurationView && !databricks.context.remoteMode"
