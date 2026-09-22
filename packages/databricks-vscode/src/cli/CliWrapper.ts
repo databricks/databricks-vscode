@@ -1338,7 +1338,9 @@ export class CliWrapper {
      * Dev-only. A packaged extension fetches its CLI during the build, so the two
      * versions can't diverge there.
      */
-    async checkBundledCliVersionForDev(metaData: PackageMetaData): Promise<boolean> {
+    async checkBundledCliVersionForDev(
+        metaData: PackageMetaData
+    ): Promise<boolean> {
         if (
             !isDevExtension() ||
             metaData.cliVersion === undefined ||
