@@ -24,13 +24,13 @@ const NEVER_CANCELLED_TOKEN: CancellationToken = {
 
 const UNITY_GATEWAY_LANGUAGE_MODEL = {
     id: "system.ai.gpt-5-6-sol",
-    name: "system.ai.gpt-5-6-sol",
+    name: "gpt-5-6-sol",
     family: "gpt-5-6-sol",
     version: "1",
     maxInputTokens: 128_000,
     maxOutputTokens: 4_096,
     tooltip: "Uses a Unity Catalog model service",
-    detail: "Unity Gateway model service",
+    detail: "Databricks",
     capabilities: {
         imageInput: false,
         toolCalling: true,
@@ -245,6 +245,73 @@ describe(__filename, () => {
         connection.dispose();
     });
 
+    it("announces the model count after a fresh discovery", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            undefined,
+            async () => [
+                UNITY_GATEWAY_LANGUAGE_MODEL,
+                UNITY_GATEWAY_LANGUAGE_MODEL,
+            ]
+        );
+        const counts: number[] = [];
+        provider.onDidDiscoverModels((count) => counts.push(count));
+
+        await provider.provideLanguageModelChatInformation(
+            {silent: true},
+            NEVER_CANCELLED_TOKEN
+        );
+        // A cached second call must not re-announce.
+        await provider.provideLanguageModelChatInformation(
+            {silent: true},
+            NEVER_CANCELLED_TOKEN
+        );
+
+        assert.deepStrictEqual(counts, [2]);
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("requests sign-in once on silent discovery while disconnected", async () => {
+        const connection = new TestConnection("DISCONNECTED");
+        const provider = new DatabricksLanguageModelChatProvider(connection);
+        let signInRequests = 0;
+        provider.onDidRequestSignIn(() => signInRequests++);
+
+        const first = await provider.provideLanguageModelChatInformation(
+            {silent: true},
+            NEVER_CANCELLED_TOKEN
+        );
+        // A second silent poll must not re-prompt.
+        const second = await provider.provideLanguageModelChatInformation(
+            {silent: true},
+            NEVER_CANCELLED_TOKEN
+        );
+
+        assert.deepStrictEqual(first, []);
+        assert.deepStrictEqual(second, []);
+        assert.strictEqual(signInRequests, 1);
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("does not request sign-in during interactive discovery", async () => {
+        const connection = new TestConnection("DISCONNECTED");
+        const provider = new DatabricksLanguageModelChatProvider(connection);
+        let signInRequests = 0;
+        provider.onDidRequestSignIn(() => signInRequests++);
+
+        await provider.provideLanguageModelChatInformation(
+            {silent: false},
+            NEVER_CANCELLED_TOKEN
+        );
+
+        assert.strictEqual(signInRequests, 0);
+        provider.dispose();
+        connection.dispose();
+    });
+
     it("returns no models without an API client", async () => {
         const connection = new TestConnection("CONNECTED");
         connection.apiClient = undefined;
@@ -371,8 +438,12 @@ describe(__filename, () => {
             ])
         );
         assert.strictEqual(
+            models.find((model) => model.id.includes("gemini"))?.name,
+            "gemini-test"
+        );
+        assert.strictEqual(
             models.find((model) => model.id.includes("gemini"))?.detail,
-            "Unity Gateway model service"
+            "Databricks"
         );
         assert.strictEqual(
             (requestedQuery as {parent?: string}).parent,
@@ -1186,6 +1257,190 @@ describe(__filename, () => {
         );
 
         assert.strictEqual(requestCount, 2);
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("preserves signatures for earlier tool calls across later turns", async () => {
+        const connection = new TestConnection("CONNECTED");
+        let requestCount = 0;
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            async (
+                _connection,
+                payload: {readonly messages: readonly unknown[]}
+            ) => {
+                requestCount++;
+                if (requestCount === 1) {
+                    return {
+                        message: {
+                            role: "assistant" as const,
+                            content: null,
+                            tool_calls: [
+                                {
+                                    id: "read_file",
+                                    type: "function" as const,
+                                    thoughtSignature: "sig-a",
+                                    function: {
+                                        name: "read_file",
+                                        arguments: '{"filePath":"a.py"}',
+                                    },
+                                },
+                            ],
+                        },
+                    };
+                }
+                if (requestCount === 2) {
+                    return {
+                        message: {
+                            role: "assistant" as const,
+                            content: null,
+                            tool_calls: [
+                                {
+                                    id: "list_dir",
+                                    type: "function" as const,
+                                    thoughtSignature: "sig-b",
+                                    function: {
+                                        name: "list_dir",
+                                        arguments: '{"path":"."}',
+                                    },
+                                },
+                            ],
+                        },
+                    };
+                }
+                // Third turn replays the whole history. Both earlier assistant
+                // tool calls must still carry their original signatures.
+                assert.deepStrictEqual(payload.messages, [
+                    {
+                        role: "assistant",
+                        content: null,
+                        tool_calls: [
+                            {
+                                id: "read_file__vscode-0",
+                                type: "function",
+                                thoughtSignature: "sig-a",
+                                function: {
+                                    name: "read_file",
+                                    arguments: '{"filePath":"a.py"}',
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        role: "tool",
+                        tool_call_id: "read_file__vscode-0",
+                        content: "contents a",
+                    },
+                    {
+                        role: "assistant",
+                        content: null,
+                        tool_calls: [
+                            {
+                                id: "list_dir__vscode-1",
+                                type: "function",
+                                thoughtSignature: "sig-b",
+                                function: {
+                                    name: "list_dir",
+                                    arguments: '{"path":"."}',
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        role: "tool",
+                        tool_call_id: "list_dir__vscode-1",
+                        content: "contents b",
+                    },
+                ]);
+                return {
+                    message: {role: "assistant" as const, content: "Done"},
+                };
+            }
+        );
+
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: () => undefined},
+            NEVER_CANCELLED_TOKEN
+        );
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [
+                {
+                    role: 2,
+                    content: [
+                        {
+                            callId: "read_file__vscode-0",
+                            name: "read_file",
+                            input: {filePath: "a.py"},
+                        } satisfies LanguageModelToolCallPart,
+                    ],
+                },
+                {
+                    role: 1,
+                    content: [
+                        {
+                            callId: "read_file__vscode-0",
+                            content: [{value: "contents a"}],
+                        } satisfies LanguageModelToolResultPart,
+                    ],
+                },
+            ],
+            {},
+            {report: () => undefined},
+            NEVER_CANCELLED_TOKEN
+        );
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [
+                {
+                    role: 2,
+                    content: [
+                        {
+                            callId: "read_file__vscode-0",
+                            name: "read_file",
+                            input: {filePath: "a.py"},
+                        } satisfies LanguageModelToolCallPart,
+                    ],
+                },
+                {
+                    role: 1,
+                    content: [
+                        {
+                            callId: "read_file__vscode-0",
+                            content: [{value: "contents a"}],
+                        } satisfies LanguageModelToolResultPart,
+                    ],
+                },
+                {
+                    role: 2,
+                    content: [
+                        {
+                            callId: "list_dir__vscode-1",
+                            name: "list_dir",
+                            input: {path: "."},
+                        } satisfies LanguageModelToolCallPart,
+                    ],
+                },
+                {
+                    role: 1,
+                    content: [
+                        {
+                            callId: "list_dir__vscode-1",
+                            content: [{value: "contents b"}],
+                        } satisfies LanguageModelToolResultPart,
+                    ],
+                },
+            ],
+            {},
+            {report: () => undefined},
+            NEVER_CANCELLED_TOKEN
+        );
+
+        assert.strictEqual(requestCount, 3);
         provider.dispose();
         connection.dispose();
     });

@@ -57,6 +57,7 @@ export function toOpenAIChatMessages(
     opaqueAssistantState?: OpaqueAssistantStateStore
 ): OpenAIChatMessage[] {
     const input: OpenAIChatMessage[] = [];
+    const restoreSession = opaqueAssistantState?.createRestoreSession();
     for (const message of messages) {
         const role = message.role === 1 ? "user" : "assistant";
         const text = message.content
@@ -77,7 +78,7 @@ export function toOpenAIChatMessages(
             input.push(
                 rawMessage !== undefined
                     ? rehydrateAssistantMessage(rawMessage, toolCalls)
-                    : opaqueAssistantState?.restore(toolCalls) ?? {
+                    : restoreSession?.restore(toolCalls) ?? {
                           role,
                           content: text === "" ? null : text,
                           tool_calls: toolCalls,

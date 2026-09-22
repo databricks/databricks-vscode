@@ -310,6 +310,50 @@ export async function activate(
         getContextMetadata(isRemoteSshMode ? "remote" : "normal")
     );
 
+    let lmChatModelsNotified = false;
+    const notifyLanguageModelsAvailable = (count: number) => {
+        if (lmChatModelsNotified) {
+            return;
+        }
+        lmChatModelsNotified = true;
+        const openChat = "Open Chat";
+        void window
+            .showInformationMessage(
+                `You can now use ${count} Databricks models in Chat.`,
+                openChat
+            )
+            .then((selection) => {
+                if (selection === openChat) {
+                    void commands.executeCommand("workbench.action.chat.open");
+                }
+            });
+    };
+
+    let lmChatSignInPrompted = false;
+    const promptSignInForLanguageModels = () => {
+        // Remote SSH auto-authenticates from the environment, so a sign-in
+        // prompt would be noise there.
+        if (
+            lmChatSignInPrompted ||
+            isRemoteSshMode ||
+            (workspace.workspaceFolders?.length ?? 0) > 0
+        ) {
+            return;
+        }
+        lmChatSignInPrompted = true;
+        const signIn = "Sign in";
+        void window
+            .showInformationMessage(
+                "Sign in to Databricks to use its models in Chat.",
+                signIn
+            )
+            .then((selection) => {
+                if (selection === signIn) {
+                    void commands.executeCommand("databricks.lmChat.configure");
+                }
+            });
+    };
+
     const registerLanguageModelChatProvider = (
         connection: LanguageModelChatConnection
     ) => {
@@ -318,7 +362,15 @@ export async function activate(
         }
         const languageModelChatProvider =
             new DatabricksLanguageModelChatProvider(connection);
-        context.subscriptions.push(languageModelChatProvider);
+        context.subscriptions.push(
+            languageModelChatProvider,
+            languageModelChatProvider.onDidDiscoverModels(
+                notifyLanguageModelsAvailable
+            ),
+            languageModelChatProvider.onDidRequestSignIn(
+                promptSignInForLanguageModels
+            )
+        );
         const languageModelChatProviderRegistration =
             registerDatabricksLanguageModelChatProvider(
                 languageModelChatProvider

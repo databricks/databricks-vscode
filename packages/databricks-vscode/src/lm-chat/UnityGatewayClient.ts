@@ -318,13 +318,13 @@ async function listModelServices(
             }
             models.push({
                 id,
-                name: id,
+                name: displayNameForModelId(id),
                 family: id.split(".").at(-1) ?? id,
                 version: "1",
                 maxInputTokens: 128_000, // TODO: get from model service - shouldnt be a hardcoded limit
                 maxOutputTokens: 4_096,
                 tooltip: service.comment,
-                detail: "Unity Gateway model service",
+                detail: "Databricks",
                 capabilities: {
                     imageInput: false,
                     toolCalling: true,
@@ -415,6 +415,10 @@ function workspaceHeaders(
         headers.set("Content-Type", "application/json");
     }
     return headers;
+}
+
+function displayNameForModelId(id: string): string {
+    return id.replace(/^system\.ai\./, "");
 }
 
 function resolveWorkspaceId(connection: LanguageModelChatConnection): {
