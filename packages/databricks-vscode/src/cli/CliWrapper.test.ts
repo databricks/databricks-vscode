@@ -624,7 +624,7 @@ token = dapitest5678
         it("does not warn outside a dev checkout (no CLI spawn)", async () => {
             delete process.env[EXTENSION_DEVELOPMENT];
             assert.ok(
-                await createCliWrapper().checkBundledCliVersion({
+                await createCliWrapper().checkBundledCliVersionForDev({
                     packageName: "databricks",
                     version: "2.13.0",
                     cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
@@ -635,7 +635,7 @@ token = dapitest5678
         it("does not warn when the pinned version is unknown", async () => {
             process.env[EXTENSION_DEVELOPMENT] = "true";
             assert.ok(
-                await createCliWrapper().checkBundledCliVersion({
+                await createCliWrapper().checkBundledCliVersionForDev({
                     packageName: "databricks",
                     version: "2.13.0",
                 })
@@ -647,7 +647,7 @@ token = dapitest5678
             // the actual version is unknown, so we must not warn (nor throw).
             process.env[EXTENSION_DEVELOPMENT] = "true";
             assert.ok(
-                await createCliWrapperWithMissingCli().checkBundledCliVersion({
+                await createCliWrapperWithMissingCli().checkBundledCliVersionForDev({
                     packageName: "databricks",
                     version: "2.13.0",
                     cliVersion: "0.240.0",
@@ -671,7 +671,7 @@ token = dapitest5678
 
         it("is accepted as matching the pinned version", async () => {
             assert.ok(
-                await createCliWrapper().checkBundledCliVersion({
+                await createCliWrapper().checkBundledCliVersionForDev({
                     packageName: "databricks",
                     version: "2.13.0",
                     cliVersion: pinnedCliVersion,
@@ -681,7 +681,7 @@ token = dapitest5678
 
         it("is flagged as stale against a different pinned version", async () => {
             assert.ok(
-                !(await createCliWrapper().checkBundledCliVersion({
+                !(await createCliWrapper().checkBundledCliVersionForDev({
                     packageName: "databricks",
                     version: "2.13.0",
                     cliVersion: `${pinnedCliVersion}-not-the-bundled-version`,
