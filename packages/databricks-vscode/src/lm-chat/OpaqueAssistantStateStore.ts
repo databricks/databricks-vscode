@@ -1,13 +1,22 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type {OpenAIChatAssistantMessage, OpenAIChatToolCall} from "./types";
 
-const MAX_STORED_MESSAGES = 32;
+// Bound memory while still covering deep agent sessions. VS Code replays the
+// full conversation on every turn, so a session with more than this many
+// distinct tool-call turns will lose the oldest signatures first.
+const MAX_STORED_MESSAGES = 256;
 
 /**
  * Copilot reconstructs assistant tool-call history from name/arguments/id only.
  * Unity Gateway still needs unknown extra fields from the original assistant
  * message (for example per-tool-call signatures). This store remembers those
  * messages and rehydrates them, remapping Copilot's rewritten call ids.
+ *
+ * VS Code replays the entire conversation on every turn, so restoration must be
+ * non-destructive: a stored message can be replayed on many subsequent requests.
+ * Create a per-request {@link OpaqueAssistantStateRestoreSession} so repeated
+ * identical tool calls within one request resolve to distinct stored messages
+ * in order, without consuming them for later requests.
  */
 export class OpaqueAssistantStateStore {
     private readonly messagesByFingerprint = new Map<
@@ -26,22 +35,10 @@ export class OpaqueAssistantStateStore {
         this.evictOldest();
     }
 
-    restore(
-        toolCalls: readonly OpenAIChatToolCall[]
-    ): OpenAIChatAssistantMessage | undefined {
-        const fingerprint = toolCallFingerprint(toolCalls);
-        if (fingerprint === undefined) {
-            return undefined;
-        }
-        const queued = this.messagesByFingerprint.get(fingerprint);
-        const message = queued?.shift();
-        if (queued !== undefined && queued.length === 0) {
-            this.messagesByFingerprint.delete(fingerprint);
-        }
-        if (message === undefined) {
-            return undefined;
-        }
-        return rehydrateAssistantMessage(message, toolCalls);
+    createRestoreSession(): OpaqueAssistantStateRestoreSession {
+        return new OpaqueAssistantStateRestoreSession(
+            this.messagesByFingerprint
+        );
     }
 
     private evictOldest(): void {
@@ -64,6 +61,39 @@ export class OpaqueAssistantStateStore {
                 return;
             }
         }
+    }
+}
+
+/**
+ * Non-destructive view over the stored messages for a single request. Tracks how
+ * many times each fingerprint has been restored so repeated identical tool calls
+ * within the same request map to successive stored occurrences.
+ */
+export class OpaqueAssistantStateRestoreSession {
+    private readonly cursorsByFingerprint = new Map<string, number>();
+
+    constructor(
+        private readonly messagesByFingerprint: ReadonlyMap<
+            string,
+            readonly OpenAIChatAssistantMessage[]
+        >
+    ) {}
+
+    restore(
+        toolCalls: readonly OpenAIChatToolCall[]
+    ): OpenAIChatAssistantMessage | undefined {
+        const fingerprint = toolCallFingerprint(toolCalls);
+        if (fingerprint === undefined) {
+            return undefined;
+        }
+        const queued = this.messagesByFingerprint.get(fingerprint);
+        if (queued === undefined || queued.length === 0) {
+            return undefined;
+        }
+        const cursor = this.cursorsByFingerprint.get(fingerprint) ?? 0;
+        this.cursorsByFingerprint.set(fingerprint, cursor + 1);
+        const message = queued[Math.min(cursor, queued.length - 1)];
+        return rehydrateAssistantMessage(message, toolCalls);
     }
 }
 
