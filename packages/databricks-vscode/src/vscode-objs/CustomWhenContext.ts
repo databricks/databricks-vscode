@@ -132,4 +132,12 @@ export class CustomWhenContext {
             value
         );
     }
+
+    setLmChatConnected(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.lmChat.connected",
+            value
+        );
+    }
 }
