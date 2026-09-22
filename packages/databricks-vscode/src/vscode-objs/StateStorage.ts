@@ -37,6 +37,10 @@ function withType<V>() {
 }
 
 const StorageConfigurations = {
+    "databricks.lmChat.auth": withType<Record<string, string | undefined>>()({
+        location: "global",
+    }),
+
     "databricks.bundle.overrides": withType<{
         [k: string]: OverrideableConfigState;
     }>()({

@@ -33,6 +33,7 @@ import {logging} from "@databricks/sdk-experimental";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {
     FileUtils,
+    HostUtils,
     PackageJsonUtils,
     TerraformUtils,
     UrlUtils,
@@ -121,6 +122,12 @@ import {
     UnityCatalogTreeNode,
 } from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
 import {registerDetailPanel} from "./ui/unity-catalog/registerDetailPanel";
+import {
+    DatabricksLanguageModelChatProvider,
+    registerDatabricksLanguageModelChatProvider,
+} from "./lm-chat/DatabricksLanguageModelChatProvider";
+import {LanguageModelChatConnectionManager} from "./lm-chat/LanguageModelChatConnectionManager";
+import type {LanguageModelChatConnection} from "./lm-chat/types";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require("../package.json");
@@ -303,6 +310,24 @@ export async function activate(
         getContextMetadata(isRemoteSshMode ? "remote" : "normal")
     );
 
+    const registerLanguageModelChatProvider = (
+        connection: LanguageModelChatConnection
+    ) => {
+        if (HostUtils.isCursor()) {
+            return;
+        }
+        const languageModelChatProvider =
+            new DatabricksLanguageModelChatProvider(connection);
+        context.subscriptions.push(languageModelChatProvider);
+        const languageModelChatProviderRegistration =
+            registerDatabricksLanguageModelChatProvider(
+                languageModelChatProvider
+            );
+        if (languageModelChatProviderRegistration !== undefined) {
+            context.subscriptions.push(languageModelChatProviderRegistration);
+        }
+    };
+
     const loggerManager = new LoggerManager(context);
     if (workspaceConfigs.loggingEnabled) {
         loggerManager.initLoggers();
@@ -319,6 +344,26 @@ export async function activate(
     }
 
     const cli = new CliWrapper(context, loggerManager, cliLogFilePath);
+    const languageModelChatConnection = new LanguageModelChatConnectionManager(
+        cli,
+        stateStorage
+    );
+    context.subscriptions.push(languageModelChatConnection);
+    registerLanguageModelChatProvider(languageModelChatConnection);
+    const updateLmChatConnected = () =>
+        customWhenContext.setLmChatConnected(
+            languageModelChatConnection.state === "CONNECTED"
+        );
+    updateLmChatConnected();
+    context.subscriptions.push(
+        languageModelChatConnection.onDidChangeState(updateLmChatConnected),
+        commands.registerCommand("databricks.lmChat.configure", async () => {
+            await languageModelChatConnection.configure();
+        }),
+        commands.registerCommand("databricks.lmChat.signOut", async () => {
+            await languageModelChatConnection.signOut();
+        })
+    );
 
     // Surfaces a stale bundled CLI in dev checkouts. Not awaited: it only warns,
     // and activation shouldn't wait on spawning the CLI to find out.
@@ -642,6 +687,9 @@ export async function activate(
             remoteConfigModel,
             remoteConnectionManager
         );
+        languageModelChatConnection.setProjectConnection(
+            remoteConnectionManager
+        );
 
         const connectRemote = () =>
             remoteConnectionManager.connectFromEnvironment().catch((e) => {
@@ -738,6 +786,7 @@ export async function activate(
         customWhenContext,
         telemetry
     );
+    languageModelChatConnection.setProjectConnection(connectionManager);
     const packageManagerTelemetry = new PackageManagerTelemetry(
         telemetry,
         pythonExtensionWrapper,
