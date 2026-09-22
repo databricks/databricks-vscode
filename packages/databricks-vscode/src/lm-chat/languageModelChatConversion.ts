@@ -230,7 +230,10 @@ export function toLanguageModelResponseParts(
     const toolCalls = body.message.tool_calls ?? [];
     opaqueAssistantState?.remember(body.message);
     if (hasOpaqueAssistantState(body.message)) {
-        parts.push(createLanguageModelDataPart(body.message));
+        const dataPart = createLanguageModelDataPart(body.message);
+        if (dataPart !== undefined) {
+            parts.push(dataPart);
+        }
     }
     for (const text of assistantMessageText(body.message.content)) {
         parts.push(createLanguageModelTextPart(text));

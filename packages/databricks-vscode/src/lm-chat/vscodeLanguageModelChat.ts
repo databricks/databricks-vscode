@@ -1,11 +1,12 @@
 /**
  * VS Code Language Model Chat API shim.
  *
- * `vscode.lm.registerLanguageModelChatProvider` and the LanguageModel*Part
- * constructors exist only from VS Code 1.104. This module is the only place
- * that touches those APIs so the rest of lm-chat can compile and unit-test
- * against older `@types/vscode` and still no-op on hosts that lack the
- * runtime. It does not talk to Databricks.
+ * `vscode.lm.registerLanguageModelChatProvider` and the text/tool part
+ * constructors exist from VS Code 1.104. `LanguageModelDataPart` is later
+ * than 1.104; when it is missing, callers skip the data part and use
+ * OpaqueAssistantStateStore. This module is the only place that touches
+ * those APIs so the rest of lm-chat can compile against `@types/vscode`
+ * and no-op on hosts that lack the runtime. It does not talk to Databricks.
  */
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as vscode from "vscode";
@@ -78,12 +79,10 @@ export function createLanguageModelTextPart(
 
 export function createLanguageModelDataPart(
     value: OpenAIChatAssistantMessage
-): LanguageModelDataPart {
+): LanguageModelDataPart | undefined {
     const constructor = getLanguageModelChatProviderApi().LanguageModelDataPart;
     if (constructor === undefined) {
-        throw new Error(
-            "Language model data parts require VS Code 1.104 or later."
-        );
+        return undefined;
     }
     return constructor.json(value, RAW_ASSISTANT_MESSAGE_MIME);
 }
@@ -172,7 +171,7 @@ export function isLanguageModelToolResultPart(
     );
 }
 
-/** Cast because `@types/vscode` may not declare these 1.104+ members. */
+/** Cast because `@types/vscode` may not declare these Language Model Chat members. */
 function getLanguageModelChatProviderApi(): LanguageModelChatProviderApi {
     return vscode as typeof vscode & LanguageModelChatProviderApi;
 }

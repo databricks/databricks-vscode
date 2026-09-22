@@ -6,7 +6,7 @@
     "license": "LicenseRef-LICENSE",
     "version": "2.18.0",
     "engines": {
-        "vscode": "^1.86.0",
+        "vscode": "^1.104.0",
         "node": ">=22.0"
     },
     "categories": [
@@ -1979,7 +1979,7 @@
         "@types/semver": "^7.5.0",
         "@types/tmp": "^0.2.6",
         "@types/triple-beam": "^1.3.5",
-        "@types/vscode": "1.86.0",
+        "@types/vscode": "1.104.0",
         "@types/ws": "^8.5.11",
         "@types/yargs": "^17.0.32",
         "@typescript-eslint/eslint-plugin": "^8.62.0",

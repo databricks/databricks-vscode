@@ -1033,9 +1033,16 @@ describe(__filename, () => {
             {report: (part) => firstParts.push(part)},
             NEVER_CANCELLED_TOKEN
         );
-        assert.strictEqual(firstParts.length, 2);
         const firstToolCall = firstParts.find(
             (part): part is LanguageModelToolCallPart => "callId" in part
+        );
+        assert.strictEqual(
+            firstParts.length,
+            firstParts.some(
+                (part) => "mimeType" in part && "data" in part
+            )
+                ? 2
+                : 1
         );
         assert.ok(firstToolCall);
         assert.strictEqual(firstToolCall.callId, "call-1");
