@@ -59,6 +59,30 @@ function createCliWrapper(logFilePath?: string) {
     );
 }
 
+// Writes a fake `databricks` CLI that prints `output` as JSON when run with any
+// args, and returns its path. On POSIX this is a shebang bash script marked
+// executable. On Windows the CLI is invoked through `cmd.exe` (see
+// getEscapedCommandAndArgs), which needs a recognised executable extension and
+// can't run a shebang, so we emit a `.cmd` batch script instead. The JSON
+// contains no cmd.exe metacharacters (<>&|%^), so `echo` prints it verbatim.
+async function writeFakeCli(
+    dir: string,
+    baseName: string,
+    output: unknown
+): Promise<string> {
+    const json = JSON.stringify(output);
+    if (process.platform === "win32") {
+        const overridePath = path.join(dir, `${baseName}.cmd`);
+        await writeFile(overridePath, `@echo off\r\necho ${json}\r\n`);
+        return overridePath;
+    }
+    const overridePath = path.join(dir, baseName);
+    await writeFile(overridePath, `#!/usr/bin/env bash\necho '${json}'`, {
+        mode: 0o777,
+    });
+    return overridePath;
+}
+
 // A CliWrapper whose bundled CLI path points nowhere, so a version read fails.
 function createCliWrapperWithMissingCli() {
     return new CliWrapper(
@@ -647,11 +671,13 @@ token = dapitest5678
             // the actual version is unknown, so we must not warn (nor throw).
             process.env[EXTENSION_DEVELOPMENT] = "true";
             assert.ok(
-                await createCliWrapperWithMissingCli().checkBundledCliVersionForDev({
-                    packageName: "databricks",
-                    version: "2.13.0",
-                    cliVersion: "0.240.0",
-                })
+                await createCliWrapperWithMissingCli().checkBundledCliVersionForDev(
+                    {
+                        packageName: "databricks",
+                        version: "2.13.0",
+                        cliVersion: "0.240.0",
+                    }
+                )
             );
         });
     });
@@ -774,16 +800,10 @@ token = dapitest5678
                         Patch: patch,
                     };
                     /* eslint-enable @typescript-eslint/naming-convention */
-                    const overridePath = path.join(
+                    const overridePath = await writeFakeCli(
                         tmpDir,
-                        `databricks-${overrideOutput.Tag}`
-                    );
-                    await writeFile(
-                        overridePath,
-                        `#!/usr/bin/env bash\necho '${JSON.stringify(
-                            overrideOutput
-                        )}'`,
-                        {mode: 0o777}
+                        `databricks-${overrideOutput.Tag}`,
+                        overrideOutput
                     );
 
                     const configsSpy = spy(workspaceConfigs);
