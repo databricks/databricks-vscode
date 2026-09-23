@@ -37,6 +37,71 @@ const UNITY_GATEWAY_LANGUAGE_MODEL = {
     },
 };
 
+function asSseResponse(chunks: readonly unknown[]): Response {
+    return new Response(
+        `${chunks
+            .map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`)
+            .join("")}data: [DONE]\n\n`,
+        {
+            status: 200,
+            headers: {"Content-Type": "text/event-stream"},
+        }
+    );
+}
+
+function asStreamingResponse(response: unknown): Response {
+    const message = (
+        response as {
+            choices?: Array<{message?: Record<string, unknown>}>;
+        }
+    ).choices?.[0]?.message;
+    assert.ok(message);
+    const {tool_calls: toolCalls, ...delta} = message;
+    const chunks = [
+        {
+            id: "chatcmpl-test",
+            object: "chat.completion.chunk",
+            created: 0,
+            model: "system.ai.test",
+            choices: [
+                {
+                    index: 0,
+                    delta: {
+                        ...delta,
+                        ...(Array.isArray(toolCalls)
+                            ? {
+                                  tool_calls: toolCalls.map(
+                                      (toolCall, index) => ({
+                                          ...(toolCall as object),
+                                          index,
+                                      })
+                                  ),
+                              }
+                            : {}),
+                    },
+                    finish_reason: null,
+                },
+            ],
+        },
+        {
+            id: "chatcmpl-test",
+            object: "chat.completion.chunk",
+            created: 0,
+            model: "system.ai.test",
+            choices: [
+                {
+                    index: 0,
+                    delta: {},
+                    finish_reason: Array.isArray(toolCalls)
+                        ? "tool_calls"
+                        : "stop",
+                },
+            ],
+        },
+    ];
+    return asSseResponse(chunks);
+}
+
 class TestConnection implements LanguageModelChatConnection {
     private readonly onDidChangeStateEmitter =
         new EventEmitter<ConnectionState>();
@@ -76,16 +141,18 @@ class TestConnection implements LanguageModelChatConnection {
 
     readonly fetcher: typeof fetch = async (input, init) => {
         const url = new URL(input.toString());
+        const payload =
+            typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
         const response = await this.request({
             path: url.pathname,
             method: init?.method ?? "GET",
             query: Object.fromEntries(url.searchParams),
             headers: new Headers(init?.headers),
-            payload:
-                typeof init?.body === "string"
-                    ? JSON.parse(init.body)
-                    : undefined,
+            payload,
         });
+        if (payload?.stream === true) {
+            return asStreamingResponse(response);
+        }
         return new Response(JSON.stringify(response), {
             status: 200,
             headers: {"Content-Type": "application/json"},
@@ -498,12 +565,15 @@ describe(__filename, () => {
         let requestedPath: string | undefined;
         let method: string | undefined;
         let sentWorkspaceId: string | null = null;
+        let sentAuthorization: string | null = null;
         let sentContentType: string | null = null;
         let sentBody: unknown;
+        const textDeltas: string[] = [];
         const connection = new TestConnection("CONNECTED", async (options) => {
             requestedPath = options.path;
             method = options.method;
             sentWorkspaceId = options.headers.get("X-Databricks-Org-Id");
+            sentAuthorization = options.headers.get("Authorization");
             sentContentType = options.headers.get("Content-Type");
             sentBody = options.payload;
             return {
@@ -524,7 +594,7 @@ describe(__filename, () => {
                 model: "system.ai.gpt-test",
                 messages: [{role: "user", content: "hi"}],
                 maxTokens: 4_096,
-                stream: false,
+                stream: true,
                 tools: [
                     {
                         type: "function",
@@ -538,6 +608,7 @@ describe(__filename, () => {
                 toolChoice: "auto",
             },
             NEVER_CANCELLED_TOKEN,
+            (text) => textDeltas.push(text),
             connection.fetcher
         );
 
@@ -547,12 +618,13 @@ describe(__filename, () => {
         );
         assert.strictEqual(method, "POST");
         assert.strictEqual(sentWorkspaceId, "1234567890");
+        assert.strictEqual(sentAuthorization, "Bearer test-token");
         assert.strictEqual(sentContentType, "application/json");
         assert.deepStrictEqual(sentBody, {
             model: "system.ai.gpt-test",
             messages: [{role: "user", content: "hi"}],
             max_tokens: 4_096,
-            stream: false,
+            stream: true,
             tools: [
                 {
                     type: "function",
@@ -569,6 +641,312 @@ describe(__filename, () => {
             role: "assistant",
             content: "ok",
         });
+        assert.deepStrictEqual(textDeltas, ["ok"]);
+        assert.strictEqual(response.textWasStreamed, true);
+        connection.dispose();
+    });
+
+    it("streams text and reassembles tool-call deltas with opaque state", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const chunk = (
+            delta: Record<string, unknown>,
+            finishReason: string | null = null
+        ) => ({
+            id: "chatcmpl-test",
+            object: "chat.completion.chunk",
+            created: 0,
+            model: "system.ai.gemini-test",
+            choices: [
+                {
+                    index: 0,
+                    delta,
+                    finish_reason: finishReason,
+                },
+            ],
+        });
+        const fetcher: typeof fetch = async () =>
+            asSseResponse([
+                chunk({
+                    role: "assistant",
+                    content: "Read",
+                    reasoning_content: "reason-",
+                    provider_state: {trace: "trace-1"},
+                    tool_calls: [
+                        {
+                            index: 0,
+                            id: "call-1",
+                            type: "function",
+                            thoughtSignature: "signature-1",
+                            function: {
+                                name: "read_file",
+                                arguments: '{"path":',
+                            },
+                        },
+                    ],
+                }),
+                chunk({
+                    content: "ing",
+                    reasoning_content: "continued",
+                    tool_calls: [
+                        {
+                            index: 0,
+                            function: {arguments: '"README.md"}'},
+                        },
+                    ],
+                }),
+                chunk({}, "tool_calls"),
+            ]);
+        const textDeltas: string[] = [];
+
+        const response = await requestUnityGateway(
+            connection,
+            {
+                model: "system.ai.gemini-test",
+                messages: [{role: "user", content: "Read the file"}],
+                stream: true,
+            },
+            NEVER_CANCELLED_TOKEN,
+            (text) => textDeltas.push(text),
+            fetcher
+        );
+
+        assert.deepStrictEqual(textDeltas, ["Read", "ing"]);
+        assert.strictEqual(response.textWasStreamed, true);
+        assert.deepStrictEqual(response.message, {
+            role: "assistant",
+            content: "Reading",
+            reasoning_content: "reason-continued",
+            provider_state: {trace: "trace-1"},
+            tool_calls: [
+                {
+                    id: "call-1",
+                    type: "function",
+                    thoughtSignature: "signature-1",
+                    function: {
+                        name: "read_file",
+                        arguments: '{"path":"README.md"}',
+                    },
+                },
+            ],
+        });
+        connection.dispose();
+    });
+
+    it("preserves streamed content parts and reports their text", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const content = [
+            {
+                type: "text",
+                text: "Signed response",
+                signature: "content-signature",
+            },
+        ];
+        const fetcher: typeof fetch = async () =>
+            asSseResponse([
+                {
+                    id: "chatcmpl-test",
+                    object: "chat.completion.chunk",
+                    created: 0,
+                    model: "system.ai.gemini-test",
+                    choices: [
+                        {
+                            index: 0,
+                            delta: {role: "assistant", content},
+                            finish_reason: "stop",
+                        },
+                    ],
+                },
+            ]);
+        const textDeltas: string[] = [];
+
+        const response = await requestUnityGateway(
+            connection,
+            {
+                model: "system.ai.gemini-test",
+                messages: [{role: "user", content: "Respond"}],
+                stream: true,
+            },
+            NEVER_CANCELLED_TOKEN,
+            (text) => textDeltas.push(text),
+            fetcher
+        );
+
+        assert.deepStrictEqual(textDeltas, ["Signed response"]);
+        assert.deepStrictEqual(response.message.content, content);
+        connection.dispose();
+    });
+
+    it("parses SSE events split across byte boundaries", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const chunk = JSON.stringify({
+            choices: [
+                {
+                    index: 0,
+                    delta: {role: "assistant", content: "héllo"},
+                    finish_reason: "stop",
+                },
+            ],
+        });
+        const bytes = new TextEncoder().encode(
+            `: keepalive\r\ndata:${chunk}\r\n\r\ndata: [DONE]\r\n\r\n`
+        );
+        const fetcher: typeof fetch = async () =>
+            new Response(
+                new ReadableStream<Uint8Array>({
+                    start(controller) {
+                        for (const byte of bytes) {
+                            controller.enqueue(Uint8Array.of(byte));
+                        }
+                        controller.close();
+                    },
+                }),
+                {
+                    status: 200,
+                    headers: {"Content-Type": "text/event-stream"},
+                }
+            );
+        const textDeltas: string[] = [];
+
+        const response = await requestUnityGateway(
+            connection,
+            {
+                model: "system.ai.gpt-test",
+                messages: [{role: "user", content: "Respond"}],
+                stream: true,
+            },
+            NEVER_CANCELLED_TOKEN,
+            (text) => textDeltas.push(text),
+            fetcher
+        );
+
+        assert.deepStrictEqual(textDeltas, ["héllo"]);
+        assert.strictEqual(response.message.content, "héllo");
+        connection.dispose();
+    });
+
+    it("completes a stream on [DONE] even without finish_reason", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const fetcher: typeof fetch = async () =>
+            asSseResponse([
+                {
+                    choices: [
+                        {
+                            delta: {role: "assistant", content: "ok"},
+                        },
+                    ],
+                },
+            ]);
+
+        const response = await requestUnityGateway(
+            connection,
+            {
+                model: "system.ai.gpt-test",
+                messages: [{role: "user", content: "Respond"}],
+                stream: true,
+            },
+            NEVER_CANCELLED_TOKEN,
+            undefined,
+            fetcher
+        );
+
+        assert.strictEqual(response.message.content, "ok");
+        connection.dispose();
+    });
+
+    it("surfaces errors sent inside an SSE response", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const fetcher: typeof fetch = async () =>
+            asSseResponse([{error: {message: "The routed provider failed"}}]);
+
+        await assert.rejects(
+            requestUnityGateway(
+                connection,
+                {
+                    model: "system.ai.gpt-test",
+                    messages: [{role: "user", content: "Respond"}],
+                    stream: true,
+                },
+                NEVER_CANCELLED_TOKEN,
+                undefined,
+                fetcher
+            ),
+            /streaming error: The routed provider failed/
+        );
+
+        connection.dispose();
+    });
+
+    it("rejects a partial response when streaming is cancelled", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const cancellationEmitter = new EventEmitter<void>();
+        let cancellationRequested = false;
+        const token: CancellationToken = {
+            get isCancellationRequested() {
+                return cancellationRequested;
+            },
+            onCancellationRequested: cancellationEmitter.event,
+        };
+        const fetcher: typeof fetch = async (_input, init) => {
+            const body = new ReadableStream<Uint8Array>({
+                start(controller) {
+                    controller.enqueue(
+                        new TextEncoder().encode(
+                            `data: ${JSON.stringify({
+                                id: "chatcmpl-test",
+                                object: "chat.completion.chunk",
+                                created: 0,
+                                model: "system.ai.test",
+                                choices: [
+                                    {
+                                        index: 0,
+                                        delta: {
+                                            role: "assistant",
+                                            content: "partial",
+                                        },
+                                        finish_reason: null,
+                                    },
+                                ],
+                            })}\n\n`
+                        )
+                    );
+                    init?.signal?.addEventListener(
+                        "abort",
+                        () =>
+                            controller.error(
+                                new DOMException(
+                                    "The operation was aborted.",
+                                    "AbortError"
+                                )
+                            ),
+                        {once: true}
+                    );
+                },
+            });
+            return new Response(body, {
+                status: 200,
+                headers: {"Content-Type": "text/event-stream"},
+            });
+        };
+
+        await assert.rejects(
+            requestUnityGateway(
+                connection,
+                {
+                    model: "system.ai.gpt-test",
+                    messages: [{role: "user", content: "Respond"}],
+                    stream: true,
+                },
+                token,
+                () => {
+                    cancellationRequested = true;
+                    cancellationEmitter.fire();
+                },
+                fetcher
+            ),
+            /cancelled/
+        );
+
+        cancellationEmitter.dispose();
         connection.dispose();
     });
 
@@ -593,16 +971,17 @@ describe(__filename, () => {
             {
                 model: "system.ai.gpt-test",
                 messages: [{role: "user", content: "hi"}],
-                stream: false,
+                stream: true,
             },
             NEVER_CANCELLED_TOKEN,
+            undefined,
             connection.fetcher
         );
 
         assert.deepStrictEqual(sentBody, {
             model: "system.ai.gpt-test",
             messages: [{role: "user", content: "hi"}],
-            stream: false,
+            stream: true,
         });
         connection.dispose();
     });
@@ -623,24 +1002,21 @@ describe(__filename, () => {
                     {status: 400}
                 );
             }
-            return new Response(
-                JSON.stringify({
-                    choices: [
-                        {
-                            message: {
-                                role: "assistant",
-                                content: "ok",
-                            },
+            return asStreamingResponse({
+                choices: [
+                    {
+                        message: {
+                            role: "assistant",
+                            content: "ok",
                         },
-                    ],
-                }),
-                {status: 200}
-            );
+                    },
+                ],
+            });
         };
         const payload = {
             model: "system.ai.requires-disabled-reasoning",
             messages: [{role: "user" as const, content: "hi"}],
-            stream: false as const,
+            stream: true as const,
             tools: [
                 {
                     type: "function" as const,
@@ -657,12 +1033,14 @@ describe(__filename, () => {
             connection,
             payload,
             NEVER_CANCELLED_TOKEN,
+            undefined,
             fetcher
         );
         await requestUnityGateway(
             connection,
             payload,
             NEVER_CANCELLED_TOKEN,
+            undefined,
             fetcher
         );
 
@@ -683,7 +1061,7 @@ describe(__filename, () => {
                     model: "system.ai.gpt-5-6-sol",
                     messages: [],
                     maxTokens: 4_096,
-                    stream: false,
+                    stream: true,
                 });
                 return {
                     message: {
@@ -712,6 +1090,40 @@ describe(__filename, () => {
         const text = parts.find((part) => "value" in part);
         assert.ok(text);
         assert.strictEqual(text.value, "Gateway response");
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("reports streamed text without reporting the final text twice", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            async (_connection, _payload, _token, onTextDelta) => {
+                onTextDelta?.("Gateway ");
+                onTextDelta?.("response");
+                return {
+                    message: {
+                        role: "assistant",
+                        content: "Gateway response",
+                    },
+                    textWasStreamed: true,
+                };
+            }
+        );
+        const parts: LanguageModelResponsePart[] = [];
+
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+
+        assert.deepStrictEqual(
+            parts.map((part) => ("value" in part ? part.value : undefined)),
+            ["Gateway ", "response"]
+        );
         provider.dispose();
         connection.dispose();
     });

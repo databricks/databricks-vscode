@@ -108,7 +108,8 @@ export interface LanguageModelChatProvider {
 export type UnityGatewayRequest = (
     connection: LanguageModelChatConnection,
     payload: UnityGatewayRequestPayload,
-    token: CancellationToken
+    token: CancellationToken,
+    onTextDelta?: (text: string) => void
 ) => Promise<OpenAIChatCompletionResponse>;
 
 export type UnityGatewayModelDiscovery = (
@@ -120,13 +121,14 @@ export interface UnityGatewayRequestPayload {
     readonly model: string;
     readonly messages: OpenAIChatMessage[];
     readonly maxTokens?: number;
-    readonly stream: false;
+    readonly stream: true;
     readonly tools?: OpenAIChatTool[];
     readonly toolChoice?: "auto" | "required";
 }
 
 export interface OpenAIChatCompletionResponse {
     readonly message: OpenAIChatAssistantMessage;
+    readonly textWasStreamed?: boolean;
 }
 
 export type OpenAIChatMessage =
