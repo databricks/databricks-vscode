@@ -1,5 +1,5 @@
 import {mock, instance, when, verify, anything, reset} from "ts-mockito";
-import {EventEmitter} from "vscode";
+import {EventEmitter, Uri} from "vscode";
 import {RemoteBundleInitializer} from "./RemoteBundleInitializer";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {
@@ -8,6 +8,7 @@ import {
 } from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 // Lets microtasks queued by the event listeners (which fire synchronously but
 // call the async applyEnvAuth) settle before assertions.
@@ -18,24 +19,31 @@ function flush() {
 describe("RemoteBundleInitializer", () => {
     let configModel: ConfigModel;
     let connectionManager: ConnectionManager;
+    let workspaceFolderManager: WorkspaceFolderManager;
     let databricksWorkspace: DatabricksWorkspace;
     let authProvider: AuthProvider;
     let authProviderEmitter: EventEmitter<void>;
     let stateEmitter: EventEmitter<ConnectionState>;
+    let folderChangeEmitter: EventEmitter<Uri | undefined>;
     let initializer: RemoteBundleInitializer;
 
     beforeEach(() => {
         configModel = mock<ConfigModel>();
         connectionManager = mock<ConnectionManager>();
+        workspaceFolderManager = mock<WorkspaceFolderManager>();
         databricksWorkspace = mock(DatabricksWorkspace);
         authProvider = mock<AuthProvider>();
         authProviderEmitter = new EventEmitter<void>();
         stateEmitter = new EventEmitter<ConnectionState>();
+        folderChangeEmitter = new EventEmitter<Uri | undefined>();
 
         when(configModel.onDidChangeAuthProvider).thenReturn(
             authProviderEmitter.event
         );
         when(connectionManager.onDidChangeState).thenReturn(stateEmitter.event);
+        when(workspaceFolderManager.onDidChangeActiveProjectFolder).thenReturn(
+            folderChangeEmitter.event
+        );
 
         // Defaults: no target, no auth applied yet, environment provides a
         // workspace with an auth provider. Individual tests override target /
@@ -43,6 +51,7 @@ describe("RemoteBundleInitializer", () => {
         when(configModel.target).thenReturn(undefined);
         when(configModel.authProvider).thenReturn(undefined);
         when(configModel.init()).thenResolve();
+        when(configModel.setTarget(anything())).thenResolve();
         when(configModel.setAuthProvider(anything())).thenResolve();
         when(connectionManager.connectFromEnvironment()).thenResolve();
         when(databricksWorkspace.authProvider).thenReturn(
@@ -54,7 +63,8 @@ describe("RemoteBundleInitializer", () => {
 
         initializer = new RemoteBundleInitializer(
             instance(configModel),
-            instance(connectionManager)
+            instance(connectionManager),
+            instance(workspaceFolderManager)
         );
     });
 
@@ -123,6 +133,45 @@ describe("RemoteBundleInitializer", () => {
         await flush();
 
         verify(configModel.setAuthProvider(instance(authProvider))).once();
+    });
+
+    it("re-resolves the target and applies auth on a project-folder change", async () => {
+        await initializer.initialize();
+        verify(configModel.setAuthProvider(anything())).never();
+
+        // A folder change clears the stale target then re-resolves the new
+        // folder's target via init(). Model the resolved target so the trailing
+        // applyEnvAuth() sees it and applies the environment auth provider.
+        when(configModel.target).thenReturn("dev");
+        folderChangeEmitter.fire(Uri.file("/new/project"));
+        await flush();
+
+        verify(configModel.setTarget(undefined)).once();
+        verify(configModel.init()).atLeast(1);
+        verify(configModel.setAuthProvider(instance(authProvider))).once();
+    });
+
+    it("does not apply auth when the new folder has no target", async () => {
+        await initializer.initialize();
+
+        // target stays undefined through setTarget(undefined) + init().
+        folderChangeEmitter.fire(Uri.file("/empty/project"));
+        await flush();
+
+        verify(configModel.setTarget(undefined)).once();
+        verify(configModel.setAuthProvider(anything())).never();
+    });
+
+    it("serialises overlapping folder changes", async () => {
+        await initializer.initialize();
+
+        when(configModel.target).thenReturn("dev");
+        folderChangeEmitter.fire(Uri.file("/project/a"));
+        folderChangeEmitter.fire(Uri.file("/project/b"));
+        await flush();
+
+        verify(configModel.setTarget(undefined)).twice();
+        verify(configModel.init()).atLeast(2);
     });
 
     it("does not throw when connectFromEnvironment fails", async () => {

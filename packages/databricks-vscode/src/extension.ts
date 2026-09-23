@@ -829,7 +829,8 @@ export async function activate(
         // it whenever the target changes or the connection is re-established.
         const remoteBundleInitializer = new RemoteBundleInitializer(
             remoteConfigModel,
-            remoteConnectionManager
+            remoteConnectionManager,
+            workspaceFolderManager
         );
         context.subscriptions.push(remoteBundleInitializer);
 

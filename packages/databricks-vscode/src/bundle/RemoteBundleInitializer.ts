@@ -4,6 +4,8 @@ import {Loggers} from "../logger";
 import {Mutex} from "../locking";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
+import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {withOnErrorHandler} from "../utils/onErrorDecorator";
 
 /**
  * Drives the Bundle Resource Explorer in Databricks Remote SSH mode without the
@@ -14,16 +16,22 @@ import {ConnectionManager} from "../configuration/ConnectionManager";
  * BundleRemoteStateModel can shell out to `bundle summary`.
  *
  * The invariant it enforces is: in remote mode the ConfigModel's auth provider
- * always mirrors the environment. {@link ConfigModel.setTarget} clears the auth
- * provider in its `finally` on every path, so whenever the target changes (e.g.
- * because the user picked a different project folder) the auth provider is
- * wiped. We restore it by listening to onDidChangeAuthProvider: that event
- * fires from *inside* setAuthProvider while the config mutex is held, so a
- * re-apply queued from it runs after the clear rather than racing (and losing)
- * against it - which is what a naive onDidChangeTarget listener would do.
+ * always mirrors the environment. Two things drive that:
  *
- * This mirrors normal mode, where ConnectionManager re-applies auth (via the
- * login flow) after setTarget clears it.
+ * 1. Re-resolving the target on a project-folder change. In normal mode
+ *    ConnectionManager.init() reacts to onDidChangeActiveProjectFolder by
+ *    calling setTarget/init; remote mode never runs that init (there's no login
+ *    flow and no BundleProjectManager), so we do it here. See the folder-change
+ *    listener below.
+ * 2. Re-applying auth after {@link ConfigModel.setTarget} clears it. setTarget
+ *    wipes the auth provider in its `finally` on every path, so we restore it by
+ *    listening to onDidChangeAuthProvider: that event fires from *inside*
+ *    setAuthProvider while the config mutex is held, so a re-apply queued from
+ *    it runs after the clear rather than racing (and losing) against it - which
+ *    is what a naive onDidChangeTarget listener would do.
+ *
+ * This mirrors normal mode, where ConnectionManager re-resolves the target and
+ * re-applies auth (via the login flow) on a folder change.
  */
 export class RemoteBundleInitializer implements Disposable {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -33,15 +41,21 @@ export class RemoteBundleInitializer implements Disposable {
     // can't each fire a `bundle summary`. Only ever acquired before the
     // ConfigModel's own mutex, so there's no lock cycle.
     private readonly applyAuthMutex = new Mutex();
+    // Serialises the folder-change handler so two rapid project picks can't
+    // interleave their setTarget/init sequences and leave a torn target. Only
+    // ever acquired on the folder-change path (never from the auth path), so the
+    // lock order stays acyclic: folderChangeMutex -> applyAuthMutex ->
+    // ConfigModel's configsMutex.
+    private readonly folderChangeMutex = new Mutex();
 
     constructor(
         private readonly configModel: ConfigModel,
-        private readonly connectionManager: ConnectionManager
+        private readonly connectionManager: ConnectionManager,
+        private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
         this.disposables.push(
-            // The target (and therefore the auth provider) is cleared whenever
-            // the active project folder changes. Restore the environment auth
-            // provider so the resource explorer repopulates for the new project.
+            // Re-apply the environment auth provider whenever setTarget clears
+            // it (see class doc), so the resource explorer repopulates.
             this.configModel.onDidChangeAuthProvider(() => {
                 void this.applyEnvAuth();
             }),
@@ -53,7 +67,31 @@ export class RemoteBundleInitializer implements Disposable {
                 if (state === "CONNECTED") {
                     void this.applyEnvAuth();
                 }
-            })
+            }),
+            // Picking a different project folder must re-resolve the target for
+            // the new project. Normal mode gets this from ConnectionManager.init(),
+            // which remote mode never runs - so drive it here, mirroring that
+            // listener. setTarget(undefined) forces a clean transition (so a
+            // same-named target across folders still re-resolves and doesn't hit
+            // readTarget's early-return); init() then resolves the new folder's
+            // target and fires the events that repopulate the tree and (via the
+            // auth-provider listener) re-apply auth. The trailing applyEnvAuth()
+            // is a deduped safety net. NOTE: setTarget synchronously fires
+            // onDidChangeAuthProvider -> applyEnvAuth -> applyAuthMutex, so this
+            // handler must not itself hold applyAuthMutex (the non-reentrant
+            // Mutex would deadlock); folderChangeMutex is a separate lock.
+            this.workspaceFolderManager.onDidChangeActiveProjectFolder(
+                withOnErrorHandler(
+                    async () => {
+                        await this.folderChangeMutex.synchronise(async () => {
+                            await this.configModel.setTarget(undefined);
+                            await this.configModel.init();
+                            await this.applyEnvAuth();
+                        });
+                    },
+                    {log: true, popup: false, throw: false}
+                )
+            )
         );
     }
 
