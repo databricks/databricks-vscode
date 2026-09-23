@@ -17,6 +17,7 @@ import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {Cluster} from "./sdk-extensions/Cluster";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
+import {RemoteConfigurationDataProvider} from "./ui/configuration-view/RemoteConfigurationDataProvider";
 import {composePythonSetupEntry} from "./ui/configuration-view/pythonSetupEntry";
 import {routeEnvironmentSetup} from "./language/pythonSetupRouting";
 import {COPY_COMMAND_IDS} from "./ui/configuration-view/copyActions";
@@ -844,6 +845,22 @@ export async function activate(
             connectRemote
         );
         registerDocsView(context);
+        // Slimmed-down Configuration view so the user can see (and switch) the
+        // active project folder and, once resolved, the bundle target with its
+        // Host/Mode - i.e. which workspace a deploy targets. The normal-mode
+        // provider isn't reused: it gates on BundleProjectManager (absent here)
+        // and builds login/cluster/sync/env components that don't apply.
+        const remoteConfigurationDataProvider =
+            new RemoteConfigurationDataProvider(
+                remoteConfigModel,
+                workspaceFolderManager
+            );
+        context.subscriptions.push(
+            remoteConfigurationDataProvider,
+            window.createTreeView("configurationView", {
+                treeDataProvider: remoteConfigurationDataProvider,
+            })
+        );
         registerBundleResourceExplorer(
             context,
             telemetry,

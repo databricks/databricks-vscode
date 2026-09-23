@@ -696,7 +696,7 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration",
-                    "when": "!databricks.context.remoteMode"
+                    "when": "databricks.context.activated"
                 },
                 {
                     "id": "sshTunnelView",
@@ -878,6 +878,11 @@
             },
             {
                 "view": "dabsResourceExplorerView",
+                "contents": "No Databricks project selected.\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "databricks.context.remoteMode && !databricks.context.bundle.isTargetSet"
+            },
+            {
+                "view": "configurationView",
                 "contents": "No Databricks project selected.\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "databricks.context.remoteMode && !databricks.context.bundle.isTargetSet"
             }
@@ -1116,12 +1121,12 @@
                 },
                 {
                     "command": "databricks.connection.bundle.selectTarget",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && databricks.context.bundle.deploymentState == idle",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                     "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.bundle.selectTarget",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && databricks.context.bundle.deploymentState == idle",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
                     "group": "navigation@2"
                 },
                 {
