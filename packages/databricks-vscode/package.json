@@ -367,7 +367,7 @@
                 "command": "databricks.connection.bundle.selectTarget",
                 "icon": "$(gear)",
                 "title": "Select a Declarative Automation Bundle target",
-                "enablement": "databricks.context.activated && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
@@ -1121,12 +1121,12 @@
                 },
                 {
                     "command": "databricks.connection.bundle.selectTarget",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@2"
                 },
                 {
                     "command": "databricks.connection.bundle.selectTarget",
-                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@2"
                 },
                 {

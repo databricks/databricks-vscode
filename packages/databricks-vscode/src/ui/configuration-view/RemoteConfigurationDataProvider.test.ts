@@ -63,17 +63,31 @@ describe("RemoteConfigurationDataProvider", () => {
         expect(labels).to.include("Target");
     });
 
-    it("suppresses the Target row when no target is resolved", async () => {
+    it("offers the target picker when a folder is active but no target is resolved", async () => {
         when(mockConfigModel.target).thenReturn(undefined);
 
         const roots = await make().getChildren();
         const labels = roots.map(labelOf);
 
         expect(labels).to.include("Local Folder");
-        expect(labels).to.not.include("Target");
-        // The "Select a bundle target" prompt (wired to a command that isn't
-        // registered in remote mode) must not appear either.
-        expect(labels).to.not.include("Select a bundle target");
+        // BundleTargetComponent renders a clickable "Select a bundle target"
+        // prompt so the user can pick a target for the selected folder.
+        expect(labels).to.include("Select a bundle target");
+    });
+
+    it("suppresses the target picker when no folder is active", async () => {
+        // activeProjectUri throws when no folder is open; the provider must not
+        // propagate that (it would reject getChildren and break the view).
+        when(mockWorkspaceFolderManager.activeProjectUri).thenThrow(
+            new Error("No active project folder")
+        );
+        when(mockConfigModel.target).thenReturn(undefined);
+
+        const roots = await make().getChildren();
+
+        // Nothing to show - the view's welcome content ("Select a project")
+        // covers this state.
+        expect(roots).to.deep.equal([]);
     });
 
     it("stamps a copy kind onto value rows via getTreeItem", () => {
@@ -83,14 +97,5 @@ describe("RemoteConfigurationDataProvider", () => {
         };
         make().getTreeItem(item);
         expect(item.contextValue).to.contain(".copy=target");
-    });
-
-    it("does not depend on a BundleProjectManager gate", async () => {
-        // Unlike the normal-mode provider, getChildren has no isBundleProject
-        // gate: with a folder active it returns rows without any such dependency.
-        when(mockConfigModel.target).thenReturn(undefined);
-
-        const roots = await make().getChildren();
-        expect(roots.map(labelOf)).to.include("Local Folder");
     });
 });

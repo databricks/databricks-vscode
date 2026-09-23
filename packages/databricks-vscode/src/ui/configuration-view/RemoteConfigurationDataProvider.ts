@@ -28,10 +28,10 @@ import {Loggers} from "../../logger";
  * five components that depend on login/cluster/sync/environment machinery -
  * none of which exists in remote mode.
  *
- * The BundleTargetComponent's "no target" row links to a command
- * (databricks.connection.bundle.selectTarget) that isn't registered in remote
- * mode, so its rows are suppressed until a target is resolved; the truly-empty
- * state is handled by a viewsWelcome entry that points at the folder picker.
+ * BundleTargetComponent (its "Select a bundle target" prompt and the picker it
+ * opens) reads the active project folder, which throws when none is open, so it
+ * is suppressed until a folder is active; the no-folder state is handled by a
+ * viewsWelcome entry that points at the folder picker.
  */
 export class RemoteConfigurationDataProvider
     implements TreeDataProvider<ConfigurationTreeItem>, Disposable
@@ -49,15 +49,13 @@ export class RemoteConfigurationDataProvider
     private readonly components: BaseComponent[];
 
     constructor(
-        private readonly configModel: ConfigModel,
-        workspaceFolderManager: WorkspaceFolderManager
+        configModel: ConfigModel,
+        private readonly workspaceFolderManager: WorkspaceFolderManager
     ) {
         this.workspaceFolderComponent = new WorkspaceFolderComponent(
             workspaceFolderManager
         );
-        this.bundleTargetComponent = new BundleTargetComponent(
-            this.configModel
-        );
+        this.bundleTargetComponent = new BundleTargetComponent(configModel);
         this.components = [
             this.workspaceFolderComponent,
             this.bundleTargetComponent,
@@ -81,13 +79,13 @@ export class RemoteConfigurationDataProvider
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
         const children = this.components
-            // BundleTargetComponent's empty state links to a command that isn't
-            // registered in remote mode, so only show it once a target resolves.
-            // The no-project case is covered by the view's welcome content.
+            // BundleTargetComponent reads the active project folder (throws when
+            // none is open) - and its "Select a bundle target" prompt is only
+            // useful once a folder is chosen. The no-folder case is covered by
+            // the view's welcome content.
             .filter(
                 (c) =>
-                    c !== this.bundleTargetComponent ||
-                    this.configModel.target !== undefined
+                    c !== this.bundleTargetComponent || this.hasProjectFolder()
             )
             .map((c) =>
                 c.getChildren(parent).catch((e) => {
@@ -99,6 +97,16 @@ export class RemoteConfigurationDataProvider
                 })
             );
         return (await Promise.all(children)).flat();
+    }
+
+    private hasProjectFolder(): boolean {
+        // activeProjectUri throws when no folder is active; treat that as
+        // "no project folder" rather than propagating.
+        try {
+            return this.workspaceFolderManager.activeProjectUri !== undefined;
+        } catch {
+            return false;
+        }
     }
 
     dispose() {

@@ -11,6 +11,8 @@ import {OverrideableConfigModel} from "../configuration/models/OverrideableConfi
 import {writeFile, mkdir} from "fs/promises";
 import path from "path";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
+import {ConfigModel} from "../configuration/models/ConfigModel";
+import {ProcessError} from "../cli/CliWrapper";
 
 export async function promptToSelectActiveProjectFolder(
     projects: {absolute: Uri; relative: string}[],
@@ -77,5 +79,43 @@ export async function promptToSelectActiveProjectFolder(
         await commands.executeCommand("vscode.openFolder", uri);
     } else {
         workspaceFolderManager.setActiveProjectFolder(uri, workspaceFolder);
+    }
+}
+
+/**
+ * Show a quickpick of the active project's bundle targets and set the chosen one
+ * on the ConfigModel. Shared by the normal-mode ConnectionCommands.selectTarget
+ * and the remote-mode `databricks.connection.bundle.selectTarget` registration,
+ * which have no ConnectionManager/cluster/sync in common - only the ConfigModel.
+ */
+export async function promptToSelectBundleTarget(configModel: ConfigModel) {
+    const targets = await configModel.targets;
+    const currentTarget = configModel.target;
+    if (targets === undefined) {
+        return;
+    }
+
+    const selectedTarget = await window.showQuickPick(
+        Object.keys(targets)
+            .map((t) => {
+                return {
+                    label: t,
+                    description: targets[t].mode ?? "dev",
+                    detail: targets[t].workspace?.host,
+                };
+            })
+            .sort((a) => (a.label === currentTarget ? -1 : 1)),
+        {title: "Select bundle target"}
+    );
+    if (selectedTarget === undefined) {
+        return;
+    }
+    try {
+        await configModel.setTarget(selectedTarget.label);
+    } catch (e) {
+        if (e instanceof ProcessError) {
+            e.showErrorMessage("Error selecting target");
+        }
+        throw e;
     }
 }

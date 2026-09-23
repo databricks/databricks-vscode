@@ -92,7 +92,10 @@ import {
     registerBundleAutocompleteProvider,
 } from "./bundle";
 import {getSubProjects} from "./bundle/BundleFileSet";
-import {promptToSelectActiveProjectFolder} from "./bundle/activeBundleUtils";
+import {
+    promptToSelectActiveProjectFolder,
+    promptToSelectBundleTarget,
+} from "./bundle/activeBundleUtils";
 import {RemoteBundleInitializer} from "./bundle/RemoteBundleInitializer";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
@@ -896,6 +899,13 @@ export async function activate(
                         workspaceFolderManager
                     );
                 }
+            ),
+            // Target picker for the remote Configuration view. Reuses the same
+            // quickpick as normal mode (ConnectionCommands.selectTarget); the
+            // resolved target's auth is re-applied by RemoteBundleInitializer.
+            telemetry.registerCommand(
+                "databricks.connection.bundle.selectTarget",
+                () => promptToSelectBundleTarget(remoteConfigModel)
             )
         );
 
