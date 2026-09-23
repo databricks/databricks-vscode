@@ -20,6 +20,7 @@ import {
 } from "./UnityGatewayClient";
 import {
     createLanguageModelError,
+    createLanguageModelTextPart,
     isLanguageModelTextPart,
     registerLanguageModelChatProvider,
 } from "./vscodeLanguageModelChat";
@@ -154,20 +155,24 @@ export class DatabricksLanguageModelChatProvider
                         this.opaqueAssistantState
                     ),
                     maxTokens: model.maxOutputTokens,
-                    stream: false,
+                    stream: true,
                     ...toOpenAIChatToolOptions(
                         options,
                         model.capabilities.toolCalling
                     ),
                 },
-                token
+                token,
+                (text) => progress.report(createLanguageModelTextPart(text))
             );
 
             const parts = toLanguageModelResponseParts(
                 body,
                 this.opaqueAssistantState
+            ).filter(
+                (part) =>
+                    !body.textWasStreamed || !isLanguageModelTextPart(part)
             );
-            if (parts.length === 0) {
+            if (parts.length === 0 && !body.textWasStreamed) {
                 throw new Error(
                     "Unity Gateway returned a response without text or tool calls."
                 );
