@@ -18,7 +18,7 @@ jobs:
             runner_group: databricks-protected-runner-group
             runner_labels: windows-server-latest
         node-version: [22.x]
-        vscode-version: [stable]
+        vscode-version: [1.138.0]
 
     runs-on:
       group: ${{ matrix.arch.runner_group }}
