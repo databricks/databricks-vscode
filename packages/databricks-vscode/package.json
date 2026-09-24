@@ -1857,6 +1857,11 @@
                         "default": 5,
                         "description": "The interval in minutes at which the remote state of the bundle is refreshed."
                     },
+                    "databricks.overrideDatabricksCLIPath": {
+                        "type": "string",
+                        "scope": "machine",
+                        "description": "Override location for the Databricks CLI (defaults to the CLI bundled with this extension). *Warning:* it is recommended NOT to set this. If you override the CLI to an outdated version this extension may break."
+                    },
                     "databricks.proxy.strictSSL": {
                         "type": "boolean",
                         "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. When unset, the built-in `#http.proxyStrictSSL#` value is used. Set to `false` only when a corporate CA certificate cannot be resolved from the system trust store."
