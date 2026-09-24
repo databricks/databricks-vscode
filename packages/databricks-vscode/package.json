@@ -696,7 +696,7 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration",
-                    "when": "databricks.context.activated"
+                    "when": "!databricks.context.remoteMode || databricks.context.activated"
                 },
                 {
                     "id": "sshTunnelView",
