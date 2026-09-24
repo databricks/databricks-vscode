@@ -1,11 +1,12 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getActionButton,
     waitForInput,
     getViewSection,
     waitForLogin,
 } from "./utils/commonUtils.ts";
-import {CustomTreeSection} from "wdio-vscode-service";
+import {CustomTreeSection, TreeItem} from "wdio-vscode-service";
 import {
     getBasicBundleConfig,
     writeRootBundleConfig,
@@ -71,14 +72,15 @@ describe("Configure Databricks Extension", async function () {
                 for (const item of items) {
                     const label = await item.getLabel();
                     if (label.toLowerCase().includes("auth type")) {
-                        return item.getActionButton("Sign in");
+                        await item.elem.moveTo();
+                        return getActionButton(item as TreeItem, "Sign in");
                     }
                 }
             },
             {timeout: 10_000}
         );
         assert(signInButton, "Sign In button doesn't exist");
-        (await signInButton.elem).click();
+        await signInButton.click();
 
         const authMethodInput = await waitForInput();
         const newProfilePick =
@@ -91,11 +93,11 @@ describe("Configure Databricks Extension", async function () {
         await waitForLogin("NEW_PROFILE");
     });
 
-    it("should pick up new profile after reloading", async () => {
-        const workbench = await driver.getWorkbench();
-        const editorView = workbench.getEditorView();
-        await editorView.closeAllEditors();
-        await workbench.executeCommand("Developer: Reload Window");
+    it("should pick up new profile after restarting VS Code", async () => {
+        // On VS Code 1.104+ a window reload cancels the extension test runner and
+        // VS Code exits, ending the test session. Restart VS Code on the same
+        // workspace instead: the selected profile is saved in the workspace.
+        await browser.reloadSession();
         await waitForLogin("NEW_PROFILE");
     });
 });
