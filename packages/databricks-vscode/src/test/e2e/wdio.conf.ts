@@ -361,6 +361,10 @@ export const config: WebdriverIO.Config = {
             {
                 saveAllVideos: false, //only saves videos for failed tests
                 videoSlowdownMultiplier: 2,
+                // No frame after every browser.execute: the helpers call it
+                // constantly, and on the CI Linux runners the VS Code window
+                // stops responding after ~1,840 screenshots in one session.
+                excludedActions: ["sync"],
             },
         ],
     ],
