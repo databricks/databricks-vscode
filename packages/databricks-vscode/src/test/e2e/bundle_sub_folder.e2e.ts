@@ -3,6 +3,7 @@ import * as fs from "fs/promises";
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getLocalFolderTreeItem,
     getUniqueResourceName,
     getViewSection,
     waitForInput,
@@ -11,26 +12,6 @@ import {
 import {createProjectWithJob} from "./utils/dabsFixtures.ts";
 import {CustomTreeSection} from "wdio-vscode-service";
 import {getResourceViewItem} from "./utils/dabsExplorerUtils.ts";
-
-async function getLocalFolderTreeItem(folder: string) {
-    const section = (await getViewSection(
-        "CONFIGURATION"
-    )) as CustomTreeSection;
-    assert(section, "CONFIGURATION section doesn't exist");
-    const items = await section.getVisibleItems();
-    for (const item of items) {
-        const label = await item.getLabel();
-        if (label.toLowerCase().includes("local folder")) {
-            const desc = await item.getDescription();
-            const descPath = path.normalize(desc!);
-            console.log("Local Folder description:", descPath);
-            if (descPath.includes(folder)) {
-                return item;
-            }
-        }
-    }
-    return undefined;
-}
 
 describe("Bundle in a sub folder", async function () {
     this.timeout(3 * 60 * 1000);
