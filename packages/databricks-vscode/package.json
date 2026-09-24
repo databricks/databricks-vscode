@@ -1859,7 +1859,7 @@
                     },
                     "databricks.overrideDatabricksCLIPath": {
                         "type": "string",
-                        "scope": "machine-overridable",
+                        "scope": "machine",
                         "description": "Override location for the Databricks CLI (defaults to the CLI bundled with this extension). *Warning:* it is recommended NOT to set this. If you override the CLI to an outdated version this extension may break."
                     }
                 }

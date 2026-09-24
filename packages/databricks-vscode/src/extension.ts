@@ -324,7 +324,7 @@ export async function activate(
     // and activation shouldn't wait on spawning the CLI to find out.
     void cli.checkBundledCliVersionForDev(packageMetadata);
     // Warn if the user has overriden the CLI path, and that overriden CLI is out of date
-    cli.warnOverridenCliDrift();
+    cli.warnOverridenCliDrift(packageMetadata.cliVersion);
 
     // Loggers
     context.subscriptions.push(

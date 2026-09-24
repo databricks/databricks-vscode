@@ -1292,9 +1292,11 @@ export class CliWrapper {
 
     // Show a warning if the user has overriden the CLI path, and the overriden
     // CLI version is older than the bundled version
-    async warnOverridenCliDrift(): Promise<void> {
+    async warnOverridenCliDrift(
+        bundledCliVersion: string | undefined
+    ): Promise<void> {
         const overridePath = workspaceConfigs.databricksCliPath;
-        if (!overridePath) {
+        if (!overridePath || !bundledCliVersion) {
             return;
         }
 
@@ -1302,30 +1304,36 @@ export class CliWrapper {
             ...EnvVarGenerators.getEnvVarsForCli(this.extensionContext),
             ...EnvVarGenerators.getProxyEnvVars(),
         };
-        const [overrideResult, bundledResult] = await Promise.all([
-            getCliVersion(overridePath, env),
-            getCliVersion(defaultCliPath(this.extensionContext), env),
-        ]);
+        const overrideResult = await getCliVersion(overridePath, env);
 
-        // This is just a best effort warning, so if either command fails then skip
-        if (!overrideResult || !bundledResult) {
+        // This is just a best effort warning, so if the command fails then skip
+        if (!overrideResult) {
             return;
         }
 
+        const bundledVersionParts = bundledCliVersion.split(".").map(Number);
+        if (
+            bundledVersionParts.some((p) => !Number.isFinite(p)) ||
+            bundledVersionParts.length !== 3
+        ) {
+            return;
+        }
+
+        const [bundledMajor, bundledMinor, bundledPatch] = bundledVersionParts;
         // skip if override is same version or newer than bundled CLI
         if (
-            overrideResult.major > bundledResult.major ||
-            (overrideResult.major === bundledResult.major &&
-                overrideResult.minor > bundledResult.minor) ||
-            (overrideResult.major === bundledResult.major &&
-                overrideResult.minor === bundledResult.minor &&
-                overrideResult.patch >= bundledResult.patch)
+            overrideResult.major > bundledMajor ||
+            (overrideResult.major === bundledMajor &&
+                overrideResult.minor > bundledMinor) ||
+            (overrideResult.major === bundledMajor &&
+                overrideResult.minor === bundledMinor &&
+                overrideResult.patch >= bundledPatch)
         ) {
             return;
         }
 
         window.showWarningMessage(
-            `Your overridden Databricks CLI is out of date (${overrideResult.tag}). Please update to ${bundledResult.tag} or later, otherwise you may encounter errors with the Databricks extension.`,
+            `Your overridden Databricks CLI is out of date (${overrideResult.tag}). Please update to ${bundledCliVersion} or later, otherwise you may encounter errors with the Databricks extension.`,
             "Ok" // showing an item allows the warning text to wrap
         );
     }

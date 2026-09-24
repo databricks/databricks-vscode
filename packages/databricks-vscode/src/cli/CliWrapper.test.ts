@@ -722,6 +722,7 @@ token = dapitest5678
             Major: number;
             Minor: number;
             Patch: number;
+            Version: string;
         };
         /* eslint-enable @typescript-eslint/naming-convention */
         let tmpDir: string;
@@ -811,7 +812,7 @@ token = dapitest5678
                     when(configsSpy.databricksCliPath).thenReturn(overridePath);
 
                     const cli = createCliWrapper();
-                    await cli.warnOverridenCliDrift();
+                    await cli.warnOverridenCliDrift(bundledVersion.Version);
                     if (c.warning) {
                         assert.equal(showWarningCalls.length, 1);
                         const warningMessage = showWarningCalls[0][0] as string;
