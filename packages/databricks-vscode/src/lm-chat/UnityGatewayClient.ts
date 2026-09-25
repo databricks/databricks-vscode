@@ -548,7 +548,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function httpError(status: number, body: string): Error {
     return Object.assign(
         new Error(`Databricks returned HTTP ${status}: ${body}`),
-        {status, statusCode: status}
+        {status, statusCode: status, body}
     );
 }
 
