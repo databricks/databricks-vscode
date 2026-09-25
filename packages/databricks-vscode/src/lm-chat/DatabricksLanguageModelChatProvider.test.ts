@@ -1440,7 +1440,7 @@ describe(__filename, () => {
         connection.dispose();
     });
 
-    it("round-trips opaque assistant state through a data part", async () => {
+    it("round-trips opaque tool-call state through a data part", async () => {
         const connection = new TestConnection("CONNECTED");
         let requestCount = 0;
         const request = async (
@@ -1458,15 +1458,13 @@ describe(__filename, () => {
                             {
                                 id: "call-1",
                                 type: "function" as const,
+                                thoughtSignature: "signature",
                                 function: {
                                     name: "read_file",
                                     arguments: '{"path":"README.md"}',
                                 },
                             },
                         ],
-                        provider_state: {
-                            opaque: "signature",
-                        },
                     },
                 };
             }
@@ -1478,15 +1476,13 @@ describe(__filename, () => {
                         {
                             id: "call-1",
                             type: "function",
+                            thoughtSignature: "signature",
                             function: {
                                 name: "read_file",
                                 arguments: '{"path":"README.md"}',
                             },
                         },
                     ],
-                    provider_state: {
-                        opaque: "signature",
-                    },
                 },
                 {
                     role: "tool",
@@ -1592,6 +1588,8 @@ describe(__filename, () => {
                                 },
                                 {type: "text", text: "Checking"},
                             ],
+                            reasoning_content: "Internal reasoning",
+                            provider_state: {opaque: "message-level state"},
                             tool_calls: [
                                 {
                                     id: "call-1",
@@ -2054,7 +2052,7 @@ describe(__filename, () => {
         );
         assert.strictEqual(
             (parts[0] as {value?: string}).value,
-            "Sign in to Databricks to use this model."
+            "You do not have access to this model."
         );
 
         provider.dispose();
@@ -2098,10 +2096,7 @@ describe(__filename, () => {
         const connection = new TestConnection("CONNECTED");
         const body = JSON.stringify({
             error: {
-                message:
-                    "Unsupported value: 'reasoning_effort' does not support " +
-                    "'none' with this model. Supported values are: 'low', " +
-                    "'medium', 'high', and 'xhigh'.",
+                message: "The requested option is unavailable.",
                 type: "invalid_request_error",
                 param: "reasoning_effort",
                 code: "unsupported_value",
@@ -2110,8 +2105,9 @@ describe(__filename, () => {
         const provider = new DatabricksLanguageModelChatProvider(
             connection,
             async () => {
-                throw Object.assign(new Error(`${body}: Error: ${body}`), {
+                throw Object.assign(new Error("Databricks returned HTTP 400"), {
                     status: 400,
+                    body,
                 });
             }
         );
@@ -2140,14 +2136,10 @@ describe(__filename, () => {
         const provider = new DatabricksLanguageModelChatProvider(
             connection,
             async () => {
-                throw Object.assign(
-                    new Error(
-                        "Model databricks-gpt-5-3-codex only supports the Responses API. " +
-                            "Please use /serving-endpoints/responses or " +
-                            "/serving-endpoints/open-responses instead."
-                    ),
-                    {status: 400}
-                );
+                throw Object.assign(new Error("Databricks returned HTTP 400"), {
+                    status: 400,
+                    body: "This endpoint only supports the Responses API.",
+                });
             }
         );
 

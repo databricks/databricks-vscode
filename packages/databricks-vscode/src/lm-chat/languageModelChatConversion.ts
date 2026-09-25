@@ -117,21 +117,20 @@ export function toOpenAIChatMessages(
 }
 
 /**
- * Rebuild the outbound assistant `content` from VS Code's canonical text so we
- * never replay a provider's own typed content blocks (`reasoning`, `thinking`,
- * and whatever a future provider invents). Those blocks are not portable across
- * Chat Completions providers — a model rejects even its own representation on the
- * next turn. The stored raw message is still used for opaque continuation fields
- * (for example `provider_state`) and per-tool-call signatures; only its `content`
- * is replaced.
+ * Project stored provider responses back onto the portable Chat Completions
+ * assistant-message shape. VS Code supplies the canonical visible text, while
+ * the stored tool calls retain opaque per-call continuation fields.
  */
 function withCanonicalContent(
     message: OpenAIChatAssistantMessage,
     text: string
 ): OpenAIChatAssistantMessage {
     return {
-        ...message,
+        role: "assistant",
         content: text === "" ? null : text,
+        ...(message.tool_calls === undefined
+            ? {}
+            : {tool_calls: message.tool_calls}),
     };
 }
 

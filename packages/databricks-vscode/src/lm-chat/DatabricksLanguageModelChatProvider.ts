@@ -47,6 +47,7 @@ const UNUSABLE_MODEL_FOR_TOOLS =
 const UNUSABLE_MODEL_FOR_CHAT_API =
     "This model is not supported in Databricks Chat yet. Choose another Databricks model.";
 const SIGN_IN_REQUIRED = "Sign in to Databricks to use this model.";
+const MODEL_ACCESS_DENIED = "You do not have access to this model.";
 const MODEL_NOT_AVAILABLE =
     "This model is no longer available. Choose another Databricks model.";
 const REQUEST_RATE_LIMITED =
@@ -212,8 +213,14 @@ export class DatabricksLanguageModelChatProvider
                     detail: gatewayErrorMessage(error),
                 });
             }
-            if (status === 401 || status === 403) {
+            if (status === 401) {
                 progress.report(createLanguageModelTextPart(SIGN_IN_REQUIRED));
+                return;
+            }
+            if (status === 403) {
+                progress.report(
+                    createLanguageModelTextPart(MODEL_ACCESS_DENIED)
+                );
                 return;
             }
             if (status === 404) {
@@ -319,10 +326,20 @@ function httpStatus(error: unknown): number | undefined {
 }
 
 function gatewayErrorMessage(error: unknown): string | undefined {
+    return gatewayErrorDetail(error)?.message;
+}
+
+interface GatewayErrorDetail {
+    readonly message?: string;
+    readonly code?: string;
+    readonly param?: string;
+}
+
+function gatewayErrorDetail(error: unknown): GatewayErrorDetail | undefined {
     if (typeof error === "object" && error !== null) {
         const body = (error as {body?: unknown}).body;
         if (typeof body === "string") {
-            return jsonErrorMessage(body);
+            return errorDetailFromValue(body);
         }
     }
     if (!(error instanceof Error)) {
@@ -332,23 +349,14 @@ function gatewayErrorMessage(error: unknown): string | undefined {
         error.message
     );
     if (httpMessage !== null) {
-        return jsonErrorMessage(httpMessage[1]);
+        return errorDetailFromValue(httpMessage[1]);
     }
     const message = error.message.trim();
-    return (
-        jsonErrorMessage(message) ??
-        jsonErrorMessage(message.split(/\s*:\s*Error:\s*/, 1)[0]) ??
-        (message || undefined)
-    );
+    return errorDetailFromValue(message.split(/\s*:\s*Error:\s*/, 1)[0]);
 }
 
 function rejectsDisabledReasoning(error: unknown): boolean {
-    const detail = gatewayErrorMessage(error);
-    return (
-        detail !== undefined &&
-        detail.includes("reasoning_effort") &&
-        detail.includes("does not support 'none'")
-    );
+    return gatewayErrorDetail(error)?.param === "reasoning_effort";
 }
 
 function requiresResponsesApi(error: unknown): boolean {
@@ -359,28 +367,42 @@ function requiresResponsesApi(error: unknown): boolean {
     );
 }
 
-function jsonErrorMessage(body: string): string | undefined {
-    const value = body.trim();
-    if (value === "") {
-        return undefined;
-    }
-    try {
-        return errorMessageFromJson(JSON.parse(value));
-    } catch {
-        return undefined;
-    }
-}
-
-function errorMessageFromJson(value: unknown): string | undefined {
+function errorDetailFromValue(value: unknown): GatewayErrorDetail | undefined {
     if (typeof value === "string") {
-        return value.trim() || undefined;
+        const message = value.trim();
+        if (message === "") {
+            return undefined;
+        }
+        try {
+            return errorDetailFromValue(JSON.parse(message)) ?? {message};
+        } catch {
+            return {message};
+        }
     }
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
         return undefined;
     }
     const record = value as Record<string, unknown>;
-    return (
-        errorMessageFromJson(record["message"]) ??
-        errorMessageFromJson(record["error"])
-    );
+    const nested =
+        errorDetailFromValue(record["error"]) ??
+        errorDetailFromValue(record["message"]);
+    const message =
+        nested?.message ??
+        (typeof record["message"] === "string"
+            ? record["message"].trim() || undefined
+            : undefined);
+    const code =
+        nested?.code ??
+        (typeof record["code"] === "string"
+            ? record["code"]
+            : typeof record["error_code"] === "string"
+              ? record["error_code"]
+              : undefined);
+    const param =
+        nested?.param ??
+        (typeof record["param"] === "string" ? record["param"] : undefined);
+    if (message === undefined && code === undefined && param === undefined) {
+        return undefined;
+    }
+    return {message, code, param};
 }
