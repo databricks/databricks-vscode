@@ -1563,6 +1563,110 @@ describe(__filename, () => {
         connection.dispose();
     });
 
+    it("omits provider-specific reasoning when replaying assistant state", async () => {
+        const connection = new TestConnection("CONNECTED");
+        let requestCount = 0;
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            async (_connection, payload) => {
+                requestCount++;
+                if (requestCount === 1) {
+                    return {
+                        message: {
+                            role: "assistant" as const,
+                            content: [
+                                {
+                                    type: "thinking",
+                                    thinking: "Internal reasoning",
+                                    signature: "thinking-signature",
+                                },
+                                {
+                                    type: "reasoning",
+                                    summary: [
+                                        {
+                                            type: "summary_text",
+                                            text: "",
+                                            signature: "reasoning-signature",
+                                        },
+                                    ],
+                                },
+                                {type: "text", text: "Checking"},
+                            ],
+                            tool_calls: [
+                                {
+                                    id: "call-1",
+                                    type: "function" as const,
+                                    function: {
+                                        name: "read_file",
+                                        arguments: '{"path":"README.md"}',
+                                    },
+                                },
+                            ],
+                        },
+                    };
+                }
+                assert.deepStrictEqual(payload.messages, [
+                    {
+                        role: "assistant",
+                        content: "Checking",
+                        tool_calls: [
+                            {
+                                id: "call-1",
+                                type: "function",
+                                function: {
+                                    name: "read_file",
+                                    arguments: '{"path":"README.md"}',
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        role: "tool",
+                        tool_call_id: "call-1",
+                        content: "contents",
+                    },
+                ]);
+                return {
+                    message: {
+                        role: "assistant" as const,
+                        content: "Done",
+                    },
+                };
+            }
+        );
+        const firstParts: LanguageModelResponsePart[] = [];
+
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => firstParts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [
+                {role: 2, content: firstParts},
+                {
+                    role: 1,
+                    content: [
+                        {
+                            callId: "call-1",
+                            content: [{value: "contents"}],
+                        } satisfies LanguageModelToolResultPart,
+                    ],
+                },
+            ],
+            {},
+            {report: () => undefined},
+            NEVER_CANCELLED_TOKEN
+        );
+
+        assert.strictEqual(requestCount, 2);
+        provider.dispose();
+        connection.dispose();
+    });
+
     it("rehydrates extra tool-call fields when Copilot drops the data part", async () => {
         const connection = new TestConnection("CONNECTED");
         let requestCount = 0;
@@ -1910,26 +2014,28 @@ describe(__filename, () => {
         connection.dispose();
     });
 
-    it("rejects requests after logout", async () => {
+    it("reports sign-in guidance after logout", async () => {
         const connection = new TestConnection("DISCONNECTED");
         const provider = new DatabricksLanguageModelChatProvider(connection);
+        const parts: LanguageModelResponsePart[] = [];
 
-        await assert.rejects(
-            provider.provideLanguageModelChatResponse(
-                UNITY_GATEWAY_LANGUAGE_MODEL,
-                [],
-                {},
-                {report: () => undefined},
-                NEVER_CANCELLED_TOKEN
-            ),
-            (error: Error & {code?: string}) => error.code === "NoPermissions"
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+        assert.strictEqual(
+            (parts[0] as {value?: string}).value,
+            "Sign in to Databricks to use this model."
         );
 
         provider.dispose();
         connection.dispose();
     });
 
-    it("maps gateway permission failures to a language model error", async () => {
+    it("reports gateway permission failures without throwing", async () => {
         const connection = new TestConnection("CONNECTED");
         const provider = new DatabricksLanguageModelChatProvider(
             connection,
@@ -1937,42 +2043,209 @@ describe(__filename, () => {
                 throw Object.assign(new Error("Forbidden"), {status: 403});
             }
         );
+        const parts: LanguageModelResponsePart[] = [];
 
-        await assert.rejects(
-            provider.provideLanguageModelChatResponse(
-                UNITY_GATEWAY_LANGUAGE_MODEL,
-                [],
-                {},
-                {report: () => undefined},
-                NEVER_CANCELLED_TOKEN
-            ),
-            (error: Error & {code?: string}) => error.code === "NoPermissions"
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+        assert.strictEqual(
+            (parts[0] as {value?: string}).value,
+            "Sign in to Databricks to use this model."
         );
 
         provider.dispose();
         connection.dispose();
     });
 
-    it("explains gateway rejections without predicting model support", async () => {
+    it("reports unsupported requests without gateway details", async () => {
         const connection = new TestConnection("CONNECTED");
         const provider = new DatabricksLanguageModelChatProvider(
             connection,
             async () => {
-                throw Object.assign(new Error("Unsupported tool combination"), {
+                throw Object.assign(new Error("Databricks returned HTTP 400"), {
+                    status: 400,
+                    body: JSON.stringify({
+                        error: {
+                            message: "Unsupported tool combination",
+                        },
+                    }),
+                });
+            }
+        );
+        const parts: LanguageModelResponsePart[] = [];
+
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+        assert.strictEqual(
+            (parts[0] as {value?: string}).value,
+            "This model could not complete the request. Try another Databricks model."
+        );
+
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("reports models that reject disabled reasoning as text without throwing", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const body = JSON.stringify({
+            error: {
+                message:
+                    "Unsupported value: 'reasoning_effort' does not support " +
+                    "'none' with this model. Supported values are: 'low', " +
+                    "'medium', 'high', and 'xhigh'.",
+                type: "invalid_request_error",
+                param: "reasoning_effort",
+                code: "unsupported_value",
+            },
+        });
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            async () => {
+                throw Object.assign(new Error(`${body}: Error: ${body}`), {
                     status: 400,
                 });
             }
         );
 
-        await assert.rejects(
-            provider.provideLanguageModelChatResponse(
-                UNITY_GATEWAY_LANGUAGE_MODEL,
-                [],
-                {},
-                {report: () => undefined},
-                NEVER_CANCELLED_TOKEN
-            ),
-            /rejected this chat request.*Unsupported tool combination/
+        const parts: LanguageModelResponsePart[] = [];
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+
+        assert.strictEqual(parts.length, 1);
+        assert.strictEqual(
+            (parts[0] as {value?: string}).value,
+            "This model cannot use the tools required by Chat. Choose another Databricks model."
+        );
+
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("reports models that only support responses api as text without throwing", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            async () => {
+                throw Object.assign(
+                    new Error(
+                        "Model databricks-gpt-5-3-codex only supports the Responses API. " +
+                            "Please use /serving-endpoints/responses or " +
+                            "/serving-endpoints/open-responses instead."
+                    ),
+                    {status: 400}
+                );
+            }
+        );
+
+        const parts: LanguageModelResponsePart[] = [];
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+
+        assert.strictEqual(parts.length, 1);
+        assert.strictEqual(
+            (parts[0] as {value?: string}).value,
+            "This model is not supported in Databricks Chat yet. Choose another Databricks model."
+        );
+
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("reports a missing model without throwing", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            async () => {
+                throw Object.assign(new Error("Not found"), {status: 404});
+            }
+        );
+        const parts: LanguageModelResponsePart[] = [];
+
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+        assert.strictEqual(
+            (parts[0] as {value?: string}).value,
+            "This model is no longer available. Choose another Databricks model."
+        );
+
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("reports rate limits without throwing", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            async () => {
+                throw Object.assign(new Error("Too many requests"), {
+                    status: 429,
+                });
+            }
+        );
+        const parts: LanguageModelResponsePart[] = [];
+
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+        assert.strictEqual(
+            (parts[0] as {value?: string}).value,
+            "Databricks rate-limited this request. Try again in a moment."
+        );
+
+        provider.dispose();
+        connection.dispose();
+    });
+
+    it("reports server failures without backend details", async () => {
+        const connection = new TestConnection("CONNECTED");
+        const provider = new DatabricksLanguageModelChatProvider(
+            connection,
+            async () => {
+                throw Object.assign(new Error("internal backend details"), {
+                    status: 503,
+                });
+            }
+        );
+        const parts: LanguageModelResponsePart[] = [];
+
+        await provider.provideLanguageModelChatResponse(
+            UNITY_GATEWAY_LANGUAGE_MODEL,
+            [],
+            {},
+            {report: (part) => parts.push(part)},
+            NEVER_CANCELLED_TOKEN
+        );
+        assert.strictEqual(
+            (parts[0] as {value?: string}).value,
+            "Databricks is temporarily unavailable. Try again later."
         );
 
         provider.dispose();

@@ -75,10 +75,14 @@ export function toOpenAIChatMessages(
 
         if (role === "assistant" && toolCalls.length > 0) {
             const rawMessage = readRawAssistantMessage(message.content);
-            input.push(
+            const restored =
                 rawMessage !== undefined
                     ? rehydrateAssistantMessage(rawMessage, toolCalls)
-                    : restoreSession?.restore(toolCalls) ?? {
+                    : restoreSession?.restore(toolCalls);
+            input.push(
+                restored !== undefined
+                    ? withCanonicalContent(restored, text)
+                    : {
                           role,
                           content: text === "" ? null : text,
                           tool_calls: toolCalls,
@@ -87,7 +91,7 @@ export function toOpenAIChatMessages(
         } else if (role === "assistant") {
             const rawMessage = readRawAssistantMessage(message.content);
             if (rawMessage !== undefined) {
-                input.push(rawMessage);
+                input.push(withCanonicalContent(rawMessage, text));
                 continue;
             }
             if (text !== "") {
@@ -110,6 +114,25 @@ export function toOpenAIChatMessages(
         }
     }
     return input;
+}
+
+/**
+ * Rebuild the outbound assistant `content` from VS Code's canonical text so we
+ * never replay a provider's own typed content blocks (`reasoning`, `thinking`,
+ * and whatever a future provider invents). Those blocks are not portable across
+ * Chat Completions providers — a model rejects even its own representation on the
+ * next turn. The stored raw message is still used for opaque continuation fields
+ * (for example `provider_state`) and per-tool-call signatures; only its `content`
+ * is replaced.
+ */
+function withCanonicalContent(
+    message: OpenAIChatAssistantMessage,
+    text: string
+): OpenAIChatAssistantMessage {
+    return {
+        ...message,
+        content: text === "" ? null : text,
+    };
 }
 
 export function toOpenAIChatToolOptions(

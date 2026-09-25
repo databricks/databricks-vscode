@@ -49,6 +49,7 @@ interface LanguageModelChatProviderApi {
         readonly Required: unknown;
     };
     readonly LanguageModelError?: {
+        Blocked(message?: string): Error;
         NoPermissions(message?: string): Error;
         NotFound(message?: string): Error;
     };
@@ -104,7 +105,7 @@ export function createLanguageModelToolCallPart(
 }
 
 export function createLanguageModelError(
-    code: "NoPermissions" | "NotFound",
+    code: "Blocked" | "NoPermissions" | "NotFound",
     message: string
 ): Error {
     const factory =
