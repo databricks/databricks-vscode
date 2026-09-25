@@ -1,3 +1,14 @@
+# Release: v2.19.0
+
+## packages/databricks-vscode
+
+## (2026-09-25)
+
+-   Add a setting to override CLI path (#2205) ([d5ea7eb](https://github.com/databricks/databricks-vscode/commit/d5ea7eb)), closes [#2205](https://github.com/databricks/databricks-vscode/issues/2205) [#2199](https://github.com/databricks/databricks-vscode/issues/2199)
+-   Add HTTP proxy and corporate-CA support for SDK and bundled CLI (#2178) ([dd8a1c8](https://github.com/databricks/databricks-vscode/commit/dd8a1c8)), closes [#2178](https://github.com/databricks/databricks-vscode/issues/2178)
+-   Pin VSCode version to 1.138.0 for tests (#2207) ([8501f9d](https://github.com/databricks/databricks-vscode/commit/8501f9d)), closes [#2207](https://github.com/databricks/databricks-vscode/issues/2207) [/github.com/databricks/databricks-vscode/blob/7bbc6700519ac4413c6adcf8bad83792ab26b658/packages/databricks-vscode/src/bundle/BundlePipelinesManager.ts#L599](https://github.com//github.com/databricks/databricks-vscode/blob/7bbc6700519ac4413c6adcf8bad83792ab26b658/packages/databricks-vscode/src/bundle/BundlePipelinesManager.ts/issues/L599)
+-   fix(python-setup): bound email-redaction regex to avoid ReDoS on larg… (#2202) ([7bbc670](https://github.com/databricks/databricks-vscode/commit/7bbc670)), closes [#2202](https://github.com/databricks/databricks-vscode/issues/2202)
+
 # Release: v2.18.0
 
 ## packages/databricks-vscode
