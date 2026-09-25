@@ -20,11 +20,11 @@ updates:
         versions: [">=5"]
       - dependency-name: "@types/chai"
         versions: [">=5"]
-      # @types/vscode must track engines.vscode (^1.86.0); bump both together
+      # @types/vscode must track engines.vscode (^1.104.0); bump both together
       # only when the minimum supported VS Code version is deliberately raised.
       # See PR #1933.
       - dependency-name: "@types/vscode"
-        versions: [">=1.87"]
+        versions: [">=1.105"]
       # @types/node must track the runtime we ship on (engines.node ">=22"; the
       # VS Code extension host runs Node 18), not the latest release. Newer types
       # would type-check against APIs absent at runtime. Bump only when the Node
@@ -41,11 +41,11 @@ updates:
     directory: "/packages/databricks-vscode-types"
     ignore:
       - dependency-name: "@databricks/*"
-      # @types/vscode must track engines.vscode (^1.86.0); bump both together
+      # @types/vscode must track engines.vscode (^1.104.0); bump both together
       # only when the minimum supported VS Code version is deliberately raised.
       # See PR #1933.
       - dependency-name: "@types/vscode"
-        versions: [">=1.87"]
+        versions: [">=1.105"]
       # TypeScript 7 removes `moduleResolution: node10` (see tsconfig_base); moving
       # to it is a deliberate migration, not a drop-in bump. Stay on 6.x for now.
       # See PR #1993.

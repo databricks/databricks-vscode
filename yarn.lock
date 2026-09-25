@@ -260,7 +260,7 @@ __metadata:
   resolution: "@databricks/databricks-vscode-types@workspace:packages/databricks-vscode-types"
   dependencies:
     "@databricks/sdk-experimental": ^0.18.0
-    "@types/vscode": 1.86.0
+    "@types/vscode": 1.104.0
     databricks: "workspace:^"
     eslint: ^10.6.0
     prettier: ^3.1.1
@@ -1791,10 +1791,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/vscode@npm:1.86.0":
-  version: 1.86.0
-  resolution: "@types/vscode@npm:1.86.0"
-  checksum: 5d50fbe5dee10d4d07532ec247b19575d4f4a9f8d858b6b7d43ccba418012d7b215447547884bb9ac0448845eb302c0bdc555e69eb1a7423c256c30acc07bfe6
+"@types/vscode@npm:1.104.0":
+  version: 1.104.0
+  resolution: "@types/vscode@npm:1.104.0"
+  checksum: a051786c43ca332f98333d771523b6177d979fe5dbec51a19b57e109d647451ab3c8b10f9748c272c89b9fb0e4fdea4229dc6a8214d17efec4d895fe9a734c80
   languageName: node
   linkType: hard
 
@@ -4059,7 +4059,7 @@ __metadata:
     "@types/shell-quote": ^1.7.5
     "@types/tmp": ^0.2.6
     "@types/triple-beam": ^1.3.5
-    "@types/vscode": 1.86.0
+    "@types/vscode": 1.104.0
     "@types/ws": ^8.5.11
     "@types/yargs": ^17.0.32
     "@typescript-eslint/eslint-plugin": ^8.62.0
