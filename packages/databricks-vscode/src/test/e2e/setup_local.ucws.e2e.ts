@@ -52,6 +52,31 @@ async function waitForQuickInput(timeoutMs = 60_000): Promise<InputBox> {
 }
 
 /**
+ * Accept a quick pick by keyboard: wait until the row labelled `label` is the
+ * focused one, then press Enter. Clicking the row (`selectQuickPick`) isn't
+ * reliable here: VS Code 1.104 shows the input's placeholder as a tooltip at the
+ * mouse, and on CI's 1024px-wide window it covers the first row and takes the click.
+ */
+async function acceptFocusedQuickPick(input: InputBox, label: string) {
+    await browser.waitUntil(
+        async () => {
+            for (const pick of await input.getQuickPicks()) {
+                const classes = (await pick.elem.getAttribute("class")) ?? "";
+                if (classes.split(" ").includes("focused")) {
+                    return (await pick.getLabel()).includes(label);
+                }
+            }
+            return false;
+        },
+        {
+            timeout: 10_000,
+            timeoutMsg: `"${label}" is not the focused quick pick`,
+        }
+    );
+    await input.confirm();
+}
+
+/**
  * Wait for uv to finish provisioning: the ground truth is the `.venv`
  * interpreter existing on disk. Provisioning first auto-installs uv (CI runners
  * lack it), then shells out to uv for a Python download + databricks-connect
@@ -216,7 +241,7 @@ describe("Set up local Python environment (uv) on serverless", async function ()
         // the recommended Full tier (starred, first) so the full environment is
         // set up (matching Python + Databricks Connect + pinned dependencies).
         const presetInput = await waitForQuickInput();
-        await presetInput.selectQuickPick(0);
+        await acceptFocusedQuickPick(presetInput, "Full environment setup");
 
         await waitForVenvInterpreter(projectDir);
 
@@ -283,7 +308,10 @@ describe("Set up local Python environment (uv) on serverless", async function ()
         // Take the recommended Full tier again so the re-run provisions the same
         // environment.
         const rerunPresetInput = await waitForQuickInput();
-        await rerunPresetInput.selectQuickPick(0);
+        await acceptFocusedQuickPick(
+            rerunPresetInput,
+            "Full environment setup"
+        );
 
         // A fresh "Python environment ready" toast is the re-run-SPECIFIC success
         // signal. A failed run never clears readiness (readyRoots/state persist)

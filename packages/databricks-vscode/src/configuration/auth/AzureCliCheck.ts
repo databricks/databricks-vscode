@@ -1,14 +1,9 @@
-import {
-    Context,
-    ProductVersion,
-    WorkspaceClient,
-    logging,
-} from "@databricks/sdk-experimental";
+import {Context, logging} from "@databricks/sdk-experimental";
 import {CancellationToken, commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
-import {ShellUtils} from "../../utils";
+import {ProxyAgent, ShellUtils} from "../../utils";
 import {cancellableExecFile} from "../../cli/CliWrapper";
 import {
     FileNotFoundException,
@@ -17,10 +12,6 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const extensionVersion = require("../../../package.json")
-    .version as ProductVersion;
 
 type AzureCloud = "AzureCloud" | "AzureChinaCloud" | "AzureUSGovernment";
 
@@ -212,16 +203,13 @@ export class AzureCliCheck implements Disposable {
         expired: boolean;
         error?: Error;
     }> {
-        const workspaceClient = new WorkspaceClient(
+        const workspaceClient = await ProxyAgent.createWorkspaceClient(
             {
                 host: host.toString(),
                 authType: "azure-cli",
                 azureLoginAppId: this.azureLoginAppId,
             },
-            {
-                product: "databricks-vscode",
-                productVersion: extensionVersion,
-            }
+            host
         );
         try {
             await workspaceClient.currentUser.me(

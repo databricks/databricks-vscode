@@ -1,3 +1,14 @@
+# Release: v2.19.0
+
+## packages/databricks-vscode
+
+## (2026-09-25)
+
+-   Add a setting to override CLI path (#2205, #2199) ([d5ea7eb](https://github.com/databricks/databricks-vscode/commit/d5ea7eb))
+-   Add HTTP proxy and corporate-CA support for SDK and bundled CLI (#2178) ([dd8a1c8](https://github.com/databricks/databricks-vscode/commit/dd8a1c8))
+-   Update Databricks CLI to v1.18.0 (#2209) ([b90792c](https://github.com/databricks/databricks-vscode/commit/b90792c))
+-   Bound email-redaction regex to avoid ReDoS on larg… (#2202) ([7bbc670](https://github.com/databricks/databricks-vscode/commit/7bbc670))
+
 # Release: v2.18.0
 
 ## packages/databricks-vscode

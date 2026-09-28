@@ -86,9 +86,10 @@ describe("Run files", async function () {
         // start another run and race the next upload.
         //
         // Scoped to the toast container so a stray "Cancel" elsewhere in the
-        // workbench can't satisfy the wait.
+        // workbench can't satisfy the wait. Matched by text: VS Code (from 1.104)
+        // no longer gives the button a title or an aria-label.
         const cancelAction =
-            '.notifications-toasts a[role="button"][title="Cancel"]';
+            '//div[contains(@class, "notifications-toasts")]//a[contains(@class, "monaco-button") and normalize-space()="Cancel"]';
         const maxAttempts = 3;
         let sawCancellableToast = false;
         let cancelled = false;
@@ -139,8 +140,13 @@ describe("Run files", async function () {
                             }
                         }
                         return browser.execute((selector) => {
-                            const found =
-                                document.querySelector<HTMLElement>(selector);
+                            const found = document.evaluate(
+                                selector,
+                                document,
+                                null,
+                                XPathResult.FIRST_ORDERED_NODE_TYPE,
+                                null
+                            ).singleNodeValue as HTMLElement | null;
                             found?.click();
                             return Boolean(found);
                         }, cancelAction);

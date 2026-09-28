@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getActionButton,
     getUniqueResourceName,
     getViewSection,
     waitForDeployment,
@@ -75,11 +76,13 @@ describe("Deploy and run job", async function () {
         );
         assert(jobItem, `Job ${jobName} not found in resource explorer`);
 
-        const deployAndRunButton = await jobItem.getActionButton(
+        await jobItem.elem.moveTo();
+        const deployAndRunButton = await getActionButton(
+            jobItem,
             "Deploy the bundle and run the job"
         );
         assert(deployAndRunButton, "Deploy and run button not found");
-        await deployAndRunButton.elem.click();
+        await deployAndRunButton.click();
 
         await waitForDeployment();
 

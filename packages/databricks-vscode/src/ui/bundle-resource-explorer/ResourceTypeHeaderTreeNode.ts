@@ -9,7 +9,12 @@ import {
     KNOWN_ICON_RESOURCE_TYPES,
     KNOWN_RESOURCE_TYPES,
 } from "./types";
-import {ExtensionContext, ThemeIcon, TreeItemCollapsibleState} from "vscode";
+import {
+    ExtensionContext,
+    ThemeIcon,
+    TreeItemCollapsibleState,
+    Uri,
+} from "vscode";
 import {PipelineTreeNode} from "./PipelineTreeNode";
 import {BundlePipelinesManager} from "../../bundle/BundlePipelinesManager";
 import {UnknownResourceTreeNode} from "./UnknownResourceTreeNode";
@@ -52,12 +57,14 @@ export class ResourceTypeHeaderTreeNode
     }
 
     private getThemedIconPath(theme: string, resourceType: string) {
-        return this.context.asAbsolutePath(
-            path.join(
-                "resources",
-                theme,
-                "resource-explorer",
-                `${resourceType}.svg`
+        return Uri.file(
+            this.context.asAbsolutePath(
+                path.join(
+                    "resources",
+                    theme,
+                    "resource-explorer",
+                    `${resourceType}.svg`
+                )
             )
         );
     }

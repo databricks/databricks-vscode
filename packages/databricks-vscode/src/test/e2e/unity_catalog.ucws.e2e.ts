@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getActionButton,
     getTabByTitle,
     waitForLogin,
 } from "./utils/commonUtils.ts";
@@ -10,7 +11,6 @@ import {
 } from "./utils/dabsFixtures.ts";
 import {
     findUCItem,
-    getUCActionButton,
     getUCSection,
     getTopVisibleLabels,
     openUCPath,
@@ -256,7 +256,7 @@ describe("Unity Catalog tree view", async function () {
         await browser.pause(200);
         await systemItem.elem.moveTo();
         await browser.pause(500); // wait for hover action buttons to render
-        const pinBtn = await getUCActionButton(systemItem, "Add to Favorites");
+        const pinBtn = await getActionButton(systemItem, "Add to Favorites");
         assert(
             pinBtn,
             "'Add to Favorites' action button not found on 'system'"
@@ -287,7 +287,7 @@ describe("Unity Catalog tree view", async function () {
         await browser.pause(200);
         await systemItem.elem.moveTo();
         await browser.pause(500); // wait for hover action buttons to render
-        const unpinBtn = await getUCActionButton(
+        const unpinBtn = await getActionButton(
             systemItem,
             "Remove from Favorites"
         );

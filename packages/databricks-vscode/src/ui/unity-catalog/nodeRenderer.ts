@@ -4,6 +4,7 @@ import {
     ThemeColor,
     ThemeIcon,
     TreeItemCollapsibleState,
+    Uri,
 } from "vscode";
 import {UnityCatalogTreeNode, UnityCatalogTreeItem} from "./types";
 import {formatTs} from "./utils";
@@ -11,21 +12,19 @@ import {formatTs} from "./utils";
 function ucIconPath(
     extensionPath: string,
     file: string
-): {dark: string; light: string} {
+): {dark: Uri; light: Uri} {
     return {
-        dark: path.join(
-            extensionPath,
-            "resources",
-            "dark",
-            "unity-catalog",
-            file
+        dark: Uri.file(
+            path.join(extensionPath, "resources", "dark", "unity-catalog", file)
         ),
-        light: path.join(
-            extensionPath,
-            "resources",
-            "light",
-            "unity-catalog",
-            file
+        light: Uri.file(
+            path.join(
+                extensionPath,
+                "resources",
+                "light",
+                "unity-catalog",
+                file
+            )
         ),
     };
 }

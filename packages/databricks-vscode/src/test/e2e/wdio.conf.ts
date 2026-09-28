@@ -242,6 +242,14 @@ export const config: WebdriverIO.Config = {
                 vscodeArgs: {
                     extensionsDir: EXTENSIONS_DIR,
                     disableExtensions: false,
+                    // wdio-vscode-service runs VS Code with Node's execFile,
+                    // which kills it once its stderr passes 1 MiB, and
+                    // chromedriver sends Chromium's logs to stderr. The CI
+                    // Linux runners have no usable D-Bus session, and VS Code
+                    // 1.104 logs three D-Bus errors for every screenshot, so a
+                    // spec died after about 1,840 video frames. Keep only
+                    // fatal errors there.
+                    ...(process.platform === "linux" ? {logLevel: "3"} : {}),
                 },
                 workspacePath: WORKSPACE_PATH,
                 userSettings: {

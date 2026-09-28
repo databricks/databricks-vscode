@@ -35,6 +35,7 @@ import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {
     FileUtils,
     PackageJsonUtils,
+    ProxyAgent,
     TerraformUtils,
     UrlUtils,
     UtilsCommands,
@@ -505,7 +506,9 @@ export async function activate(
 
     // Surfaces a stale bundled CLI in dev checkouts. Not awaited: it only warns,
     // and activation shouldn't wait on spawning the CLI to find out.
-    void PackageJsonUtils.checkBundledCliVersion(cli.cliPath, packageMetadata);
+    void cli.checkBundledCliVersionForDev(packageMetadata);
+    // Warn if the user has overriden the CLI path, and that overriden CLI is out of date
+    cli.warnOverridenCliDrift(packageMetadata.cliVersion);
 
     // Loggers
     context.subscriptions.push(
@@ -924,20 +927,16 @@ export async function activate(
         customWhenContext.updateShowClusterView();
     }
 
-    function updateStrictSSLEnv() {
-        const httpConfig = workspace.getConfiguration("http");
-        const proxyStrictSSL = httpConfig.get<boolean>("proxyStrictSSL");
-        process.env["DATABRICKS_SDK_PROXY_STRICT_SSL"] = proxyStrictSSL
-            ? "true"
-            : "false";
-    }
-
     updateFeatureContexts();
-    updateStrictSSLEnv();
+    // Resolve TLS strict-SSL through the same layered setting the SDK client
+    // path uses (databricks.proxy.strictSSL -> http.proxyStrictSSL -> true), so
+    // both writers of DATABRICKS_SDK_PROXY_STRICT_SSL agree and verification
+    // stays on by default when nothing is configured.
+    ProxyAgent.applyProxyStrictSSLEnv();
     context.subscriptions.push(
         workspace.onDidChangeConfiguration(() => {
             updateFeatureContexts();
-            updateStrictSSLEnv();
+            ProxyAgent.applyProxyStrictSSLEnv();
         })
     );
 

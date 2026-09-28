@@ -4,9 +4,9 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.18.0",
+    "version": "2.19.0",
     "engines": {
-        "vscode": "^1.86.0",
+        "vscode": "^1.104.0",
         "node": ">=22.0"
     },
     "categories": [
@@ -1871,6 +1871,19 @@
                         "type": "number",
                         "default": 5,
                         "description": "The interval in minutes at which the remote state of the bundle is refreshed."
+                    },
+                    "databricks.overrideDatabricksCLIPath": {
+                        "type": "string",
+                        "scope": "machine",
+                        "description": "Override location for the Databricks CLI (defaults to the CLI bundled with this extension). *Warning:* it is recommended NOT to set this. If you override the CLI to an outdated version this extension may break."
+                    },
+                    "databricks.proxy.strictSSL": {
+                        "type": "boolean",
+                        "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. When unset, the built-in `#http.proxyStrictSSL#` value is used. Set to `false` only when a corporate CA certificate cannot be resolved from the system trust store."
+                    },
+                    "databricks.proxy.caCert": {
+                        "type": "string",
+                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with the OS trust store and Node's built-in roots. Use when a corporate CA cannot be read from the system store — in particular on Windows, where the extension does not read the system certificate store and relies on this setting for internal CAs."
                     }
                 }
             }
@@ -1887,7 +1900,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.17.0"
+        "version": "1.18.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
@@ -1908,7 +1921,7 @@
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "package:copy-markdown-it": "cp ./node_modules/markdown-it/dist/browser/markdown-it.umd.min.js ./out/markdown-it.min.js",
         "package:copy-highlight": "esbuild ./node_modules/highlight.js/lib/common.js --bundle --format=iife --global-name=hljs --outfile=out/highlight.min.js --minify",
-        "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
+        "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:@vscode/windows-ca-certs --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
         "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && tsc --build --watch --verbose",
         "fix": "eslint src --fix && prettier . --write",
@@ -1933,11 +1946,14 @@
         "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",
         "@vscode/extension-telemetry": "^1.5.2",
+        "@vscode/proxy-agent": "^0.28.0",
         "@vscode/webview-ui-toolkit": "^1.4.0",
         "add": "^2.0.6",
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^3.0.3",
         "highlight.js": "^11.10.0",
+        "http-proxy-agent": "^7.0.2",
+        "https-proxy-agent": "^7.0.6",
         "lodash": "^4.18.1",
         "markdown-it": "^15.0.0",
         "minimatch": "^10.2.3",
@@ -1958,7 +1974,7 @@
         "@types/semver": "^7.5.0",
         "@types/tmp": "^0.2.6",
         "@types/triple-beam": "^1.3.5",
-        "@types/vscode": "1.86.0",
+        "@types/vscode": "1.104.0",
         "@types/ws": "^8.5.11",
         "@types/yargs": "^17.0.32",
         "@typescript-eslint/eslint-plugin": "^8.62.0",
