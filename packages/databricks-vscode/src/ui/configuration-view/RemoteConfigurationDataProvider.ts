@@ -10,7 +10,10 @@ import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {stampCopyKind} from "./copyActions";
-import {BundleTargetComponent} from "./BundleTargetComponent";
+import {
+    BundleTargetComponent,
+    HostMismatchProvider,
+} from "./BundleTargetComponent";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {logging} from "@databricks/sdk-experimental";
@@ -50,12 +53,16 @@ export class RemoteConfigurationDataProvider
 
     constructor(
         configModel: ConfigModel,
-        private readonly workspaceFolderManager: WorkspaceFolderManager
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        hostMismatchProvider: HostMismatchProvider
     ) {
         this.workspaceFolderComponent = new WorkspaceFolderComponent(
             workspaceFolderManager
         );
-        this.bundleTargetComponent = new BundleTargetComponent(configModel);
+        this.bundleTargetComponent = new BundleTargetComponent(
+            configModel,
+            hostMismatchProvider
+        );
         this.components = [
             this.workspaceFolderComponent,
             this.bundleTargetComponent,

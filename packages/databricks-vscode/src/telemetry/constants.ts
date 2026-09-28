@@ -20,6 +20,7 @@ export enum Events {
     BUNDLE_INIT = "bundleInit",
     BUNDLE_SUB_PROJECTS = "bundleSubProjects",
     BUNDLE_TERRAFORM_ENGINE_WARNING = "bundleTerraformEngineWarning",
+    BUNDLE_REMOTE_HOST_MISMATCH_WARNING = "bundleRemoteHostMismatchWarning",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
     COMPUTE_SELECTED = "computeSelected",
     WORKFLOW_RUN = "workflowRun",
@@ -54,6 +55,18 @@ export type BundleRunResourceType = "pipelines" | "jobs";
  */
 export type BundleTerraformEngineWarningAction =
     | "guide"
+    | "hidden"
+    | "dismissed";
+/**
+ * What the user did with the Remote SSH mode "target host differs from the
+ * environment host" warning:
+ *  - `'switch-target'` — opened the bundle target picker to change target.
+ *  - `'hidden'` — chose "Don't warn for this target" (persisted opt-out for the
+ *    specific environment→target host pair, for the workspace).
+ *  - `'dismissed'` — closed it without either.
+ */
+export type BundleRemoteHostMismatchWarningAction =
+    | "switch-target"
     | "hidden"
     | "dismissed";
 export type BundleRunType =
@@ -393,6 +406,16 @@ export class EventTypes {
         action: {
             comment:
                 "What the user did with the warning: 'guide' chose to open the migration guide, 'hidden' chose \"Don't show again\" (persisted opt-out for the workspace), 'dismissed' closed it without either.",
+        },
+    };
+    [Events.BUNDLE_REMOTE_HOST_MISMATCH_WARNING]: EventType<{
+        action: BundleRemoteHostMismatchWarningAction;
+    }> = {
+        comment:
+            "In Databricks Remote SSH mode, surfaced a warning that the selected bundle target's workspace host differs from the environment (SSH host) the extension is authenticated against, so the explorer/deploy will use the environment host. Recorded once per surfacing (at most once per session per distinct environment→target host pair, until the user opts out for that pair).",
+        action: {
+            comment:
+                "What the user did: 'switch-target' opened the target picker, 'hidden' chose \"Don't warn for this target\" (persisted per-pair opt-out for the workspace), 'dismissed' closed it without either.",
         },
     };
     [Events.AITOOLS_INSTALL]: EventType<

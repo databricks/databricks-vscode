@@ -1,10 +1,17 @@
-import {ThemeIcon, ThemeColor, TreeItemCollapsibleState, window} from "vscode";
+import {
+    Event,
+    ThemeIcon,
+    ThemeColor,
+    TreeItemCollapsibleState,
+    window,
+} from "vscode";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {UrlError} from "../../utils/urlUtils";
 import {LabelUtils} from "../utils";
 import {humaniseMode} from "../utils/BundleUtils";
+import {HostMismatch} from "../../bundle/RemoteTargetHostManager";
 
 const TREE_ICON_ID = "TARGET";
 
@@ -12,14 +19,35 @@ function getTreeIconId(key: string) {
     return `${TREE_ICON_ID}.${key}`;
 }
 
+/**
+ * The subset of {@link RemoteTargetHostManager} this component reads to render
+ * the persistent host-mismatch badge on the Target node (remote mode only).
+ */
+export interface HostMismatchProvider {
+    readonly mismatch: HostMismatch | undefined;
+    readonly onDidChangeMismatch: Event<void>;
+}
+
 export class BundleTargetComponent extends BaseComponent {
-    constructor(private readonly configModel: ConfigModel) {
+    constructor(
+        private readonly configModel: ConfigModel,
+        // Present only in remote mode, where a target can point at a workspace
+        // other than the one the session is authenticated against.
+        private readonly hostMismatchProvider?: HostMismatchProvider
+    ) {
         super();
         this.disposables.push(
             this.configModel.onDidChangeTarget(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
+        if (this.hostMismatchProvider !== undefined) {
+            this.disposables.push(
+                this.hostMismatchProvider.onDidChangeMismatch(() => {
+                    this.onDidChangeEmitter.fire();
+                })
+            );
+        }
     }
 
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
@@ -58,6 +86,34 @@ export class BundleTargetComponent extends BaseComponent {
 
             if ((await this.configModel.get("host")) === undefined) {
                 throw new UrlError("Host not found");
+            }
+
+            // Remote mode only: the selected target deploys to a workspace other
+            // than the one this session is authenticated against, so the explorer
+            // and deploys will silently use the environment host. Surface it as a
+            // persistent warning badge (the toast is transient).
+            const mismatch = this.hostMismatchProvider?.mismatch;
+            if (mismatch !== undefined) {
+                return [
+                    {
+                        label: LabelUtils.highlightedLabel("Target"),
+                        id: TREE_ICON_ID,
+                        iconPath: new ThemeIcon(
+                            "target",
+                            new ThemeColor("problemsWarningIcon.foreground")
+                        ),
+                        description: `${target} — targets ${mismatch.targetHost}`,
+                        tooltip:
+                            `This project's "${mismatch.target}" target deploys to ` +
+                            `${mismatch.targetHost}, but you're connected to ` +
+                            `${mismatch.envHost} (the workspace you opened this remote ` +
+                            `session in). The Bundle Resource Explorer and any deploy ` +
+                            `will use ${mismatch.envHost}, not ${mismatch.targetHost}.`,
+                        contextValue:
+                            "databricks.configuration.target.hostMismatch",
+                        collapsibleState: TreeItemCollapsibleState.Collapsed,
+                    },
+                ];
             }
 
             return [

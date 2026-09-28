@@ -5,6 +5,7 @@ import {RemoteConfigurationDataProvider} from "./RemoteConfigurationDataProvider
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {ConfigurationTreeItem} from "./types";
+import {HostMismatchProvider} from "./BundleTargetComponent";
 
 function labelOf(item: ConfigurationTreeItem): string | undefined {
     return typeof item.label === "string" ? item.label : item.label?.label;
@@ -15,6 +16,8 @@ describe("RemoteConfigurationDataProvider", () => {
     let mockWorkspaceFolderManager: WorkspaceFolderManager;
     let folderChangeEmitter: EventEmitter<Uri | undefined>;
     let targetChangeEmitter: EventEmitter<void>;
+    let mismatchChangeEmitter: EventEmitter<void>;
+    let hostMismatchProvider: HostMismatchProvider;
     let provider: RemoteConfigurationDataProvider;
 
     beforeEach(() => {
@@ -22,6 +25,12 @@ describe("RemoteConfigurationDataProvider", () => {
         mockWorkspaceFolderManager = mock(WorkspaceFolderManager);
         folderChangeEmitter = new EventEmitter<Uri | undefined>();
         targetChangeEmitter = new EventEmitter<void>();
+        mismatchChangeEmitter = new EventEmitter<void>();
+        // No mismatch by default, so the Target node renders normally.
+        hostMismatchProvider = {
+            mismatch: undefined,
+            onDidChangeMismatch: mismatchChangeEmitter.event,
+        };
 
         // Components subscribe to these in their constructors.
         when(
@@ -44,7 +53,8 @@ describe("RemoteConfigurationDataProvider", () => {
     function make() {
         provider = new RemoteConfigurationDataProvider(
             instance(mockConfigModel),
-            instance(mockWorkspaceFolderManager)
+            instance(mockWorkspaceFolderManager),
+            hostMismatchProvider
         );
         return provider;
     }

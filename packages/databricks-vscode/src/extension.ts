@@ -98,6 +98,7 @@ import {
     promptToSelectBundleTarget,
 } from "./bundle/activeBundleUtils";
 import {RemoteBundleInitializer} from "./bundle/RemoteBundleInitializer";
+import {RemoteTargetHostManager} from "./bundle/RemoteTargetHostManager";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
 import {BundleEngineManager} from "./bundle/BundleEngineManager";
@@ -841,6 +842,19 @@ export async function activate(
         );
         context.subscriptions.push(remoteBundleInitializer);
 
+        // Warns (once per session, per env→target host pair) when the selected
+        // target deploys to a workspace other than the one this session is
+        // authenticated against, and exposes that state so the Configuration
+        // view can badge the Target node.
+        const remoteTargetHostManager = new RemoteTargetHostManager(
+            remoteConfigModel,
+            remoteConnectionManager,
+            workspaceFolderManager,
+            stateStorage,
+            telemetry
+        );
+        context.subscriptions.push(remoteTargetHostManager);
+
         const connectRemote = () => remoteBundleInitializer.initialize();
 
         registerUnityCatalog(
@@ -859,7 +873,8 @@ export async function activate(
         const remoteConfigurationDataProvider =
             new RemoteConfigurationDataProvider(
                 remoteConfigModel,
-                workspaceFolderManager
+                workspaceFolderManager,
+                remoteTargetHostManager
             );
         context.subscriptions.push(
             remoteConfigurationDataProvider,
