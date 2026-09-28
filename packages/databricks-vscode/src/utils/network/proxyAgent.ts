@@ -6,6 +6,7 @@ import {
     createProxyResolver,
     loadSystemCertificates,
     LogLevel,
+    type CertificateParams,
     type Log,
     type ProxyAgentParams,
 } from "@vscode/proxy-agent";
@@ -48,8 +49,8 @@ function getLog(): Log {
  * Build the params @vscode/proxy-agent needs to resolve a proxy the same way
  * VS Code core does: `http.proxy` setting first, then the `http(s)_proxy` env
  * vars, honouring `http.noProxy` and `NO_PROXY`. System/PAC auto-detection is
- * intentionally disabled (`useHostProxy: false`) — it needs Electron's proxy
- * resolver, which the extension host doesn't expose.
+ * intentionally disabled (`isUseHostProxyEnabled: () => false`) — it needs
+ * Electron's proxy resolver, which the extension host doesn't expose.
  */
 function getProxyAgentParams(host: URL): ProxyAgentParams {
     const log = getLog();
@@ -64,13 +65,18 @@ function getProxyAgentParams(host: URL): ProxyAgentParams {
         getProxySupport: () => "on",
         getNoProxyConfig: () => mergeNoProxy(),
         isAdditionalFetchSupportEnabled: () => false,
+        isWebSocketPatchEnabled: () => false,
         addCertificatesV1: () => false,
         addCertificatesV2: () => true,
+        // Read the OS trust store (macOS `security`, Linux PEM bundles, Windows
+        // native addon), matching the pre-0.45 behaviour. `true` would instead
+        // pull Node's bundled roots, which we already fold in via `buildCaBundle`.
+        loadSystemCertificatesFromNode: () => false,
         loadAdditionalCertificates: async () => [],
         log,
         getLogLevel: () => LogLevel.Error,
         proxyResolveTelemetry: () => {},
-        useHostProxy: false,
+        isUseHostProxyEnabled: () => false,
         env,
     };
 }
@@ -100,8 +106,9 @@ let systemCertificatesPromise: Promise<string[] | undefined> | undefined;
 // tests can simulate an unreadable OS store. @vscode/proxy-agent's own reader
 // catches internally and reads the host machine's real store, so there's no
 // other seam to force the failure path.
-let loadSystemCertificatesImpl: (params: {log: Log}) => Promise<string[]> =
-    loadSystemCertificates;
+let loadSystemCertificatesImpl: (
+    params: CertificateParams
+) => Promise<string[]> = loadSystemCertificates;
 
 /**
  * Load and cache the OS certificate trust store. Cached for the session; call
@@ -125,6 +132,8 @@ async function getSystemCertificates(
     if (!systemCertificatesPromise) {
         systemCertificatesPromise = loadSystemCertificatesImpl({
             log: params.log,
+            loadSystemCertificatesFromNode:
+                params.loadSystemCertificatesFromNode,
         }).catch((e) => {
             params.log.error(
                 "Failed to load system certificates; falling back to Node's " +
@@ -151,7 +160,7 @@ export function resetProxyAgentCaches() {
  * host machine's real trust store. Pass `undefined` to restore the default.
  */
 export function setSystemCertificatesLoaderForTests(
-    loader?: (params: {log: Log}) => Promise<string[]>
+    loader?: (params: CertificateParams) => Promise<string[]>
 ) {
     loadSystemCertificatesImpl = loader ?? loadSystemCertificates;
     systemCertificatesPromise = undefined;
