@@ -27,6 +27,8 @@ import {CodeSynchronizer} from "../../sync";
 import {AiToolsComponent} from "./AiToolsComponent";
 import {AiToolsManager} from "../../aitools/AiToolsManager";
 import {PythonSetupEntry} from "./pythonSetupEntry";
+import {LanguageModelChatConnectionManager} from "../../lm-chat/LanguageModelChatConnectionManager";
+import {UnityGatewayAuthComponent} from "./UnityGatewayAuthComponent";
 
 /**
  * Data provider for the cluster tree view
@@ -56,6 +58,7 @@ export class ConfigurationDataProvider
         private readonly featureManager: FeatureManager,
         private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly aiToolsManager: AiToolsManager,
+        private readonly languageModelChatConnection: LanguageModelChatConnectionManager,
         private readonly pythonSetup?: PythonSetupEntry
     ) {
         this.components = [
@@ -67,6 +70,7 @@ export class ConfigurationDataProvider
                 this.configModel,
                 this.cli
             ),
+            new UnityGatewayAuthComponent(this.languageModelChatConnection),
             new ClusterComponent(this.connectionManager, this.configModel),
             new SyncDestinationComponent(
                 this.connectionManager,

@@ -6,12 +6,12 @@ import {
     ConnectionState,
 } from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {LoginWizard} from "../configuration/LoginWizard";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {Loggers} from "../logger";
 import {Mutex} from "../locking";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {LanguageModelChatConnection} from "./types";
+import {UnityGatewayLoginWizard} from "./UnityGatewayLoginWizard";
 
 type ProjectConnection = Pick<
     ConnectionManager,
@@ -24,7 +24,7 @@ type ProjectConnection = Pick<
     | "state"
 >;
 
-type Login = () => Promise<AuthProvider | undefined>;
+type Login = (current?: AuthProvider) => Promise<AuthProvider | undefined>;
 type RestoreAuth = (value: Record<string, string | undefined>) => AuthProvider;
 type LoadWorkspace = (
     client: WorkspaceClient,
@@ -33,8 +33,8 @@ type LoadWorkspace = (
 
 /**
  * Supplies the language-model provider with a workspace session independently
- * of a Databricks project. An initialized project connection wins when it is
- * connected; otherwise this manager restores or creates a standalone session.
+ * of a Databricks project. An explicitly attached connection wins in remote
+ * mode; otherwise this manager restores or creates a standalone session.
  */
 export class LanguageModelChatConnectionManager
     implements LanguageModelChatConnection, Disposable
@@ -54,7 +54,8 @@ export class LanguageModelChatConnectionManager
     constructor(
         private readonly cli: CliWrapper,
         private readonly stateStorage: StateStorage,
-        private readonly login: Login = () => LoginWizard.run(cli),
+        private readonly login: Login = (current) =>
+            UnityGatewayLoginWizard.run(cli, current),
         private readonly restoreAuth: RestoreAuth = (value) =>
             AuthProvider.fromJSON(value, cli),
         private readonly loadWorkspace: LoadWorkspace = DatabricksWorkspace.load
@@ -83,7 +84,7 @@ export class LanguageModelChatConnectionManager
         return this.standaloneWorkspaceClient?.apiClient;
     }
 
-    get databricksWorkspace(): {readonly id: string} | undefined {
+    get databricksWorkspace(): DatabricksWorkspace | undefined {
         if (this.projectConnection?.state === "CONNECTED") {
             return this.projectConnection.databricksWorkspace;
         }
@@ -146,7 +147,9 @@ export class LanguageModelChatConnectionManager
                 return;
             }
 
-            const authProvider = await this.login();
+            const authProvider = await this.login(
+                this.databricksWorkspace?.authProvider
+            );
             if (authProvider === undefined) {
                 return;
             }

@@ -45,7 +45,7 @@ const DATABRICKS_LANGUAGE_MODEL_VENDOR = "databricks";
 const UNUSABLE_MODEL_FOR_TOOLS =
     "This model cannot use the tools required by Chat. Choose another Databricks model.";
 const UNUSABLE_MODEL_FOR_CHAT_API =
-    "This model is not supported in Databricks Chat yet. Choose another Databricks model.";
+    "This model can't be used in Chat yet. Choose another Databricks model.";
 const SIGN_IN_REQUIRED = "Sign in to Databricks to use this model.";
 const MODEL_ACCESS_DENIED = "You do not have access to this model.";
 const MODEL_NOT_AVAILABLE =
@@ -64,11 +64,9 @@ export class DatabricksLanguageModelChatProvider
 {
     private readonly onDidChangeEmitter = new EventEmitter<void>();
     private readonly onDidDiscoverModelsEmitter = new EventEmitter<number>();
-    private readonly onDidRequestSignInEmitter = new EventEmitter<void>();
     private readonly connectionListener: Disposable;
     private readonly opaqueAssistantState = new OpaqueAssistantStateStore();
     private modelInformation?: LanguageModelChatInformation[];
-    private signInPromptRequested = false;
 
     readonly onDidChangeLanguageModelChatInformation =
         this.onDidChangeEmitter.event;
@@ -77,10 +75,6 @@ export class DatabricksLanguageModelChatProvider
     // list. Consumers surface UI (for example a notification); this class keeps
     // window.* concerns out.
     readonly onDidDiscoverModels = this.onDidDiscoverModelsEmitter.event;
-
-    // Fires once when a background (silent) discovery finds the user signed out,
-    // so a consumer can prompt them to authenticate. Kept UI-free here.
-    readonly onDidRequestSignIn = this.onDidRequestSignInEmitter.event;
 
     constructor(
         private readonly connection: LanguageModelChatConnection,
@@ -102,14 +96,6 @@ export class DatabricksLanguageModelChatProvider
             await this.connection.ensureConnected?.(!options.silent, token);
             this.throwIfCancelled(token);
             if (this.connection.state !== "CONNECTED") {
-                if (
-                    options.silent &&
-                    this.connection.state === "DISCONNECTED" &&
-                    !this.signInPromptRequested
-                ) {
-                    this.signInPromptRequested = true;
-                    this.onDidRequestSignInEmitter.fire();
-                }
                 return [];
             }
             if (this.modelInformation !== undefined) {
@@ -292,7 +278,6 @@ export class DatabricksLanguageModelChatProvider
         this.connectionListener.dispose();
         this.onDidChangeEmitter.dispose();
         this.onDidDiscoverModelsEmitter.dispose();
-        this.onDidRequestSignInEmitter.dispose();
     }
 
     private throwIfCancelled(token: CancellationToken): void {

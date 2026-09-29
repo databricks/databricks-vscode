@@ -2,16 +2,33 @@ import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
-import {ThemeIcon, ThemeColor} from "vscode";
+import {ThemeIcon, ThemeColor, TreeItemCollapsibleState} from "vscode";
 import {getProfilesForHost} from "../../configuration/LoginWizard";
 import {CliWrapper} from "../../cli/CliWrapper";
-import {LabelUtils} from "../utils";
+import {
+    AuthProvider,
+    ProfileAuthProvider,
+} from "../../configuration/auth/AuthProvider";
 
 export const AUTH_TYPE_SWITCH_ID = "AUTH-TYPE";
 export const AUTH_TYPE_LOGIN_ID = "LOGIN";
 
 function getContextValue(key: string) {
     return `databricks.configuration.authType.${key}`;
+}
+
+/** A connection's profile, or its auth type when it has no profile. */
+export function getAuthDetailItem(
+    authProvider: AuthProvider,
+    parentId: string
+): ConfigurationTreeItem {
+    const isProfile = authProvider instanceof ProfileAuthProvider;
+    return {
+        label: isProfile ? "Profile" : "Auth Type",
+        id: `${parentId}.auth`,
+        description: isProfile ? authProvider.profile : authProvider.describe(),
+        collapsibleState: TreeItemCollapsibleState.None,
+    };
 }
 
 export class AuthTypeComponent extends BaseComponent {
@@ -42,7 +59,8 @@ export class AuthTypeComponent extends BaseComponent {
         if (this.connectionManager.state === "CONNECTING") {
             return [
                 {
-                    label: "Connecting to the workspace",
+                    label: "Bundle Connection",
+                    description: "Connecting",
                     iconPath: new ThemeIcon("sync~spin"),
                 },
             ];
@@ -62,7 +80,8 @@ export class AuthTypeComponent extends BaseComponent {
             }
             return [
                 {
-                    label: LabelUtils.highlightedLabel(label),
+                    label: "Bundle Connection",
+                    description: label,
                     iconPath: new ThemeIcon(
                         "account",
                         new ThemeColor("notificationsErrorIcon.foreground")
@@ -88,14 +107,15 @@ export class AuthTypeComponent extends BaseComponent {
 
         return [
             {
-                label: "Auth Type",
+                label: "Bundle Connection",
                 iconPath: new ThemeIcon(
                     "account",
                     new ThemeColor("debugIcon.startForeground")
                 ),
-                description: authProvider.describe(),
+                description: authProvider.host.hostname,
                 contextValue: getContextValue(authProvider.authType),
                 id: AUTH_TYPE_SWITCH_ID,
+                collapsibleState: TreeItemCollapsibleState.Collapsed,
             },
         ];
     }
@@ -106,6 +126,11 @@ export class AuthTypeComponent extends BaseComponent {
             return this.getRoot();
         }
 
-        return [];
+        const authProvider =
+            this.connectionManager.databricksWorkspace?.authProvider;
+        if (parent.id !== AUTH_TYPE_SWITCH_ID || authProvider === undefined) {
+            return [];
+        }
+        return [getAuthDetailItem(authProvider, AUTH_TYPE_SWITCH_ID)];
     }
 }

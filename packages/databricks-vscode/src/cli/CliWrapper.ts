@@ -169,6 +169,8 @@ export interface ConfigEntry {
     cloud: Cloud;
     authType: string;
     valid: boolean;
+    /** The CLI's default profile (`default_profile` in `.databrickscfg`). */
+    isDefault: boolean;
 }
 
 export type SyncType = "full" | "incremental";
@@ -757,6 +759,7 @@ export class CliWrapper {
                     cloud: profile.cloud,
                     authType: profile.auth_type,
                     valid: profile.valid,
+                    isDefault: profile.default === true,
                 });
             } catch (e: unknown) {
                 let msg: string;

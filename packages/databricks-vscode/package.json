@@ -62,13 +62,13 @@
         "commands": [
             {
                 "command": "databricks.lmChat.configure",
-                "title": "Configure authentication for models in Chat",
+                "title": "Configure Unity Gateway authentication",
                 "category": "Databricks",
-                "icon": "$(sign-in)"
+                "icon": "$(gear)"
             },
             {
                 "command": "databricks.lmChat.signOut",
-                "title": "Sign out of models in Chat",
+                "title": "Sign out of Unity Gateway",
                 "category": "Databricks",
                 "icon": "$(sign-out)",
                 "enablement": "databricks.context.lmChat.connected && !databricks.context.remoteMode"
@@ -866,6 +866,16 @@
             },
             {
                 "view": "configurationView",
+                "contents": "Use Unity Gateway models in Chat. [Learn more](https://docs.databricks.com/aws/en/ai-gateway/)\n[Login to access Unity Gateway](command:databricks.lmChat.configure)",
+                "when": "!databricks.context.remoteMode && !databricks.context.isBundleProject && !databricks.context.lmChat.connected"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Unity Gateway models are available in Chat.\n[Change Unity Gateway profile](command:databricks.lmChat.configure)",
+                "when": "!databricks.context.remoteMode && !databricks.context.isBundleProject && databricks.context.lmChat.connected"
+            },
+            {
+                "view": "configurationView",
                 "contents": "A Databricks project was not detected in the workspace:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.isBundleProject && !databricks.context.subProjectsAvailable"
             },
@@ -891,11 +901,6 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Use Databricks models in Copilot Chat.\n[Sign in to Databricks Chat](command:databricks.lmChat.configure)",
-                "when": "!databricks.context.remoteMode && !databricks.context.lmChat.connected"
-            },
-            {
-                "view": "configurationView",
                 "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
             },
             {
@@ -908,12 +913,12 @@
                 {
                     "command": "databricks.lmChat.configure",
                     "group": "navigation@0",
-                    "when": "view == configurationView && !databricks.context.remoteMode && !databricks.context.lmChat.connected"
+                    "when": "view == configurationView && !databricks.context.remoteMode && !databricks.context.isBundleProject"
                 },
                 {
                     "command": "databricks.lmChat.signOut",
                     "group": "navigation@0",
-                    "when": "view == configurationView && !databricks.context.remoteMode && databricks.context.lmChat.connected"
+                    "when": "view == configurationView && !databricks.context.remoteMode && !databricks.context.isBundleProject && databricks.context.lmChat.connected"
                 },
                 {
                     "command": "databricks.quickstart.open",
@@ -1159,6 +1164,21 @@
                     "command": "databricks.connection.configureLogin",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.authType.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.lmChat.configure",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.unityGatewayAuth\\.(disconnected|connected)/",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.lmChat.configure",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.unityGatewayAuth\\.(disconnected|connected)/",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.lmChat.signOut",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.unityGatewayAuth\\.connected/",
+                    "group": "navigation@3"
                 },
                 {
                     "command": "databricks.connection.attachClusterQuickPick",

@@ -330,31 +330,6 @@ export async function activate(
             });
     };
 
-    let lmChatSignInPrompted = false;
-    const promptSignInForLanguageModels = () => {
-        // Remote SSH auto-authenticates from the environment, so a sign-in
-        // prompt would be noise there.
-        if (
-            lmChatSignInPrompted ||
-            isRemoteSshMode ||
-            (workspace.workspaceFolders?.length ?? 0) > 0
-        ) {
-            return;
-        }
-        lmChatSignInPrompted = true;
-        const signIn = "Sign in";
-        void window
-            .showInformationMessage(
-                "Sign in to Databricks to use its models in Chat.",
-                signIn
-            )
-            .then((selection) => {
-                if (selection === signIn) {
-                    void commands.executeCommand("databricks.lmChat.configure");
-                }
-            });
-    };
-
     const registerLanguageModelChatProvider = (
         connection: LanguageModelChatConnection
     ) => {
@@ -367,9 +342,6 @@ export async function activate(
             languageModelChatProvider,
             languageModelChatProvider.onDidDiscoverModels(
                 notifyLanguageModelsAvailable
-            ),
-            languageModelChatProvider.onDidRequestSignIn(
-                promptSignInForLanguageModels
             )
         );
         const languageModelChatProviderRegistration =
@@ -837,7 +809,8 @@ export async function activate(
         customWhenContext,
         telemetry
     );
-    languageModelChatConnection.setProjectConnection(connectionManager);
+    // Bundle workspace and Unity Gateway authentication are configured
+    // independently. Remote mode attaches its environment-backed connection.
     const packageManagerTelemetry = new PackageManagerTelemetry(
         telemetry,
         pythonExtensionWrapper,
@@ -1522,6 +1495,7 @@ export async function activate(
         featureManager,
         workspaceFolderManager,
         aiToolsManager,
+        languageModelChatConnection,
         pythonSetupEntry
     );
     const configurationView = window.createTreeView("configurationView", {

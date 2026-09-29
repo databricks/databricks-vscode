@@ -340,41 +340,17 @@ describe(__filename, () => {
         connection.dispose();
     });
 
-    it("requests sign-in once on silent discovery while disconnected", async () => {
+    it("returns no models on silent discovery while disconnected", async () => {
         const connection = new TestConnection("DISCONNECTED");
         const provider = new DatabricksLanguageModelChatProvider(connection);
-        let signInRequests = 0;
-        provider.onDidRequestSignIn(() => signInRequests++);
 
-        const first = await provider.provideLanguageModelChatInformation(
-            {silent: true},
-            NEVER_CANCELLED_TOKEN
+        assert.deepStrictEqual(
+            await provider.provideLanguageModelChatInformation(
+                {silent: true},
+                NEVER_CANCELLED_TOKEN
+            ),
+            []
         );
-        // A second silent poll must not re-prompt.
-        const second = await provider.provideLanguageModelChatInformation(
-            {silent: true},
-            NEVER_CANCELLED_TOKEN
-        );
-
-        assert.deepStrictEqual(first, []);
-        assert.deepStrictEqual(second, []);
-        assert.strictEqual(signInRequests, 1);
-        provider.dispose();
-        connection.dispose();
-    });
-
-    it("does not request sign-in during interactive discovery", async () => {
-        const connection = new TestConnection("DISCONNECTED");
-        const provider = new DatabricksLanguageModelChatProvider(connection);
-        let signInRequests = 0;
-        provider.onDidRequestSignIn(() => signInRequests++);
-
-        await provider.provideLanguageModelChatInformation(
-            {silent: false},
-            NEVER_CANCELLED_TOKEN
-        );
-
-        assert.strictEqual(signInRequests, 0);
         provider.dispose();
         connection.dispose();
     });
@@ -2155,7 +2131,7 @@ describe(__filename, () => {
         assert.strictEqual(parts.length, 1);
         assert.strictEqual(
             (parts[0] as {value?: string}).value,
-            "This model is not supported in Databricks Chat yet. Choose another Databricks model."
+            "This model can't be used in Chat yet. Choose another Databricks model."
         );
 
         provider.dispose();

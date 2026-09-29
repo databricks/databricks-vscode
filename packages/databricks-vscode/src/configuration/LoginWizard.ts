@@ -432,7 +432,7 @@ export async function saveNewProfile(
     return await ProfileAuthProvider.from(profileName, cli, true);
 }
 
-function humaniseSdkAuthType(sdkAuthType: string) {
+export function humaniseSdkAuthType(sdkAuthType: string) {
     switch (sdkAuthType) {
         case "pat":
             return "Personal Access Token";
