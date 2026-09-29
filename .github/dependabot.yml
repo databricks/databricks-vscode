@@ -6,19 +6,19 @@ updates:
       interval: "daily"
     # The Databricks npm mirror serves a new release only ~7 days after it is
     # published; opening a PR sooner fails CI with a JFrog 403 on the missing
-    # tarball. Match that window (as the github-actions block below already does)
-    # so Dependabot only proposes mirror-available versions.
+    # tarball. Wait out that ~7-day window plus a buffer (as the github-actions
+    # block below also does) so Dependabot only proposes mirror-available versions.
     cooldown:
-      default-days: 7
+      default-days: 10
     ignore:
       - dependency-name: "@databricks/*"
   - package-ecosystem: "npm"
     directory: "/packages/databricks-vscode"
     schedule:
       interval: "daily"
-    # See the note above: hold new releases until the npm mirror has them (~7d).
+    # See the note above: hold new releases past the ~7d mirror window plus buffer.
     cooldown:
-      default-days: 7
+      default-days: 10
     ignore:
       - dependency-name: "@databricks/*"
       # ESM-only majors — blocked until the build/test tooling is migrated off
@@ -62,12 +62,13 @@ updates:
         versions: [">=7"]
     schedule:
       interval: "daily"
-    # See the note above: hold new releases until the npm mirror has them (~7d).
+    # See the note above: hold new releases past the ~7d mirror window plus buffer.
     cooldown:
-      default-days: 7
+      default-days: 10
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    # ~7d mirror window plus buffer, matching the npm blocks above.
     cooldown:
-      default-days: 7
+      default-days: 10
