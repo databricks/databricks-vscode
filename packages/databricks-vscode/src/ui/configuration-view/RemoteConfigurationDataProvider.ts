@@ -58,7 +58,8 @@ export class RemoteConfigurationDataProvider
         hostMismatchProvider: HostMismatchProvider
     ) {
         this.workspaceFolderComponent = new WorkspaceFolderComponent(
-            workspaceFolderManager
+            workspaceFolderManager,
+            "Bundle"
         );
         this.bundleTargetComponent = new BundleTargetComponent(
             configModel,

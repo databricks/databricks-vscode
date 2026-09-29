@@ -64,7 +64,7 @@ describe("RemoteConfigurationDataProvider", () => {
         return provider;
     }
 
-    it("shows the Local Folder and Target rows once a target is resolved", async () => {
+    it("shows the Bundle and Target rows once a target is resolved", async () => {
         when(mockConfigModel.target).thenReturn("dev");
         when(mockConfigModel.get("mode")).thenResolve("development" as any);
         when(mockConfigModel.get("host")).thenResolve(
@@ -74,7 +74,8 @@ describe("RemoteConfigurationDataProvider", () => {
         const roots = await make().getChildren();
         const labels = roots.map(labelOf);
 
-        expect(labels).to.include("Local Folder");
+        // Remote mode labels the folder row "Bundle" (not "Local Folder").
+        expect(labels).to.include("Bundle");
         expect(labels).to.include("Target");
     });
 
@@ -85,7 +86,7 @@ describe("RemoteConfigurationDataProvider", () => {
         const roots = await make().getChildren();
         const labels = roots.map(labelOf);
 
-        expect(labels).to.include("Local Folder");
+        expect(labels).to.include("Bundle");
         // BundleTargetComponent renders a clickable "Select a bundle target"
         // prompt so the user can pick a target for the selected folder.
         expect(labels).to.include("Select a bundle target");
@@ -100,7 +101,7 @@ describe("RemoteConfigurationDataProvider", () => {
         const roots = await make().getChildren();
         const labels = roots.map(labelOf);
 
-        expect(labels).to.include("Local Folder");
+        expect(labels).to.include("Bundle");
         expect(labels).to.not.include("Select a bundle target");
     });
 
