@@ -161,35 +161,45 @@ describe("Bundle Variables", async function () {
         );
         assert(editor);
 
-        // Write the override file through the VS Code filesystem API rather
-        // than the editor. `TextEditor.setText()` round-trips the value
-        // through the system clipboard, which fails intermittently under the
-        // headless Xvfb display used in CI ("An error occurred while
-        // copying"). Writing via `vscode.workspace.fs` avoids the clipboard
-        // and — unlike a raw Node `fs.writeFile` — is observed by the
-        // extension's FileSystemWatcher on this file, so the Bundle Variables
-        // tree refreshes just as it does on a manual editor save. See the same
-        // rationale in wsfs_explorer.e2e.ts.
+        // Edit and save through the document API, as a user saving the editor
+        // would. `TextEditor.setText()` round-trips the value through the
+        // system clipboard, which fails intermittently under the headless Xvfb
+        // display used in CI ("An error occurred while copying").
         const overrideContent = JSON.stringify(
             {varWithDefault: "new value"},
             null,
             4
         );
-        const wrote = await browser.executeWorkbench(
+        const saveResult = await browser.executeWorkbench(
             async (vscode, content) => {
-                const uri = vscode.window.activeTextEditor?.document.uri;
-                if (!uri) {
-                    return false;
+                const document = vscode.window.activeTextEditor?.document;
+                if (!document) {
+                    return "no active editor";
                 }
-                await vscode.workspace.fs.writeFile(
-                    uri,
-                    Buffer.from(content, "utf8")
+                const edit = new vscode.WorkspaceEdit();
+                edit.replace(
+                    document.uri,
+                    new vscode.Range(
+                        document.positionAt(0),
+                        document.positionAt(document.getText().length)
+                    ),
+                    content
                 );
-                return true;
+                await vscode.workspace.applyEdit(edit);
+                // save() also returns false when there is nothing to save, so
+                // report an edit that left the file unchanged separately.
+                if (!document.isDirty) {
+                    return "override content matches the file";
+                }
+                return (await document.save()) ? "saved" : "save failed";
             },
             overrideContent
         );
-        assert(wrote, "Could not resolve the vscode.bundlevars.json editor");
+        assert.strictEqual(
+            saveResult,
+            "saved",
+            "Could not save the vscode.bundlevars.json editor"
+        );
 
         const section = (await getViewSection("BUNDLE VARIABLES")) as
             | CustomTreeSection
@@ -206,21 +216,6 @@ describe("Bundle Variables", async function () {
                     });
                     return true;
                 } catch {
-                    // The tree updates off the extension's FileSystemWatcher,
-                    // which can lag the write on a slow/busy shard. Re-issue the
-                    // idempotent write to re-trigger the watcher, then let the
-                    // next poll re-check. Content is deterministic, so rewriting
-                    // is safe.
-                    await browser.executeWorkbench(async (vscode, content) => {
-                        const uri =
-                            vscode.window.activeTextEditor?.document.uri;
-                        if (uri) {
-                            await vscode.workspace.fs.writeFile(
-                                uri,
-                                Buffer.from(content, "utf8")
-                            );
-                        }
-                    }, overrideContent);
                     return false;
                 }
             },
