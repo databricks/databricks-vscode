@@ -32,9 +32,10 @@ import {Loggers} from "../../logger";
  * none of which exists in remote mode.
  *
  * BundleTargetComponent (its "Select a bundle target" prompt and the picker it
- * opens) reads the active project folder, which throws when none is open, so it
- * is suppressed until a folder is active; the no-folder state is handled by a
- * viewsWelcome entry that points at the folder picker.
+ * opens) is suppressed unless the active folder actually exposes bundle targets:
+ * with no folder there is nothing to read, and with a non-bundle folder (or a
+ * bundle that defines no targets) there is nothing to pick. Both no-target states
+ * are covered by a viewsWelcome entry that points at the folder picker.
  */
 export class RemoteConfigurationDataProvider
     implements TreeDataProvider<ConfigurationTreeItem>, Disposable
@@ -52,7 +53,7 @@ export class RemoteConfigurationDataProvider
     private readonly components: BaseComponent[];
 
     constructor(
-        configModel: ConfigModel,
+        private readonly configModel: ConfigModel,
         private readonly workspaceFolderManager: WorkspaceFolderManager,
         hostMismatchProvider: HostMismatchProvider
     ) {
@@ -73,7 +74,13 @@ export class RemoteConfigurationDataProvider
                 c.onDidChange(() => {
                     this._onDidChangeTreeData.fire();
                 })
-            )
+            ),
+            // A bundle-file change can add or remove targets without changing the
+            // resolved target (so onDidChangeTarget wouldn't fire); refresh here
+            // to re-evaluate whether the target row should show.
+            this.configModel.onDidChange(async () => {
+                this._onDidChangeTreeData.fire();
+            })
         );
     }
 
@@ -85,15 +92,14 @@ export class RemoteConfigurationDataProvider
     async getChildren(
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
+        // Resolve the gate up front: Array.prototype.filter can't await, and a
+        // returned Promise is always truthy.
+        const showBundleTarget = await this.shouldShowBundleTarget();
         const children = this.components
-            // BundleTargetComponent reads the active project folder (throws when
-            // none is open) - and its "Select a bundle target" prompt is only
-            // useful once a folder is chosen. The no-folder case is covered by
-            // the view's welcome content.
-            .filter(
-                (c) =>
-                    c !== this.bundleTargetComponent || this.hasProjectFolder()
-            )
+            // Only show BundleTargetComponent's "Select a bundle target" prompt
+            // when the folder actually exposes targets to pick; the empty state
+            // is covered by the view's welcome content.
+            .filter((c) => c !== this.bundleTargetComponent || showBundleTarget)
             .map((c) =>
                 c.getChildren(parent).catch((e) => {
                     logging.NamedLogger.getOrCreate(Loggers.Extension).error(
@@ -104,6 +110,19 @@ export class RemoteConfigurationDataProvider
                 })
             );
         return (await Promise.all(children)).flat();
+    }
+
+    private async shouldShowBundleTarget(): Promise<boolean> {
+        if (!this.hasProjectFolder()) {
+            return false;
+        }
+        try {
+            const targets = await this.configModel.targets;
+            return Object.keys(targets ?? {}).length > 0;
+        } catch {
+            // A folderless window or an unparseable bundle: nothing to pick.
+            return false;
+        }
     }
 
     private hasProjectFolder(): boolean {

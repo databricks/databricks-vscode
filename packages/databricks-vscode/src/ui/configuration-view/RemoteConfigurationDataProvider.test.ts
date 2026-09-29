@@ -32,18 +32,23 @@ describe("RemoteConfigurationDataProvider", () => {
             onDidChangeMismatch: mismatchChangeEmitter.event,
         };
 
-        // Components subscribe to these in their constructors.
+        // Components and the provider subscribe to these in their constructors.
         when(
             mockWorkspaceFolderManager.onDidChangeActiveProjectFolder
         ).thenReturn(folderChangeEmitter.event);
         when(mockConfigModel.onDidChangeTarget).thenReturn(
             targetChangeEmitter.event
         );
+        // onDidChange comes from CachedValue (async listener); a no-op stub is
+        // enough - these tests don't exercise the refresh path.
+        when(mockConfigModel.onDidChange).thenReturn(() => ({dispose() {}}));
 
-        // A folder is active so WorkspaceFolderComponent renders its row.
+        // A folder is active so WorkspaceFolderComponent renders its row, and
+        // the folder is a bundle with targets so the target row isn't gated out.
         when(mockWorkspaceFolderManager.activeProjectUri).thenReturn(
             Uri.file("/tmp/my-project")
         );
+        when(mockConfigModel.targets).thenResolve({dev: {} as any});
     });
 
     afterEach(() => {
@@ -74,6 +79,7 @@ describe("RemoteConfigurationDataProvider", () => {
     });
 
     it("offers the target picker when a folder is active but no target is resolved", async () => {
+        // A bundle with targets (from beforeEach) but none auto-resolved.
         when(mockConfigModel.target).thenReturn(undefined);
 
         const roots = await make().getChildren();
@@ -83,6 +89,19 @@ describe("RemoteConfigurationDataProvider", () => {
         // BundleTargetComponent renders a clickable "Select a bundle target"
         // prompt so the user can pick a target for the selected folder.
         expect(labels).to.include("Select a bundle target");
+    });
+
+    it("hides the target picker when the folder has no bundle targets", async () => {
+        // A non-bundle folder (or a bundle that defines no targets): there's
+        // nothing to pick, so the prompt must be suppressed.
+        when(mockConfigModel.target).thenReturn(undefined);
+        when(mockConfigModel.targets).thenResolve({});
+
+        const roots = await make().getChildren();
+        const labels = roots.map(labelOf);
+
+        expect(labels).to.include("Local Folder");
+        expect(labels).to.not.include("Select a bundle target");
     });
 
     it("suppresses the target picker when no folder is active", async () => {
