@@ -2073,9 +2073,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vscode/proxy-agent@npm:^0.28.0":
-  version: 0.28.0
-  resolution: "@vscode/proxy-agent@npm:0.28.0"
+"@vscode/proxy-agent@npm:^0.45.0":
+  version: 0.45.0
+  resolution: "@vscode/proxy-agent@npm:0.45.0"
   dependencies:
     "@tootallnate/once": ^3.0.0
     "@vscode/windows-ca-certs": ^0.3.1
@@ -2084,11 +2084,11 @@ __metadata:
     http-proxy-agent: ^7.0.0
     https-proxy-agent: ^7.0.2
     socks-proxy-agent: ^8.0.1
-    undici: ^6.20.1
+    undici: ^7.2.0
   dependenciesMeta:
     "@vscode/windows-ca-certs":
       optional: true
-  checksum: dc1124d52f9ab684a8e4c109b2e91598c069beebfe2826fb38ce6f8c7ef38e9e77843a7254dbb177d499ef9474bf7dbdf4240deb1f3ed5070b37dbd7b19031e3
+  checksum: 07c5767be646c52e052cb7bc74fb050e4416beb7b81ddce8c378dddfee585dd6cf6c5514597848becc59c85f08ebeece25190cf610b600b6527cd52e0e34b13b
   languageName: node
   linkType: hard
 
@@ -2563,6 +2563,13 @@ __metadata:
   dependencies:
     debug: 4
   checksum: f52b6872cc96fd5f622071b71ef200e01c7c4c454ee68bc9accca90c98cfb39f2810e3e9aa330435835eedc8c23f4f8a15267f67c6e245d2b33757575bdac49d
+  languageName: node
+  linkType: hard
+
+"agent-base@npm:9.0.0":
+  version: 9.0.0
+  resolution: "agent-base@npm:9.0.0"
+  checksum: eb697a9eb4841c9936623b02779b8d705b886f343fdabf8d4bbe258094c61d9eb324886035345b304325b1d9c807e96efbc2ea2d3fa58011c837ad6b982a1f50
   languageName: node
   linkType: hard
 
@@ -4067,7 +4074,7 @@ __metadata:
     "@typescript-eslint/utils": ^8.62.0
     "@vscode/debugadapter": ^1.64.0
     "@vscode/extension-telemetry": ^1.5.2
-    "@vscode/proxy-agent": ^0.28.0
+    "@vscode/proxy-agent": ^0.45.0
     "@vscode/test-electron": ^3.1.0
     "@vscode/webview-ui-toolkit": ^1.4.0
     "@wdio/cli": ^9.29.0
@@ -4086,8 +4093,8 @@ __metadata:
     fs-extra: ^11.2.0
     glob: ^13.0.6
     highlight.js: ^11.10.0
-    http-proxy-agent: ^7.0.2
-    https-proxy-agent: ^7.0.6
+    http-proxy-agent: ^9.1.0
+    https-proxy-agent: ^9.1.0
     lodash: ^4.18.1
     markdown-it: ^15.0.0
     minimatch: ^10.2.3
@@ -6228,6 +6235,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"http-proxy-agent@npm:^9.1.0":
+  version: 9.1.0
+  resolution: "http-proxy-agent@npm:9.1.0"
+  dependencies:
+    agent-base: 9.0.0
+    debug: ^4.3.4
+    proxy-agent-negotiate: 1.1.0
+  checksum: e7071053fe8d71fe819201259b716e49c26a35f2c4169217794197182b77896ff94cdf0bc092598b94f60764049450f608a0e95c1f06cd3af98e11ea8ab2c9e0
+  languageName: node
+  linkType: hard
+
 "http2-wrapper@npm:^2.1.10":
   version: 2.2.0
   resolution: "http2-wrapper@npm:2.2.0"
@@ -6255,6 +6273,17 @@ __metadata:
     agent-base: ^7.1.2
     debug: 4
   checksum: b882377a120aa0544846172e5db021fa8afbf83fea2a897d397bd2ddd8095ab268c24bc462f40a15f2a8c600bf4aa05ce52927f70038d4014e68aefecfa94e8d
+  languageName: node
+  linkType: hard
+
+"https-proxy-agent@npm:^9.1.0":
+  version: 9.1.0
+  resolution: "https-proxy-agent@npm:9.1.0"
+  dependencies:
+    agent-base: 9.0.0
+    debug: ^4.3.4
+    proxy-agent-negotiate: 1.1.0
+  checksum: f1070354ab4efa198e726a56e744119b7efc86d6eee744d2997360cc49d791b029586ab68a3e35f32e914c2df85e5c6fd92b837f5eaac5d038623fd9e969da71
   languageName: node
   linkType: hard
 
@@ -8705,6 +8734,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"proxy-agent-negotiate@npm:1.1.0":
+  version: 1.1.0
+  resolution: "proxy-agent-negotiate@npm:1.1.0"
+  peerDependencies:
+    kerberos: ^2.0.0
+  peerDependenciesMeta:
+    kerberos:
+      optional: true
+  checksum: 4554c42b8b872f37cf76c9044b7a5827bccf41ad77a1992b09bb89b84c779f5536bdd0d3312f247565e09fba8700e48a25f233e339705978242e3ca1d0dab149
+  languageName: node
+  linkType: hard
+
 "proxy-agent@npm:^6.5.0":
   version: 6.5.0
   resolution: "proxy-agent@npm:6.5.0"
@@ -10395,17 +10436,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:^6.20.1":
-  version: 6.28.1
-  resolution: "undici@npm:6.28.1"
-  checksum: 25f7398989c7f6d22b4120bb97ac2d8449e5bd30fe0c5eb9265537786a9950c35a0b363a74770729d94084784689f1304744e3e02cff32c614385d5dd4172af7
-  languageName: node
-  linkType: hard
-
 "undici@npm:^7.19.0":
   version: 7.28.0
   resolution: "undici@npm:7.28.0"
   checksum: 57c77c4ee75e166ef361ad238fcd88816fbc0d058aeadf4c0f689194bd17eb6d63ce25b89bd4f4d65a380ebbde784bf4886ec51acc9f8c826ecab01d8f63aaac
+  languageName: node
+  linkType: hard
+
+"undici@npm:^7.2.0":
+  version: 7.29.1
+  resolution: "undici@npm:7.29.1"
+  checksum: 1e78f8920a92e60f1cb1489dac1066424e5afcbd27131638389731c7ad53dbfa6c6f3a77c335f9607cce80a4ca273c38a6d7316f0041ce37a3f51364c6531296
   languageName: node
   linkType: hard
 
