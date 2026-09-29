@@ -4,7 +4,20 @@
         "outDir": "out",
         "lib": ["ES2022", "DOM"],
         "rootDir": "src",
-        "types": ["node", "mocha"]
+        "types": ["node", "mocha"],
+        // http(s)-proxy-agent v9 expose their types only through the package
+        // `exports` map, which our `moduleResolution: node10` (required by the
+        // CommonJS `out/` the test runner loads) does not read. esbuild resolves
+        // them fine at runtime; these mappings just point tsc at the shipped
+        // declarations. Drop them if we ever move to node16/bundler resolution.
+        "paths": {
+            "http-proxy-agent": [
+                "./node_modules/http-proxy-agent/dist/index.d.ts"
+            ],
+            "https-proxy-agent": [
+                "./node_modules/https-proxy-agent/dist/index.d.ts"
+            ]
+        }
     },
     "references": [{"path": "../databricks-vscode-types"}],
     "include": ["src"],
