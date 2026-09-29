@@ -6,7 +6,7 @@ import {BundleSchema} from "../types";
 import {readFile} from "fs/promises";
 import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {Loggers} from "../../logger";
-import {onError} from "../../utils/onErrorDecorator";
+import {onError, withOnErrorHandler} from "../../utils/onErrorDecorator";
 import {BundleValidateModel} from "./BundleValidateModel";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
@@ -61,7 +61,12 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
     }
 
     private async refreshOverrides() {
-        await this.bundleValidateModel.refresh();
+        // Validate fails when a required variable loses its only value (e.g. on
+        // reset). Log it and refresh the tree anyway, so it doesn't stay stale.
+        await withOnErrorHandler(() => this.bundleValidateModel.refresh(), {
+            log: true,
+            throw: false,
+        })();
         await this.stateCache.refresh();
     }
 
