@@ -60,6 +60,9 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
         );
     }
 
+    // Errors are logged, never thrown: callers such as the reset command would
+    // otherwise report them as their own failure.
+    @onError({log: true, throw: false})
     private async refreshOverrides() {
         // Validate fails when a required variable loses its only value (e.g. on
         // reset). Log it and refresh the tree anyway, so it doesn't stay stale.

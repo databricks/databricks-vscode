@@ -26,6 +26,7 @@ describe("BundleVariableModel", () => {
     let overrideFile: string;
     let variableDefinitions: Record<string, object>;
     let validateError: Error | undefined;
+    let readConfigError: Error | undefined;
     let validatedVariables: Record<string, {value: string}>;
     let validateRefreshes: number;
     let variablesChanges: number;
@@ -45,6 +46,7 @@ describe("BundleVariableModel", () => {
         );
         variableDefinitions = {foo: {default: "default"}};
         validateError = undefined;
+        readConfigError = undefined;
         validatedVariables = {};
         validateRefreshes = 0;
         variablesChanges = 0;
@@ -56,6 +58,9 @@ describe("BundleVariableModel", () => {
             onDidChangeKey: () => noopEvent,
             onDidChangeTarget: noopEvent,
             get: async (key: string) => {
+                if (readConfigError) {
+                    throw readConfigError;
+                }
                 switch (key) {
                     case "preValidateConfig":
                         return {
@@ -205,7 +210,7 @@ describe("BundleVariableModel", () => {
         await waitForOverrideFile("{}");
     });
 
-    describe("when validate fails after reset", () => {
+    describe("when refreshing fails after reset", () => {
         let windowSpy: typeof window;
 
         beforeEach(() => {
@@ -239,6 +244,21 @@ describe("BundleVariableModel", () => {
                 undefined
             );
             assert.strictEqual(validateRefreshes, 1);
+        });
+
+        it("doesn't report a failed state read as a failed delete", async () => {
+            await fs.mkdir(path.dirname(overrideFile), {recursive: true});
+            await fs.writeFile(overrideFile, JSON.stringify({foo: "override"}));
+            await variable("foo");
+            await waitForOverrideFile(
+                JSON.stringify({foo: "override"}, null, 4)
+            );
+            readConfigError = new Error("");
+
+            await model.deleteBundleVariableFile();
+
+            verify(windowSpy.showErrorMessage(anything())).never();
+            await assert.rejects(fs.access(overrideFile));
         });
     });
 });

@@ -170,11 +170,11 @@ describe("Bundle Variables", async function () {
             null,
             4
         );
-        const saved = await browser.executeWorkbench(
+        const saveResult = await browser.executeWorkbench(
             async (vscode, content) => {
                 const document = vscode.window.activeTextEditor?.document;
                 if (!document) {
-                    return false;
+                    return "no active editor";
                 }
                 const edit = new vscode.WorkspaceEdit();
                 edit.replace(
@@ -186,11 +186,20 @@ describe("Bundle Variables", async function () {
                     content
                 );
                 await vscode.workspace.applyEdit(edit);
-                return await document.save();
+                // save() also returns false when there is nothing to save, so
+                // report an edit that left the file unchanged separately.
+                if (!document.isDirty) {
+                    return "override content matches the file";
+                }
+                return (await document.save()) ? "saved" : "save failed";
             },
             overrideContent
         );
-        assert(saved, "Could not save the vscode.bundlevars.json editor");
+        assert.strictEqual(
+            saveResult,
+            "saved",
+            "Could not save the vscode.bundlevars.json editor"
+        );
 
         const section = (await getViewSection("BUNDLE VARIABLES")) as
             | CustomTreeSection
