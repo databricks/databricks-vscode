@@ -46,8 +46,23 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
             }),
             this.onDidChangeKey("variables")(async () => {
                 await this.writeFile();
+            }),
+            // Don't rely on the file watcher alone: on Linux, VS Code's recursive
+            // watcher can miss a nested folder created mid-session
+            // (parcel-bundler/watcher#97), so it never reports this file.
+            workspace.onDidSaveTextDocument(async (document) => {
+                if (
+                    document.uri.fsPath === this.bundleVariableFilePath?.fsPath
+                ) {
+                    await this.refreshOverrides();
+                }
             })
         );
+    }
+
+    private async refreshOverrides() {
+        await this.bundleValidateModel.refresh();
+        await this.stateCache.refresh();
     }
 
     public async writeFile() {
@@ -83,18 +98,9 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
 
         this.disposables.push(
             this.overrideFileWatcher,
-            this.overrideFileWatcher.onDidChange(async () => {
-                await this.bundleValidateModel.refresh();
-                await this.stateCache.refresh();
-            }),
-            this.overrideFileWatcher.onDidCreate(async () => {
-                await this.bundleValidateModel.refresh();
-                await this.stateCache.refresh();
-            }),
-            this.overrideFileWatcher.onDidDelete(async () => {
-                await this.bundleValidateModel.refresh();
-                await this.stateCache.refresh();
-            })
+            this.overrideFileWatcher.onDidChange(() => this.refreshOverrides()),
+            this.overrideFileWatcher.onDidCreate(() => this.refreshOverrides()),
+            this.overrideFileWatcher.onDidDelete(() => this.refreshOverrides())
         );
     }
 
@@ -252,5 +258,6 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
                 throw e;
             }
         }
+        await this.refreshOverrides();
     }
 }
