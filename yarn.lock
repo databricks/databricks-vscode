@@ -4105,7 +4105,7 @@ __metadata:
     http-proxy-agent: ^9.1.0
     https-proxy-agent: ^9.1.0
     lodash: ^4.18.1
-    markdown-it: ^15.0.0
+    markdown-it: ^15.0.1
     minimatch: ^10.2.3
     mocha: ^12.0.2
     nyc: ^18.0.0
@@ -7453,9 +7453,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"markdown-it@npm:^15.0.0":
-  version: 15.0.0
-  resolution: "markdown-it@npm:15.0.0"
+"markdown-it@npm:^15.0.1":
+  version: 15.0.1
+  resolution: "markdown-it@npm:15.0.1"
   dependencies:
     argparse: ^3.0.0
     entities: ^8.0.0
@@ -7465,7 +7465,7 @@ __metadata:
     uc.micro: ^3.0.0
   bin:
     markdown-it: bin/markdown-it.mjs
-  checksum: 06188821349324e3d2214bb38881749c91a349466c0a3f15234ba4d250e92c01638738ba389db986bfc8bf31ba6c9cfc086230379c56d9d82692e31023d6a269
+  checksum: e3022464cd76af63cba4647ceb9146a2fbfbb3e8ad4072aeb4c61704e496bd21549c5a78eac4954d1e53746ff9539ff2da75d02fb7bfe0526ee5873d63f40bc6
   languageName: node
   linkType: hard
 
