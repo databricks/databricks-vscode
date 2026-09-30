@@ -1809,11 +1809,13 @@
                         "items": {
                             "enum": [
                                 "views.cluster",
-                                "views.workspace"
+                                "views.workspace",
+                                "chat.unityGateway"
                             ],
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
-                                "Show workspace browser in the explorer."
+                                "Show workspace browser in the explorer.",
+                                "Use Databricks Unity Gateway models in Chat. VS Code only; ignored in Cursor."
                             ],
                             "type": "string"
                         },
