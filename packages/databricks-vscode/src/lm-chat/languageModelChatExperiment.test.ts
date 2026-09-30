@@ -7,6 +7,10 @@ import {
     isLanguageModelChatEnabled,
 } from "./languageModelChatExperiment";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const packageJson = require("../../package.json");
+const FLAG_CONTEXT_KEY = "databricks.feature.chat.unityGateway";
+
 describe(__filename, () => {
     let originalUriScheme: PropertyDescriptor | undefined;
     let configsSpy: typeof workspaceConfigs;
@@ -53,8 +57,6 @@ describe(__filename, () => {
     });
 
     it("is offered in the experiments.optInto setting", () => {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const packageJson = require("../../package.json");
         const optInto = packageJson.contributes.configuration
             .map(
                 (section: any) =>
@@ -64,5 +66,44 @@ describe(__filename, () => {
         assert.ok(
             optInto.items.enum.includes(LANGUAGE_MODEL_CHAT_EXPERIMENT_ID)
         );
+    });
+
+    it("gates every Unity Gateway command and menu entry on the flag", () => {
+        const isUnityGatewayCommand = (command: string) =>
+            command.startsWith("databricks.unityGateway.");
+        const commands = packageJson.contributes.commands.filter((entry: any) =>
+            isUnityGatewayCommand(entry.command)
+        );
+        assert.ok(commands.length > 0);
+        for (const {command, enablement} of commands) {
+            assert.ok(
+                enablement?.includes(FLAG_CONTEXT_KEY),
+                `${command} enablement`
+            );
+        }
+
+        const menuEntries = Object.entries(
+            packageJson.contributes.menus as Record<string, any[]>
+        ).flatMap(([menu, entries]) =>
+            entries
+                .filter((entry) => isUnityGatewayCommand(entry.command ?? ""))
+                .map((entry) => ({menu, ...entry}))
+        );
+        for (const {command} of commands) {
+            assert.ok(
+                menuEntries.some(
+                    (entry) =>
+                        entry.menu === "commandPalette" &&
+                        entry.command === command
+                ),
+                `${command} has no commandPalette entry`
+            );
+        }
+        for (const {menu, command, when} of menuEntries) {
+            assert.ok(
+                when?.includes(FLAG_CONTEXT_KEY),
+                `${menu} entry for ${command}`
+            );
+        }
     });
 });

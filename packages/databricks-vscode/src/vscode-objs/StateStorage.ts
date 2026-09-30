@@ -126,6 +126,12 @@ const StorageConfigurations = {
         location: "workspace",
         defaultValue: false,
     }),
+
+    // The ~/.databrickscfg profile of the Unity Gateway sign-in. Global because
+    // that sign-in is per user, separate from each project's bundle sign-in.
+    "databricks.unityGateway.profile": withType<string>()({
+        location: "global",
+    }),
 };
 
 type Keys = keyof typeof StorageConfigurations;
