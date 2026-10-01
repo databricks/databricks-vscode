@@ -141,6 +141,18 @@
                 "icon": "$(cloud-download)"
             },
             {
+                "command": "databricks.unityGateway.signIn",
+                "title": "Sign in to Unity Gateway",
+                "category": "Databricks",
+                "enablement": "databricks.feature.chat.unityGateway"
+            },
+            {
+                "command": "databricks.unityGateway.signOut",
+                "title": "Sign out of Unity Gateway",
+                "category": "Databricks",
+                "enablement": "databricks.feature.chat.unityGateway && databricks.context.unityGateway.signedIn"
+            },
+            {
                 "command": "databricks.cluster.filterByAll",
                 "title": "All",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
@@ -1486,6 +1498,14 @@
                 {
                     "command": "databricks.aitools.installAgent",
                     "when": "false"
+                },
+                {
+                    "command": "databricks.unityGateway.signIn",
+                    "when": "databricks.feature.chat.unityGateway"
+                },
+                {
+                    "command": "databricks.unityGateway.signOut",
+                    "when": "databricks.feature.chat.unityGateway && databricks.context.unityGateway.signedIn"
                 },
                 {
                     "command": "databricks.environment.setupPythonEnv",

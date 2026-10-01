@@ -51,6 +51,8 @@ import path from "node:path";
 import {existsSync} from "node:fs";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {isLanguageModelChatEnabled} from "./lm-chat/languageModelChatExperiment";
+import {UnityGatewayConnectionManager} from "./lm-chat/UnityGatewayConnectionManager";
+import {UnityGatewayCommands} from "./lm-chat/UnityGatewayCommands";
 import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
 import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
@@ -423,6 +425,50 @@ export async function activate(
         aiToolsCommands.initializeCommand()();
     }
 
+    // Unity Gateway Chat. Set up before the no-folder early return below: its
+    // sign-in is per user and needs no folder.
+    const unityGatewayConnectionManager = new UnityGatewayConnectionManager(
+        cli,
+        stateStorage
+    );
+    const unityGatewayCommands = new UnityGatewayCommands(
+        cli,
+        unityGatewayConnectionManager
+    );
+    const updateUnityGatewaySignedIn = () =>
+        customWhenContext.setUnityGatewaySignedIn(
+            unityGatewayConnectionManager.signedIn
+        );
+    // Opting out keeps the saved profile, so opting back in restores it.
+    const updateLanguageModelChat = () => {
+        const enabled = isLanguageModelChatEnabled();
+        customWhenContext.setLanguageModelChatEnabled(enabled);
+        void (enabled
+            ? unityGatewayConnectionManager.restore()
+            : unityGatewayConnectionManager.disconnect());
+    };
+    updateUnityGatewaySignedIn();
+    updateLanguageModelChat();
+    context.subscriptions.push(
+        unityGatewayConnectionManager,
+        unityGatewayConnectionManager.onDidChange(updateUnityGatewaySignedIn),
+        workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration("databricks.experiments.optInto")) {
+                updateLanguageModelChat();
+            }
+        }),
+        telemetry.registerCommand(
+            "databricks.unityGateway.signIn",
+            unityGatewayCommands.signInCommand,
+            unityGatewayCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.unityGateway.signOut",
+            unityGatewayCommands.signOutCommand,
+            unityGatewayCommands
+        )
+    );
+
     if (
         workspace.workspaceFolders === undefined ||
         workspace.workspaceFolders?.length === 0
@@ -677,9 +723,6 @@ export async function activate(
     // manage contexts for experimental features
     function updateFeatureContexts() {
         customWhenContext.updateShowClusterView();
-        customWhenContext.setLanguageModelChatEnabled(
-            isLanguageModelChatEnabled()
-        );
     }
 
     updateFeatureContexts();

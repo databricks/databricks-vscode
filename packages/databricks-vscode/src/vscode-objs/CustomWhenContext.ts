@@ -93,6 +93,14 @@ export class CustomWhenContext {
         );
     }
 
+    setUnityGatewaySignedIn(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.unityGateway.signedIn",
+            value
+        );
+    }
+
     setIsActiveFileInActiveWorkspace(value: boolean) {
         commands.executeCommand(
             "setContext",
