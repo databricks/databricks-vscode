@@ -1,3 +1,11 @@
+# Release: v2.20.0
+
+## packages/databricks-vscode-types
+
+## (2026-10-01)
+
+-   Raise the VS Code engine floor to 1.104. (#2216) ([7186e67](https://github.com/databricks/databricks-vscode/commit/7186e67)), closes [#2216](https://github.com/databricks/databricks-vscode/issues/2216) [#2206](https://github.com/databricks/databricks-vscode/issues/2206)
+
 # Release: v2.19.0
 
 ## packages/databricks-vscode-types

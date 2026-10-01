@@ -1,3 +1,18 @@
+# Release: v2.20.0
+
+## packages/databricks-vscode
+
+## (2026-10-01)
+
+-   Add unit tests for opening a project after bundle init. (#2217) ([ac90c8c](https://github.com/databricks/databricks-vscode/commit/ac90c8c)), closes [#2217](https://github.com/databricks/databricks-vscode/issues/2217) [#2216](https://github.com/databricks/databricks-vscode/issues/2216) [#2216](https://github.com/databricks/databricks-vscode/issues/2216)
+-   Raise the VS Code engine floor to 1.104. (#2216) ([7186e67](https://github.com/databricks/databricks-vscode/commit/7186e67)), closes [#2216](https://github.com/databricks/databricks-vscode/issues/2216) [#2206](https://github.com/databricks/databricks-vscode/issues/2206)
+-   Update Databricks CLI to v1.19.0 (#2229) ([575d64f](https://github.com/databricks/databricks-vscode/commit/575d64f)), closes [#2229](https://github.com/databricks/databricks-vscode/issues/2229)
+-   Upgrade http(s)-proxy-agent to v9 and @vscode/proxy-agent to 0.45 (#2218) ([c4771be](https://github.com/databricks/databricks-vscode/commit/c4771be)), closes [#2218](https://github.com/databricks/databricks-vscode/issues/2218) [#2212](https://github.com/databricks/databricks-vscode/issues/2212) [#2210](https://github.com/databricks/databricks-vscode/issues/2210) [#2211](https://github.com/databricks/databricks-vscode/issues/2211) [#2210](https://github.com/databricks/databricks-vscode/issues/2210) [#2211](https://github.com/databricks/databricks-vscode/issues/2211) [#2212](https://github.com/databricks/databricks-vscode/issues/2212)
+-   Upgrade mocha to v12 and replace ts-mocha with ts-node/register (#2221) ([04efaa7](https://github.com/databricks/databricks-vscode/commit/04efaa7)), closes [#2221](https://github.com/databricks/databricks-vscode/issues/2221) [#2203](https://github.com/databricks/databricks-vscode/issues/2203) [#2203](https://github.com/databricks/databricks-vscode/issues/2203)
+-   chore(deps): bump markdown-it from 15.0.0 to 15.0.1 (#2225) ([6c9c563](https://github.com/databricks/databricks-vscode/commit/6c9c563)), closes [#2225](https://github.com/databricks/databricks-vscode/issues/2225) [#1201](https://github.com/databricks/databricks-vscode/issues/1201) [#1180](https://github.com/databricks/databricks-vscode/issues/1180) [#1204](https://github.com/databricks/databricks-vscode/issues/1204) [#1204](https://github.com/databricks/databricks-vscode/issues/1204) [#1201](https://github.com/databricks/databricks-vscode/issues/1201)
+-   feat(lm-chat): add the chat.unityGateway experiment flag (#2224) ([013ee54](https://github.com/databricks/databricks-vscode/commit/013ee54)), closes [#2224](https://github.com/databricks/databricks-vscode/issues/2224)
+-   fix(bundle-variables): refresh on save and reset instead of relying on the file watcher (#2220) ([1fb5024](https://github.com/databricks/databricks-vscode/commit/1fb5024)), closes [#2220](https://github.com/databricks/databricks-vscode/issues/2220) [parcel-bundler/watcher#97](https://github.com/parcel-bundler/watcher/issues/97) [microsoft/vscode#142694](https://github.com/microsoft/vscode/issues/142694) [#2033](https://github.com/databricks/databricks-vscode/issues/2033) [#2042](https://github.com/databricks/databricks-vscode/issues/2042) [#2042](https://github.com/databricks/databricks-vscode/issues/2042)
+
 # Release: v2.19.0
 
 ## packages/databricks-vscode
