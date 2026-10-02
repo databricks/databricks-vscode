@@ -110,7 +110,7 @@ describe(__filename, () => {
             assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
         });
 
-        it("switches workspace without passing through CONNECTING", async () => {
+        it("switches workspace", async () => {
             await manager.signIn(profile("a"));
             states = [];
 
@@ -118,20 +118,50 @@ describe(__filename, () => {
 
             assert.equal(workspaceHost(), "https://b.cloud.databricks.com/");
             verify(mockStateStorage.set(PROFILE_KEY, "b")).once();
-            assert.deepStrictEqual(states, ["CONNECTED"]);
+            assert.deepStrictEqual(states, ["CONNECTING", "CONNECTED"]);
         });
 
-        it("keeps the current workspace when switching fails", async () => {
+        it("disconnects, keeping the saved profile, when switching fails", async () => {
             await manager.signIn(profile("a"));
             unreachableProfiles.add("b");
             states = [];
 
-            await assert.rejects(() => manager.signIn(profile("b")));
+            await assert.rejects(
+                () => manager.signIn(profile("b")),
+                /b is unreachable/
+            );
 
-            assert.equal(manager.state, "CONNECTED");
-            assert.equal(workspaceHost(), "https://a.cloud.databricks.com/");
+            assert.equal(manager.state, "DISCONNECTED");
+            assert.equal(manager.databricksWorkspace, undefined);
             verify(mockStateStorage.set(PROFILE_KEY, "b")).never();
-            assert.deepStrictEqual(states, []);
+            assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
+        });
+
+        it("saves the profile before reporting CONNECTED", async () => {
+            const savedWhen: ConnectionState[] = [];
+            when(mockStateStorage.set(PROFILE_KEY, "a")).thenCall(async () => {
+                savedWhen.push(manager.state);
+            });
+
+            await manager.signIn(profile("a"));
+
+            assert.deepStrictEqual(savedWhen, ["CONNECTING"]);
+        });
+
+        it("stays signed out, and reports it, when the profile can't be saved", async () => {
+            when(mockStateStorage.set(PROFILE_KEY, "a")).thenReject(
+                new Error("can't write")
+            );
+
+            await assert.rejects(
+                () => manager.signIn(profile("a")),
+                /can't write/
+            );
+
+            assert.equal(manager.state, "DISCONNECTED");
+            assert.equal(manager.databricksWorkspace, undefined);
+            assert.equal(manager.signedIn, false);
+            assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
         });
     });
 

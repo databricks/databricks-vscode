@@ -1,13 +1,12 @@
 import {Disposable, Event, EventEmitter} from "vscode";
-import {
-    ApiClient,
-    WorkspaceClient,
-    logging,
-} from "@databricks/sdk-experimental";
+import {ApiClient, logging} from "@databricks/sdk-experimental";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
-import type {ConnectionState} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
+import {
+    ConnectionState,
+    WorkspaceConnectionModel,
+} from "../configuration/models/WorkspaceConnectionModel";
 import {Mutex} from "../locking";
 import {Loggers} from "../logger";
 import {StateStorage} from "../vscode-objs/StateStorage";
@@ -21,13 +20,17 @@ import {StateStorage} from "../vscode-objs/StateStorage";
  */
 export class UnityGatewayConnectionManager implements Disposable {
     private readonly mutex = new Mutex();
-    private _state: ConnectionState = "DISCONNECTED";
-    private workspaceClient?: WorkspaceClient;
-    private _databricksWorkspace?: DatabricksWorkspace;
+    private readonly connection = new WorkspaceConnectionModel();
 
     private readonly _onDidChange = new EventEmitter<void>();
-    /** Fires when the state, the connected workspace or the saved profile changes. */
+    /** Fires when the state or the saved profile changes. */
     readonly onDidChange: Event<void> = this._onDidChange.event;
+
+    private readonly disposables: Disposable[] = [
+        this.connection,
+        this._onDidChange,
+        this.connection.onDidChangeState(() => this._onDidChange.fire()),
+    ];
 
     constructor(
         private readonly cli: CliWrapper,
@@ -37,15 +40,15 @@ export class UnityGatewayConnectionManager implements Disposable {
     ) {}
 
     get state(): ConnectionState {
-        return this._state;
+        return this.connection.state;
     }
 
     get databricksWorkspace(): DatabricksWorkspace | undefined {
-        return this._databricksWorkspace;
+        return this.connection.databricksWorkspace;
     }
 
     get apiClient(): ApiClient | undefined {
-        return this.workspaceClient?.apiClient;
+        return this.connection.apiClient;
     }
 
     /** Whether a profile is saved, even if restoring it failed. */
@@ -57,17 +60,18 @@ export class UnityGatewayConnectionManager implements Disposable {
     }
 
     /**
-     * Connects with an already checked sign-in and remembers its profile. On
-     * failure the previous connection, if any, is kept and the error rethrown.
+     * Connects with an already checked sign-in and remembers its profile. If
+     * opening the workspace or saving the profile fails, it disconnects, keeps
+     * any profile saved before, and rethrows.
      */
     @Mutex.synchronise("mutex")
     async signIn(authProvider: ProfileAuthProvider): Promise<void> {
-        await this.connect(authProvider);
-        await this.stateStorage.set(
-            "databricks.unityGateway.profile",
-            authProvider.profile
+        await this.connect(authProvider, () =>
+            this.stateStorage.set(
+                "databricks.unityGateway.profile",
+                authProvider.profile
+            )
         );
-        this._onDidChange.fire();
     }
 
     /**
@@ -80,7 +84,7 @@ export class UnityGatewayConnectionManager implements Disposable {
         const profile = this.stateStorage.get(
             "databricks.unityGateway.profile"
         );
-        if (this._state === "CONNECTED" || profile === undefined) {
+        if (this.state === "CONNECTED" || profile === undefined) {
             return;
         }
         try {
@@ -90,15 +94,13 @@ export class UnityGatewayConnectionManager implements Disposable {
                 `Can't restore the Unity Gateway sign-in with profile ${profile}`,
                 e
             );
-            return;
         }
-        this._onDidChange.fire();
     }
 
     /** Drops the connection but keeps the profile, so restore() can reconnect. */
     @Mutex.synchronise("mutex")
     async disconnect(): Promise<void> {
-        this.dropConnection();
+        this.connection.disconnect();
     }
 
     @Mutex.synchronise("mutex")
@@ -107,51 +109,24 @@ export class UnityGatewayConnectionManager implements Disposable {
             "databricks.unityGateway.profile",
             undefined
         );
-        this.dropConnection();
+        if (this.state === "DISCONNECTED") {
+            // Only the saved profile changed, e.g. after a failed restore.
+            this._onDidChange.fire();
+        }
+        this.connection.disconnect();
     }
 
-    /** Fires even when already disconnected, e.g. after a failed restore. */
-    private dropConnection() {
-        this.workspaceClient = undefined;
-        this._databricksWorkspace = undefined;
-        this._state = "DISCONNECTED";
-        this._onDidChange.fire();
-    }
-
-    private async connect(authProvider: ProfileAuthProvider): Promise<void> {
-        if (this._state === "DISCONNECTED") {
-            this.updateState("CONNECTING");
-        }
-        try {
-            const workspaceClient = await authProvider.getWorkspaceClient();
-            const databricksWorkspace = await DatabricksWorkspace.load(
-                workspaceClient,
-                authProvider
-            );
-            this.workspaceClient = workspaceClient;
-            this._databricksWorkspace = databricksWorkspace;
-        } catch (e) {
-            if (this._state === "CONNECTING") {
-                this.updateState("DISCONNECTED");
-            }
-            throw e;
-        }
+    private async connect(
+        authProvider: ProfileAuthProvider,
+        save?: () => Promise<void>
+    ): Promise<void> {
+        await this.connection.connect(authProvider, save);
         logging.NamedLogger.getOrCreate(Loggers.Extension).info(
             `Connected to Unity Gateway on ${authProvider.host.toString()}`
         );
-        // The caller fires the change once it has finished (e.g. saved the
-        // profile), so listeners see the final state.
-        this._state = "CONNECTED";
-    }
-
-    private updateState(state: ConnectionState) {
-        if (this._state !== state) {
-            this._state = state;
-            this._onDidChange.fire();
-        }
     }
 
     dispose() {
-        this._onDidChange.dispose();
+        this.disposables.forEach((d) => d.dispose());
     }
 }
