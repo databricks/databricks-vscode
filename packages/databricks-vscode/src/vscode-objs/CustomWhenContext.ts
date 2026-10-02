@@ -85,6 +85,14 @@ export class CustomWhenContext {
         );
     }
 
+    setLanguageModelChatEnabled(enabled: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.feature.chat.unityGateway",
+            enabled
+        );
+    }
+
     setIsActiveFileInActiveWorkspace(value: boolean) {
         commands.executeCommand(
             "setContext",

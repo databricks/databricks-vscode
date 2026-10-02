@@ -51,6 +51,7 @@ import {StateStorage} from "./vscode-objs/StateStorage";
 import path from "node:path";
 import {existsSync} from "node:fs";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
+import {isLanguageModelChatEnabled} from "./lm-chat/languageModelChatExperiment";
 import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
 import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
@@ -940,6 +941,9 @@ export async function activate(
     // manage contexts for experimental features
     function updateFeatureContexts() {
         customWhenContext.updateShowClusterView();
+        customWhenContext.setLanguageModelChatEnabled(
+            isLanguageModelChatEnabled()
+        );
     }
 
     updateFeatureContexts();
