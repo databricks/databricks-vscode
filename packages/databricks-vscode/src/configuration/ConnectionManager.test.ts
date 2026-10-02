@@ -311,6 +311,19 @@ describe(__filename, () => {
             assert.deepStrictEqual(states, ["CONNECTING", "CONNECTED"]);
         });
 
+        it("disconnects when a setup step fails", async () => {
+            when(mockConfigModel.set("authProfile", anything())).thenReject(
+                new Error("can't write")
+            );
+
+            await autoSignIn("init");
+
+            assert.equal(cm.state, "DISCONNECTED");
+            assert.equal(cm.workspaceClient, undefined);
+            assert.equal(loggedIn, false);
+            assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
+        });
+
         it("switches workspace on a manual sign-in while connected", async () => {
             await autoSignIn("init");
             states = [];
@@ -322,9 +335,7 @@ describe(__filename, () => {
             assert.deepStrictEqual(states, ["CONNECTING", "CONNECTED"]);
         });
 
-        // Current behaviour, kept as is here: a failed sign-in is left in
-        // CONNECTING with the previous workspace.
-        it("stays CONNECTING when a manual sign-in fails", async () => {
+        it("disconnects when a manual sign-in fails", async () => {
             await autoSignIn("init");
             states = [];
             unreachable.add("b");
@@ -332,10 +343,10 @@ describe(__filename, () => {
 
             await cm.configureLogin("command");
 
-            assert.equal(cm.state, "CONNECTING");
-            assert.equal(host(), "https://a.cloud.databricks.com/");
+            assert.equal(cm.state, "DISCONNECTED");
+            assert.equal(cm.workspaceClient, undefined);
             assert.equal(loggedIn, false);
-            assert.deepStrictEqual(states, ["CONNECTING"]);
+            assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
         });
 
         it("disconnects and forgets the auth on logout", async () => {

@@ -17,6 +17,10 @@ import {
 import {LoginWizard, getProfilesForHost} from "./LoginWizard";
 import {ClusterManager} from "../cluster/ClusterManager";
 import {DatabricksWorkspace} from "./DatabricksWorkspace";
+import {
+    ConnectionState,
+    WorkspaceConnectionModel,
+} from "./models/WorkspaceConnectionModel";
 import {CustomWhenContext} from "../vscode-objs/CustomWhenContext";
 import {ConfigModel} from "./models/ConfigModel";
 import {onError, withOnErrorHandler} from "../utils/onErrorDecorator";
@@ -37,7 +41,7 @@ import {isSupportedVersion} from "../python-setup/utils/serverlessVersionScoring
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
-export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
+export type {ConnectionState};
 
 /**
  * The ConnectionManager maintains the connection state to Databricks
@@ -47,22 +51,18 @@ export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
  */
 export class ConnectionManager implements Disposable {
     private disposables: Disposable[] = [];
-    private _state: ConnectionState = "DISCONNECTED";
+    private readonly connection = new WorkspaceConnectionModel();
     private _connectionError?: string;
     private loginLogoutMutex: Mutex = new Mutex();
     private savedAuthMutex: Mutex = new Mutex();
     private configureLoginMutex: Mutex = new Mutex();
 
-    private _workspaceClient?: WorkspaceClient;
     private _syncDestinationMapper?: SyncDestinationMapper;
     private _clusterManager?: ClusterManager;
-    private _databricksWorkspace?: DatabricksWorkspace;
     private _metadataService: MetadataService;
     private _serverlessEnabled: boolean = false;
     private _serverlessVersion: string | undefined;
 
-    private readonly onDidChangeStateEmitter: EventEmitter<ConnectionState> =
-        new EventEmitter();
     private readonly onDidChangeClusterEmitter: EventEmitter<
         Cluster | undefined
     > = new EventEmitter();
@@ -70,7 +70,7 @@ export class ConnectionManager implements Disposable {
         SyncDestinationMapper | undefined
     > = new EventEmitter();
 
-    public readonly onDidChangeState = this.onDidChangeStateEmitter.event;
+    public readonly onDidChangeState = this.connection.onDidChangeState;
     public readonly onDidChangeCluster = this.onDidChangeClusterEmitter.event;
     public readonly onDidChangeSyncDestination =
         this.onDidChangeSyncDestinationEmitter.event;
@@ -104,6 +104,12 @@ export class ConnectionManager implements Disposable {
         this._metadataService = new MetadataService(
             undefined,
             NamedLogger.getOrCreate("Extension")
+        );
+        this.disposables.push(
+            this.connection,
+            this.connection.onDidChangeState((state) =>
+                this.customWhenContext.setLoggedIn(state === "CONNECTED")
+            )
         );
     }
 
@@ -255,7 +261,7 @@ export class ConnectionManager implements Disposable {
     }
 
     get state(): ConnectionState {
-        return this._state;
+        return this.connection.state;
     }
 
     /**
@@ -291,7 +297,7 @@ export class ConnectionManager implements Disposable {
     }
 
     get databricksWorkspace(): DatabricksWorkspace | undefined {
-        return this._databricksWorkspace;
+        return this.connection.databricksWorkspace;
     }
 
     /**
@@ -300,11 +306,11 @@ export class ConnectionManager implements Disposable {
      * make sure to listen to the onChangeCluster event and update as appropriate.
      */
     get workspaceClient(): WorkspaceClient | undefined {
-        return this._workspaceClient;
+        return this.connection.workspaceClient;
     }
 
     get apiClient(): ApiClient | undefined {
-        return this._workspaceClient?.apiClient;
+        return this.connection.apiClient;
     }
 
     get authType(): SdkAuthType | undefined {
@@ -343,9 +349,8 @@ export class ConnectionManager implements Disposable {
             // Clear any previously-connected client before re-authenticating so
             // a concurrent getChildren() (which only checks workspaceClient)
             // can't briefly use a stale client during a reconnect.
-            this._workspaceClient = undefined;
-            this._databricksWorkspace = undefined;
-            this.updateState("CONNECTING");
+            this.connection.disconnect();
+            this.beginConnecting();
             try {
                 // The authProvider is only injected by tests; in production it
                 // is resolved solely from the ambient environment. We use an
@@ -374,18 +379,11 @@ export class ConnectionManager implements Disposable {
                         this.cli
                     );
                 }
-                this._workspaceClient = await authProvider.getWorkspaceClient();
-                this._databricksWorkspace = await DatabricksWorkspace.load(
-                    this._workspaceClient,
-                    authProvider
-                );
-                this.updateState("CONNECTED");
+                await this.connection.connect(authProvider);
             } catch (e) {
-                this._workspaceClient = undefined;
-                this._databricksWorkspace = undefined;
                 this._connectionError =
                     e instanceof Error ? e.message : String(e);
-                this.updateState("DISCONNECTED");
+                this.connection.disconnect();
                 throw e;
             }
         });
@@ -428,7 +426,7 @@ export class ConnectionManager implements Disposable {
     @onError({popup: {prefix: "Failed to login."}})
     @Mutex.synchronise("loginLogoutMutex")
     private async resolveAuth() {
-        this.updateState("CONNECTING");
+        this.beginConnecting();
         const host = await this.configModel.get("host");
         const target = this.configModel.target;
         if (host === undefined || target === undefined) {
@@ -503,35 +501,35 @@ export class ConnectionManager implements Disposable {
 
     @Mutex.synchronise("loginLogoutMutex")
     private async _connect(authProvider: AuthProvider) {
-        this.updateState("CONNECTING");
-        this._workspaceClient = await authProvider.getWorkspaceClient();
-        this._databricksWorkspace = await DatabricksWorkspace.load(
-            this._workspaceClient,
-            authProvider
-        );
-        await this.configModel.set(
-            "authProfile",
-            authProvider.toJSON().profile as string | undefined
-        );
+        let authProviderError: unknown;
+        await this.connection.connect(authProvider, async () => {
+            await this.configModel.set(
+                "authProfile",
+                authProvider.toJSON().profile as string | undefined
+            );
 
-        await this.updateSyncDestinationMapper();
-        await this.updateClusterManager();
-        await this.updateServerless();
-        await this._metadataService.setApiClient(this.apiClient);
-        try {
-            await this.configModel.setAuthProvider(authProvider);
-        } finally {
-            this.updateState("CONNECTED");
+            await this.updateSyncDestinationMapper();
+            await this.updateClusterManager();
+            await this.updateServerless();
+            await this._metadataService.setApiClient(this.apiClient);
+            // Runs bundle validate, which fails on a broken databricks.yml.
+            // Report that, but stay connected.
+            try {
+                await this.configModel.setAuthProvider(authProvider);
+            } catch (e) {
+                authProviderError = e;
+            }
+        });
+        if (authProviderError) {
+            throw authProviderError;
         }
     }
 
     @Mutex.synchronise("loginLogoutMutex")
     private async disconnect() {
-        this._workspaceClient = undefined;
-        this._databricksWorkspace = undefined;
+        this.connection.disconnect();
         await this.updateClusterManager();
         await this.updateSyncDestinationMapper();
-        this.updateState("DISCONNECTED");
     }
 
     @onError({popup: {prefix: "Can't logout."}})
@@ -656,17 +654,13 @@ export class ConnectionManager implements Disposable {
         await this.configModel.set("remoteRootPath", undefined);
     }
 
-    private updateState(newState: ConnectionState) {
+    private beginConnecting() {
         if (!this.loginLogoutMutex.locked) {
             throw new Error(
-                "updateState must be called after aquireing the state mutex"
+                "beginConnecting must be called after acquiring the state mutex"
             );
         }
-        if (this._state !== newState) {
-            this._state = newState;
-            this.onDidChangeStateEmitter.fire(this._state);
-        }
-        this.customWhenContext.setLoggedIn(this._state === "CONNECTED");
+        this.connection.beginConnecting();
     }
 
     async startCluster() {
@@ -687,7 +681,7 @@ export class ConnectionManager implements Disposable {
     }
 
     async waitForConnect(): Promise<void> {
-        if (this._state !== "CONNECTED") {
+        if (this.state !== "CONNECTED") {
             return await new Promise((resolve) => {
                 const changeListener = this.onDidChangeState((e) => {
                     if (e === "CONNECTED") {
