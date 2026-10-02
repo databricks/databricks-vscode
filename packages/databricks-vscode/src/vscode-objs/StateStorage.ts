@@ -126,6 +126,16 @@ const StorageConfigurations = {
         location: "workspace",
         defaultValue: false,
     }),
+
+    // Environment→target host pairs (`${envHost}->${targetHost}`) the user has
+    // silenced via "Don't warn for this target" on the Remote SSH mode
+    // host-mismatch warning. Only the specific pairing is silenced, so a
+    // genuinely new mismatch still warns; scoped to the workspace, mirroring the
+    // workspace-scoped bundle target selection (see RemoteTargetHostManager).
+    "databricks.bundle.remote.hideHostMismatchWarning": withType<string[]>()({
+        location: "workspace",
+        defaultValue: [],
+    }),
 };
 
 type Keys = keyof typeof StorageConfigurations;

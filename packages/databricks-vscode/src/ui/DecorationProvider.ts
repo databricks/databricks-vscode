@@ -20,18 +20,25 @@ export class TreeItemDecorationProvider implements FileDecorationProvider {
         this.onDidChangeFileDecorationsEmitter.event;
     constructor(
         private readonly bundleResourceExplorerTreeDataProvider: BundleResourceExplorerTreeDataProvider,
-        private readonly configrationViewTreeDataProvider: ConfigurationDataProvider
+        // Absent in remote mode, where the Configuration view isn't registered.
+        private readonly configrationViewTreeDataProvider?: ConfigurationDataProvider
     ) {
         this.disposables.push(
             this.bundleResourceExplorerTreeDataProvider.onDidChangeTreeData(
                 () => {
                     this.onDidChangeFileDecorationsEmitter.fire(undefined);
                 }
-            ),
-            this.configrationViewTreeDataProvider.onDidChangeTreeData(() => {
-                this.onDidChangeFileDecorationsEmitter.fire(undefined);
-            })
+            )
         );
+        if (this.configrationViewTreeDataProvider) {
+            this.disposables.push(
+                this.configrationViewTreeDataProvider.onDidChangeTreeData(
+                    () => {
+                        this.onDidChangeFileDecorationsEmitter.fire(undefined);
+                    }
+                )
+            );
+        }
     }
 
     provideFileDecoration(uri: Uri): ProviderResult<FileDecoration> {

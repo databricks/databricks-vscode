@@ -5,7 +5,10 @@ import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
 export class WorkspaceFolderComponent extends BaseComponent {
     constructor(
-        private readonly workspaceFolderManager: WorkspaceFolderManager
+        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        // The row's label. Defaults to "Local Folder" (normal mode); remote mode
+        // passes "Bundle" since the folder there is the bundle root.
+        private readonly label: string = "Local Folder"
     ) {
         super();
         this.disposables.push(
@@ -25,7 +28,7 @@ export class WorkspaceFolderComponent extends BaseComponent {
 
         return [
             {
-                label: "Local Folder",
+                label: this.label,
                 iconPath: new ThemeIcon("folder"),
                 description: workspace.asRelativePath(activeWorkspaceFolder),
                 contextValue: "databricks.configuration.activeProjectFolder",
