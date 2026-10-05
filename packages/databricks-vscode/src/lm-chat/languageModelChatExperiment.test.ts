@@ -11,6 +11,30 @@ import {
 const packageJson = require("../../package.json");
 const FLAG_CONTEXT_KEY = "databricks.feature.chat.unityGateway";
 
+/**
+ * The terms a when-clause ANDs together at the top level, or undefined if it
+ * has a top-level `||`.
+ */
+function topLevelTerms(when: string): string[] | undefined {
+    const terms: string[] = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i < when.length; i++) {
+        if (when[i] === "(") {
+            depth++;
+        } else if (when[i] === ")") {
+            depth--;
+        } else if (depth === 0 && when.startsWith("||", i)) {
+            return undefined;
+        } else if (depth === 0 && when.startsWith("&&", i)) {
+            terms.push(when.slice(start, i).trim());
+            start = i + 2;
+        }
+    }
+    terms.push(when.slice(start).trim());
+    return terms;
+}
+
 describe(__filename, () => {
     let originalUriScheme: PropertyDescriptor | undefined;
     let originalEnv: NodeJS.ProcessEnv;
@@ -121,5 +145,53 @@ describe(__filename, () => {
                 `${menu} entry for ${command}`
             );
         }
+    });
+
+    it("gates each Unity Gateway welcome entry on the flag, a non-bundle window and one connection state", () => {
+        // The tree's Gateway Connection row covers bundle projects.
+        const outsideBundleProject =
+            "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject))";
+        const stateKey = "databricks.context.unityGateway.state";
+        const savedKey = "databricks.context.unityGateway.hasSavedProfile";
+        const entries = packageJson.contributes.viewsWelcome.filter(
+            (entry: any) => entry.contents.includes("Unity Gateway")
+        );
+
+        assert.deepStrictEqual(
+            entries.map(({contents, when}: any) => {
+                // ANDed in at the top level, so the entry shows only with the
+                // experiment on.
+                const terms = topLevelTerms(when) ?? [];
+                assert.ok(terms.includes(FLAG_CONTEXT_KEY), when);
+                assert.ok(terms.includes(outsideBundleProject), when);
+                return [
+                    contents.split(/[.\n]/)[0],
+                    terms.find((term) => term.startsWith(`${stateKey} == `)),
+                    terms.find((term) => term.endsWith(savedKey)),
+                ];
+            }),
+            [
+                [
+                    "Use Unity Gateway models in VS Code Chat",
+                    `${stateKey} == DISCONNECTED`,
+                    `!${savedKey}`,
+                ],
+                [
+                    "Unity Gateway isn't connected",
+                    `${stateKey} == DISCONNECTED`,
+                    savedKey,
+                ],
+                [
+                    "Connecting to Unity Gateway",
+                    `${stateKey} == CONNECTING`,
+                    undefined,
+                ],
+                [
+                    "Signed in to Unity Gateway",
+                    `${stateKey} == CONNECTED`,
+                    undefined,
+                ],
+            ]
+        );
     });
 });

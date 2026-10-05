@@ -144,6 +144,7 @@
                 "command": "databricks.unityGateway.signIn",
                 "title": "Sign in to Unity Gateway",
                 "category": "Databricks",
+                "icon": "$(gear)",
                 "enablement": "databricks.feature.chat.unityGateway"
             },
             {
@@ -520,6 +521,12 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.configuration.copyProfile",
+                "title": "Copy Profile",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.configuration.copyMode",
                 "title": "Copy Mode",
                 "enablement": "databricks.context.activated",
@@ -882,6 +889,26 @@
             },
             {
                 "view": "configurationView",
+                "contents": "Use Unity Gateway models in VS Code Chat. [Learn more](https://docs.databricks.com/aws/en/ai-gateway/)\n[Sign in to Unity Gateway](command:databricks.unityGateway.signIn)",
+                "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == DISCONNECTED && !databricks.context.unityGateway.hasSavedProfile"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Unity Gateway isn't connected. [Sign out](command:databricks.unityGateway.signOut)\n[Sign in to Unity Gateway](command:databricks.unityGateway.signIn)",
+                "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == DISCONNECTED && databricks.context.unityGateway.hasSavedProfile"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Connecting to Unity Gateway...",
+                "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == CONNECTING"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Signed in to Unity Gateway. [Sign out](command:databricks.unityGateway.signOut)\n[Change Unity Gateway workspace](command:databricks.unityGateway.signIn)",
+                "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == CONNECTED"
+            },
+            {
+                "view": "configurationView",
                 "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
             },
             {
@@ -1137,6 +1164,21 @@
                     "group": "navigation@2"
                 },
                 {
+                    "command": "databricks.unityGateway.signIn",
+                    "when": "view == configurationView && viewItem =~ /^databricks\\.configuration\\.unityGateway\\./ && databricks.feature.chat.unityGateway",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.unityGateway.signIn",
+                    "when": "view == configurationView && viewItem =~ /^databricks\\.configuration\\.unityGateway\\./ && databricks.feature.chat.unityGateway",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.unityGateway.signOut",
+                    "when": "view == configurationView && viewItem =~ /^databricks\\.configuration\\.unityGateway\\./ && databricks.feature.chat.unityGateway && databricks.context.unityGateway.hasSavedProfile",
+                    "group": "navigation@3"
+                },
+                {
                     "command": "databricks.connection.attachClusterQuickPick",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "inline@2"
@@ -1254,6 +1296,11 @@
                 {
                     "command": "databricks.configuration.copyHost",
                     "when": "view == configurationView && viewItem =~ /\\.copy=host$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyProfile",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=profile$/",
                     "group": "navigation_2@0"
                 },
                 {
@@ -1425,6 +1472,10 @@
                 },
                 {
                     "command": "databricks.configuration.copyHost",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyProfile",
                     "when": "false"
                 },
                 {

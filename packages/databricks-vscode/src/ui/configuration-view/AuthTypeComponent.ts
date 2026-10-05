@@ -1,11 +1,15 @@
+import {ThemeIcon, ThemeColor} from "vscode";
+import type {Event} from "vscode";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
-import {ThemeIcon, ThemeColor} from "vscode";
 import {getProfilesForHost} from "../../configuration/LoginWizard";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {LabelUtils} from "../utils";
+import {isLanguageModelChatEnabled} from "../../lm-chat/languageModelChatExperiment";
+import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
+import {connectedRow, profileRows} from "./connectionRows";
 
 export const AUTH_TYPE_SWITCH_ID = "AUTH-TYPE";
 export const AUTH_TYPE_LOGIN_ID = "LOGIN";
@@ -18,7 +22,11 @@ export class AuthTypeComponent extends BaseComponent {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly configModel: ConfigModel,
-        private readonly cli: CliWrapper
+        private readonly cli: CliWrapper,
+        // With Unity Gateway Chat on, the row matches the Gateway Connection
+        // row next to it.
+        private readonly isUnityGatewayEnabled = isLanguageModelChatEnabled,
+        onDidChangeUnityGatewayEnabled: Event<void> = workspaceConfigs.onDidChangeExperimentsOptInto
     ) {
         super();
         this.disposables.push(
@@ -26,6 +34,9 @@ export class AuthTypeComponent extends BaseComponent {
                 this.onDidChangeEmitter.fire();
             }),
             this.configModel.onDidChangeTarget(() => {
+                this.onDidChangeEmitter.fire();
+            }),
+            onDidChangeUnityGatewayEnabled(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
@@ -86,6 +97,17 @@ export class AuthTypeComponent extends BaseComponent {
             return [];
         }
 
+        const contextValue = getContextValue(authProvider.authType);
+        if (this.isUnityGatewayEnabled()) {
+            return [
+                connectedRow(
+                    "Bundle Connection",
+                    AUTH_TYPE_SWITCH_ID,
+                    authProvider,
+                    contextValue
+                ),
+            ];
+        }
         return [
             {
                 label: "Auth Type",
@@ -94,11 +116,12 @@ export class AuthTypeComponent extends BaseComponent {
                     new ThemeColor("debugIcon.startForeground")
                 ),
                 description: authProvider.describe(),
-                contextValue: getContextValue(authProvider.authType),
+                contextValue,
                 id: AUTH_TYPE_SWITCH_ID,
             },
         ];
     }
+
     public async getChildren(
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
@@ -106,6 +129,15 @@ export class AuthTypeComponent extends BaseComponent {
             return this.getRoot();
         }
 
-        return [];
+        if (
+            parent.id !== AUTH_TYPE_SWITCH_ID ||
+            !this.isUnityGatewayEnabled()
+        ) {
+            return [];
+        }
+        return profileRows(
+            AUTH_TYPE_SWITCH_ID,
+            this.connectionManager.databricksWorkspace?.authProvider
+        );
     }
 }
