@@ -3,31 +3,38 @@
 import assert from "assert";
 import http from "node:http";
 import {
+    CancellationError,
     CancellationTokenSource,
     Disposable,
     EventEmitter,
     LanguageModelChatMessage,
     LanguageModelChatMessageRole,
+    LanguageModelChatToolMode,
     LanguageModelDataPart,
+    LanguageModelError,
     LanguageModelPromptTsxPart,
     LanguageModelTextPart,
     LanguageModelToolCallPart,
     LanguageModelToolResultPart,
 } from "vscode";
 import type {
+    CancellationToken,
     LanguageModelChatInformation,
     LanguageModelChatProvider,
+    LanguageModelChatRequestMessage,
+    LanguageModelResponsePart,
 } from "vscode";
 import {ApiClient, Config, logging} from "@databricks/sdk-experimental";
 import {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
-import type {HttpResponse} from "@databricks/sdk-core/http";
-import {instance, mock, when} from "ts-mockito";
+import type {HttpRequest, HttpResponse} from "@databricks/sdk-core/http";
+import {anything, instance, mock, when} from "ts-mockito";
 import {v2ClientOptions} from "../configuration/sdkV2Bridge";
 import {
     UnityGatewayChatProvider,
     registerUnityGatewayChatProvider,
 } from "./UnityGatewayChatProvider";
 import {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
+import {UnityGatewayResponsesClient} from "./UnityGatewayResponsesClient";
 
 describe(__filename, () => {
     let mockConnectionManager: UnityGatewayConnectionManager;
@@ -82,6 +89,45 @@ describe(__filename, () => {
         });
     }
 
+    let chatRequests: HttpRequest[];
+    let respondToChat: (request: HttpRequest) => Promise<HttpResponse>;
+
+    function newResponsesClient(
+        config: Config = instance(mock(Config))
+    ): UnityGatewayResponsesClient {
+        return new UnityGatewayResponsesClient({
+            ...v2ClientOptions(
+                new ApiClient(config),
+                new URL("https://ws.cloud.databricks.com"),
+                new http.Agent()
+            ),
+            httpClient: {
+                send: async (request) => {
+                    chatRequests.push(request);
+                    return respondToChat(request);
+                },
+            },
+        });
+    }
+
+    function sseResponse(...events: unknown[]): HttpResponse {
+        return {
+            statusCode: 200,
+            headers: new Headers({"content-type": "text/event-stream"}),
+            body: new Response(
+                events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join("")
+            ).body,
+        };
+    }
+
+    function htmlResponse(statusCode: number): HttpResponse {
+        return {
+            statusCode,
+            headers: new Headers({"content-type": "text/html"}),
+            body: new Response("<html>Bad Gateway</html>").body,
+        };
+    }
+
     beforeEach(() => {
         mockConnectionManager = mock(UnityGatewayConnectionManager);
         onDidChangeConnection = new EventEmitter();
@@ -89,6 +135,13 @@ describe(__filename, () => {
             onDidChangeConnection.event
         );
         when(mockConnectionManager.aiGatewayClient).thenReturn(undefined);
+        when(mockConnectionManager.responsesClient).thenReturn(undefined);
+        chatRequests = [];
+        respondToChat = async () =>
+            sseResponse(
+                {type: "response.output_text.delta", delta: "Hello"},
+                {type: "response.completed", response: {}}
+            );
         requestCount = 0;
         statusCode = 200;
         responseGate = Promise.resolve();
@@ -272,11 +325,316 @@ describe(__filename, () => {
             assert.equal(relists, 1);
         });
 
-        it("can't chat yet", async () => {
-            await assert.rejects(
-                () => provider.provideLanguageModelChatResponse(),
-                /isn't available yet/
-            );
+        describe("chat", () => {
+            const model: LanguageModelChatInformation = {
+                id: "system.ai.gpt-5",
+                name: "gpt-5",
+                family: "gpt-5",
+                version: "1",
+                maxInputTokens: 128_000,
+                maxOutputTokens: 4_096,
+                capabilities: {toolCalling: true},
+            };
+
+            /** Chats and returns the reported parts. */
+            async function chat(
+                messages: LanguageModelChatRequestMessage[] = [
+                    LanguageModelChatMessage.User("Hi"),
+                ],
+                token: CancellationToken = new CancellationTokenSource().token,
+                onPart?: () => void
+            ): Promise<LanguageModelResponsePart[]> {
+                const parts: LanguageModelResponsePart[] = [];
+                await provider.provideLanguageModelChatResponse(
+                    model,
+                    messages,
+                    {
+                        tools: [{name: "read_file", description: "Reads."}],
+                        toolMode: LanguageModelChatToolMode.Auto,
+                    },
+                    {
+                        report: (part) => {
+                            parts.push(part);
+                            onPart?.();
+                        },
+                    },
+                    token
+                );
+                return parts;
+            }
+
+            function sentBody(index = 0) {
+                return JSON.parse(chatRequests[index].body as string);
+            }
+
+            function isError(code: string, message: RegExp) {
+                return (e: unknown) =>
+                    e instanceof LanguageModelError &&
+                    e.code === code &&
+                    message.test(e.message);
+            }
+
+            beforeEach(() => {
+                when(mockConnectionManager.responsesClient).thenReturn(
+                    newResponsesClient()
+                );
+            });
+
+            it("streams the reply's text and tool calls", async () => {
+                respondToChat = async () =>
+                    sseResponse(
+                        {type: "response.output_text.delta", delta: "Hel"},
+                        {type: "response.output_text.delta", delta: "lo"},
+                        {
+                            type: "response.output_item.done",
+                            item: {
+                                type: "function_call",
+                                call_id: "call-1",
+                                name: "read_file",
+                                arguments: '{"path":"a.txt"}',
+                            },
+                        },
+                        {type: "response.completed", response: {}}
+                    );
+
+                assert.deepStrictEqual(await chat(), [
+                    new LanguageModelTextPart("Hel"),
+                    new LanguageModelTextPart("lo"),
+                    new LanguageModelToolCallPart("call-1", "read_file", {
+                        path: "a.txt",
+                    }),
+                ]);
+            });
+
+            it("sends the whole conversation and the tools each turn", async () => {
+                await chat();
+                await chat([
+                    LanguageModelChatMessage.User("Hi"),
+                    LanguageModelChatMessage.Assistant([
+                        new LanguageModelToolCallPart(
+                            "call-1",
+                            "read_file",
+                            {}
+                        ),
+                    ]),
+                    LanguageModelChatMessage.User([
+                        new LanguageModelToolResultPart("call-1", [
+                            new LanguageModelTextPart("contents"),
+                        ]),
+                    ]),
+                ]);
+
+                assert.equal(sentBody(0).model, "system.ai.gpt-5");
+                assert.equal(sentBody(0).input.length, 1);
+                assert.deepStrictEqual(
+                    sentBody(1).input.map(
+                        (item: {type?: string; role?: string}) =>
+                            item.type ?? item.role
+                    ),
+                    ["user", "function_call", "function_call_output"]
+                );
+                assert.equal(sentBody(1).tools[0].name, "read_file");
+            });
+
+            it("asks to sign in when signed out", async () => {
+                when(mockConnectionManager.responsesClient).thenReturn(
+                    undefined
+                );
+
+                await assert.rejects(
+                    chat(),
+                    isError(
+                        LanguageModelError.NoPermissions().code,
+                        /Sign in to Unity Gateway/
+                    )
+                );
+                assert.equal(chatRequests.length, 0);
+            });
+
+            it("ends the turn with the gateway's reason when it refuses", async () => {
+                const refused =
+                    (statusCode: number, message: string) =>
+                    async (): Promise<HttpResponse> => ({
+                        statusCode,
+                        headers: new Headers({
+                            "content-type": "application/json",
+                        }),
+                        body: new Response(
+                            JSON.stringify({error_code: "ERROR", message})
+                        ).body,
+                    });
+                const cases: [
+                    HttpResponse | (() => Promise<HttpResponse>),
+                    (e: unknown) => boolean,
+                ][] = [
+                    [
+                        refused(401, "Invalid token"),
+                        isError(
+                            LanguageModelError.NoPermissions().code,
+                            /^Unity Gateway returned HTTP 401: Invalid token$/
+                        ),
+                    ],
+                    [
+                        refused(403, "No access"),
+                        isError(
+                            LanguageModelError.NoPermissions().code,
+                            /HTTP 403: No access/
+                        ),
+                    ],
+                    [
+                        refused(404, "No such model"),
+                        isError(
+                            LanguageModelError.NotFound().code,
+                            /HTTP 404: No such model/
+                        ),
+                    ],
+                    [
+                        refused(429, "Slow down"),
+                        isError(
+                            LanguageModelError.Blocked().code,
+                            /HTTP 429: Slow down/
+                        ),
+                    ],
+                    [
+                        refused(
+                            400,
+                            JSON.stringify({
+                                error: {
+                                    message: "Unknown name exclusiveMinimum",
+                                },
+                            })
+                        ),
+                        (e) =>
+                            !(e instanceof LanguageModelError) &&
+                            e instanceof Error &&
+                            e.message ===
+                                "Unity Gateway returned HTTP 400: Unknown name exclusiveMinimum",
+                    ],
+                    [
+                        refused(400, "x".repeat(1000)),
+                        (e) =>
+                            e instanceof Error &&
+                            e.message.endsWith("x".repeat(300) + "…") &&
+                            !e.message.includes("x".repeat(301)),
+                    ],
+                    [
+                        htmlResponse(502),
+                        (e) =>
+                            e instanceof Error &&
+                            e.message === "Unity Gateway returned HTTP 502",
+                    ],
+                ];
+                for (const [response, check] of cases) {
+                    respondToChat =
+                        typeof response === "function"
+                            ? response
+                            : async () => response;
+
+                    await assert.rejects(chat(), check);
+                }
+            });
+
+            it("ends the turn when the reply fails partway", async () => {
+                respondToChat = async () =>
+                    sseResponse(
+                        {type: "response.output_text.delta", delta: "Hel"},
+                        {
+                            type: "response.failed",
+                            response: {error: {message: "backend exploded"}},
+                        }
+                    );
+                const parts: LanguageModelResponsePart[] = [];
+
+                await assert.rejects(
+                    provider.provideLanguageModelChatResponse(
+                        model,
+                        [LanguageModelChatMessage.User("Hi")],
+                        {toolMode: LanguageModelChatToolMode.Auto},
+                        {report: (part) => parts.push(part)},
+                        new CancellationTokenSource().token
+                    ),
+                    /backend exploded/
+                );
+                assert.deepStrictEqual(parts, [
+                    new LanguageModelTextPart("Hel"),
+                ]);
+            });
+
+            it("shows a failure from outside the gateway whole", async () => {
+                // As the CLI reports a sign-in it can't refresh.
+                const failure = new Error(
+                    "databricks-cli: cannot get access token: " +
+                        "x".repeat(500) +
+                        " Re-authenticate: databricks auth login --profile p"
+                );
+                const config = mock(Config);
+                when(config.authenticate(anything())).thenReject(failure);
+                when(mockConnectionManager.responsesClient).thenReturn(
+                    newResponsesClient(instance(config))
+                );
+
+                await assert.rejects(
+                    chat(),
+                    (e) => e instanceof Error && e.message === failure.message
+                );
+            });
+
+            it("ends the turn with what was thrown when it isn't an Error", async () => {
+                respondToChat = () => Promise.reject("socket hang up");
+
+                await assert.rejects(
+                    chat(),
+                    (e) => e instanceof Error && e.message === "socket hang up"
+                );
+            });
+
+            it("stops the request when the chat is cancelled", async () => {
+                respondToChat = async ({signal}) => ({
+                    statusCode: 200,
+                    headers: new Headers(),
+                    body: new ReadableStream({
+                        start(controller) {
+                            controller.enqueue(
+                                new TextEncoder().encode(
+                                    'data: {"type":"response.output_text.delta","delta":"Hel"}\n\n'
+                                )
+                            );
+                            signal?.addEventListener("abort", () =>
+                                controller.error(new Error("aborted"))
+                            );
+                        },
+                    }),
+                });
+                const cancellation = new CancellationTokenSource();
+
+                await assert.rejects(
+                    chat(undefined, cancellation.token, () =>
+                        cancellation.cancel()
+                    ),
+                    (e) => e instanceof CancellationError
+                );
+                assert.equal(chatRequests[0].signal?.aborted, true);
+            });
+
+            it("logs the error when chat fails", async () => {
+                const failure = new Error("connect ECONNREFUSED");
+                respondToChat = async () => {
+                    throw failure;
+                };
+                let thrown: unknown;
+
+                const errors = await loggedErrors(() =>
+                    chat().catch((e) => (thrown = e))
+                );
+
+                assert.deepStrictEqual(errors, [
+                    ["Unity Gateway chat request failed", failure],
+                ]);
+                assert.ok(thrown instanceof Error);
+                assert.equal(thrown.message, "connect ECONNREFUSED");
+                assert.notStrictEqual(thrown, failure);
+                assert.strictEqual(thrown.cause, undefined);
+            });
         });
 
         it("estimates four characters per token, tool parts included", async () => {
