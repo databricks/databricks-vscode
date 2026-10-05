@@ -1,13 +1,4 @@
-import {
-    Disposable,
-    EventEmitter,
-    LanguageModelDataPart,
-    LanguageModelPromptTsxPart,
-    LanguageModelTextPart,
-    LanguageModelToolCallPart,
-    LanguageModelToolResultPart,
-    lm,
-} from "vscode";
+import {Disposable, EventEmitter, lm} from "vscode";
 import type {
     CancellationToken,
     Event,
@@ -21,6 +12,7 @@ import type {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {Loggers} from "../logger";
 import type {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
 import {listUnityGatewayModels} from "./unityGatewayModels";
+import {partText} from "./unityGatewayResponses";
 
 /**
  * Not declared in `contributes.languageModelChatProviders` yet, so VS Code
@@ -131,28 +123,6 @@ export class UnityGatewayChatProvider
         this.disposed = true;
         this.disposables.forEach((d) => d.dispose());
     }
-}
-
-function partText(part: unknown): string {
-    if (part instanceof LanguageModelTextPart) {
-        return part.value;
-    }
-    if (part instanceof LanguageModelToolCallPart) {
-        return part.name + JSON.stringify(part.input);
-    }
-    if (part instanceof LanguageModelToolResultPart) {
-        return part.content.map(partText).join("");
-    }
-    if (part instanceof LanguageModelPromptTsxPart) {
-        return JSON.stringify(part.value) ?? "";
-    }
-    if (
-        part instanceof LanguageModelDataPart &&
-        /^text\/|json/i.test(part.mimeType)
-    ) {
-        return new TextDecoder().decode(part.data);
-    }
-    return "";
 }
 
 /**
