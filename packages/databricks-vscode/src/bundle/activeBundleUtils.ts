@@ -128,7 +128,12 @@ export async function promptToSelectBundleTarget(configModel: ConfigModel) {
                     detail: targets[t].workspace?.host,
                 };
             })
-            .sort((a) => (a.label === currentTarget ? -1 : 1)),
+            // The current target first; the rest keep the bundle's order.
+            .sort(
+                (a, b) =>
+                    Number(b.label === currentTarget) -
+                    Number(a.label === currentTarget)
+            ),
         {title: "Select bundle target"}
     );
     if (selectedTarget === undefined) {

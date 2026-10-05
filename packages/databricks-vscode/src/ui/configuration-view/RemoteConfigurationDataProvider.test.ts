@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {instance, mock, when} from "ts-mockito";
+import {instance, mock, verify, when} from "ts-mockito";
 import {EventEmitter, Uri} from "vscode";
 import {RemoteConfigurationDataProvider} from "./RemoteConfigurationDataProvider";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
@@ -161,12 +161,30 @@ describe("RemoteConfigurationDataProvider", () => {
         expect(refreshes).to.equal(1);
     });
 
+    it("caches the bundle-file check until bundle files or the folder change", async () => {
+        when(mockConfigModel.target).thenReturn(undefined);
+        const p = make();
+
+        await p.getChildren();
+        await p.getChildren();
+        verify(mockBundleFileSet.getRootFile()).once();
+
+        bundleChangeEmitter.fire();
+        await p.getChildren();
+        verify(mockBundleFileSet.getRootFile()).twice();
+
+        folderChangeEmitter.fire(Uri.file("/tmp/other"));
+        await p.getChildren();
+        verify(mockBundleFileSet.getRootFile()).thrice();
+    });
+
     it("copies just the target name from the host-mismatch Target row", async () => {
         hostMismatchProvider = {
             mismatch: {
                 envHost: "dogfood.cloud.databricks.com",
                 targetHost: "logfood.cloud.databricks.com",
                 target: "dev",
+                allowed: false,
             },
             onDidChangeMismatch: mismatchChangeEmitter.event,
         };

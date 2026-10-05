@@ -3,7 +3,10 @@ import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithS
 import {Mutex} from "../../locking";
 
 import {BundleTarget, Resource, ResourceKey, Resources} from "../types";
-import {AuthProvider} from "../../configuration/auth/AuthProvider";
+import {
+    AuthProvider,
+    BundleAuthGuard,
+} from "../../configuration/auth/AuthProvider";
 import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/sdk-experimental";
@@ -50,6 +53,7 @@ export function getResource(
 export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemoteState> {
     public target: string | undefined;
     public authProvider: AuthProvider | undefined;
+    private authGuard: BundleAuthGuard | undefined;
     protected mutex = new Mutex();
     private logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
@@ -78,6 +82,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         if (this.authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
+        await this.assertAuthAllowed(this.target);
 
         await this.cli.bundleDeploy(
             this.target,
@@ -98,6 +103,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         if (this.authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
+        await this.assertAuthAllowed(this.target);
 
         await this.cli.bundleDestroy(
             this.target,
@@ -118,6 +124,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         if (this.authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
+        await this.assertAuthAllowed(this.target);
 
         await this.cli.bundleSync(
             this.target,
@@ -139,6 +146,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         if (this.authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
+        await this.assertAuthAllowed(this.target);
 
         return await this.cli.getBundleRunCommand(
             this.target,
@@ -157,18 +165,41 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         this.target = target;
         this.resetCache();
         this.authProvider = undefined;
+        this.authGuard = undefined;
     }
 
-    public setAuthProvider(authProvider: AuthProvider | undefined) {
+    public setAuthProvider(
+        authProvider: AuthProvider | undefined,
+        authGuard?: BundleAuthGuard
+    ) {
         if (
             !lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
         ) {
             this.authProvider = authProvider;
         }
+        this.authGuard = authGuard;
+    }
+
+    private async isAuthAllowed(target: string) {
+        return this.authGuard === undefined || (await this.authGuard(target));
+    }
+
+    private async assertAuthAllowed(target: string) {
+        if (!(await this.isAuthAllowed(target))) {
+            throw new Error(
+                `Bundle commands for target "${target}" are paused because it ` +
+                    "deploys to a different workspace than this session. " +
+                    "Review the Target row in the Configuration view."
+            );
+        }
     }
 
     protected async readState(): Promise<BundleRemoteState> {
-        if (this.target === undefined || this.authProvider === undefined) {
+        if (
+            this.target === undefined ||
+            this.authProvider === undefined ||
+            !(await this.isAuthAllowed(this.target))
+        ) {
             return {};
         }
 

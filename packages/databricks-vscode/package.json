@@ -484,6 +484,12 @@
                 "category": "Databricks"
             },
             {
+                "command": "databricks.bundle.remote.reviewHostMismatch",
+                "title": "Review workspace host mismatch",
+                "enablement": "databricks.context.activated && databricks.context.remoteMode",
+                "category": "Databricks"
+            },
+            {
                 "command": "databricks.utils.copy",
                 "title": "Copy",
                 "enablement": "databricks.context.activated",
@@ -875,6 +881,11 @@
             },
             {
                 "view": "configurationView",
+                "contents": "A Databricks project was not detected in the selected folder:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "databricks.context.remoteMode"
+            },
+            {
+                "view": "configurationView",
                 "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html)",
                 "when": "databricks.context.remoteMode"
             },
@@ -885,11 +896,6 @@
             {
                 "view": "dabsResourceExplorerView",
                 "contents": "No bundle target selected.\n[Select a target](command:databricks.connection.bundle.selectTarget)\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
-                "when": "databricks.context.remoteMode && !databricks.context.bundle.isTargetSet"
-            },
-            {
-                "view": "configurationView",
-                "contents": "A Databricks project was not detected in the selected folder:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "databricks.context.remoteMode && !databricks.context.bundle.isTargetSet"
             }
         ],
@@ -1424,6 +1430,10 @@
                 }
             ],
             "commandPalette": [
+                {
+                    "command": "databricks.bundle.remote.reviewHostMismatch",
+                    "when": "false"
+                },
                 {
                     "command": "databricks.configuration.copyPath",
                     "when": "false"

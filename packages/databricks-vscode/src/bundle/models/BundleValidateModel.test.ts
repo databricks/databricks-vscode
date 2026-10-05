@@ -1,6 +1,6 @@
 import assert from "assert";
 import {Uri} from "vscode";
-import {anything, instance, mock, when} from "ts-mockito";
+import {anything, instance, mock, verify, when} from "ts-mockito";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {BundleWatcher} from "../BundleWatcher";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
@@ -8,6 +8,8 @@ import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {BundleValidateModel} from "./BundleValidateModel";
 
 describe("BundleValidateModel", () => {
+    let mockCli: CliWrapper;
+
     function buildModel(validateStdout: object): BundleValidateModel {
         const fakeWatcher = {
             onDidChange: () => ({dispose() {}}),
@@ -15,7 +17,7 @@ describe("BundleValidateModel", () => {
         const fakeWorkspaceFolderManager = {
             activeProjectUri: Uri.file("/tmp/project"),
         } as unknown as WorkspaceFolderManager;
-        const mockCli = mock(CliWrapper);
+        mockCli = mock(CliWrapper);
         when(
             mockCli.bundleValidate(
                 anything(),
@@ -44,6 +46,25 @@ describe("BundleValidateModel", () => {
         });
 
         assert.strictEqual(await model.get("engine"), "terraform");
+    });
+
+    it("skips the CLI when the auth guard refuses the target", async () => {
+        const model = buildModel({bundle: {name: "proj"}});
+        model.setAuthProvider(
+            {toJSON: () => ({})} as unknown as AuthProvider,
+            async () => false
+        );
+
+        assert.deepStrictEqual(await model.load(), {});
+        verify(
+            mockCli.bundleValidate(
+                anything(),
+                anything(),
+                anything(),
+                anything(),
+                anything()
+            )
+        ).never();
     });
 
     it("leaves engine undefined when the validate output omits it", async () => {

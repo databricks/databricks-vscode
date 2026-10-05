@@ -1,12 +1,20 @@
 import assert from "assert";
 import {Disposable} from "vscode";
-import {deepEqual, instance, mock, reset, verify, when} from "ts-mockito";
+import {
+    anything,
+    deepEqual,
+    instance,
+    mock,
+    reset,
+    verify,
+    when,
+} from "ts-mockito";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {HostMismatch, RemoteTargetHostManager} from "./RemoteTargetHostManager";
 
-const HIDE_KEY = "databricks.bundle.remote.hideHostMismatchWarning";
+const ALLOWED_KEY = "databricks.bundle.remote.allowedHostMismatches";
 
 const ENV_HOST = new URL("https://dogfood.cloud.databricks.com");
 const TARGET_HOST = new URL("https://logfood.cloud.databricks.com");
@@ -43,7 +51,12 @@ class FakeConfigModel {
         }
     }
 
+    public getError: Error | undefined;
+
     async get(): Promise<URL | undefined> {
+        if (this.getError) {
+            throw this.getError;
+        }
         return this.hostToReturn;
     }
 
@@ -63,10 +76,18 @@ class FakeConfigModel {
 
 /** Stand-in for {@link ConnectionManager}: exposes the two things the manager reads. */
 class FakeConnectionManager {
+    private listeners: Array<() => unknown> = [];
     public databricksWorkspace: {authProvider: {host: URL}} | undefined;
 
-    onDidChangeState(): Disposable {
+    onDidChangeState(cb: () => unknown): Disposable {
+        this.listeners.push(cb);
         return {dispose() {}};
+    }
+
+    async fireStateChange(): Promise<void> {
+        for (const cb of this.listeners) {
+            await cb();
+        }
     }
 
     setEnvHost(host: URL | undefined) {
@@ -99,7 +120,7 @@ describe("RemoteTargetHostManager", () => {
         fakeConfig = new FakeConfigModel();
         fakeConnection = new FakeConnectionManager();
         mockStorage = mock(StateStorage);
-        when(mockStorage.get(HIDE_KEY)).thenReturn([]);
+        when(mockStorage.get(ALLOWED_KEY)).thenReturn([]);
     });
 
     afterEach(() => {
@@ -118,6 +139,7 @@ describe("RemoteTargetHostManager", () => {
             envHost: ENV_HOST.hostname,
             targetHost: TARGET_HOST.hostname,
             target: "prod",
+            allowed: false,
         };
         assert.deepStrictEqual(warned, [expected]);
         assert.deepStrictEqual(manager.mismatch, expected);
@@ -288,8 +310,8 @@ describe("RemoteTargetHostManager", () => {
         assert.strictEqual(changes, 1);
     });
 
-    it("stays silent for a hidden pair but still warns for a different pair", async () => {
-        when(mockStorage.get(HIDE_KEY)).thenReturn([PAIR]);
+    it("doesn't warn for an allowed pair, but still for a different pair", async () => {
+        when(mockStorage.get(ALLOWED_KEY)).thenReturn([PAIR]);
         const {manager, warned} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
@@ -297,27 +319,87 @@ describe("RemoteTargetHostManager", () => {
 
         await fakeConfig.fire();
         assert.strictEqual(warned.length, 0);
-        // The badge still shows for a hidden pair.
-        assert.notStrictEqual(manager.mismatch, undefined);
+        // The badge still shows for an allowed pair.
+        assert.strictEqual(manager.mismatch?.allowed, true);
 
         fakeConfig.hostToReturn = OTHER_HOST;
         await fakeConfig.fire();
         assert.strictEqual(warned.length, 1);
+        assert.strictEqual(manager.mismatch?.allowed, false);
     });
 
-    it("hideWarning persists the pair once", async () => {
+    it("allowing persists the pair, fires onDidChangeAllowedHosts and updates the mismatch", async () => {
+        let stored: string[] = [];
+        when(mockStorage.get(ALLOWED_KEY)).thenCall(() => stored);
+        when(mockStorage.set(ALLOWED_KEY, anything())).thenCall(
+            async (_key: string, value: string[]) => {
+                stored = value;
+            }
+        );
         const {manager} = build();
-        const mismatch = {
-            envHost: ENV_HOST.hostname,
-            targetHost: TARGET_HOST.hostname,
-            target: "prod",
-        };
+        let allowedChanges = 0;
+        manager.onDidChangeAllowedHosts(() => allowedChanges++);
+        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.target = "prod";
+        fakeConfig.hostToReturn = TARGET_HOST;
+        await fakeConfig.fire();
 
-        await manager.hideWarning(mismatch);
-        when(mockStorage.get(HIDE_KEY)).thenReturn([PAIR]);
-        await manager.hideWarning(mismatch);
+        await manager.setSessionCredentialsAllowed(manager.mismatch!, true);
 
-        verify(mockStorage.set(HIDE_KEY, deepEqual([PAIR]))).once();
+        assert.deepStrictEqual(stored, [PAIR]);
+        assert.strictEqual(allowedChanges, 1);
+        assert.strictEqual(manager.mismatch?.allowed, true);
+        assert.strictEqual(
+            manager.allowsSessionCredentials(ENV_HOST, TARGET_HOST),
+            true
+        );
+    });
+
+    it("revoking removes only that pair", async () => {
+        const otherPair = `${ENV_HOST.hostname}->${OTHER_HOST.hostname}`;
+        when(mockStorage.get(ALLOWED_KEY)).thenReturn([PAIR, otherPair]);
+        const {manager} = build();
+
+        await manager.setSessionCredentialsAllowed(
+            {
+                envHost: ENV_HOST.hostname,
+                targetHost: TARGET_HOST.hostname,
+                target: "prod",
+                allowed: true,
+            },
+            false
+        );
+
+        verify(mockStorage.set(ALLOWED_KEY, deepEqual([otherPair]))).once();
+    });
+
+    it("clears the mismatch when the connection drops", async () => {
+        const {manager} = build();
+        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.target = "prod";
+        fakeConfig.hostToReturn = TARGET_HOST;
+        await fakeConfig.fire();
+        assert.notStrictEqual(manager.mismatch, undefined);
+
+        // A failed reconnect ends DISCONNECTED with no workspace.
+        fakeConnection.setEnvHost(undefined);
+        await fakeConnection.fireStateChange();
+
+        assert.strictEqual(manager.mismatch, undefined);
+    });
+
+    it("clears the mismatch when evaluating it throws", async () => {
+        const {manager} = build();
+        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.target = "prod";
+        fakeConfig.hostToReturn = TARGET_HOST;
+        await fakeConfig.fire();
+        assert.notStrictEqual(manager.mismatch, undefined);
+
+        fakeConfig.getError = new Error("no config");
+        await fakeConfig.fire();
+
+        assert.strictEqual(manager.mismatch, undefined);
     });
 
     it("warns only once when two concurrent evaluations read the same mismatch", async () => {

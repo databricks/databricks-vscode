@@ -18,6 +18,13 @@ export type AuthType =
     | "profile"
     | "pat";
 
+/**
+ * Checked right before an authenticated bundle CLI call: whether the
+ * credentials may be sent for this target. The CLI sends them to the target's
+ * own workspace.host.
+ */
+export type BundleAuthGuard = (target: string) => Promise<boolean>;
+
 export abstract class AuthProvider {
     constructor(
         private readonly _host: URL,

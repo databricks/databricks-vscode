@@ -103,13 +103,20 @@ export class BundleTargetComponent extends BaseComponent {
                             "target",
                             new ThemeColor("problemsWarningIcon.foreground")
                         ),
-                        description: `${target} — targets ${mismatch.targetHost}`,
+                        description:
+                            `${target} — targets ${mismatch.targetHost}` +
+                            (mismatch.allowed ? "" : ", paused"),
                         // "Copy Target" copies the name, not the description.
                         copyText: target,
                         tooltip: describeHostMismatch(mismatch),
                         contextValue:
                             "databricks.configuration.target.hostMismatch",
                         collapsibleState: TreeItemCollapsibleState.Collapsed,
+                        command: {
+                            title: "Review workspace host mismatch",
+                            command:
+                                "databricks.bundle.remote.reviewHostMismatch",
+                        },
                     },
                 ];
             }

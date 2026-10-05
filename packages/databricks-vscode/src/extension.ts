@@ -836,21 +836,31 @@ export async function activate(
             remoteConnectionManager
         );
 
-        const remoteBundleManager = new RemoteBundleManager(
-            remoteConfigModel,
-            remoteConnectionManager,
-            workspaceFolderManager,
-            remoteBundleFileWatcher
-        );
         const remoteTargetHostManager = new RemoteTargetHostManager(
             remoteConfigModel,
             remoteConnectionManager,
             stateStorage
         );
-        context.subscriptions.push(
-            remoteBundleManager,
+        const remoteBundleManager = new RemoteBundleManager(
+            remoteConfigModel,
+            remoteConnectionManager,
+            workspaceFolderManager,
+            remoteBundleFileWatcher,
+            remoteTargetHostManager
+        );
+        const remoteTargetHostCommands = new RemoteTargetHostCommands(
             remoteTargetHostManager,
-            new RemoteTargetHostCommands(remoteTargetHostManager, telemetry)
+            telemetry
+        );
+        context.subscriptions.push(
+            remoteTargetHostManager,
+            remoteBundleManager,
+            remoteTargetHostCommands,
+            telemetry.registerCommand(
+                "databricks.bundle.remote.reviewHostMismatch",
+                remoteTargetHostCommands.reviewHostMismatch,
+                remoteTargetHostCommands
+            )
         );
 
         // The Unity Catalog refresh only needs a fresh connection; re-pinning

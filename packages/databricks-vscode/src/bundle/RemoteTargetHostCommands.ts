@@ -12,7 +12,8 @@ import {
 } from "./RemoteTargetHostManager";
 
 export const SWITCH_TARGET_LABEL = "Switch target";
-export const DONT_WARN_FOR_TARGET_LABEL = "Don't warn for this target";
+export const ALLOW_LABEL = "Use session credentials";
+export const REVOKE_LABEL = "Stop using session credentials";
 const SELECT_TARGET_COMMAND = "databricks.connection.bundle.selectTarget";
 
 /** The VS Code surfaces the warning uses, injectable for tests. */
@@ -22,8 +23,9 @@ export interface RemoteHostMismatchPrompter {
 }
 
 /**
- * Shows the warning {@link RemoteTargetHostManager} asks for on a new host
- * mismatch, and runs the action the user picks.
+ * The host-mismatch warning: shown when {@link RemoteTargetHostManager} finds a
+ * new disallowed mismatch, and from the Target row via
+ * {@link reviewHostMismatch}. Runs the action the user picks.
  */
 export class RemoteTargetHostCommands implements Disposable {
     private disposables: Disposable[] = [];
@@ -31,7 +33,9 @@ export class RemoteTargetHostCommands implements Disposable {
     constructor(
         private readonly manager: Pick<
             RemoteTargetHostManager,
-            "onDidDetectNewMismatch" | "hideWarning"
+            | "mismatch"
+            | "onDidDetectNewMismatch"
+            | "setSessionCredentialsAllowed"
         >,
         private readonly telemetry: Telemetry,
         private readonly prompter: RemoteHostMismatchPrompter = {
@@ -49,25 +53,41 @@ export class RemoteTargetHostCommands implements Disposable {
         );
     }
 
+    /** `databricks.bundle.remote.reviewHostMismatch`, from the Target row. */
+    async reviewHostMismatch(): Promise<void> {
+        const mismatch = this.manager.mismatch;
+        if (mismatch !== undefined) {
+            await this.showWarning(mismatch);
+        }
+    }
+
     private async showWarning(mismatch: HostMismatch): Promise<void> {
+        const toggleLabel = mismatch.allowed ? REVOKE_LABEL : ALLOW_LABEL;
         const choice = await this.prompter.showWarningMessage(
             describeHostMismatch(mismatch),
             SWITCH_TARGET_LABEL,
-            DONT_WARN_FOR_TARGET_LABEL
+            toggleLabel
         );
 
         let action: BundleRemoteHostMismatchWarningAction = "dismissed";
         if (choice === SWITCH_TARGET_LABEL) {
             action = "switch-target";
-            await this.prompter.executeCommand(SELECT_TARGET_COMMAND);
-        } else if (choice === DONT_WARN_FOR_TARGET_LABEL) {
-            action = "hidden";
-            await this.manager.hideWarning(mismatch);
+        } else if (choice === toggleLabel) {
+            action = mismatch.allowed ? "revoked" : "allowed";
         }
-
+        // Before the follow-up, which can wait on a quick pick or the CLI.
         this.telemetry.recordEvent(Events.BUNDLE_REMOTE_HOST_MISMATCH_WARNING, {
             action,
         });
+
+        if (action === "switch-target") {
+            await this.prompter.executeCommand(SELECT_TARGET_COMMAND);
+        } else if (action !== "dismissed") {
+            await this.manager.setSessionCredentialsAllowed(
+                mismatch,
+                action === "allowed"
+            );
+        }
     }
 
     dispose() {

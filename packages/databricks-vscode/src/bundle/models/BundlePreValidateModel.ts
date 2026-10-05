@@ -1,4 +1,4 @@
-import {Uri} from "vscode";
+import {Event, Uri} from "vscode";
 import {BundleFileSet, BundleWatcher} from "..";
 import {BundleSchema, BundleTarget} from "../types";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
@@ -28,12 +28,15 @@ export type BundlePreValidateState = {
 export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreValidateState> {
     protected mutex = new Mutex();
     private target: string | undefined;
+    /** Any bundle file changed, whether or not a target is set. */
+    public readonly onDidChangeBundleFiles: Event<void>;
 
     constructor(
         private readonly bundleFileSet: BundleFileSet,
         private readonly bunldeFileWatcher: BundleWatcher
     ) {
         super();
+        this.onDidChangeBundleFiles = this.bunldeFileWatcher.onDidChange;
         this.disposables.push(
             this.bunldeFileWatcher.onDidChange(
                 withOnErrorHandler(

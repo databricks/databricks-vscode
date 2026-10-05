@@ -127,12 +127,11 @@ const StorageConfigurations = {
         defaultValue: false,
     }),
 
-    // Environment→target host pairs (`${envHost}->${targetHost}`) the user has
-    // silenced via "Don't warn for this target" on the Remote SSH mode
-    // host-mismatch warning. Only the specific pairing is silenced, so a
-    // genuinely new mismatch still warns; scoped to the workspace, mirroring the
-    // workspace-scoped bundle target selection (see RemoteTargetHostManager).
-    "databricks.bundle.remote.hideHostMismatchWarning": withType<string[]>()({
+    // Environment→target host pairs (`${envHost}->${targetHost}`) for which
+    // the user allowed Remote SSH mode to send the session's credentials to a
+    // bundle target on a different host. Scoped to the workspace, like the
+    // bundle target selection (see RemoteTargetHostManager).
+    "databricks.bundle.remote.allowedHostMismatches": withType<string[]>()({
         location: "workspace",
         defaultValue: [],
     }),

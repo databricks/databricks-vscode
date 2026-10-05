@@ -20,7 +20,7 @@ import {stampCopyKind} from "./copyActions";
 export abstract class BaseConfigurationDataProvider
     implements TreeDataProvider<ConfigurationTreeItem>, Disposable
 {
-    protected readonly _onDidChangeTreeData = new EventEmitter<
+    private readonly _onDidChangeTreeData = new EventEmitter<
         ConfigurationTreeItem | undefined | void
     >();
     readonly onDidChangeTreeData: Event<
@@ -33,12 +33,13 @@ export abstract class BaseConfigurationDataProvider
         this.disposables.push(
             this._onDidChangeTreeData,
             ...components,
-            ...components.map((c) =>
-                c.onDidChange(() => {
-                    this._onDidChangeTreeData.fire();
-                })
-            )
+            ...components.map((c) => c.onDidChange(() => this.refresh()))
         );
+    }
+
+    /** Re-render the whole tree. */
+    protected refresh() {
+        this._onDidChangeTreeData.fire();
     }
 
     /** The components to render, or `[]` so the view's welcome content shows. */

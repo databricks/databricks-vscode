@@ -52,7 +52,7 @@ export class ConfigurationDataProvider extends BaseConfigurationDataProvider {
         ]);
         this.disposables.push(
             this.bundleProjectManager.onDidChangeStatus(async () => {
-                this._onDidChangeTreeData.fire();
+                this.refresh();
             }),
             this.onDidChangeTreeData((e) => {
                 if (e?.collapsibleState !== undefined) {

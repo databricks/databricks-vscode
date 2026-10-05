@@ -57,17 +57,10 @@ export type BundleTerraformEngineWarningAction =
     | "guide"
     | "hidden"
     | "dismissed";
-/**
- * What the user did with the Remote SSH mode "target host differs from the
- * environment host" warning:
- *  - `'switch-target'` — opened the bundle target picker to change target.
- *  - `'hidden'` — chose "Don't warn for this target" (persisted opt-out for the
- *    specific environment→target host pair, for the workspace).
- *  - `'dismissed'` — closed it without either.
- */
 export type BundleRemoteHostMismatchWarningAction =
     | "switch-target"
-    | "hidden"
+    | "allowed"
+    | "revoked"
     | "dismissed";
 export type BundleRunType =
     | "run"
@@ -412,10 +405,10 @@ export class EventTypes {
         action: BundleRemoteHostMismatchWarningAction;
     }> = {
         comment:
-            "In Databricks Remote SSH mode, surfaced a warning that the selected bundle target's workspace host differs from the host the remote session is signed in to, so bundle commands send the session's credentials to the target's host. Recorded once per surfacing: once per environment→target host pair, again only after the hosts have matched in between, and never for a pair the user opted out of.",
+            "In Databricks Remote SSH mode, surfaced a warning that the selected bundle target's workspace host differs from the host the remote session is signed in to, so bundle commands for it are paused unless the user allows sending the session's credentials there. Recorded once per surfacing: automatically once per disallowed environment→target host pair (again only after the hosts have matched in between), and whenever the user opens it from the Target row.",
         action: {
             comment:
-                "What the user did: 'switch-target' opened the target picker, 'hidden' chose \"Don't warn for this target\" (persisted per-pair opt-out for the workspace), 'dismissed' closed it without either.",
+                "What the user did: 'switch-target' opened the target picker, 'allowed' allowed sending the session's credentials to the target's host (persisted per host pair for the workspace), 'revoked' withdrew that, 'dismissed' closed it without choosing.",
         },
     };
     [Events.AITOOLS_INSTALL]: EventType<

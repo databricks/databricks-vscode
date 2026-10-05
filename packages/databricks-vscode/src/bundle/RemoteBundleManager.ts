@@ -1,7 +1,6 @@
 import {Disposable} from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
-import {Mutex} from "../locking";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {
     ConnectionManager,
@@ -10,24 +9,27 @@ import {
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {withOnErrorHandler} from "../utils/onErrorDecorator";
 import {BundleWatcher} from "./BundleWatcher";
+import {RemoteTargetHostManager} from "./RemoteTargetHostManager";
 
 /**
  * Remote SSH mode's stand-in for the login flow: pins the environment auth on
- * the ConfigModel on every connect, and resolves the bundle target at startup,
- * on a project-folder change, and when a bundle file appears with no target.
+ * the ConfigModel on every connect (sent only to the session's own host unless
+ * the user allows another), and keeps the bundle target resolved as folders and
+ * bundle files change.
  */
 export class RemoteBundleManager implements Disposable {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
     private disposables: Disposable[] = [];
-    // Serialises every target resolution so overlapping ones can't leave a
-    // torn target.
-    private readonly targetMutex = new Mutex();
 
     constructor(
         private readonly configModel: ConfigModel,
         private readonly connectionManager: ConnectionManager,
         private readonly workspaceFolderManager: WorkspaceFolderManager,
-        private readonly bundleWatcher: BundleWatcher
+        private readonly bundleWatcher: BundleWatcher,
+        private readonly targetHostManager: Pick<
+            RemoteTargetHostManager,
+            "allowsSessionCredentials" | "onDidChangeAllowedHosts"
+        >
     ) {
         this.disposables.push(
             // A reconnect (e.g. from the Unity Catalog refresh command)
@@ -41,46 +43,38 @@ export class RemoteBundleManager implements Disposable {
                                 ?.authProvider;
                         if (state === "CONNECTED" && authProvider) {
                             await this.configModel.pinAuthProvider(
-                                authProvider
+                                authProvider,
+                                (targetHost) =>
+                                    this.targetHostManager.allowsSessionCredentials(
+                                        authProvider.host,
+                                        targetHost
+                                    )
                             );
                         }
                     },
                     {log: true, throw: false}
                 )
             ),
-            // setTarget(undefined) forces a clean transition, so a same-named
-            // target across folders still re-resolves instead of hitting
-            // readTarget's early return.
-            this.workspaceFolderManager.onDidChangeActiveProjectFolder(
-                withOnErrorHandler(
-                    async () => {
-                        await this.targetMutex.synchronise(async () => {
-                            await this.configModel.setTarget(undefined);
-                            await this.configModel.init();
-                        });
-                    },
-                    {log: true, popup: false, throw: false}
-                )
+            this.targetHostManager.onDidChangeAllowedHosts(() =>
+                this.configModel.reapplyPinnedAuthProvider()
             ),
-            // With no target, BundlePreValidateModel reads nothing, so nothing
-            // else notices a bundle file appearing or gaining targets.
+            this.workspaceFolderManager.onDidChangeActiveProjectFolder(
+                withOnErrorHandler(() => this.configModel.reresolveTarget(), {
+                    log: true,
+                    popup: false,
+                    throw: false,
+                })
+            ),
+            // ConfigModel re-resolves a missing target itself. A target that
+            // disappears (databricks.yml deleted, or the target removed) is
+            // only handled here: in normal mode that would log out and back in
+            // during a git checkout.
             this.bundleWatcher.onDidChange(
                 withOnErrorHandler(
                     async () => {
                         if (this.configModel.target !== undefined) {
-                            return;
+                            await this.configModel.resolveTarget();
                         }
-                        // A half-written databricks.yml shouldn't pop an error
-                        // on every save.
-                        const targets = await this.configModel.targets.catch(
-                            () => undefined
-                        );
-                        if (Object.keys(targets ?? {}).length === 0) {
-                            return;
-                        }
-                        await this.targetMutex.synchronise(() =>
-                            this.configModel.init()
-                        );
                     },
                     {log: true, throw: false}
                 )
@@ -102,7 +96,7 @@ export class RemoteBundleManager implements Disposable {
                     e
                 );
             }),
-            this.targetMutex.synchronise(() => this.configModel.init()),
+            this.configModel.init(),
         ]);
     }
 

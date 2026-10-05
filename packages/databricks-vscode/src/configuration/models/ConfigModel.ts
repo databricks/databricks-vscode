@@ -3,8 +3,11 @@ import lodash from "lodash";
 import {Mutex} from "../../locking";
 import {CachedValue} from "../../locking/CachedValue";
 import {StateStorage} from "../../vscode-objs/StateStorage";
-import {onError} from "../../utils/onErrorDecorator";
-import {AuthProvider} from "../auth/AuthProvider";
+import {onError, withOnErrorHandler} from "../../utils/onErrorDecorator";
+import {AuthProvider, BundleAuthGuard} from "../auth/AuthProvider";
+import {normalizeHost} from "../../utils/urlUtils";
+import {logging} from "@databricks/sdk-experimental";
+import {Loggers} from "../../logger";
 import {
     OverrideableConfigModel,
     OverrideableConfigState,
@@ -119,9 +122,14 @@ export class ConfigModel implements Disposable {
     public readonly onDidChangeAuthProvider: Event<void> =
         this.onDidChangeAuthProviderEmitter.event;
 
+    /** Serialises target resolution so overlapping ones can't set it twice. */
+    private readonly resolveTargetMutex = new Mutex();
+
     private _target: string | undefined;
     private _authProvider: AuthProvider | undefined;
-    private pinnedAuthProvider: AuthProvider | undefined;
+    private pinned:
+        | {authProvider: AuthProvider; authGuard: BundleAuthGuard}
+        | undefined;
 
     constructor(
         private readonly bundleValidateModel: BundleValidateModel,
@@ -137,10 +145,22 @@ export class ConfigModel implements Disposable {
                 await this.configCache.refresh();
             }),
             this.bundlePreValidateModel.onDidChange(async () => {
-                await this.readTarget();
+                await this.resolveTarget();
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
+            // With no target the pre-validate state stays empty, so nothing
+            // else notices a bundle file appearing or gaining targets.
+            this.bundlePreValidateModel.onDidChangeBundleFiles(
+                withOnErrorHandler(
+                    async () => {
+                        if (this.target === undefined) {
+                            await this.resolveTarget();
+                        }
+                    },
+                    {log: true, throw: false}
+                )
+            ),
             ...TOP_LEVEL_VALIDATE_CONFIG_KEYS.map((key) =>
                 this.bundleValidateModel.onDidChangeKey(key)(async () => {
                     //refresh cache to trigger onDidChange event
@@ -160,18 +180,31 @@ export class ConfigModel implements Disposable {
 
     @onError({popup: true})
     public async init() {
-        await this.readTarget();
+        await this.resolveTarget();
     }
 
     get targets() {
         return this.bundlePreValidateModel.targets;
     }
     /**
-     * Try to read target from bundle config.
-     * If not found, try to read from state storage.
-     * If not found, try to read the default target from bundle.
+     * Keep the current target if the bundle still defines it; otherwise use the
+     * saved target, else the bundle's default.
      */
-    private async readTarget() {
+    public async resolveTarget() {
+        await this.resolveTargetMutex.synchronise(() =>
+            this.resolveTargetLocked()
+        );
+    }
+
+    /** Clear the target and resolve it again, e.g. for a new project folder. */
+    public async reresolveTarget() {
+        await this.resolveTargetMutex.synchronise(async () => {
+            await this.setTarget(undefined);
+            await this.resolveTargetLocked();
+        });
+    }
+
+    private async resolveTargetLocked() {
         const targets = Object.keys(
             (await this.bundlePreValidateModel.targets) ?? {}
         );
@@ -190,7 +223,10 @@ export class ConfigModel implements Disposable {
         });
 
         try {
-            await this.setTarget(savedTarget);
+            // Resolving to no target doesn't overwrite the saved one, so a
+            // bundle file that briefly disappears (e.g. during a git checkout)
+            // gets its target back.
+            await this.commitTarget(savedTarget, savedTarget !== undefined);
         } catch (e: any) {
             let message: string = String(e);
             if (e instanceof Error) {
@@ -210,6 +246,10 @@ export class ConfigModel implements Disposable {
      * Set target in the state storage and invalidate the configs cache.
      */
     public async setTarget(target: string | undefined) {
+        await this.commitTarget(target, true);
+    }
+
+    private async commitTarget(target: string | undefined, persist: boolean) {
         if (target === this._target) {
             return;
         }
@@ -224,7 +264,12 @@ export class ConfigModel implements Disposable {
         try {
             await this.configsMutex.synchronise(async () => {
                 this._target = target;
-                await this.stateStorage.set("databricks.bundle.target", target);
+                if (persist) {
+                    await this.stateStorage.set(
+                        "databricks.bundle.target",
+                        target
+                    );
+                }
                 // We want to wait for all the configs to be loaded before we emit any change events from the
                 // configStateCache.
                 this.bundlePreValidateModel.setTarget(target);
@@ -244,62 +289,122 @@ export class ConfigModel implements Disposable {
         } finally {
             this.onDidChangeTargetEmitter.fire();
             this.vscodeWhenContext.isTargetSet(this._target !== undefined);
-            if (this.pinnedAuthProvider === undefined) {
+            if (this.pinned === undefined) {
                 await this.setAuthProvider(undefined);
             } else {
                 // The child models drop auth on a target change. Re-applying it
                 // here, outside the try, means a failing authenticated refresh
                 // doesn't wipe the config cache.
-                await this.applyPinnedAuthProvider();
+                await this.reapplyPinnedAuthProvider();
             }
         }
     }
 
     /**
      * Pin an auth provider that doesn't depend on the target, such as the
-     * environment credentials in Remote SSH mode. setTarget keeps a pinned
-     * provider instead of clearing it. Re-pinning the same credentials is a
-     * no-op, so a reconnect doesn't re-run the bundle CLI.
+     * environment credentials in Remote SSH mode. setTarget keeps it instead of
+     * clearing it. Bundle commands only send its credentials to a target on the
+     * same host, or one `allowOtherHost` accepts. Re-pinning the same
+     * credentials is a no-op, so a reconnect doesn't re-run the bundle CLI.
      */
-    public async pinAuthProvider(authProvider: AuthProvider) {
+    public async pinAuthProvider(
+        authProvider: AuthProvider,
+        allowOtherHost: (targetHost: URL) => boolean
+    ) {
         if (
             lodash.isEqual(
-                this.pinnedAuthProvider?.toJSON(),
+                this.pinned?.authProvider.toJSON(),
                 authProvider.toJSON()
             )
         ) {
             return;
         }
-        this.pinnedAuthProvider = authProvider;
-        await this.applyPinnedAuthProvider();
+        this.pinned = {
+            authProvider,
+            authGuard: async (target) => {
+                const targetHost = await this.readTargetHost(target);
+                return (
+                    targetHost !== undefined &&
+                    (targetHost.hostname === authProvider.host.hostname ||
+                        allowOtherHost(targetHost))
+                );
+            },
+        };
+        await this.reapplyPinnedAuthProvider();
     }
 
     /**
-     * Only validate is refreshed: BundleCommands pulls the remote state when the
-     * validate output changes, so refreshing it here too would pull it twice.
-     * The CLI runs outside configsMutex so `get` callers don't wait on it.
+     * Hand the pinned provider to the child models and refresh the
+     * authenticated state, e.g. after the user allows another host. Never
+     * throws: a failing CLI run is logged.
      */
-    private async applyPinnedAuthProvider() {
-        const authProvider = this.pinnedAuthProvider;
-        await this.configsMutex.synchronise(async () => {
-            this._authProvider = authProvider;
-            this.bundleRemoteStateModel.setAuthProvider(authProvider);
-            this.bundleValidateModel.setAuthProvider(authProvider);
-            this.onDidChangeAuthProviderEmitter.fire();
+    public async reapplyPinnedAuthProvider() {
+        const pinned = this.pinned;
+        if (pinned === undefined) {
+            return;
+        }
+        await this.configsMutex.synchronise(async () =>
+            this.assignAuthProvider(pinned.authProvider, pinned.authGuard)
+        );
+        // Outside configsMutex so `get` callers don't wait on the CLI.
+        await this.refreshAuthenticatedState();
+    }
+
+    /**
+     * Refresh validate, and the remote state only when validate's output
+     * didn't change: BundleCommands pulls the remote state on a validate
+     * change, so refreshing it here too would run `bundle summary` twice.
+     */
+    private async refreshAuthenticatedState() {
+        const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
+        let validateChanged = false;
+        const listener = this.bundleValidateModel.onDidChange(async () => {
+            validateChanged = true;
         });
-        await this.bundleValidateModel.refresh();
+        try {
+            await this.bundleValidateModel.refresh();
+        } catch (e) {
+            logger.error("Failed to refresh the bundle validate state", e);
+        } finally {
+            listener.dispose();
+        }
+        if (!validateChanged) {
+            try {
+                await this.bundleRemoteStateModel.refresh();
+            } catch (e) {
+                logger.error("Failed to refresh the bundle remote state", e);
+            }
+        }
+    }
+
+    /** The target's workspace.host as the CLI reads it, if it's a valid host. */
+    private async readTargetHost(target: string): Promise<URL | undefined> {
+        try {
+            const host = (await this.bundlePreValidateModel.targets)?.[target]
+                ?.workspace?.host;
+            return host ? normalizeHost(host) : undefined;
+        } catch {
+            return undefined;
+        }
     }
 
     @Mutex.synchronise("configsMutex")
     public async setAuthProvider(authProvider: AuthProvider | undefined) {
-        this._authProvider = authProvider;
-        this.bundleRemoteStateModel.setAuthProvider(authProvider);
-        this.bundleValidateModel.setAuthProvider(authProvider);
-        this.onDidChangeAuthProviderEmitter.fire();
+        this.assignAuthProvider(authProvider);
         await Promise.all([
             this.bundleRemoteStateModel.refresh(),
             this.bundleValidateModel.refresh(),
         ]);
+    }
+
+    private assignAuthProvider(
+        authProvider: AuthProvider | undefined,
+        authGuard?: BundleAuthGuard
+    ) {
+        this._authProvider = authProvider;
+        this.bundleRemoteStateModel.setAuthProvider(authProvider, authGuard);
+        this.bundleValidateModel.setAuthProvider(authProvider, authGuard);
+        this.onDidChangeAuthProviderEmitter.fire();
     }
 
     get authProvider(): AuthProvider | undefined {
@@ -310,7 +415,8 @@ export class ConfigModel implements Disposable {
     public async get<T extends keyof ConfigState>(
         key: T
     ): Promise<ConfigState[T] | undefined> {
-        return (await this.configCache.value)[key] ?? defaults[key];
+        // readState's @onError resolves to undefined when a child model throws.
+        return (await this.configCache.value)?.[key] ?? defaults[key];
     }
 
     @Mutex.synchronise("configsMutex")

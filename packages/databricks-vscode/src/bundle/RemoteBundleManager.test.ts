@@ -1,12 +1,5 @@
-import {
-    mock,
-    instance,
-    when,
-    verify,
-    anything,
-    reset,
-    resetCalls,
-} from "ts-mockito";
+import assert from "assert";
+import {mock, instance, when, verify, anything, capture} from "ts-mockito";
 import {EventEmitter, Uri} from "vscode";
 import {RemoteBundleManager} from "./RemoteBundleManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
@@ -19,6 +12,9 @@ import {AuthProvider} from "../configuration/auth/AuthProvider";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {BundleWatcher} from "./BundleWatcher";
 
+const ENV_HOST = new URL("https://dogfood.cloud.databricks.com");
+const OTHER_HOST = new URL("https://logfood.cloud.databricks.com");
+
 // Lets microtasks queued by the event listeners (which fire synchronously but
 // run async handlers) settle before assertions.
 function flush() {
@@ -28,25 +24,26 @@ function flush() {
 describe("RemoteBundleManager", () => {
     let configModel: ConfigModel;
     let connectionManager: ConnectionManager;
-    let workspaceFolderManager: WorkspaceFolderManager;
-    let databricksWorkspace: DatabricksWorkspace;
     let authProvider: AuthProvider;
     let stateEmitter: EventEmitter<ConnectionState>;
     let folderChangeEmitter: EventEmitter<Uri | undefined>;
-    let bundleWatcher: BundleWatcher;
     let bundleChangeEmitter: EventEmitter<void>;
+    let allowedHostsEmitter: EventEmitter<void>;
+    let allowed: string[];
     let manager: RemoteBundleManager;
 
     beforeEach(() => {
         configModel = mock<ConfigModel>();
         connectionManager = mock<ConnectionManager>();
-        workspaceFolderManager = mock<WorkspaceFolderManager>();
-        databricksWorkspace = mock(DatabricksWorkspace);
+        const workspaceFolderManager = mock<WorkspaceFolderManager>();
+        const bundleWatcher = mock<BundleWatcher>();
+        const databricksWorkspace = mock(DatabricksWorkspace);
         authProvider = mock<AuthProvider>();
         stateEmitter = new EventEmitter<ConnectionState>();
         folderChangeEmitter = new EventEmitter<Uri | undefined>();
-        bundleWatcher = mock<BundleWatcher>();
         bundleChangeEmitter = new EventEmitter<void>();
+        allowedHostsEmitter = new EventEmitter<void>();
+        allowed = [];
 
         when(connectionManager.onDidChangeState).thenReturn(stateEmitter.event);
         when(workspaceFolderManager.onDidChangeActiveProjectFolder).thenReturn(
@@ -56,10 +53,12 @@ describe("RemoteBundleManager", () => {
 
         when(configModel.init()).thenResolve();
         when(configModel.target).thenReturn(undefined);
-        when(configModel.targets).thenResolve({dev: {}} as any);
-        when(configModel.setTarget(anything())).thenResolve();
-        when(configModel.pinAuthProvider(anything())).thenResolve();
+        when(configModel.resolveTarget()).thenResolve();
+        when(configModel.reresolveTarget()).thenResolve();
+        when(configModel.reapplyPinnedAuthProvider()).thenResolve();
+        when(configModel.pinAuthProvider(anything(), anything())).thenResolve();
         when(connectionManager.connectFromEnvironment()).thenResolve();
+        when(authProvider.host).thenReturn(ENV_HOST);
         when(databricksWorkspace.authProvider).thenReturn(
             instance(authProvider)
         );
@@ -71,20 +70,38 @@ describe("RemoteBundleManager", () => {
             instance(configModel),
             instance(connectionManager),
             instance(workspaceFolderManager),
-            instance(bundleWatcher)
+            instance(bundleWatcher),
+            {
+                allowsSessionCredentials: (envHost, targetHost) =>
+                    allowed.includes(
+                        `${envHost.hostname}->${targetHost.hostname}`
+                    ),
+                onDidChangeAllowedHosts: allowedHostsEmitter.event,
+            }
         );
     });
 
     afterEach(() => {
         manager.dispose();
-        reset(configModel);
     });
 
     it("pins the environment auth provider on connect", async () => {
         stateEmitter.fire("CONNECTED");
         await flush();
 
-        verify(configModel.pinAuthProvider(instance(authProvider))).once();
+        verify(
+            configModel.pinAuthProvider(instance(authProvider), anything())
+        ).once();
+    });
+
+    it("lets the pinned credentials reach another host only once allowed", async () => {
+        stateEmitter.fire("CONNECTED");
+        await flush();
+        const [, allowOtherHost] = capture(configModel.pinAuthProvider).last();
+
+        assert.strictEqual(allowOtherHost(OTHER_HOST), false);
+        allowed.push(`${ENV_HOST.hostname}->${OTHER_HOST.hostname}`);
+        assert.strictEqual(allowOtherHost(OTHER_HOST), true);
     });
 
     it("ignores non-connected state changes", async () => {
@@ -92,7 +109,7 @@ describe("RemoteBundleManager", () => {
         stateEmitter.fire("DISCONNECTED");
         await flush();
 
-        verify(configModel.pinAuthProvider(anything())).never();
+        verify(configModel.pinAuthProvider(anything(), anything())).never();
     });
 
     it("does not pin when the connection has no workspace", async () => {
@@ -101,7 +118,14 @@ describe("RemoteBundleManager", () => {
         stateEmitter.fire("CONNECTED");
         await flush();
 
-        verify(configModel.pinAuthProvider(anything())).never();
+        verify(configModel.pinAuthProvider(anything(), anything())).never();
+    });
+
+    it("re-applies the pinned auth when the allowed hosts change", async () => {
+        allowedHostsEmitter.fire();
+        await flush();
+
+        verify(configModel.reapplyPinnedAuthProvider()).once();
     });
 
     it("connects and resolves the target on initialize", async () => {
@@ -138,99 +162,26 @@ describe("RemoteBundleManager", () => {
     });
 
     it("re-resolves the target on a project-folder change", async () => {
-        await manager.initialize();
-        resetCalls(configModel);
-
         folderChangeEmitter.fire(Uri.file("/new/project"));
         await flush();
 
-        verify(configModel.setTarget(undefined)).calledBefore(
-            configModel.init()
-        );
-        verify(configModel.setTarget(undefined)).once();
-        verify(configModel.init()).once();
+        verify(configModel.reresolveTarget()).once();
     });
 
-    it("makes a folder change wait for the startup target resolution", async () => {
-        let finishInit!: () => void;
-        when(configModel.init())
-            .thenReturn(
-                new Promise<void>((resolve) => {
-                    finishInit = resolve;
-                })
-            )
-            .thenResolve();
-
-        const initialized = manager.initialize();
-        folderChangeEmitter.fire(Uri.file("/new/project"));
-        await flush();
-
-        verify(configModel.setTarget(undefined)).never();
-
-        finishInit();
-        await initialized;
-        await flush();
-
-        verify(configModel.setTarget(undefined)).once();
-        verify(configModel.init()).twice();
-    });
-
-    it("resolves the target when a bundle file appears with no target", async () => {
-        bundleChangeEmitter.fire();
-        await flush();
-
-        verify(configModel.init()).once();
-    });
-
-    it("ignores bundle-file changes once a target is set", async () => {
+    it("re-checks a set target when bundle files change", async () => {
+        // e.g. databricks.yml deleted, or the target removed from it.
         when(configModel.target).thenReturn("dev");
 
         bundleChangeEmitter.fire();
         await flush();
 
-        verify(configModel.init()).never();
+        verify(configModel.resolveTarget()).once();
     });
 
-    it("ignores bundle-file changes when there are no targets", async () => {
-        when(configModel.targets).thenResolve({} as any);
-
+    it("leaves a missing target to ConfigModel when bundle files change", async () => {
         bundleChangeEmitter.fire();
         await flush();
 
-        verify(configModel.init()).never();
-    });
-
-    it("ignores bundle-file changes when the bundle can't be read", async () => {
-        when(configModel.targets).thenReject(new Error("bad yaml"));
-
-        bundleChangeEmitter.fire();
-        await flush();
-
-        verify(configModel.init()).never();
-    });
-
-    it("serialises overlapping folder changes", async () => {
-        let releaseFirst!: () => void;
-        when(configModel.setTarget(undefined))
-            .thenReturn(
-                new Promise<void>((resolve) => {
-                    releaseFirst = resolve;
-                })
-            )
-            .thenResolve();
-
-        folderChangeEmitter.fire(Uri.file("/project/a"));
-        folderChangeEmitter.fire(Uri.file("/project/b"));
-        await flush();
-
-        // The second change waits for the first to finish.
-        verify(configModel.setTarget(undefined)).once();
-        verify(configModel.init()).never();
-
-        releaseFirst();
-        await flush();
-
-        verify(configModel.setTarget(undefined)).twice();
-        verify(configModel.init()).twice();
+        verify(configModel.resolveTarget()).never();
     });
 });

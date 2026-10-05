@@ -1,5 +1,8 @@
 import {BundleWatcher} from "../BundleWatcher";
-import {AuthProvider} from "../../configuration/auth/AuthProvider";
+import {
+    AuthProvider,
+    BundleAuthGuard,
+} from "../../configuration/auth/AuthProvider";
 import {Mutex} from "../../locking";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {BundleTarget} from "../types";
@@ -22,6 +25,7 @@ export type BundleValidateState = {
 export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateState> {
     public target: string | undefined;
     public authProvider: AuthProvider | undefined;
+    private authGuard: BundleAuthGuard | undefined;
     protected mutex = new Mutex();
     protected logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
@@ -54,14 +58,19 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         this.target = target;
         this.resetCache();
         this.authProvider = undefined;
+        this.authGuard = undefined;
     }
 
-    public setAuthProvider(authProvider: AuthProvider | undefined) {
+    public setAuthProvider(
+        authProvider: AuthProvider | undefined,
+        authGuard?: BundleAuthGuard
+    ) {
         if (
             !lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
         ) {
             this.authProvider = authProvider;
         }
+        this.authGuard = authGuard;
     }
 
     protected async readState(): Promise<BundleValidateState> {
@@ -70,6 +79,9 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
             !this.authProvider ||
             !this.workspaceFolderManager.activeProjectUri
         ) {
+            return {};
+        }
+        if (this.authGuard && !(await this.authGuard(this.target))) {
             return {};
         }
 
