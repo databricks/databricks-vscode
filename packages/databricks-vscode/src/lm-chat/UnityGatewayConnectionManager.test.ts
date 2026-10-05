@@ -10,10 +10,15 @@ import {StateStorage} from "../vscode-objs/StateStorage";
 import {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
 
 const PROFILE_KEY = "databricks.unityGateway.savedProfile";
+const WORKSPACE_ID = "1234";
 
 /** What signing in with `profile(name)` saves. */
 function saved(name: string) {
-    return {profile: name, host: `https://${name}.cloud.databricks.com/`};
+    return {
+        profile: name,
+        host: `https://${name}.cloud.databricks.com/`,
+        workspaceId: WORKSPACE_ID,
+    };
 }
 
 describe(__filename, () => {
@@ -39,7 +44,7 @@ describe(__filename, () => {
                 }
                 return {
                     "userName": "test@databricks.com",
-                    "x-databricks-org-id": "1234",
+                    "x-databricks-org-id": WORKSPACE_ID,
                 } as any;
             },
         } as any);
@@ -211,7 +216,7 @@ describe(__filename, () => {
 
         it("skips a profile that now points at another host, and keeps it", async () => {
             when(mockStateStorage.get(PROFILE_KEY)).thenReturn({
-                profile: "a",
+                ...saved("a"),
                 host: "https://elsewhere.cloud.databricks.com/",
             });
 
@@ -221,6 +226,22 @@ describe(__filename, () => {
             assert.equal(manager.hasSavedProfile, true);
             verify(mockStateStorage.set(anything(), anything())).never();
             assert.deepStrictEqual(states, []);
+        });
+
+        it("skips a profile on the same host with another workspace id, and keeps it", async () => {
+            // A unified host serves several workspaces.
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn({
+                ...saved("a"),
+                workspaceId: "2222",
+            });
+
+            await manager.restore();
+
+            assert.equal(manager.state, "DISCONNECTED");
+            assert.equal(manager.databricksWorkspace, undefined);
+            assert.equal(manager.hasSavedProfile, true);
+            verify(mockStateStorage.set(anything(), anything())).never();
+            assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
         });
 
         it("keeps the profile when the workspace can't be reached, and retries next time", async () => {

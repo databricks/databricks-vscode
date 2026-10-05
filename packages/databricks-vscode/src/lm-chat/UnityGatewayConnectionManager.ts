@@ -73,15 +73,17 @@ export class UnityGatewayConnectionManager implements Disposable {
             this.stateStorage.set("databricks.unityGateway.savedProfile", {
                 profile: authProvider.profile,
                 host: authProvider.host.toString(),
+                // Setup steps run once the workspace has loaded.
+                workspaceId: this.connection.databricksWorkspace!.id,
             })
         );
     }
 
     /**
      * Reconnects with the saved profile, without any UI. It skips the profile
-     * if it now points at another host, since the config file can differ
-     * between windows. A failure is logged and leaves the profile for the next
-     * restore. No-op when connected or nothing is saved.
+     * if it now points at another host or workspace, since the config file can
+     * differ between windows. A failure is logged and leaves the profile for
+     * the next restore. No-op when connected or nothing is saved.
      */
     @Mutex.synchronise("mutex")
     async restore(): Promise<void> {
@@ -104,7 +106,16 @@ export class UnityGatewayConnectionManager implements Disposable {
                 );
                 return;
             }
-            await this.connect(authProvider);
+            // On a unified host, several workspaces share the host, so check
+            // the workspace too once it has loaded.
+            await this.connect(authProvider, async () => {
+                const workspaceId = this.connection.databricksWorkspace?.id;
+                if (workspaceId !== saved.workspaceId) {
+                    throw new Error(
+                        `profile ${saved.profile} now points at workspace ${workspaceId}, not ${saved.workspaceId}`
+                    );
+                }
+            });
         } catch (e) {
             logger.error(
                 `Can't restore the Unity Gateway sign-in with profile ${saved.profile}`,
