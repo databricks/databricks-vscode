@@ -412,7 +412,7 @@ export class EventTypes {
         action: BundleRemoteHostMismatchWarningAction;
     }> = {
         comment:
-            "In Databricks Remote SSH mode, surfaced a warning that the selected bundle target's workspace host differs from the environment (SSH host) the extension is authenticated against, so the explorer/deploy will use the environment host. Recorded once per surfacing (at most once per session per distinct environment→target host pair, until the user opts out for that pair).",
+            "In Databricks Remote SSH mode, surfaced a warning that the selected bundle target's workspace host differs from the host the remote session is signed in to, so bundle commands send the session's credentials to the target's host. Recorded once per surfacing: once per environment→target host pair, again only after the hosts have matched in between, and never for a pair the user opted out of.",
         action: {
             comment:
                 "What the user did: 'switch-target' opened the target picker, 'hidden' chose \"Don't warn for this target\" (persisted per-pair opt-out for the workspace), 'dismissed' closed it without either.",

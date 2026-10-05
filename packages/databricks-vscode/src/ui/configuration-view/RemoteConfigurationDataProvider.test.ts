@@ -6,6 +6,8 @@ import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {ConfigurationTreeItem} from "./types";
 import {HostMismatchProvider} from "./BundleTargetComponent";
+import {BundleFileSet} from "../../bundle/BundleFileSet";
+import {BundleWatcher} from "../../bundle/BundleWatcher";
 
 function labelOf(item: ConfigurationTreeItem): string | undefined {
     return typeof item.label === "string" ? item.label : item.label?.label;
@@ -14,6 +16,9 @@ function labelOf(item: ConfigurationTreeItem): string | undefined {
 describe("RemoteConfigurationDataProvider", () => {
     let mockConfigModel: ConfigModel;
     let mockWorkspaceFolderManager: WorkspaceFolderManager;
+    let mockBundleFileSet: BundleFileSet;
+    let mockBundleWatcher: BundleWatcher;
+    let bundleChangeEmitter: EventEmitter<void>;
     let folderChangeEmitter: EventEmitter<Uri | undefined>;
     let targetChangeEmitter: EventEmitter<void>;
     let mismatchChangeEmitter: EventEmitter<void>;
@@ -23,6 +28,17 @@ describe("RemoteConfigurationDataProvider", () => {
     beforeEach(() => {
         mockConfigModel = mock(ConfigModel);
         mockWorkspaceFolderManager = mock(WorkspaceFolderManager);
+        mockBundleFileSet = mock(BundleFileSet);
+        // onDidChange is an instance property, which only the generic form stubs.
+        mockBundleWatcher = mock<BundleWatcher>();
+        bundleChangeEmitter = new EventEmitter<void>();
+        when(mockBundleWatcher.onDidChange).thenReturn(
+            bundleChangeEmitter.event
+        );
+        // The folder is a bundle.
+        when(mockBundleFileSet.getRootFile()).thenResolve(
+            Uri.file("/tmp/my-project/databricks.yml")
+        );
         folderChangeEmitter = new EventEmitter<Uri | undefined>();
         targetChangeEmitter = new EventEmitter<void>();
         mismatchChangeEmitter = new EventEmitter<void>();
@@ -59,6 +75,8 @@ describe("RemoteConfigurationDataProvider", () => {
         provider = new RemoteConfigurationDataProvider(
             instance(mockConfigModel),
             instance(mockWorkspaceFolderManager),
+            instance(mockBundleFileSet),
+            instance(mockBundleWatcher),
             hostMismatchProvider
         );
         return provider;
@@ -92,32 +110,77 @@ describe("RemoteConfigurationDataProvider", () => {
         expect(labels).to.include("Select a bundle target");
     });
 
-    it("hides the target picker when the folder has no bundle targets", async () => {
-        // A non-bundle folder (or a bundle that defines no targets): there's
-        // nothing to pick, so the prompt must be suppressed.
+    it("stays empty when the folder has no bundle file", async () => {
+        // The view's welcome content ("Select a project") shows instead.
+        when(mockBundleFileSet.getRootFile()).thenResolve(undefined);
         when(mockConfigModel.target).thenReturn(undefined);
-        when(mockConfigModel.targets).thenResolve({});
 
         const roots = await make().getChildren();
-        const labels = roots.map(labelOf);
 
-        expect(labels).to.include("Bundle");
-        expect(labels).to.not.include("Select a bundle target");
+        expect(roots).to.deep.equal([]);
     });
 
-    it("suppresses the target picker when no folder is active", async () => {
-        // activeProjectUri throws when no folder is open; the provider must not
-        // propagate that (it would reject getChildren and break the view).
-        when(mockWorkspaceFolderManager.activeProjectUri).thenThrow(
+    it("stays empty when no folder is active", async () => {
+        // getRootFile reads activeProjectUri, which throws with no folder; the
+        // provider must not reject getChildren.
+        when(mockBundleFileSet.getRootFile()).thenReject(
             new Error("No active project folder")
         );
         when(mockConfigModel.target).thenReturn(undefined);
 
         const roots = await make().getChildren();
 
-        // Nothing to show - the view's welcome content ("Select a project")
-        // covers this state.
         expect(roots).to.deep.equal([]);
+    });
+
+    it("shows only the Bundle row when the bundle defines no targets", async () => {
+        when(mockConfigModel.target).thenReturn(undefined);
+        when(mockConfigModel.targets).thenResolve({});
+
+        const labels = (await make().getChildren()).map(labelOf);
+
+        expect(labels).to.deep.equal(["Bundle"]);
+    });
+
+    it("shows only the Bundle row when the bundle can't be parsed", async () => {
+        when(mockConfigModel.target).thenReturn(undefined);
+        when(mockConfigModel.targets).thenReject(new Error("bad yaml"));
+
+        const labels = (await make().getChildren()).map(labelOf);
+
+        expect(labels).to.deep.equal(["Bundle"]);
+    });
+
+    it("refreshes on a bundle-file change while no target is set", () => {
+        when(mockConfigModel.target).thenReturn(undefined);
+        let refreshes = 0;
+        make().onDidChangeTreeData(() => refreshes++);
+
+        bundleChangeEmitter.fire();
+
+        expect(refreshes).to.equal(1);
+    });
+
+    it("copies just the target name from the host-mismatch Target row", async () => {
+        hostMismatchProvider = {
+            mismatch: {
+                envHost: "dogfood.cloud.databricks.com",
+                targetHost: "logfood.cloud.databricks.com",
+                target: "dev",
+            },
+            onDidChangeMismatch: mismatchChangeEmitter.event,
+        };
+        when(mockConfigModel.target).thenReturn("dev");
+        when(mockConfigModel.get("mode")).thenResolve("development" as any);
+        when(mockConfigModel.get("host")).thenResolve(
+            new URL("https://logfood.cloud.databricks.com") as any
+        );
+
+        const roots = await make().getChildren();
+        const targetRow = roots.find((r) => labelOf(r) === "Target");
+
+        expect(targetRow?.description).to.contain("targets");
+        expect(targetRow?.copyText).to.equal("dev");
     });
 
     it("stamps a copy kind onto value rows via getTreeItem", () => {

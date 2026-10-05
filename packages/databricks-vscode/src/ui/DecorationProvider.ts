@@ -20,7 +20,7 @@ export class TreeItemDecorationProvider implements FileDecorationProvider {
         this.onDidChangeFileDecorationsEmitter.event;
     constructor(
         private readonly bundleResourceExplorerTreeDataProvider: BundleResourceExplorerTreeDataProvider,
-        // Absent in remote mode, where the Configuration view isn't registered.
+        // Omitted in remote mode: its Configuration view has no decorated rows.
         private readonly configrationViewTreeDataProvider?: ConfigurationDataProvider
     ) {
         this.disposables.push(

@@ -83,15 +83,39 @@ export async function promptToSelectActiveProjectFolder(
 }
 
 /**
+ * The project-folder picker, with progress shown on the Configuration view
+ * while `findProjects` searches for sub-projects. Shared by normal mode
+ * (BundleProjectManager) and remote mode.
+ */
+export async function selectActiveProjectFolder(
+    workspaceFolderManager: WorkspaceFolderManager,
+    findProjects: () => Promise<{absolute: Uri; relative: string}[]>
+) {
+    return window.withProgress(
+        {location: {viewId: "configurationView"}},
+        async () =>
+            promptToSelectActiveProjectFolder(
+                await findProjects(),
+                undefined,
+                workspaceFolderManager
+            )
+    );
+}
+
+/**
  * Show a quickpick of the active project's bundle targets and set the chosen one
  * on the ConfigModel. Shared by the normal-mode ConnectionCommands.selectTarget
- * and the remote-mode `databricks.connection.bundle.selectTarget` registration,
- * which have no ConnectionManager/cluster/sync in common - only the ConfigModel.
+ * and the remote-mode `databricks.connection.bundle.selectTarget` registration.
+ * A CLI failure is shown as its own error message rather than thrown, so
+ * callers' error popups don't repeat it.
  */
 export async function promptToSelectBundleTarget(configModel: ConfigModel) {
     const targets = await configModel.targets;
     const currentTarget = configModel.target;
-    if (targets === undefined) {
+    if (targets === undefined || Object.keys(targets).length === 0) {
+        window.showInformationMessage(
+            "The selected project has no bundle targets."
+        );
         return;
     }
 
@@ -115,6 +139,7 @@ export async function promptToSelectBundleTarget(configModel: ConfigModel) {
     } catch (e) {
         if (e instanceof ProcessError) {
             e.showErrorMessage("Error selecting target");
+            return;
         }
         throw e;
     }

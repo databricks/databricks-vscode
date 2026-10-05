@@ -480,7 +480,7 @@
             {
                 "command": "databricks.bundle.showLogs",
                 "title": "Show bundle logs",
-                "enablement": "databricks.context.activated && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
@@ -831,7 +831,7 @@
             {
                 "view": "configurationView",
                 "contents": "Initializing...",
-                "when": "workspaceFolderCount > 0 && !databricks.context.initialized"
+                "when": "workspaceFolderCount > 0 && !databricks.context.initialized && !databricks.context.remoteMode"
             },
             {
                 "view": "configurationView",
@@ -870,7 +870,13 @@
             },
             {
                 "view": "configurationView",
-                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
+                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)",
+                "when": "!databricks.context.remoteMode"
+            },
+            {
+                "view": "configurationView",
+                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html)",
+                "when": "databricks.context.remoteMode"
             },
             {
                 "view": "sshTunnelView",
@@ -878,12 +884,12 @@
             },
             {
                 "view": "dabsResourceExplorerView",
-                "contents": "No Databricks project selected.\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "contents": "No bundle target selected.\n[Select a target](command:databricks.connection.bundle.selectTarget)\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "databricks.context.remoteMode && !databricks.context.bundle.isTargetSet"
             },
             {
                 "view": "configurationView",
-                "contents": "No Databricks project selected.\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "contents": "A Databricks project was not detected in the selected folder:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
                 "when": "databricks.context.remoteMode && !databricks.context.bundle.isTargetSet"
             }
         ],

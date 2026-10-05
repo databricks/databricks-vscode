@@ -95,11 +95,12 @@ import {
 } from "./bundle";
 import {getSubProjects} from "./bundle/BundleFileSet";
 import {
-    promptToSelectActiveProjectFolder,
     promptToSelectBundleTarget,
+    selectActiveProjectFolder,
 } from "./bundle/activeBundleUtils";
-import {RemoteBundleInitializer} from "./bundle/RemoteBundleInitializer";
+import {RemoteBundleManager} from "./bundle/RemoteBundleManager";
 import {RemoteTargetHostManager} from "./bundle/RemoteTargetHostManager";
+import {RemoteTargetHostCommands} from "./bundle/RemoteTargetHostCommands";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
 import {BundleEngineManager} from "./bundle/BundleEngineManager";
@@ -119,6 +120,7 @@ import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
 import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
+import {withOnErrorHandler} from "./utils/onErrorDecorator";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {PackageManagerTelemetry} from "./language/PackageManagerTelemetry";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
@@ -291,9 +293,9 @@ function registerDocsView(context: ExtensionContext): void {
 /**
  * Register the Bundle Resource Explorer tree view and its commands. Shared
  * between the normal activation flow and the remote (Databricks Remote SSH)
- * flow. The two flows differ only in whether a Configuration view exists to
- * feed the decoration provider - everything else is identical, so the command
- * set (deploy/run/destroy/…) is registered the same way in both modes.
+ * flow. The two flows differ only in whether the Configuration view feeds the
+ * decoration provider - everything else is identical, so the command set
+ * (deploy/run/destroy/…) is registered the same way in both modes.
  *
  * Returns the BundleCommands instance, which the run/debug adapter factories
  * depend on in the normal flow.
@@ -306,7 +308,8 @@ function registerBundleResourceExplorer(
     connectionManager: ConnectionManager,
     bundleRemoteStateModel: BundleRemoteStateModel,
     bundleValidateModel: BundleValidateModel,
-    // Absent in remote mode, where the Configuration view isn't registered.
+    // Omitted in remote mode: its Configuration view has no decorated rows
+    // (only the Cluster and Sync components use decorations).
     configurationDataProvider?: ConfigurationDataProvider
 ): BundleCommands {
     const bundleRunTerminalManager = new BundleRunTerminalManager(
@@ -781,9 +784,9 @@ export async function activate(
         // Surface the Unity Catalog, Docs, Bundle Resource Explorer and Bundle
         // Variables views, connected using the ambient environment credentials
         // (no login flow). Unlike normal mode, the bundle target is auto-resolved
-        // (saved target from workspace state, else the bundle default) and auth
-        // is copied from the environment onto the ConfigModel by the
-        // RemoteBundleInitializer - see below.
+        // (saved target from workspace state, else the bundle default) and the
+        // RemoteBundleManager pins the environment auth on the ConfigModel - see
+        // below.
         const remoteBundleFileSet = new BundleFileSet(workspaceFolderManager);
         const remoteBundleFileWatcher = new BundleWatcher(
             remoteBundleFileSet,
@@ -833,30 +836,32 @@ export async function activate(
             remoteConnectionManager
         );
 
-        // Bridges the environment-resolved auth onto the ConfigModel (which
-        // connectFromEnvironment deliberately leaves untouched) and re-applies
-        // it whenever the target changes or the connection is re-established.
-        const remoteBundleInitializer = new RemoteBundleInitializer(
-            remoteConfigModel,
-            remoteConnectionManager,
-            workspaceFolderManager
-        );
-        context.subscriptions.push(remoteBundleInitializer);
-
-        // Warns (once per session, per env→target host pair) when the selected
-        // target deploys to a workspace other than the one this session is
-        // authenticated against, and exposes that state so the Configuration
-        // view can badge the Target node.
-        const remoteTargetHostManager = new RemoteTargetHostManager(
+        const remoteBundleManager = new RemoteBundleManager(
             remoteConfigModel,
             remoteConnectionManager,
             workspaceFolderManager,
-            stateStorage,
-            telemetry
+            remoteBundleFileWatcher
         );
-        context.subscriptions.push(remoteTargetHostManager);
+        const remoteTargetHostManager = new RemoteTargetHostManager(
+            remoteConfigModel,
+            remoteConnectionManager,
+            stateStorage
+        );
+        context.subscriptions.push(
+            remoteBundleManager,
+            remoteTargetHostManager,
+            new RemoteTargetHostCommands(remoteTargetHostManager, telemetry)
+        );
 
-        const connectRemote = () => remoteBundleInitializer.initialize();
+        // The Unity Catalog refresh only needs a fresh connection; re-pinning
+        // the same credentials doesn't re-pull bundle state.
+        const connectRemote = () =>
+            remoteConnectionManager.connectFromEnvironment().catch((e) => {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                    "Remote mode: failed to connect Unity Catalog",
+                    e
+                );
+            });
 
         registerUnityCatalog(
             context,
@@ -866,15 +871,14 @@ export async function activate(
             connectRemote
         );
         registerDocsView(context);
-        // Slimmed-down Configuration view so the user can see (and switch) the
-        // active project folder and, once resolved, the bundle target with its
-        // Host/Mode - i.e. which workspace a deploy targets. The normal-mode
-        // provider isn't reused: it gates on BundleProjectManager (absent here)
+        // The normal-mode provider gates on BundleProjectManager (absent here)
         // and builds login/cluster/sync/env components that don't apply.
         const remoteConfigurationDataProvider =
             new RemoteConfigurationDataProvider(
                 remoteConfigModel,
                 workspaceFolderManager,
+                remoteBundleFileSet,
+                remoteBundleFileWatcher,
                 remoteTargetHostManager
             );
         context.subscriptions.push(
@@ -901,34 +905,30 @@ export async function activate(
             workspaceFolderManager
         );
 
-        // In remote mode there is no BundleProjectManager (its init runs the
-        // login flow). Register a lightweight project picker that reuses the
-        // shared quickpick + sub-project detection; a folder change re-resolves
-        // the target and the initializer re-applies auth.
+        // Normal mode registers these through BundleProjectManager and
+        // ConnectionCommands, whose init runs the login flow.
         context.subscriptions.push(
             telemetry.registerCommand(
                 "databricks.bundle.selectActiveProjectFolder",
-                async () => {
-                    const subProjects = await getSubProjects(
-                        workspaceFolderManager.activeProjectUri
-                    );
-                    await promptToSelectActiveProjectFolder(
-                        subProjects,
-                        undefined,
-                        workspaceFolderManager
-                    );
-                }
+                () =>
+                    selectActiveProjectFolder(workspaceFolderManager, () =>
+                        // The workspace folder root, so sibling projects stay
+                        // reachable.
+                        getSubProjects(
+                            workspaceFolderManager.activeWorkspaceFolder.uri
+                        )
+                    )
             ),
-            // Target picker for the remote Configuration view. Reuses the same
-            // quickpick as normal mode (ConnectionCommands.selectTarget); the
-            // resolved target's auth is re-applied by RemoteBundleInitializer.
             telemetry.registerCommand(
                 "databricks.connection.bundle.selectTarget",
-                () => promptToSelectBundleTarget(remoteConfigModel)
+                withOnErrorHandler(
+                    () => promptToSelectBundleTarget(remoteConfigModel),
+                    {popup: {prefix: "Error selecting target."}}
+                )
             )
         );
 
-        connectRemote();
+        remoteBundleManager.initialize();
 
         customWhenContext.setActivated(true);
         telemetry.recordEvent(Events.EXTENSION_ACTIVATION);

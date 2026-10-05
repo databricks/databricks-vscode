@@ -20,7 +20,7 @@ import {BundleInitWizard} from "./BundleInitWizard";
 import {EventReporter, Events, Telemetry} from "../telemetry";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {AiToolsManager} from "../aitools/AiToolsManager";
-import {promptToSelectActiveProjectFolder} from "./activeBundleUtils";
+import {selectActiveProjectFolder} from "./activeBundleUtils";
 
 export class BundleProjectManager {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -166,15 +166,11 @@ export class BundleProjectManager {
     }
 
     public async selectActiveProjectFolder() {
-        return window.withProgress(
-            {location: {viewId: "configurationView"}},
+        return selectActiveProjectFolder(
+            this.workspaceFolderManager,
             async () => {
                 await this.detectSubProjects();
-                return promptToSelectActiveProjectFolder(
-                    this.subProjects ?? [],
-                    undefined,
-                    this.workspaceFolderManager
-                );
+                return this.subProjects ?? [];
             }
         );
     }

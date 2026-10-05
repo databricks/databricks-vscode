@@ -11,7 +11,10 @@ import {ConfigurationTreeItem} from "./types";
 import {UrlError} from "../../utils/urlUtils";
 import {LabelUtils} from "../utils";
 import {humaniseMode} from "../utils/BundleUtils";
-import {HostMismatch} from "../../bundle/RemoteTargetHostManager";
+import {
+    describeHostMismatch,
+    HostMismatch,
+} from "../../bundle/RemoteTargetHostManager";
 
 const TREE_ICON_ID = "TARGET";
 
@@ -88,10 +91,8 @@ export class BundleTargetComponent extends BaseComponent {
                 throw new UrlError("Host not found");
             }
 
-            // Remote mode only: the selected target deploys to a workspace other
-            // than the one this session is authenticated against, so the explorer
-            // and deploys will silently use the environment host. Surface it as a
-            // persistent warning badge (the toast is transient).
+            // Remote mode only: a persistent badge for the host mismatch (the
+            // warning popup is transient).
             const mismatch = this.hostMismatchProvider?.mismatch;
             if (mismatch !== undefined) {
                 return [
@@ -103,12 +104,9 @@ export class BundleTargetComponent extends BaseComponent {
                             new ThemeColor("problemsWarningIcon.foreground")
                         ),
                         description: `${target} — targets ${mismatch.targetHost}`,
-                        tooltip:
-                            `This project's "${mismatch.target}" target deploys to ` +
-                            `${mismatch.targetHost}, but you're connected to ` +
-                            `${mismatch.envHost} (the workspace you opened this remote ` +
-                            `session in). The Bundle Resource Explorer and any deploy ` +
-                            `will use ${mismatch.envHost}, not ${mismatch.targetHost}.`,
+                        // "Copy Target" copies the name, not the description.
+                        copyText: target,
+                        tooltip: describeHostMismatch(mismatch),
                         contextValue:
                             "databricks.configuration.target.hostMismatch",
                         collapsibleState: TreeItemCollapsibleState.Collapsed,

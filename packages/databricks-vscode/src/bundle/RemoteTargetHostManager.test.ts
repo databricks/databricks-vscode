@@ -2,20 +2,11 @@ import assert from "assert";
 import {Disposable} from "vscode";
 import {deepEqual, instance, mock, reset, verify, when} from "ts-mockito";
 import {StateStorage} from "../vscode-objs/StateStorage";
-import {Telemetry} from "../telemetry";
-import {Events} from "../telemetry/constants";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
-import {
-    RemoteTargetHostManager,
-    RemoteHostMismatchPrompter,
-    SWITCH_TARGET_LABEL,
-    DONT_WARN_FOR_TARGET_LABEL,
-} from "./RemoteTargetHostManager";
+import {HostMismatch, RemoteTargetHostManager} from "./RemoteTargetHostManager";
 
 const HIDE_KEY = "databricks.bundle.remote.hideHostMismatchWarning";
-const SELECT_TARGET_COMMAND = "databricks.connection.bundle.selectTarget";
 
 const ENV_HOST = new URL("https://dogfood.cloud.databricks.com");
 const TARGET_HOST = new URL("https://logfood.cloud.databricks.com");
@@ -25,16 +16,31 @@ const PAIR = `${ENV_HOST.hostname}->${TARGET_HOST.hostname}`;
 /**
  * Hand-rolled stand-in for {@link ConfigModel}: the base model exposes
  * `onDidChangeTarget` and `get` as bound instance fields ts-mockito can't stub,
- * so we drive them directly. `fire()` replays a target change.
+ * so we drive them directly. `fire()` replays a target change and
+ * `fireHostChange()` an edit to the target's workspace.host.
  */
 class FakeConfigModel {
     private listeners: Array<() => unknown> = [];
+    private hostListeners: Array<() => unknown> = [];
     public target: string | undefined;
     public hostToReturn: URL | undefined;
 
     onDidChangeTarget(cb: () => unknown): Disposable {
         this.listeners.push(cb);
         return {dispose() {}};
+    }
+
+    onDidChangeKey() {
+        return (cb: () => unknown): Disposable => {
+            this.hostListeners.push(cb);
+            return {dispose() {}};
+        };
+    }
+
+    async fireHostChange(): Promise<void> {
+        for (const cb of this.hostListeners) {
+            await cb();
+        }
     }
 
     async get(): Promise<URL | undefined> {
@@ -69,92 +75,56 @@ class FakeConnectionManager {
     }
 }
 
-class FakeWorkspaceFolderManager {
-    onDidChangeActiveProjectFolder(): Disposable {
-        return {dispose() {}};
-    }
-}
-
-function makePrompter(choice: string | undefined): {
-    prompter: RemoteHostMismatchPrompter;
-    executed: string[];
-    shownCount: () => number;
-} {
-    const executed: string[] = [];
-    let shown = 0;
-    const prompter: RemoteHostMismatchPrompter = {
-        showWarningMessage: (() => {
-            shown++;
-            return Promise.resolve(choice);
-        }) as RemoteHostMismatchPrompter["showWarningMessage"],
-        executeCommand: ((command: string) => {
-            executed.push(command);
-            return Promise.resolve(undefined);
-        }) as RemoteHostMismatchPrompter["executeCommand"],
-    };
-    return {prompter, executed, shownCount: () => shown};
-}
-
 describe("RemoteTargetHostManager", () => {
     let fakeConfig: FakeConfigModel;
     let fakeConnection: FakeConnectionManager;
-    let fakeFolders: FakeWorkspaceFolderManager;
     let mockStorage: StateStorage;
-    let mockTelemetry: Telemetry;
 
-    function build(
-        prompter: RemoteHostMismatchPrompter
-    ): RemoteTargetHostManager {
-        return new RemoteTargetHostManager(
+    // Builds the manager and records every warning it asks for.
+    function build(): {
+        manager: RemoteTargetHostManager;
+        warned: HostMismatch[];
+    } {
+        const manager = new RemoteTargetHostManager(
             fakeConfig as unknown as ConfigModel,
             fakeConnection as unknown as ConnectionManager,
-            fakeFolders as unknown as WorkspaceFolderManager,
-            instance(mockStorage),
-            instance(mockTelemetry),
-            prompter
+            instance(mockStorage)
         );
+        const warned: HostMismatch[] = [];
+        manager.onDidDetectNewMismatch((m) => warned.push(m));
+        return {manager, warned};
     }
 
     beforeEach(() => {
         fakeConfig = new FakeConfigModel();
         fakeConnection = new FakeConnectionManager();
-        fakeFolders = new FakeWorkspaceFolderManager();
         mockStorage = mock(StateStorage);
-        mockTelemetry = mock(Telemetry);
         when(mockStorage.get(HIDE_KEY)).thenReturn([]);
     });
 
     afterEach(() => {
         reset(mockStorage);
-        reset(mockTelemetry);
     });
 
-    it("warns once on a host mismatch and records 'dismissed' on close", async () => {
-        const {prompter, shownCount} = makePrompter(undefined);
-        const manager = build(prompter);
+    it("warns once on a host mismatch and exposes it", async () => {
+        const {manager, warned} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.hostToReturn = TARGET_HOST;
 
         await fakeConfig.fire();
 
-        assert.strictEqual(shownCount(), 1);
-        assert.deepStrictEqual(manager.mismatch, {
+        const expected = {
             envHost: ENV_HOST.hostname,
             targetHost: TARGET_HOST.hostname,
             target: "prod",
-        });
-        verify(
-            mockTelemetry.recordEvent(
-                Events.BUNDLE_REMOTE_HOST_MISMATCH_WARNING,
-                deepEqual({action: "dismissed"})
-            )
-        ).once();
+        };
+        assert.deepStrictEqual(warned, [expected]);
+        assert.deepStrictEqual(manager.mismatch, expected);
     });
 
     it("does not warn when the hosts match (trailing-slash tolerant)", async () => {
-        const {prompter, shownCount} = makePrompter(undefined);
-        const manager = build(prompter);
+        const {manager, warned} = build();
         fakeConnection.setEnvHost(
             new URL("https://dogfood.cloud.databricks.com/")
         );
@@ -165,51 +135,47 @@ describe("RemoteTargetHostManager", () => {
 
         await fakeConfig.fire();
 
-        assert.strictEqual(shownCount(), 0);
+        assert.strictEqual(warned.length, 0);
         assert.strictEqual(manager.mismatch, undefined);
     });
 
     it("does not warn when no target is selected", async () => {
-        const {prompter, shownCount} = makePrompter(undefined);
-        const manager = build(prompter);
+        const {manager, warned} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = undefined;
         fakeConfig.hostToReturn = TARGET_HOST;
 
         await fakeConfig.fire();
 
-        assert.strictEqual(shownCount(), 0);
+        assert.strictEqual(warned.length, 0);
         assert.strictEqual(manager.mismatch, undefined);
     });
 
     it("does not warn when not connected (no environment host)", async () => {
-        const {prompter, shownCount} = makePrompter(undefined);
-        build(prompter);
+        const {warned} = build();
         fakeConnection.setEnvHost(undefined);
         fakeConfig.target = "prod";
         fakeConfig.hostToReturn = TARGET_HOST;
 
         await fakeConfig.fire();
 
-        assert.strictEqual(shownCount(), 0);
+        assert.strictEqual(warned.length, 0);
     });
 
     it("does not warn when the target host is undefined (invalid-host path owns it)", async () => {
-        const {prompter, shownCount} = makePrompter(undefined);
-        const manager = build(prompter);
+        const {manager, warned} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.hostToReturn = undefined;
 
         await fakeConfig.fire();
 
-        assert.strictEqual(shownCount(), 0);
+        assert.strictEqual(warned.length, 0);
         assert.strictEqual(manager.mismatch, undefined);
     });
 
-    it("warns at most once per session for the same pair, but again for a new pair", async () => {
-        const {prompter, shownCount} = makePrompter(undefined);
-        build(prompter);
+    it("warns once per pair, and again for a new pair", async () => {
+        const {warned} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.hostToReturn = TARGET_HOST;
@@ -217,98 +183,151 @@ describe("RemoteTargetHostManager", () => {
         await fakeConfig.fire();
         await fakeConfig.fire();
         await fakeConfig.fire();
-        assert.strictEqual(shownCount(), 1);
+        assert.strictEqual(warned.length, 1);
 
         // A target on a different host is a new pair and re-warns.
         fakeConfig.hostToReturn = OTHER_HOST;
         await fakeConfig.fire();
-        assert.strictEqual(shownCount(), 2);
+        assert.strictEqual(warned.length, 2);
     });
 
-    it("re-warns when the mismatch clears and then recurs", async () => {
-        const {prompter, shownCount} = makePrompter(undefined);
-        build(prompter);
+    it("warns once per pair when switching between two mismatched targets", async () => {
+        const {warned} = build();
+        fakeConnection.setEnvHost(ENV_HOST);
+
+        for (const [target, host] of [
+            ["a", TARGET_HOST],
+            ["b", OTHER_HOST],
+            ["a", TARGET_HOST],
+            ["b", OTHER_HOST],
+        ] as const) {
+            fakeConfig.target = target;
+            fakeConfig.hostToReturn = host;
+            await fakeConfig.fire();
+        }
+
+        assert.deepStrictEqual(
+            warned.map((m) => m.target),
+            ["a", "b"]
+        );
+    });
+
+    it("re-warns when the hosts match in between", async () => {
+        const {warned} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.hostToReturn = TARGET_HOST;
 
         await fakeConfig.fire();
-        assert.strictEqual(shownCount(), 1);
+        assert.strictEqual(warned.length, 1);
 
-        // Hosts now match: mismatch clears and the session latch resets.
         fakeConfig.hostToReturn = ENV_HOST;
         await fakeConfig.fire();
-        assert.strictEqual(shownCount(), 1);
+        assert.strictEqual(warned.length, 1);
 
-        // Same mismatch recurs: warns again.
         fakeConfig.hostToReturn = TARGET_HOST;
         await fakeConfig.fire();
-        assert.strictEqual(shownCount(), 2);
+        assert.strictEqual(warned.length, 2);
     });
 
-    it("stays silent for an opted-out pair but still warns for a different pair", async () => {
-        when(mockStorage.get(HIDE_KEY)).thenReturn([PAIR]);
-        const {prompter, shownCount} = makePrompter(undefined);
-        build(prompter);
+    it("does not re-warn when the target clears transiently", async () => {
+        const {manager, warned} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.hostToReturn = TARGET_HOST;
 
         await fakeConfig.fire();
-        assert.strictEqual(shownCount(), 0);
+        assert.strictEqual(warned.length, 1);
 
-        // A different pair is not opted out and still warns.
+        // A folder switch clears the target before resolving the new folder's.
+        fakeConfig.target = undefined;
+        await fakeConfig.fire();
+        assert.strictEqual(manager.mismatch, undefined);
+
+        // The new folder's target has the same mismatch: no second warning.
+        fakeConfig.target = "prod";
+        await fakeConfig.fire();
+        assert.strictEqual(warned.length, 1);
+        assert.notStrictEqual(manager.mismatch, undefined);
+    });
+
+    it("re-evaluates when the target's workspace.host changes", async () => {
+        const {manager, warned} = build();
+        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.target = "prod";
+        fakeConfig.hostToReturn = TARGET_HOST;
+
+        await fakeConfig.fire();
+        assert.notStrictEqual(manager.mismatch, undefined);
+
+        // The user fixes workspace.host in databricks.yml; the target name
+        // doesn't change, so only the host-key event fires.
+        fakeConfig.hostToReturn = ENV_HOST;
+        await fakeConfig.fireHostChange();
+        assert.strictEqual(manager.mismatch, undefined);
+
+        // Breaking it again warns again.
+        fakeConfig.hostToReturn = TARGET_HOST;
+        await fakeConfig.fireHostChange();
+        assert.notStrictEqual(manager.mismatch, undefined);
+        assert.strictEqual(warned.length, 2);
+    });
+
+    it("fires onDidChangeMismatch only when the mismatch changes", async () => {
+        const {manager} = build();
+        let changes = 0;
+        manager.onDidChangeMismatch(() => changes++);
+        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.target = "prod";
+        fakeConfig.hostToReturn = TARGET_HOST;
+
+        await fakeConfig.fire();
+        await fakeConfig.fireHostChange();
+        await fakeConfig.fire();
+
+        assert.strictEqual(changes, 1);
+    });
+
+    it("stays silent for a hidden pair but still warns for a different pair", async () => {
+        when(mockStorage.get(HIDE_KEY)).thenReturn([PAIR]);
+        const {manager, warned} = build();
+        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.target = "prod";
+        fakeConfig.hostToReturn = TARGET_HOST;
+
+        await fakeConfig.fire();
+        assert.strictEqual(warned.length, 0);
+        // The badge still shows for a hidden pair.
+        assert.notStrictEqual(manager.mismatch, undefined);
+
         fakeConfig.hostToReturn = OTHER_HOST;
         await fakeConfig.fire();
-        assert.strictEqual(shownCount(), 1);
+        assert.strictEqual(warned.length, 1);
     });
 
-    it("opens the target picker and records 'switch-target'", async () => {
-        const {prompter, executed} = makePrompter(SWITCH_TARGET_LABEL);
-        build(prompter);
-        fakeConnection.setEnvHost(ENV_HOST);
-        fakeConfig.target = "prod";
-        fakeConfig.hostToReturn = TARGET_HOST;
+    it("hideWarning persists the pair once", async () => {
+        const {manager} = build();
+        const mismatch = {
+            envHost: ENV_HOST.hostname,
+            targetHost: TARGET_HOST.hostname,
+            target: "prod",
+        };
 
-        await fakeConfig.fire();
+        await manager.hideWarning(mismatch);
+        when(mockStorage.get(HIDE_KEY)).thenReturn([PAIR]);
+        await manager.hideWarning(mismatch);
 
-        assert.deepStrictEqual(executed, [SELECT_TARGET_COMMAND]);
-        verify(
-            mockTelemetry.recordEvent(
-                Events.BUNDLE_REMOTE_HOST_MISMATCH_WARNING,
-                deepEqual({action: "switch-target"})
-            )
-        ).once();
-    });
-
-    it("persists the per-pair opt-out and records 'hidden' on 'Don't warn for this target'", async () => {
-        const {prompter, executed} = makePrompter(DONT_WARN_FOR_TARGET_LABEL);
-        build(prompter);
-        fakeConnection.setEnvHost(ENV_HOST);
-        fakeConfig.target = "prod";
-        fakeConfig.hostToReturn = TARGET_HOST;
-
-        await fakeConfig.fire();
-
-        assert.strictEqual(executed.length, 0);
         verify(mockStorage.set(HIDE_KEY, deepEqual([PAIR]))).once();
-        verify(
-            mockTelemetry.recordEvent(
-                Events.BUNDLE_REMOTE_HOST_MISMATCH_WARNING,
-                deepEqual({action: "hidden"})
-            )
-        ).once();
     });
 
     it("warns only once when two concurrent evaluations read the same mismatch", async () => {
-        const {prompter, shownCount} = makePrompter(undefined);
-        build(prompter);
+        const {warned} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.hostToReturn = TARGET_HOST;
 
         await fakeConfig.fireConcurrentTwice();
 
-        assert.strictEqual(shownCount(), 1);
+        assert.strictEqual(warned.length, 1);
     });
 });

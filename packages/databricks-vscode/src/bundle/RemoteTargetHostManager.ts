@@ -1,33 +1,15 @@
-import {commands, Disposable, Event, EventEmitter, window} from "vscode";
+import {Disposable, Event, EventEmitter} from "vscode";
+import lodash from "lodash";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {StateStorage} from "../vscode-objs/StateStorage";
-import {Telemetry} from "../telemetry";
-import {
-    BundleRemoteHostMismatchWarningAction,
-    Events,
-} from "../telemetry/constants";
 import {withOnErrorHandler} from "../utils/onErrorDecorator";
 
-export const SWITCH_TARGET_LABEL = "Switch target";
-export const DONT_WARN_FOR_TARGET_LABEL = "Don't warn for this target";
-const SELECT_TARGET_COMMAND = "databricks.connection.bundle.selectTarget";
 const HIDE_KEY = "databricks.bundle.remote.hideHostMismatchWarning";
-
-/**
- * The surfaces {@link RemoteTargetHostManager} needs, behind one seam so the
- * logic is unit-testable. The real implementation delegates to `window` /
- * `commands`. Mirrors {@link BundleEnginePrompter}.
- */
-export interface RemoteHostMismatchPrompter {
-    showWarningMessage: (typeof window)["showWarningMessage"];
-    executeCommand: (typeof commands)["executeCommand"];
-}
 
 /** An active environment-vs-target workspace host mismatch. Hostnames only. */
 export interface HostMismatch {
-    /** The host the extension is authenticated against (the SSH/env host). */
+    /** The host the remote session is signed in to (the SSH/env host). */
     envHost: string;
     /** The host the selected bundle target deploys to. */
     targetHost: string;
@@ -39,59 +21,53 @@ function pairKey(m: HostMismatch): string {
     return `${m.envHost}->${m.targetHost}`;
 }
 
+/** The user-facing explanation, shared by the warning and the Target tooltip. */
+export function describeHostMismatch(m: HostMismatch): string {
+    return (
+        `This project's "${m.target}" target deploys to ${m.targetHost}, but ` +
+        `this remote session is signed in to ${m.envHost}. Bundle commands send ` +
+        `${m.envHost}'s credentials to ${m.targetHost}, so validate, deploy and ` +
+        `run are likely to fail, and links and run status in the Bundle ` +
+        `Resource Explorer point at ${m.envHost}.`
+    );
+}
+
 /**
- * In Databricks Remote SSH mode, warns when the selected bundle target's
- * `workspace.host` differs from the host the extension is authenticated against
- * (the environment/SSH host, resolved by
- * {@link ConnectionManager.connectFromEnvironment}). On a mismatch the ambient
- * credentials are still applied to the target config, so the Bundle Resource
- * Explorer and any deploy silently use the environment host, not the target's -
- * a confusing state this surfaces explicitly.
- *
- * It owns the mismatch state and exposes it via {@link mismatch} /
- * {@link onDidChangeMismatch} so the Configuration view can render a persistent
- * badge on the Target node (the toast is transient). The toast shows at most
- * once per session per distinct environment→target host pair; "Don't warn for
- * this target" persists a per-pair opt-out for the workspace via
- * {@link StateStorage}, so an intentional cross-workspace deploy stops nagging
- * while a genuinely new mismatch still warns.
- *
- * Reactive with no command trigger, mirroring {@link BundleEngineManager}. It
- * only *reads* {@link ConnectionManager.databricksWorkspace} (a plain getter)
- * and {@link ConfigModel.get} (its own mutex), so it never touches the
- * {@link RemoteBundleInitializer}'s auth mutexes.
+ * In Remote SSH mode, tracks whether the selected bundle target's
+ * `workspace.host` differs from the host the session is signed in to.
+ * {@link onDidDetectNewMismatch} fires once per env→target pair (again only
+ * after the hosts have matched in between), skipping pairs hidden with
+ * {@link hideWarning}.
  */
 export class RemoteTargetHostManager implements Disposable {
     private disposables: Disposable[] = [];
-    // The pair we last showed the toast for this session. Reset to undefined
-    // when the mismatch clears, so a later recurrence re-warns.
-    private lastWarnedPair: string | undefined;
+    // Cleared when the hosts match, so a later mismatch warns again.
+    private readonly warnedPairs = new Set<string>();
     private _mismatch: HostMismatch | undefined;
-    private readonly onDidChangeMismatchEmitter = new EventEmitter<void>();
-    public readonly onDidChangeMismatch: Event<void> =
-        this.onDidChangeMismatchEmitter.event;
+    private readonly _onDidChangeMismatch = new EventEmitter<void>();
+    readonly onDidChangeMismatch: Event<void> = this._onDidChangeMismatch.event;
+    private readonly _onDidDetectNewMismatch = new EventEmitter<HostMismatch>();
+    readonly onDidDetectNewMismatch: Event<HostMismatch> =
+        this._onDidDetectNewMismatch.event;
 
     constructor(
         private readonly configModel: ConfigModel,
         private readonly connectionManager: ConnectionManager,
-        private readonly workspaceFolderManager: WorkspaceFolderManager,
-        private readonly stateStorage: StateStorage,
-        private readonly telemetry: Telemetry,
-        private readonly prompter: RemoteHostMismatchPrompter = {
-            showWarningMessage: window.showWarningMessage,
-            executeCommand: commands.executeCommand,
-        }
+        private readonly stateStorage: StateStorage
     ) {
         const onChange = withOnErrorHandler(() => this.evaluate(), {
             log: true,
             throw: false,
         });
         this.disposables.push(
+            this._onDidChangeMismatch,
+            this._onDidDetectNewMismatch,
             this.configModel.onDidChangeTarget(onChange),
+            // An edit to the target's workspace.host in databricks.yml.
+            this.configModel.onDidChangeKey("host")(onChange),
             this.connectionManager.onDidChangeState((state) =>
                 state === "CONNECTED" ? onChange() : undefined
-            ),
-            this.workspaceFolderManager.onDidChangeActiveProjectFolder(onChange)
+            )
         );
     }
 
@@ -100,13 +76,21 @@ export class RemoteTargetHostManager implements Disposable {
         return this._mismatch;
     }
 
-    private setMismatch(mismatch: HostMismatch | undefined) {
-        this._mismatch = mismatch;
-        if (mismatch === undefined) {
-            // Reset the session latch so a later recurrence re-warns.
-            this.lastWarnedPair = undefined;
+    /** Stop warning about this env→target pair in this workspace. */
+    public async hideWarning(mismatch: HostMismatch): Promise<void> {
+        const pair = pairKey(mismatch);
+        const hidden = this.stateStorage.get(HIDE_KEY);
+        if (!hidden.includes(pair)) {
+            await this.stateStorage.set(HIDE_KEY, [...hidden, pair]);
         }
-        this.onDidChangeMismatchEmitter.fire();
+    }
+
+    private setMismatch(mismatch: HostMismatch | undefined) {
+        if (lodash.isEqual(this._mismatch, mismatch)) {
+            return;
+        }
+        this._mismatch = mismatch;
+        this._onDidChangeMismatch.fire();
     }
 
     private async evaluate(): Promise<void> {
@@ -143,6 +127,7 @@ export class RemoteTargetHostManager implements Disposable {
         }
 
         if (envHost.hostname === targetHostUrl.hostname) {
+            this.warnedPairs.clear();
             this.setMismatch(undefined);
             return;
         }
@@ -153,43 +138,16 @@ export class RemoteTargetHostManager implements Disposable {
             target,
         };
         this.setMismatch(mismatch);
-        await this.warn(mismatch);
-    }
 
-    private async warn(mismatch: HostMismatch): Promise<void> {
         const pair = pairKey(mismatch);
         if (
-            pair === this.lastWarnedPair ||
+            this.warnedPairs.has(pair) ||
             this.stateStorage.get(HIDE_KEY).includes(pair)
         ) {
             return;
         }
-        this.lastWarnedPair = pair;
-
-        const choice = await this.prompter.showWarningMessage(
-            `This project's "${mismatch.target}" target deploys to ${mismatch.targetHost}, ` +
-                `but you're connected to ${mismatch.envHost} (the workspace you opened this ` +
-                `remote session in). The Bundle Resource Explorer and any deploy will use ` +
-                `${mismatch.envHost}, not ${mismatch.targetHost}.`,
-            SWITCH_TARGET_LABEL,
-            DONT_WARN_FOR_TARGET_LABEL
-        );
-
-        let action: BundleRemoteHostMismatchWarningAction = "dismissed";
-        if (choice === SWITCH_TARGET_LABEL) {
-            action = "switch-target";
-            await this.prompter.executeCommand(SELECT_TARGET_COMMAND);
-        } else if (choice === DONT_WARN_FOR_TARGET_LABEL) {
-            action = "hidden";
-            const hidden = this.stateStorage.get(HIDE_KEY);
-            if (!hidden.includes(pair)) {
-                await this.stateStorage.set(HIDE_KEY, [...hidden, pair]);
-            }
-        }
-
-        this.telemetry.recordEvent(Events.BUNDLE_REMOTE_HOST_MISMATCH_WARNING, {
-            action,
-        });
+        this.warnedPairs.add(pair);
+        this._onDidDetectNewMismatch.fire(mismatch);
     }
 
     dispose() {

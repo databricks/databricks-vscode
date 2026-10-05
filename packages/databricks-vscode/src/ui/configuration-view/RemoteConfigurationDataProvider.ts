@@ -16,26 +16,14 @@ import {
 } from "./BundleTargetComponent";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
+import {BundleFileSet, BundleWatcher} from "../../bundle";
 import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
 
 /**
- * Slimmed-down variant of {@link ConfigurationDataProvider} for the Configuration
- * view in Databricks Remote SSH mode. It shows just enough to answer "which
- * project folder is selected" and "which workspace/host will a deploy target":
- * the active project folder (clickable to switch) and, once resolved, the bundle
- * target with its Host and Mode children.
- *
- * Unlike the normal-mode provider it has no BundleProjectManager (there is no
- * login flow in remote mode), so it drops the isBundleProject gate and the
- * five components that depend on login/cluster/sync/environment machinery -
- * none of which exists in remote mode.
- *
- * BundleTargetComponent (its "Select a bundle target" prompt and the picker it
- * opens) is suppressed unless the active folder actually exposes bundle targets:
- * with no folder there is nothing to read, and with a non-bundle folder (or a
- * bundle that defines no targets) there is nothing to pick. Both no-target states
- * are covered by a viewsWelcome entry that points at the folder picker.
+ * The Configuration view in Remote SSH mode: the bundle folder and, when the
+ * bundle defines targets, its target. Empty when the folder has no bundle file,
+ * so the view's welcome content links the folder picker.
  */
 export class RemoteConfigurationDataProvider
     implements TreeDataProvider<ConfigurationTreeItem>, Disposable
@@ -48,25 +36,22 @@ export class RemoteConfigurationDataProvider
     > = this._onDidChangeTreeData.event;
 
     private readonly disposables: Disposable[] = [];
-    private readonly workspaceFolderComponent: WorkspaceFolderComponent;
     private readonly bundleTargetComponent: BundleTargetComponent;
     private readonly components: BaseComponent[];
 
     constructor(
         private readonly configModel: ConfigModel,
-        private readonly workspaceFolderManager: WorkspaceFolderManager,
+        workspaceFolderManager: WorkspaceFolderManager,
+        private readonly bundleFileSet: BundleFileSet,
+        bundleWatcher: BundleWatcher,
         hostMismatchProvider: HostMismatchProvider
     ) {
-        this.workspaceFolderComponent = new WorkspaceFolderComponent(
-            workspaceFolderManager,
-            "Bundle"
-        );
         this.bundleTargetComponent = new BundleTargetComponent(
             configModel,
             hostMismatchProvider
         );
         this.components = [
-            this.workspaceFolderComponent,
+            new WorkspaceFolderComponent(workspaceFolderManager, "Bundle"),
             this.bundleTargetComponent,
         ];
         this.disposables.push(
@@ -76,11 +61,15 @@ export class RemoteConfigurationDataProvider
                     this._onDidChangeTreeData.fire();
                 })
             ),
-            // A bundle-file change can add or remove targets without changing the
-            // resolved target (so onDidChangeTarget wouldn't fire); refresh here
-            // to re-evaluate whether the target row should show.
             this.configModel.onDidChange(async () => {
                 this._onDidChangeTreeData.fire();
+            }),
+            // With no target, configModel.onDidChange doesn't fire for bundle
+            // edits, e.g. a databricks.yml appearing or gaining targets.
+            bundleWatcher.onDidChange(() => {
+                if (this.configModel.target === undefined) {
+                    this._onDidChangeTreeData.fire();
+                }
             })
         );
     }
@@ -93,14 +82,13 @@ export class RemoteConfigurationDataProvider
     async getChildren(
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
-        // Resolve the gate up front: Array.prototype.filter can't await, and a
-        // returned Promise is always truthy.
-        const showBundleTarget = await this.shouldShowBundleTarget();
+        if (!(await this.hasBundleFile())) {
+            return [];
+        }
+        // Resolve the gate up front: Array.prototype.filter can't await.
+        const showTarget = await this.hasTargets();
         const children = this.components
-            // Only show BundleTargetComponent's "Select a bundle target" prompt
-            // when the folder actually exposes targets to pick; the empty state
-            // is covered by the view's welcome content.
-            .filter((c) => c !== this.bundleTargetComponent || showBundleTarget)
+            .filter((c) => c !== this.bundleTargetComponent || showTarget)
             .map((c) =>
                 c.getChildren(parent).catch((e) => {
                     logging.NamedLogger.getOrCreate(Loggers.Extension).error(
@@ -113,24 +101,22 @@ export class RemoteConfigurationDataProvider
         return (await Promise.all(children)).flat();
     }
 
-    private async shouldShowBundleTarget(): Promise<boolean> {
-        if (!this.hasProjectFolder()) {
-            return false;
-        }
+    private async hasBundleFile(): Promise<boolean> {
+        // activeProjectUri (which getRootFile reads) throws when no folder is
+        // active.
         try {
-            const targets = await this.configModel.targets;
-            return Object.keys(targets ?? {}).length > 0;
+            return (await this.bundleFileSet.getRootFile()) !== undefined;
         } catch {
-            // A folderless window or an unparseable bundle: nothing to pick.
             return false;
         }
     }
 
-    private hasProjectFolder(): boolean {
-        // activeProjectUri throws when no folder is active; treat that as
-        // "no project folder" rather than propagating.
+    // False for a bundle with no targets, and for one that can't be parsed: the
+    // Bundle row still shows, but there's nothing to pick.
+    private async hasTargets(): Promise<boolean> {
         try {
-            return this.workspaceFolderManager.activeProjectUri !== undefined;
+            const targets = await this.configModel.targets;
+            return Object.keys(targets ?? {}).length > 0;
         } catch {
             return false;
         }

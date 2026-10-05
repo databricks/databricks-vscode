@@ -1,4 +1,5 @@
 import {Disposable, EventEmitter, Uri, Event} from "vscode";
+import lodash from "lodash";
 import {Mutex} from "../../locking";
 import {CachedValue} from "../../locking/CachedValue";
 import {StateStorage} from "../../vscode-objs/StateStorage";
@@ -120,6 +121,7 @@ export class ConfigModel implements Disposable {
 
     private _target: string | undefined;
     private _authProvider: AuthProvider | undefined;
+    private pinnedAuthProvider: AuthProvider | undefined;
 
     constructor(
         private readonly bundleValidateModel: BundleValidateModel,
@@ -241,9 +243,51 @@ export class ConfigModel implements Disposable {
             throw e;
         } finally {
             this.onDidChangeTargetEmitter.fire();
-            await this.setAuthProvider(undefined);
             this.vscodeWhenContext.isTargetSet(this._target !== undefined);
+            if (this.pinnedAuthProvider === undefined) {
+                await this.setAuthProvider(undefined);
+            } else {
+                // The child models drop auth on a target change. Re-applying it
+                // here, outside the try, means a failing authenticated refresh
+                // doesn't wipe the config cache.
+                await this.applyPinnedAuthProvider();
+            }
         }
+    }
+
+    /**
+     * Pin an auth provider that doesn't depend on the target, such as the
+     * environment credentials in Remote SSH mode. setTarget keeps a pinned
+     * provider instead of clearing it. Re-pinning the same credentials is a
+     * no-op, so a reconnect doesn't re-run the bundle CLI.
+     */
+    public async pinAuthProvider(authProvider: AuthProvider) {
+        if (
+            lodash.isEqual(
+                this.pinnedAuthProvider?.toJSON(),
+                authProvider.toJSON()
+            )
+        ) {
+            return;
+        }
+        this.pinnedAuthProvider = authProvider;
+        await this.applyPinnedAuthProvider();
+    }
+
+    /**
+     * Only validate is refreshed: BundleCommands pulls the remote state when the
+     * validate output changes, so refreshing it here too would pull it twice.
+     * The CLI runs outside configsMutex so `get` callers don't wait on it.
+     */
+    private async applyPinnedAuthProvider() {
+        const authProvider = this.pinnedAuthProvider;
+        await this.configsMutex.synchronise(async () => {
+            this._authProvider = authProvider;
+            this.bundleRemoteStateModel.setAuthProvider(authProvider);
+            this.bundleValidateModel.setAuthProvider(authProvider);
+            this.onDidChangeAuthProviderEmitter.fire();
+        });
+        await this.bundleValidateModel.refresh();
     }
 
     @Mutex.synchronise("configsMutex")

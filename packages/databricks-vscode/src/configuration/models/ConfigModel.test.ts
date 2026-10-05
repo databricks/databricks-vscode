@@ -11,10 +11,10 @@ import type {StateStorage} from "../../vscode-objs/StateStorage";
 import type {AuthProvider} from "../auth/AuthProvider";
 
 /**
- * These tests lock the target/auth ordering invariant that
- * RemoteBundleInitializer (Databricks Remote SSH mode) depends on: setTarget
- * clears the auth provider on every path, so auth must always be re-applied
- * after the target - never before.
+ * These tests lock how setTarget treats auth. Normal mode: setTarget clears the
+ * auth provider on every path, so the login flow re-applies it after the
+ * target. Remote SSH mode: RemoteBundleManager pins the environment provider,
+ * which setTarget keeps.
  */
 describe("ConfigModel target/auth ordering", () => {
     let bundleValidateModel: BundleValidateModel;
@@ -117,5 +117,85 @@ describe("ConfigModel target/auth ordering", () => {
             bundleRemoteStateModel.setAuthProvider(instance(authProvider))
         ).once();
         verify(bundleRemoteStateModel.refresh()).once();
+    });
+
+    it("setTarget keeps a pinned auth provider", async () => {
+        when(authProvider.toJSON()).thenReturn({host: "https://a"});
+        await configModel.pinAuthProvider(instance(authProvider));
+        await configModel.setTarget("dev");
+
+        assert.equal(configModel.authProvider, instance(authProvider));
+        verify(bundleRemoteStateModel.setAuthProvider(undefined)).never();
+    });
+
+    it("pinning refreshes validate but leaves the remote state to BundleCommands", async () => {
+        when(authProvider.toJSON()).thenReturn({host: "https://a"});
+        await configModel.setTarget("dev");
+        reset(bundleRemoteStateModel);
+        reset(bundleValidateModel);
+        when(bundleValidateModel.refresh()).thenResolve();
+
+        await configModel.pinAuthProvider(instance(authProvider));
+
+        verify(
+            bundleValidateModel.setAuthProvider(instance(authProvider))
+        ).calledBefore(bundleValidateModel.refresh());
+        verify(bundleValidateModel.refresh()).once();
+        verify(bundleRemoteStateModel.refresh()).never();
+    });
+
+    it("re-applies a pinned provider after the child models drop it on setTarget", async () => {
+        when(authProvider.toJSON()).thenReturn({host: "https://a"});
+        await configModel.pinAuthProvider(instance(authProvider));
+        const calls: string[] = [];
+        reset(bundleValidateModel);
+        when(bundleValidateModel.setTarget(anything())).thenCall(() =>
+            calls.push("setTarget")
+        );
+        when(bundleValidateModel.setAuthProvider(anything())).thenCall((p) =>
+            calls.push(p === undefined ? "clearAuth" : "setAuth")
+        );
+        when(bundleValidateModel.refresh()).thenCall(async () => {
+            calls.push("refresh");
+        });
+
+        await configModel.setTarget("dev");
+
+        // The child's setTarget drops auth; the pinned provider comes back
+        // before the authenticated refresh, and is never cleared.
+        assert.deepEqual(calls, ["setTarget", "refresh", "setAuth", "refresh"]);
+        verify(
+            bundleRemoteStateModel.setAuthProvider(instance(authProvider))
+        ).atLeast(1);
+    });
+
+    it("keeps the target when the pinned refresh fails", async () => {
+        when(authProvider.toJSON()).thenReturn({host: "https://a"});
+        await configModel.pinAuthProvider(instance(authProvider));
+        // setTarget's own (unauthenticated) refresh succeeds; the authenticated
+        // one after re-applying auth fails.
+        when(bundleValidateModel.refresh())
+            .thenResolve()
+            .thenReject(new Error("validate failed"));
+
+        await assert.rejects(configModel.setTarget("dev"), /validate failed/);
+
+        assert.equal(configModel.target, "dev");
+        verify(whenContext.isTargetSet(true)).once();
+    });
+
+    it("pinAuthProvider skips a provider with the same credentials", async () => {
+        const sameCredentials = mock<AuthProvider>();
+        when(authProvider.toJSON()).thenReturn({host: "https://a"});
+        when(sameCredentials.toJSON()).thenReturn({host: "https://a"});
+        await configModel.setTarget("dev");
+        await configModel.pinAuthProvider(instance(authProvider));
+        reset(bundleValidateModel);
+        when(bundleValidateModel.refresh()).thenResolve();
+
+        await configModel.pinAuthProvider(instance(sameCredentials));
+
+        assert.equal(configModel.authProvider, instance(authProvider));
+        verify(bundleValidateModel.refresh()).never();
     });
 });
