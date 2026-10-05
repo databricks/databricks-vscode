@@ -33,6 +33,7 @@ import {logging} from "@databricks/sdk-experimental";
 import {workspaceConfigs} from "./vscode-objs/WorkspaceConfigs";
 import {
     FileUtils,
+    HostUtils,
     PackageJsonUtils,
     ProxyAgent,
     TerraformUtils,
@@ -297,9 +298,7 @@ export async function activate(
 
     // Mode is fully determined by the ambient env vars, so decide it once here
     // and bake it into the context metadata (rather than re-setting it later).
-    const isRemoteSshMode =
-        process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
-        Boolean(process.env["DATABRICKS_VIRTUAL_ENV"]);
+    const isRemoteSshMode = HostUtils.isRemoteSshMode();
 
     const telemetry = Telemetry.createDefault();
     telemetry.setMetadata(

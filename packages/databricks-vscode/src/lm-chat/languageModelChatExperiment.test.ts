@@ -13,6 +13,7 @@ const FLAG_CONTEXT_KEY = "databricks.feature.chat.unityGateway";
 
 describe(__filename, () => {
     let originalUriScheme: PropertyDescriptor | undefined;
+    let originalEnv: NodeJS.ProcessEnv;
     let configsSpy: typeof workspaceConfigs;
 
     function stubUriScheme(value: string) {
@@ -24,11 +25,16 @@ describe(__filename, () => {
 
     beforeEach(() => {
         originalUriScheme = Object.getOwnPropertyDescriptor(env, "uriScheme");
+        originalEnv = process.env;
+        process.env = {...originalEnv};
+        delete process.env.DATABRICKS_REMOTE_ENV;
+        delete process.env.DATABRICKS_VIRTUAL_ENV;
         configsSpy = spy(workspaceConfigs);
     });
 
     afterEach(() => {
         reset(configsSpy);
+        process.env = originalEnv;
         if (originalUriScheme !== undefined) {
             Object.defineProperty(env, "uriScheme", originalUriScheme);
         }
@@ -50,6 +56,16 @@ describe(__filename, () => {
 
     it("stays disabled in Cursor even after opt-in", () => {
         stubUriScheme("cursor");
+        when(configsSpy.experimetalFeatureOverides).thenReturn([
+            LANGUAGE_MODEL_CHAT_EXPERIMENT_ID,
+        ]);
+        assert.strictEqual(isLanguageModelChatEnabled(), false);
+    });
+
+    it("stays disabled in a remote session even after opt-in", () => {
+        stubUriScheme("vscode");
+        process.env.DATABRICKS_REMOTE_ENV = "1";
+        process.env.DATABRICKS_VIRTUAL_ENV = "/tmp/venv";
         when(configsSpy.experimetalFeatureOverides).thenReturn([
             LANGUAGE_MODEL_CHAT_EXPERIMENT_ID,
         ]);
