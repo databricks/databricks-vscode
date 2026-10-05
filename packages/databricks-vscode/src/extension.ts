@@ -676,7 +676,7 @@ export async function activate(
     // The Configuration view exposes an explicit, per-row copy action
     // ("Copy Target", "Copy Path", …). Each titled command shares the single
     // clipboard handler; the row's `copy=<kind>` contextValue (stamped in
-    // ConfigurationDataProvider.getTreeItem) selects which one shows. The ids
+    // BaseConfigurationDataProvider.getTreeItem) selects which one shows. The ids
     // are derived from COPY_KINDS (the single source of truth), hidden from the
     // command palette (package.json commandPalette when:false), and registered
     // WITHOUT the telemetry wrapper on purpose — copying a config value is not

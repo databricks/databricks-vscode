@@ -1,15 +1,6 @@
-import {
-    Disposable,
-    Event,
-    EventEmitter,
-    TreeDataProvider,
-    TreeItem,
-} from "vscode";
-
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
-import {ConfigurationTreeItem} from "./types";
-import {stampCopyKind} from "./copyActions";
+import {BaseConfigurationDataProvider} from "./BaseConfigurationDataProvider";
 import {
     BundleTargetComponent,
     HostMismatchProvider,
@@ -17,27 +8,14 @@ import {
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {BundleFileSet, BundleWatcher} from "../../bundle";
-import {logging} from "@databricks/sdk-experimental";
-import {Loggers} from "../../logger";
 
 /**
  * The Configuration view in Remote SSH mode: the bundle folder and, when the
  * bundle defines targets, its target. Empty when the folder has no bundle file,
  * so the view's welcome content links the folder picker.
  */
-export class RemoteConfigurationDataProvider
-    implements TreeDataProvider<ConfigurationTreeItem>, Disposable
-{
-    private readonly _onDidChangeTreeData = new EventEmitter<
-        ConfigurationTreeItem | undefined | void
-    >();
-    readonly onDidChangeTreeData: Event<
-        ConfigurationTreeItem | undefined | void
-    > = this._onDidChangeTreeData.event;
-
-    private readonly disposables: Disposable[] = [];
+export class RemoteConfigurationDataProvider extends BaseConfigurationDataProvider {
     private readonly bundleTargetComponent: BundleTargetComponent;
-    private readonly components: BaseComponent[];
 
     constructor(
         private readonly configModel: ConfigModel,
@@ -46,21 +24,16 @@ export class RemoteConfigurationDataProvider
         bundleWatcher: BundleWatcher,
         hostMismatchProvider: HostMismatchProvider
     ) {
-        this.bundleTargetComponent = new BundleTargetComponent(
+        const bundleTargetComponent = new BundleTargetComponent(
             configModel,
             hostMismatchProvider
         );
-        this.components = [
+        super([
             new WorkspaceFolderComponent(workspaceFolderManager, "Bundle"),
-            this.bundleTargetComponent,
-        ];
+            bundleTargetComponent,
+        ]);
+        this.bundleTargetComponent = bundleTargetComponent;
         this.disposables.push(
-            ...this.components,
-            ...this.components.map((c) =>
-                c.onDidChange(() => {
-                    this._onDidChangeTreeData.fire();
-                })
-            ),
             this.configModel.onDidChange(async () => {
                 this._onDidChangeTreeData.fire();
             }),
@@ -74,31 +47,14 @@ export class RemoteConfigurationDataProvider
         );
     }
 
-    getTreeItem(element: ConfigurationTreeItem): TreeItem | Thenable<TreeItem> {
-        stampCopyKind(element);
-        return element;
-    }
-
-    async getChildren(
-        parent?: ConfigurationTreeItem
-    ): Promise<ConfigurationTreeItem[]> {
+    protected async visibleComponents(): Promise<BaseComponent[]> {
         if (!(await this.hasBundleFile())) {
             return [];
         }
-        // Resolve the gate up front: Array.prototype.filter can't await.
-        const showTarget = await this.hasTargets();
-        const children = this.components
-            .filter((c) => c !== this.bundleTargetComponent || showTarget)
-            .map((c) =>
-                c.getChildren(parent).catch((e) => {
-                    logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                        `Error getting children for ${c.constructor.name}`,
-                        e
-                    );
-                    return [];
-                })
-            );
-        return (await Promise.all(children)).flat();
+        if (await this.hasTargets()) {
+            return this.components;
+        }
+        return this.components.filter((c) => c !== this.bundleTargetComponent);
     }
 
     private async hasBundleFile(): Promise<boolean> {
@@ -120,9 +76,5 @@ export class RemoteConfigurationDataProvider
         } catch {
             return false;
         }
-    }
-
-    dispose() {
-        this.disposables.forEach((d) => d.dispose());
     }
 }

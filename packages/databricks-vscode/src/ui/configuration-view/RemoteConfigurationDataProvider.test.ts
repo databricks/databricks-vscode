@@ -182,13 +182,4 @@ describe("RemoteConfigurationDataProvider", () => {
         expect(targetRow?.description).to.contain("targets");
         expect(targetRow?.copyText).to.equal("dev");
     });
-
-    it("stamps a copy kind onto value rows via getTreeItem", () => {
-        const item: ConfigurationTreeItem = {
-            label: "Target",
-            description: "dev",
-        };
-        make().getTreeItem(item);
-        expect(item.contextValue).to.contain(".copy=target");
-    });
 });
