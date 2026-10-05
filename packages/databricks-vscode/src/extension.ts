@@ -425,7 +425,9 @@ export async function activate(
     }
 
     // Unity Gateway Chat. Set up before the no-folder early return below: its
-    // sign-in is per user and needs no folder.
+    // sign-in is per user and needs no folder. With no folder open, nothing
+    // here runs until the extension activates, e.g. when the Databricks view
+    // opens.
     const unityGatewayConnectionManager = new UnityGatewayConnectionManager(
         cli,
         stateStorage
@@ -434,9 +436,9 @@ export async function activate(
         cli,
         unityGatewayConnectionManager
     );
-    const updateUnityGatewaySignedIn = () =>
-        customWhenContext.setUnityGatewaySignedIn(
-            unityGatewayConnectionManager.signedIn
+    const updateUnityGatewayHasSavedProfile = () =>
+        customWhenContext.setUnityGatewayHasSavedProfile(
+            unityGatewayConnectionManager.hasSavedProfile
         );
     // Opting out keeps the saved profile, so opting back in restores it.
     const updateLanguageModelChat = () => {
@@ -446,11 +448,13 @@ export async function activate(
             ? unityGatewayConnectionManager.restore()
             : unityGatewayConnectionManager.disconnect());
     };
-    updateUnityGatewaySignedIn();
+    updateUnityGatewayHasSavedProfile();
     updateLanguageModelChat();
     context.subscriptions.push(
         unityGatewayConnectionManager,
-        unityGatewayConnectionManager.onDidChange(updateUnityGatewaySignedIn),
+        unityGatewayConnectionManager.onDidChange(
+            updateUnityGatewayHasSavedProfile
+        ),
         workspace.onDidChangeConfiguration((e) => {
             if (e.affectsConfiguration("databricks.experiments.optInto")) {
                 updateLanguageModelChat();

@@ -51,10 +51,13 @@ export class UnityGatewayConnectionManager implements Disposable {
         return this.connection.apiClient;
     }
 
-    /** Whether a profile is saved, even if restoring it failed. */
-    get signedIn(): boolean {
+    /**
+     * Whether a profile is saved. It stays saved when restoring it fails, so
+     * this can be true while DISCONNECTED.
+     */
+    get hasSavedProfile(): boolean {
         return (
-            this.stateStorage.get("databricks.unityGateway.profile") !==
+            this.stateStorage.get("databricks.unityGateway.savedProfile") !==
             undefined
         );
     }
@@ -67,31 +70,44 @@ export class UnityGatewayConnectionManager implements Disposable {
     @Mutex.synchronise("mutex")
     async signIn(authProvider: ProfileAuthProvider): Promise<void> {
         await this.connect(authProvider, () =>
-            this.stateStorage.set(
-                "databricks.unityGateway.profile",
-                authProvider.profile
-            )
+            this.stateStorage.set("databricks.unityGateway.savedProfile", {
+                profile: authProvider.profile,
+                host: authProvider.host.toString(),
+            })
         );
     }
 
     /**
-     * Reconnects with the remembered profile, without any UI. A failure is
-     * logged and leaves the profile for the next restore. No-op when connected
-     * or nothing is saved.
+     * Reconnects with the saved profile, without any UI. It skips the profile
+     * if it now points at another host, since the config file can differ
+     * between windows. A failure is logged and leaves the profile for the next
+     * restore. No-op when connected or nothing is saved.
      */
     @Mutex.synchronise("mutex")
     async restore(): Promise<void> {
-        const profile = this.stateStorage.get(
-            "databricks.unityGateway.profile"
+        const saved = this.stateStorage.get(
+            "databricks.unityGateway.savedProfile"
         );
-        if (this.state === "CONNECTED" || profile === undefined) {
+        if (this.state === "CONNECTED" || saved === undefined) {
             return;
         }
+        const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
         try {
-            await this.connect(await this.fromProfile(profile, this.cli));
+            const authProvider = await this.fromProfile(
+                saved.profile,
+                this.cli
+            );
+            const host = authProvider.host.toString();
+            if (host !== saved.host) {
+                logger.warn(
+                    `Not restoring the Unity Gateway sign-in: profile ${saved.profile} now points at ${host}, not ${saved.host}`
+                );
+                return;
+            }
+            await this.connect(authProvider);
         } catch (e) {
-            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                `Can't restore the Unity Gateway sign-in with profile ${profile}`,
+            logger.error(
+                `Can't restore the Unity Gateway sign-in with profile ${saved.profile}`,
                 e
             );
         }
@@ -106,7 +122,7 @@ export class UnityGatewayConnectionManager implements Disposable {
     @Mutex.synchronise("mutex")
     async signOut(): Promise<void> {
         await this.stateStorage.set(
-            "databricks.unityGateway.profile",
+            "databricks.unityGateway.savedProfile",
             undefined
         );
         if (this.state === "DISCONNECTED") {

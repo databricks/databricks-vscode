@@ -127,9 +127,14 @@ const StorageConfigurations = {
         defaultValue: false,
     }),
 
-    // The ~/.databrickscfg profile of the Unity Gateway sign-in. Global because
-    // that sign-in is per user, separate from each project's bundle sign-in.
-    "databricks.unityGateway.profile": withType<string>()({
+    // The ~/.databrickscfg profile of the Unity Gateway sign-in, and its host.
+    // Global because that sign-in is per user, separate from each project's
+    // bundle sign-in. The host is checked on restore, since the config file
+    // can differ between windows.
+    "databricks.unityGateway.savedProfile": withType<{
+        profile: string;
+        host: string;
+    }>()({
         location: "global",
     }),
 };

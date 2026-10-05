@@ -93,10 +93,10 @@ export class CustomWhenContext {
         );
     }
 
-    setUnityGatewaySignedIn(value: boolean) {
+    setUnityGatewayHasSavedProfile(value: boolean) {
         commands.executeCommand(
             "setContext",
-            "databricks.context.unityGateway.signedIn",
+            "databricks.context.unityGateway.hasSavedProfile",
             value
         );
     }

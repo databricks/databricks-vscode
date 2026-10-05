@@ -150,7 +150,7 @@
                 "command": "databricks.unityGateway.signOut",
                 "title": "Sign out of Unity Gateway",
                 "category": "Databricks",
-                "enablement": "databricks.feature.chat.unityGateway && databricks.context.unityGateway.signedIn"
+                "enablement": "databricks.feature.chat.unityGateway && databricks.context.unityGateway.hasSavedProfile"
             },
             {
                 "command": "databricks.cluster.filterByAll",
@@ -1505,7 +1505,7 @@
                 },
                 {
                     "command": "databricks.unityGateway.signOut",
-                    "when": "databricks.feature.chat.unityGateway && databricks.context.unityGateway.signedIn"
+                    "when": "databricks.feature.chat.unityGateway && databricks.context.unityGateway.hasSavedProfile"
                 },
                 {
                     "command": "databricks.environment.setupPythonEnv",
@@ -1835,7 +1835,7 @@
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
                                 "Show workspace browser in the explorer.",
-                                "Use Databricks Unity Gateway models in Chat. VS Code only; ignored in Cursor."
+                                "Use Databricks Unity Gateway models in Chat. VS Code only; ignored in Cursor and in Databricks remote sessions."
                             ],
                             "type": "string"
                         },

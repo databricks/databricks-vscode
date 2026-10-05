@@ -2,14 +2,19 @@
 
 import assert from "assert";
 import {ApiClient, WorkspaceClient} from "@databricks/sdk-experimental";
-import {anything, instance, mock, verify, when} from "ts-mockito";
+import {anything, deepEqual, instance, mock, verify, when} from "ts-mockito";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionState} from "../configuration/ConnectionManager";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
 
-const PROFILE_KEY = "databricks.unityGateway.profile";
+const PROFILE_KEY = "databricks.unityGateway.savedProfile";
+
+/** What signing in with `profile(name)` saves. */
+function saved(name: string) {
+    return {profile: name, host: `https://${name}.cloud.databricks.com/`};
+}
 
 describe(__filename, () => {
     let mockStateStorage: StateStorage;
@@ -86,13 +91,15 @@ describe(__filename, () => {
     });
 
     describe("signIn", () => {
-        it("connects and remembers the profile", async () => {
+        it("connects and saves the profile with its host", async () => {
             await manager.signIn(profile("a"));
 
             assert.equal(manager.state, "CONNECTED");
             assert.equal(workspaceHost(), "https://a.cloud.databricks.com/");
             assert.equal(manager.apiClient, apiClients.get("a"));
-            verify(mockStateStorage.set(PROFILE_KEY, "a")).once();
+            verify(
+                mockStateStorage.set(PROFILE_KEY, deepEqual(saved("a")))
+            ).once();
             assert.deepStrictEqual(states, ["CONNECTING", "CONNECTED"]);
         });
 
@@ -117,7 +124,9 @@ describe(__filename, () => {
             await manager.signIn(profile("b"));
 
             assert.equal(workspaceHost(), "https://b.cloud.databricks.com/");
-            verify(mockStateStorage.set(PROFILE_KEY, "b")).once();
+            verify(
+                mockStateStorage.set(PROFILE_KEY, deepEqual(saved("b")))
+            ).once();
             assert.deepStrictEqual(states, ["CONNECTING", "CONNECTED"]);
         });
 
@@ -133,13 +142,17 @@ describe(__filename, () => {
 
             assert.equal(manager.state, "DISCONNECTED");
             assert.equal(manager.databricksWorkspace, undefined);
-            verify(mockStateStorage.set(PROFILE_KEY, "b")).never();
+            verify(
+                mockStateStorage.set(PROFILE_KEY, deepEqual(saved("b")))
+            ).never();
             assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
         });
 
         it("saves the profile before reporting CONNECTED", async () => {
             const savedWhen: ConnectionState[] = [];
-            when(mockStateStorage.set(PROFILE_KEY, "a")).thenCall(async () => {
+            when(
+                mockStateStorage.set(PROFILE_KEY, deepEqual(saved("a")))
+            ).thenCall(async () => {
                 savedWhen.push(manager.state);
             });
 
@@ -149,9 +162,9 @@ describe(__filename, () => {
         });
 
         it("stays signed out, and reports it, when the profile can't be saved", async () => {
-            when(mockStateStorage.set(PROFILE_KEY, "a")).thenReject(
-                new Error("can't write")
-            );
+            when(
+                mockStateStorage.set(PROFILE_KEY, deepEqual(saved("a")))
+            ).thenReject(new Error("can't write"));
 
             await assert.rejects(
                 () => manager.signIn(profile("a")),
@@ -160,7 +173,7 @@ describe(__filename, () => {
 
             assert.equal(manager.state, "DISCONNECTED");
             assert.equal(manager.databricksWorkspace, undefined);
-            assert.equal(manager.signedIn, false);
+            assert.equal(manager.hasSavedProfile, false);
             assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
         });
     });
@@ -175,7 +188,7 @@ describe(__filename, () => {
         });
 
         it("reconnects with the remembered profile", async () => {
-            when(mockStateStorage.get(PROFILE_KEY)).thenReturn("a");
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn(saved("a"));
 
             await manager.restore();
 
@@ -185,7 +198,9 @@ describe(__filename, () => {
         });
 
         it("keeps a profile it can't load, without throwing", async () => {
-            when(mockStateStorage.get(PROFILE_KEY)).thenReturn("deleted");
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn(
+                saved("deleted")
+            );
 
             await manager.restore();
 
@@ -194,8 +209,22 @@ describe(__filename, () => {
             assert.deepStrictEqual(states, []);
         });
 
+        it("skips a profile that now points at another host, and keeps it", async () => {
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn({
+                profile: "a",
+                host: "https://elsewhere.cloud.databricks.com/",
+            });
+
+            await manager.restore();
+
+            assert.equal(manager.state, "DISCONNECTED");
+            assert.equal(manager.hasSavedProfile, true);
+            verify(mockStateStorage.set(anything(), anything())).never();
+            assert.deepStrictEqual(states, []);
+        });
+
         it("keeps the profile when the workspace can't be reached, and retries next time", async () => {
-            when(mockStateStorage.get(PROFILE_KEY)).thenReturn("a");
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn(saved("a"));
             unreachableProfiles.add("a");
 
             await manager.restore();
@@ -211,7 +240,7 @@ describe(__filename, () => {
         });
 
         it("does nothing when already connected", async () => {
-            when(mockStateStorage.get(PROFILE_KEY)).thenReturn("a");
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn(saved("a"));
             await manager.signIn(profile("a"));
             states = [];
 
@@ -222,7 +251,7 @@ describe(__filename, () => {
         });
 
         it("runs once when called concurrently", async () => {
-            when(mockStateStorage.get(PROFILE_KEY)).thenReturn("a");
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn(saved("a"));
 
             await Promise.all([manager.restore(), manager.restore()]);
 
@@ -233,7 +262,7 @@ describe(__filename, () => {
     describe("disconnect", () => {
         it("drops the connection but keeps the profile for restore", async () => {
             await manager.signIn(profile("a"));
-            when(mockStateStorage.get(PROFILE_KEY)).thenReturn("a");
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn(saved("a"));
             states = [];
 
             await manager.disconnect();
@@ -249,21 +278,25 @@ describe(__filename, () => {
         });
     });
 
-    describe("signedIn", () => {
+    describe("hasSavedProfile", () => {
         it("is true while a profile is saved, even if restoring it failed", async () => {
-            assert.equal(manager.signedIn, false);
+            assert.equal(manager.hasSavedProfile, false);
 
-            when(mockStateStorage.get(PROFILE_KEY)).thenReturn("deleted");
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn(
+                saved("deleted")
+            );
             await manager.restore();
 
             assert.equal(manager.state, "DISCONNECTED");
-            assert.equal(manager.signedIn, true);
+            assert.equal(manager.hasSavedProfile, true);
         });
     });
 
     describe("signOut", () => {
         it("forgets a profile that failed to restore, and reports the change", async () => {
-            when(mockStateStorage.get(PROFILE_KEY)).thenReturn("deleted");
+            when(mockStateStorage.get(PROFILE_KEY)).thenReturn(
+                saved("deleted")
+            );
             await manager.restore();
 
             await manager.signOut();
