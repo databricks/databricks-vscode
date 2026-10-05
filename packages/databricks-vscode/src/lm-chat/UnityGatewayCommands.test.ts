@@ -16,11 +16,15 @@ describe(__filename, () => {
         connectionManager = mock(UnityGatewayConnectionManager);
     });
 
-    function createCommands(wizardResult: AuthProvider | undefined) {
+    function createCommands(
+        wizardResult: AuthProvider | undefined,
+        enabled = true
+    ) {
         return new UnityGatewayCommands(
             instance(mock(CliWrapper)),
             instance(connectionManager),
-            async () => wizardResult
+            async () => wizardResult,
+            () => enabled
         );
     }
 
@@ -40,6 +44,18 @@ describe(__filename, () => {
         await createCommands(authProvider).signInCommand();
 
         verify(connectionManager.signIn(authProvider)).once();
+    });
+
+    it("ignores a sign-in that finishes after the experiment is turned off", async () => {
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://a.cloud.databricks.com"),
+            "a",
+            instance(mock(CliWrapper))
+        );
+
+        await createCommands(authProvider, false).signInCommand();
+
+        verify(connectionManager.signIn(anything())).never();
     });
 
     it("ignores a sign-in that isn't a saved profile", async () => {

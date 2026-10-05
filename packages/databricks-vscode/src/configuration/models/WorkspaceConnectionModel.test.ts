@@ -73,7 +73,7 @@ describe(__filename, () => {
             assert.deepStrictEqual(states, ["CONNECTING", "CONNECTED"]);
         });
 
-        it("keeps the current workspace until the new one is open, then runs setup on it before CONNECTED", async () => {
+        it("drops the current workspace while connecting, then runs setup on the new one before CONNECTED", async () => {
             await model.connect(workspace("a"));
             const seen: Array<[string, ConnectionState, string | undefined]> =
                 [];
@@ -86,7 +86,7 @@ describe(__filename, () => {
             });
 
             assert.deepStrictEqual(seen, [
-                ["event", "CONNECTING", a],
+                ["event", "CONNECTING", undefined],
                 ["setup", "CONNECTING", b],
                 ["event", "CONNECTED", b],
             ]);

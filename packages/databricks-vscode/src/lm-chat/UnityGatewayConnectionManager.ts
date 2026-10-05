@@ -1,15 +1,15 @@
-import {Disposable, Event, EventEmitter} from "vscode";
-import {ApiClient, logging} from "@databricks/sdk-experimental";
-import {CliWrapper} from "../cli/CliWrapper";
+import {EventEmitter} from "vscode";
+import type {Disposable, Event} from "vscode";
+import {logging} from "@databricks/sdk-experimental";
+import type {ApiClient} from "@databricks/sdk-experimental";
+import type {CliWrapper} from "../cli/CliWrapper";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
-import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
-import {
-    ConnectionState,
-    WorkspaceConnectionModel,
-} from "../configuration/models/WorkspaceConnectionModel";
+import type {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
+import {WorkspaceConnectionModel} from "../configuration/models/WorkspaceConnectionModel";
+import type {ConnectionState} from "../configuration/models/WorkspaceConnectionModel";
 import {Mutex} from "../locking";
 import {Loggers} from "../logger";
-import {StateStorage} from "../vscode-objs/StateStorage";
+import type {StateStorage} from "../vscode-objs/StateStorage";
 
 /**
  * The user's Unity Gateway sign-in. It is separate from the bundle project's

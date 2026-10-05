@@ -501,7 +501,7 @@ export class ConnectionManager implements Disposable {
 
     @Mutex.synchronise("loginLogoutMutex")
     private async _connect(authProvider: AuthProvider) {
-        let authProviderError: unknown;
+        let authProviderFailure: {error: unknown} | undefined;
         await this.connection.connect(authProvider, async () => {
             await this.configModel.set(
                 "authProfile",
@@ -517,11 +517,11 @@ export class ConnectionManager implements Disposable {
             try {
                 await this.configModel.setAuthProvider(authProvider);
             } catch (e) {
-                authProviderError = e;
+                authProviderFailure = {error: e};
             }
         });
-        if (authProviderError) {
-            throw authProviderError;
+        if (authProviderFailure) {
+            throw authProviderFailure.error;
         }
     }
 

@@ -1,6 +1,7 @@
-import {Disposable, Event, EventEmitter} from "vscode";
-import {ApiClient, WorkspaceClient} from "@databricks/sdk-experimental";
-import {AuthProvider} from "../auth/AuthProvider";
+import {EventEmitter} from "vscode";
+import type {Disposable, Event} from "vscode";
+import type {ApiClient, WorkspaceClient} from "@databricks/sdk-experimental";
+import type {AuthProvider} from "../auth/AuthProvider";
 import {DatabricksWorkspace} from "../DatabricksWorkspace";
 
 export type ConnectionState = "CONNECTED" | "CONNECTING" | "DISCONNECTED";
@@ -15,11 +16,10 @@ export class WorkspaceConnectionModel implements Disposable {
     private _workspaceClient?: WorkspaceClient;
     private _databricksWorkspace?: DatabricksWorkspace;
 
-    private readonly onDidChangeStateEmitter =
-        new EventEmitter<ConnectionState>();
+    private readonly _onDidChangeState = new EventEmitter<ConnectionState>();
     /** Fires when the state changes. */
     readonly onDidChangeState: Event<ConnectionState> =
-        this.onDidChangeStateEmitter.event;
+        this._onDidChangeState.event;
 
     get state(): ConnectionState {
         return this._state;
@@ -38,14 +38,15 @@ export class WorkspaceConnectionModel implements Disposable {
     }
 
     /**
-     * Opens the workspace and makes it current, runs `setup`, then reports
-     * CONNECTED. The current workspace stays current until the new one is open.
-     * If opening or `setup` fails, this disconnects and rethrows.
+     * Drops the current workspace, opens the new one and makes it current, runs
+     * `setup`, then reports CONNECTED. If opening or `setup` fails, this
+     * disconnects and rethrows.
      */
     async connect(
         authProvider: AuthProvider,
         setup?: () => Promise<void>
     ): Promise<void> {
+        this.clearWorkspace();
         this.setState("CONNECTING");
         try {
             const workspaceClient = await authProvider.getWorkspaceClient();
@@ -64,8 +65,7 @@ export class WorkspaceConnectionModel implements Disposable {
     }
 
     disconnect() {
-        this._workspaceClient = undefined;
-        this._databricksWorkspace = undefined;
+        this.clearWorkspace();
         this.setState("DISCONNECTED");
     }
 
@@ -77,14 +77,19 @@ export class WorkspaceConnectionModel implements Disposable {
         this.setState("CONNECTING");
     }
 
+    private clearWorkspace() {
+        this._workspaceClient = undefined;
+        this._databricksWorkspace = undefined;
+    }
+
     private setState(state: ConnectionState) {
         if (this._state !== state) {
             this._state = state;
-            this.onDidChangeStateEmitter.fire(state);
+            this._onDidChangeState.fire(state);
         }
     }
 
     dispose() {
-        this.onDidChangeStateEmitter.dispose();
+        this._onDidChangeState.dispose();
     }
 }
