@@ -1,3 +1,13 @@
+# Release: v2.20.0
+
+## packages/databricks-vscode
+
+## (2026-10-01)
+
+-   Require VS Code 1.104 or later (#2216) ([7186e67](https://github.com/databricks/databricks-vscode/commit/7186e67)) — older VS Code versions stay on v2.19.0
+-   Refresh the Bundle Variables view when an override is saved or reset, instead of relying on the file watcher, which could miss changes on Linux (#2220) ([1fb5024](https://github.com/databricks/databricks-vscode/commit/1fb5024))
+-   Update Databricks CLI to v1.19.0 (#2229) ([575d64f](https://github.com/databricks/databricks-vscode/commit/575d64f)) — bundle deploy now migrates existing Terraform deployment state to the direct engine before deploying, and errors out when a configured `workspace_id` does not match the connected workspace; see the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.19.0) for details
+
 # Release: v2.19.0
 
 ## packages/databricks-vscode
