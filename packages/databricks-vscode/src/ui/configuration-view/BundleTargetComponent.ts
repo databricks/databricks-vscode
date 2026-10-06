@@ -81,8 +81,8 @@ export class BundleTargetComponent extends BaseComponent {
                 throw new UrlError("Host not found");
             }
 
-            // Remote mode only: a persistent badge for the host mismatch (the
-            // warning popup is transient).
+            // Remote mode only: a persistent badge for the host mismatch. The
+            // target's credentials are paused; clicking the row picks another.
             const mismatch = this.hostMismatchProvider?.mismatch;
             if (mismatch !== undefined) {
                 return [
@@ -93,9 +93,7 @@ export class BundleTargetComponent extends BaseComponent {
                             "target",
                             new ThemeColor("problemsWarningIcon.foreground")
                         ),
-                        description:
-                            `${target} — targets ${mismatch.targetHost}` +
-                            (mismatch.allowed ? "" : ", paused"),
+                        description: `${target} — targets ${mismatch.targetHost}, paused`,
                         // "Copy Target" copies the name, not the description.
                         copyText: target,
                         tooltip: describeHostMismatch(mismatch),
@@ -103,9 +101,9 @@ export class BundleTargetComponent extends BaseComponent {
                             "databricks.configuration.target.hostMismatch",
                         collapsibleState: TreeItemCollapsibleState.Collapsed,
                         command: {
-                            title: "Review workspace host mismatch",
+                            title: "Select a bundle target",
                             command:
-                                "databricks.bundle.remote.reviewHostMismatch",
+                                "databricks.connection.bundle.selectTarget",
                         },
                     },
                 ];

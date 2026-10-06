@@ -2,10 +2,7 @@ import {Disposable, Event, EventEmitter} from "vscode";
 import lodash from "lodash";
 import {ConfigModel} from "../configuration/models/ConfigModel";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {StateStorage} from "../vscode-objs/StateStorage";
 import {withOnErrorHandler} from "../utils/onErrorDecorator";
-
-const ALLOWED_KEY = "databricks.bundle.remote.allowedHostMismatches";
 
 /** An active environment-vs-target workspace host mismatch. Hostnames only. */
 export interface HostMismatch {
@@ -15,63 +12,38 @@ export interface HostMismatch {
     targetHost: string;
     /** The selected bundle target's name. */
     target: string;
-    /** Whether the user allowed sending the session's credentials there. */
-    allowed: boolean;
-}
-
-function pairKey(envHost: string, targetHost: string): string {
-    return `${envHost}->${targetHost}`;
 }
 
 /** The user-facing explanation, shared by the warning and the Target tooltip. */
 export function describeHostMismatch(m: HostMismatch): string {
-    const intro =
-        `This project's "${m.target}" target deploys to ${m.targetHost}, but ` +
-        `this remote session is signed in to ${m.envHost}.`;
-    if (m.allowed) {
-        return (
-            `${intro} You allowed sending ${m.envHost}'s credentials to ` +
-            `${m.targetHost}, so bundle commands may fail there, and links and ` +
-            `run status in the Bundle Resource Explorer point at ${m.envHost}.`
-        );
-    }
     return (
-        `${intro} Bundle commands for this target are paused so ` +
-        `${m.envHost}'s credentials aren't sent to ${m.targetHost}. Allowing ` +
-        `it applies to every target in this workspace that deploys there.`
+        `This project's "${m.target}" target deploys to ${m.targetHost}, but ` +
+        `this remote session is signed in to ${m.envHost}. Bundle commands for ` +
+        `this target are paused so ${m.envHost}'s credentials aren't sent to ` +
+        `${m.targetHost}. Switch to a target that deploys to ${m.envHost} to ` +
+        `use them.`
     );
 }
 
 /**
  * In Remote SSH mode, tracks whether the selected bundle target's
- * `workspace.host` differs from the host the session is signed in to, and which
- * such hosts the user allowed the session's credentials to be sent to.
- * {@link onDidDetectNewMismatch} fires once per disallowed env→target pair
- * (again only after the hosts have matched in between).
+ * `workspace.host` differs from the host the session is signed in to. The
+ * session's credentials only authenticate against the session's host, so a
+ * target on another host has its bundle commands paused (the ConfigModel guard
+ * refuses the credentials); this just surfaces that state on the Target row.
  */
 export class RemoteTargetHostManager implements Disposable {
     private disposables: Disposable[] = [];
-    // Cleared when the hosts match, so a later mismatch warns again.
-    private readonly warnedPairs = new Set<string>();
     private _mismatch: HostMismatch | undefined;
     private readonly _onDidChangeMismatch = new EventEmitter<void>();
     readonly onDidChangeMismatch: Event<void> = this._onDidChangeMismatch.event;
-    private readonly _onDidDetectNewMismatch = new EventEmitter<HostMismatch>();
-    readonly onDidDetectNewMismatch: Event<HostMismatch> =
-        this._onDidDetectNewMismatch.event;
-    private readonly _onDidChangeAllowedHosts = new EventEmitter<void>();
-    readonly onDidChangeAllowedHosts: Event<void> =
-        this._onDidChangeAllowedHosts.event;
 
     constructor(
         private readonly configModel: ConfigModel,
-        private readonly connectionManager: ConnectionManager,
-        private readonly stateStorage: StateStorage
+        private readonly connectionManager: ConnectionManager
     ) {
         this.disposables.push(
             this._onDidChangeMismatch,
-            this._onDidDetectNewMismatch,
-            this._onDidChangeAllowedHosts,
             this.configModel.onDidChangeTarget(() => this.reevaluate()),
             // An edit to the target's workspace.host in databricks.yml.
             this.configModel.onDidChangeKey("host")(() => this.reevaluate()),
@@ -83,30 +55,6 @@ export class RemoteTargetHostManager implements Disposable {
     /** The active mismatch, or undefined when hosts match / state is unknown. */
     public get mismatch(): HostMismatch | undefined {
         return this._mismatch;
-    }
-
-    /** Whether the user allowed sending `envHost`'s credentials to `targetHost`. */
-    public allowsSessionCredentials(envHost: URL, targetHost: URL): boolean {
-        return this.stateStorage
-            .get(ALLOWED_KEY)
-            .includes(pairKey(envHost.hostname, targetHost.hostname));
-    }
-
-    /** Allow or stop sending the session's credentials to this mismatch's host. */
-    public async setSessionCredentialsAllowed(
-        mismatch: HostMismatch,
-        allowed: boolean
-    ): Promise<void> {
-        const pair = pairKey(mismatch.envHost, mismatch.targetHost);
-        const others = this.stateStorage
-            .get(ALLOWED_KEY)
-            .filter((p) => p !== pair);
-        await this.stateStorage.set(
-            ALLOWED_KEY,
-            allowed ? [...others, pair] : others
-        );
-        this._onDidChangeAllowedHosts.fire();
-        await this.reevaluate();
     }
 
     private setMismatch(mismatch: HostMismatch | undefined) {
@@ -141,18 +89,14 @@ export class RemoteTargetHostManager implements Disposable {
             return;
         }
 
-        const targetHostUrl = await this.configModel.get("host");
-        // A target with no (or an invalid) workspace.host: the "Invalid host for
-        // target" path in BundleTargetComponent owns that state, so we don't
-        // warn on top of it.
-        if (targetHostUrl === undefined) {
-            this.setMismatch(undefined);
-            return;
-        }
+        // Read the host the same way the credential guard does, so the UI and
+        // the guard always agree on where the target points.
+        const resolution =
+            await this.configModel.getTargetWorkspaceHost(target);
 
         // Re-read after the await: a folder change or reconnect may have moved a
-        // host while get("host") resolved. Bail on stale input rather than
-        // warning about a pairing that no longer holds.
+        // host while getTargetWorkspaceHost resolved. Bail on stale input rather
+        // than warning about a pairing that no longer holds.
         const currentEnvHost =
             this.connectionManager.databricksWorkspace?.authProvider.host;
         if (
@@ -162,26 +106,23 @@ export class RemoteTargetHostManager implements Disposable {
             return;
         }
 
-        if (envHost.hostname === targetHostUrl.hostname) {
-            this.warnedPairs.clear();
+        // Only an explicit, parseable host can mismatch. A target with no host
+        // uses the session host (safe); an unparseable one is owned by the
+        // "Invalid host for target" path in BundleTargetComponent, so we don't
+        // warn on top of either.
+        if (
+            resolution.kind !== "host" ||
+            resolution.host.hostname === envHost.hostname
+        ) {
             this.setMismatch(undefined);
             return;
         }
 
-        const mismatch: HostMismatch = {
+        this.setMismatch({
             envHost: envHost.hostname,
-            targetHost: targetHostUrl.hostname,
+            targetHost: resolution.host.hostname,
             target,
-            allowed: this.allowsSessionCredentials(envHost, targetHostUrl),
-        };
-        this.setMismatch(mismatch);
-
-        const pair = pairKey(mismatch.envHost, mismatch.targetHost);
-        if (mismatch.allowed || this.warnedPairs.has(pair)) {
-            return;
-        }
-        this.warnedPairs.add(pair);
-        this._onDidDetectNewMismatch.fire(mismatch);
+        });
     }
 
     dispose() {

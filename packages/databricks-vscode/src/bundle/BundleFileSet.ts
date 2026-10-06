@@ -16,6 +16,12 @@ export async function parseBundleYaml(file: Uri) {
     const data = yaml.parse(await readFile(file.fsPath, "utf-8"), {
         // Bundles might have a lot of aliases (#1706), default 100 limit is too low
         maxAliasCount: -1,
+        // Apply `<<` merge keys like the CLI's Go yaml does. Without this the JS
+        // parser (YAML 1.2) treats `<<` as an ordinary key, so a target that
+        // merges its workspace block via `<<` would resolve to a different host
+        // here than in the CLI — which the remote-mode credential guard relies
+        // on reading correctly.
+        merge: true,
     });
     return data as BundleSchema;
 }

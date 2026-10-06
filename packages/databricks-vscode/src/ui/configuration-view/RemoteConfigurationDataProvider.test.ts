@@ -184,7 +184,6 @@ describe("RemoteConfigurationDataProvider", () => {
                 envHost: "dogfood.cloud.databricks.com",
                 targetHost: "logfood.cloud.databricks.com",
                 target: "dev",
-                allowed: false,
             },
             onDidChangeMismatch: mismatchChangeEmitter.event,
         };

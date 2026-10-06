@@ -1,5 +1,4 @@
-import assert from "assert";
-import {mock, instance, when, verify, anything, capture} from "ts-mockito";
+import {mock, instance, when, verify, anything} from "ts-mockito";
 import {EventEmitter, Uri} from "vscode";
 import {RemoteBundleManager} from "./RemoteBundleManager";
 import {ConfigModel} from "../configuration/models/ConfigModel";
@@ -13,7 +12,6 @@ import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {BundleWatcher} from "./BundleWatcher";
 
 const ENV_HOST = new URL("https://dogfood.cloud.databricks.com");
-const OTHER_HOST = new URL("https://logfood.cloud.databricks.com");
 
 // Lets microtasks queued by the event listeners (which fire synchronously but
 // run async handlers) settle before assertions.
@@ -28,8 +26,6 @@ describe("RemoteBundleManager", () => {
     let stateEmitter: EventEmitter<ConnectionState>;
     let folderChangeEmitter: EventEmitter<Uri | undefined>;
     let bundleChangeEmitter: EventEmitter<void>;
-    let allowedHostsEmitter: EventEmitter<void>;
-    let allowed: string[];
     let manager: RemoteBundleManager;
 
     beforeEach(() => {
@@ -42,8 +38,6 @@ describe("RemoteBundleManager", () => {
         stateEmitter = new EventEmitter<ConnectionState>();
         folderChangeEmitter = new EventEmitter<Uri | undefined>();
         bundleChangeEmitter = new EventEmitter<void>();
-        allowedHostsEmitter = new EventEmitter<void>();
-        allowed = [];
 
         when(connectionManager.onDidChangeState).thenReturn(stateEmitter.event);
         when(workspaceFolderManager.onDidChangeActiveProjectFolder).thenReturn(
@@ -55,8 +49,7 @@ describe("RemoteBundleManager", () => {
         when(configModel.target).thenReturn(undefined);
         when(configModel.resolveTarget()).thenResolve();
         when(configModel.reresolveTarget()).thenResolve();
-        when(configModel.reapplyPinnedAuthProvider()).thenResolve();
-        when(configModel.pinAuthProvider(anything(), anything())).thenResolve();
+        when(configModel.pinAuthProvider(anything())).thenResolve();
         when(connectionManager.connectFromEnvironment()).thenResolve();
         when(authProvider.host).thenReturn(ENV_HOST);
         when(databricksWorkspace.authProvider).thenReturn(
@@ -70,14 +63,7 @@ describe("RemoteBundleManager", () => {
             instance(configModel),
             instance(connectionManager),
             instance(workspaceFolderManager),
-            instance(bundleWatcher),
-            {
-                allowsSessionCredentials: (envHost, targetHost) =>
-                    allowed.includes(
-                        `${envHost.hostname}->${targetHost.hostname}`
-                    ),
-                onDidChangeAllowedHosts: allowedHostsEmitter.event,
-            }
+            instance(bundleWatcher)
         );
     });
 
@@ -89,19 +75,7 @@ describe("RemoteBundleManager", () => {
         stateEmitter.fire("CONNECTED");
         await flush();
 
-        verify(
-            configModel.pinAuthProvider(instance(authProvider), anything())
-        ).once();
-    });
-
-    it("lets the pinned credentials reach another host only once allowed", async () => {
-        stateEmitter.fire("CONNECTED");
-        await flush();
-        const [, allowOtherHost] = capture(configModel.pinAuthProvider).last();
-
-        assert.strictEqual(allowOtherHost(OTHER_HOST), false);
-        allowed.push(`${ENV_HOST.hostname}->${OTHER_HOST.hostname}`);
-        assert.strictEqual(allowOtherHost(OTHER_HOST), true);
+        verify(configModel.pinAuthProvider(instance(authProvider))).once();
     });
 
     it("ignores non-connected state changes", async () => {
@@ -109,7 +83,7 @@ describe("RemoteBundleManager", () => {
         stateEmitter.fire("DISCONNECTED");
         await flush();
 
-        verify(configModel.pinAuthProvider(anything(), anything())).never();
+        verify(configModel.pinAuthProvider(anything())).never();
     });
 
     it("does not pin when the connection has no workspace", async () => {
@@ -118,14 +92,7 @@ describe("RemoteBundleManager", () => {
         stateEmitter.fire("CONNECTED");
         await flush();
 
-        verify(configModel.pinAuthProvider(anything(), anything())).never();
-    });
-
-    it("re-applies the pinned auth when the allowed hosts change", async () => {
-        allowedHostsEmitter.fire();
-        await flush();
-
-        verify(configModel.reapplyPinnedAuthProvider()).once();
+        verify(configModel.pinAuthProvider(anything())).never();
     });
 
     it("connects and resolves the target on initialize", async () => {

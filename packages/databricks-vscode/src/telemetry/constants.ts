@@ -20,7 +20,6 @@ export enum Events {
     BUNDLE_INIT = "bundleInit",
     BUNDLE_SUB_PROJECTS = "bundleSubProjects",
     BUNDLE_TERRAFORM_ENGINE_WARNING = "bundleTerraformEngineWarning",
-    BUNDLE_REMOTE_HOST_MISMATCH_WARNING = "bundleRemoteHostMismatchWarning",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
     COMPUTE_SELECTED = "computeSelected",
     WORKFLOW_RUN = "workflowRun",
@@ -56,11 +55,6 @@ export type BundleRunResourceType = "pipelines" | "jobs";
 export type BundleTerraformEngineWarningAction =
     | "guide"
     | "hidden"
-    | "dismissed";
-export type BundleRemoteHostMismatchWarningAction =
-    | "switch-target"
-    | "allowed"
-    | "revoked"
     | "dismissed";
 export type BundleRunType =
     | "run"
@@ -399,16 +393,6 @@ export class EventTypes {
         action: {
             comment:
                 "What the user did with the warning: 'guide' chose to open the migration guide, 'hidden' chose \"Don't show again\" (persisted opt-out for the workspace), 'dismissed' closed it without either.",
-        },
-    };
-    [Events.BUNDLE_REMOTE_HOST_MISMATCH_WARNING]: EventType<{
-        action: BundleRemoteHostMismatchWarningAction;
-    }> = {
-        comment:
-            "In Databricks Remote SSH mode, surfaced a warning that the selected bundle target's workspace host differs from the host the remote session is signed in to, so bundle commands for it are paused unless the user allows sending the session's credentials there. Recorded once per surfacing: automatically once per disallowed environment→target host pair (again only after the hosts have matched in between), and whenever the user opens it from the Target row.",
-        action: {
-            comment:
-                "What the user did: 'switch-target' opened the target picker, 'allowed' allowed sending the session's credentials to the target's host (persisted per host pair for the workspace), 'revoked' withdrew that, 'dismissed' closed it without choosing.",
         },
     };
     [Events.AITOOLS_INSTALL]: EventType<

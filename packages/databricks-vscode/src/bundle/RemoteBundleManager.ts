@@ -9,13 +9,11 @@ import {
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {withOnErrorHandler} from "../utils/onErrorDecorator";
 import {BundleWatcher} from "./BundleWatcher";
-import {RemoteTargetHostManager} from "./RemoteTargetHostManager";
 
 /**
  * Remote SSH mode's stand-in for the login flow: pins the environment auth on
- * the ConfigModel on every connect (sent only to the session's own host unless
- * the user allows another), and keeps the bundle target resolved as folders and
- * bundle files change.
+ * the ConfigModel on every connect (sent only to the session's own host), and
+ * keeps the bundle target resolved as folders and bundle files change.
  */
 export class RemoteBundleManager implements Disposable {
     private logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
@@ -25,11 +23,7 @@ export class RemoteBundleManager implements Disposable {
         private readonly configModel: ConfigModel,
         private readonly connectionManager: ConnectionManager,
         private readonly workspaceFolderManager: WorkspaceFolderManager,
-        private readonly bundleWatcher: BundleWatcher,
-        private readonly targetHostManager: Pick<
-            RemoteTargetHostManager,
-            "allowsSessionCredentials" | "onDidChangeAllowedHosts"
-        >
+        private readonly bundleWatcher: BundleWatcher
     ) {
         this.disposables.push(
             // A reconnect (e.g. from the Unity Catalog refresh command)
@@ -43,20 +37,12 @@ export class RemoteBundleManager implements Disposable {
                                 ?.authProvider;
                         if (state === "CONNECTED" && authProvider) {
                             await this.configModel.pinAuthProvider(
-                                authProvider,
-                                (targetHost) =>
-                                    this.targetHostManager.allowsSessionCredentials(
-                                        authProvider.host,
-                                        targetHost
-                                    )
+                                authProvider
                             );
                         }
                     },
                     {log: true, throw: false}
                 )
-            ),
-            this.targetHostManager.onDidChangeAllowedHosts(() =>
-                this.configModel.reapplyPinnedAuthProvider()
             ),
             this.workspaceFolderManager.onDidChangeActiveProjectFolder(
                 withOnErrorHandler(() => this.configModel.reresolveTarget(), {

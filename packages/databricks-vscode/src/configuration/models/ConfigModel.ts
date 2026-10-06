@@ -31,6 +31,12 @@ const defaults: ConfigState = {
     mode: "development",
 };
 
+/** The outcome of resolving a bundle target's `workspace.host`. */
+export type TargetWorkspaceHost =
+    | {kind: "session"}
+    | {kind: "host"; host: URL}
+    | {kind: "unresolved"};
+
 const TOP_LEVEL_VALIDATE_CONFIG_KEYS = ["clusterId", "remoteRootPath"] as const;
 
 const TOP_LEVEL_PRE_VALIDATE_CONFIG_KEYS = [
@@ -149,12 +155,17 @@ export class ConfigModel implements Disposable {
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
-            // With no target the pre-validate state stays empty, so nothing
-            // else notices a bundle file appearing or gaining targets.
+            // Remote mode only (gated on `pinned`): with no target the
+            // pre-validate state stays empty, so nothing else notices a bundle
+            // file appearing or gaining targets. Normal mode's
+            // BundleProjectManager owns this, so leave its behaviour unchanged.
             this.bundlePreValidateModel.onDidChangeBundleFiles(
                 withOnErrorHandler(
                     async () => {
-                        if (this.target === undefined) {
+                        if (
+                            this.pinned !== undefined &&
+                            this.target === undefined
+                        ) {
                             await this.resolveTarget();
                         }
                     },
@@ -193,6 +204,13 @@ export class ConfigModel implements Disposable {
      * saved target, else the bundle's default.
      */
     public async resolveTarget() {
+        // Normal mode keeps its original un-serialised behaviour. Remote mode
+        // resolves from several triggers (startup, folder change, bundle-file
+        // change) that can overlap, so it serialises them.
+        if (this.pinned === undefined) {
+            await this.resolveTargetLocked();
+            return;
+        }
         await this.resolveTargetMutex.synchronise(() =>
             this.resolveTargetLocked()
         );
@@ -225,10 +243,13 @@ export class ConfigModel implements Disposable {
         });
 
         try {
-            // Resolving to no target doesn't overwrite the saved one, so a
-            // bundle file that briefly disappears (e.g. during a git checkout)
-            // gets its target back.
-            await this.commitTarget(savedTarget, savedTarget !== undefined);
+            // Remote mode only: resolving to no target doesn't overwrite the
+            // saved one, so a bundle file that briefly disappears (e.g. during a
+            // git checkout) gets its target back. Normal mode persists as
+            // before, so clearing the target still clears the saved value.
+            const persist =
+                this.pinned === undefined || savedTarget !== undefined;
+            await this.commitTarget(savedTarget, persist);
         } catch (e: any) {
             let message: string = String(e);
             if (e instanceof Error) {
@@ -306,13 +327,13 @@ export class ConfigModel implements Disposable {
      * Pin an auth provider that doesn't depend on the target, such as the
      * environment credentials in Remote SSH mode. setTarget keeps it instead of
      * clearing it. Bundle commands only send its credentials to a target on the
-     * same host, or one `allowOtherHost` accepts. Re-pinning the same
-     * credentials is a no-op, so a reconnect doesn't re-run the bundle CLI.
+     * session's own host (or one with no host of its own, where the CLI falls
+     * back to the session host); a target on any other host is refused, since
+     * the session's credentials only authenticate against the session's host.
+     * Re-pinning the same credentials is a no-op, so a reconnect doesn't re-run
+     * the bundle CLI.
      */
-    public async pinAuthProvider(
-        authProvider: AuthProvider,
-        allowOtherHost: (targetHost: URL) => boolean
-    ) {
+    public async pinAuthProvider(authProvider: AuthProvider) {
         if (
             lodash.isEqual(
                 this.pinned?.authProvider.toJSON(),
@@ -324,12 +345,20 @@ export class ConfigModel implements Disposable {
         this.pinned = {
             authProvider,
             authGuard: async (target) => {
-                const targetHost = await this.readTargetHost(target);
-                return (
-                    targetHost !== undefined &&
-                    (targetHost.hostname === authProvider.host.hostname ||
-                        allowOtherHost(targetHost))
-                );
+                const resolution = await this.getTargetWorkspaceHost(target);
+                switch (resolution.kind) {
+                    case "session":
+                        return true;
+                    case "host":
+                        return (
+                            resolution.host.hostname ===
+                            authProvider.host.hostname
+                        );
+                    case "unresolved":
+                        // Fail closed: we can't tell where the CLI would send
+                        // the credentials, so don't send them.
+                        return false;
+                }
             },
         };
         await this.reapplyPinnedAuthProvider();
@@ -379,14 +408,33 @@ export class ConfigModel implements Disposable {
         }
     }
 
-    /** The target's workspace.host as the CLI reads it, if it's a valid host. */
-    private async readTargetHost(target: string): Promise<URL | undefined> {
+    /**
+     * How the CLI would resolve this target's `workspace.host`, read fresh from
+     * the YAML. The credential guard and the host-mismatch UI both read it here
+     * so they always agree on the target's host.
+     *  - `session`: no `workspace.host`, so the CLI falls back to
+     *    `DATABRICKS_HOST` — the session's own host in Remote SSH mode.
+     *  - `host`: an explicit, parseable host.
+     *  - `unresolved`: a host that's present but can't be parsed here (e.g. a
+     *    `${...}` variable the CLI resolves but we don't). Callers fail closed.
+     */
+    public async getTargetWorkspaceHost(
+        target: string
+    ): Promise<TargetWorkspaceHost> {
+        let host: string | undefined;
         try {
-            const host = (await this.bundlePreValidateModel.targets)?.[target]
+            host = (await this.bundlePreValidateModel.targets)?.[target]
                 ?.workspace?.host;
-            return host ? normalizeHost(host) : undefined;
         } catch {
-            return undefined;
+            return {kind: "unresolved"};
+        }
+        if (host === undefined || host.trim() === "") {
+            return {kind: "session"};
+        }
+        try {
+            return {kind: "host", host: normalizeHost(host)};
+        } catch {
+            return {kind: "unresolved"};
         }
     }
 

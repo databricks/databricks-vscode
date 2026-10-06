@@ -1,5 +1,9 @@
 import {Uri, WorkspaceFolder} from "vscode";
-import {BundleFileSet, getAbsoluteGlobPath} from "./BundleFileSet";
+import {
+    BundleFileSet,
+    getAbsoluteGlobPath,
+    parseBundleYaml,
+} from "./BundleFileSet";
 import {expect} from "chai";
 import path from "path";
 import * as tmp from "tmp-promise";
@@ -44,6 +48,39 @@ describe(__filename, async function () {
         expect(getAbsoluteGlobPath(Uri.file("test.txt"), tmpdirUri)).to.equal(
             expectedGlob
         );
+    });
+
+    it("applies `<<` merge keys like the CLI's Go yaml", async () => {
+        // Without {merge: true} the JS parser (YAML 1.2) treats `<<` as an
+        // ordinary key, so this target's workspace.host would read as the
+        // top-level session host here while the CLI resolves the merged host —
+        // the divergence the remote-mode credential guard must not have.
+        const file = path.join(tmpdir.path, "databricks.yml");
+        await fs.writeFile(
+            file,
+            [
+                "x-ws: &other",
+                "  host: https://other-workspace.example.com",
+                "workspace:",
+                "  host: https://session-host.example.com",
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "    workspace:",
+                "      <<: *other",
+                "",
+            ].join("\n")
+        );
+
+        const data = await parseBundleYaml(Uri.file(file));
+
+        const devWorkspace = data.targets?.dev?.workspace as
+            | Record<string, unknown>
+            | undefined;
+        expect(devWorkspace?.host).to.equal(
+            "https://other-workspace.example.com"
+        );
+        expect(devWorkspace).to.not.have.property("<<");
     });
 
     it("should find the correct root bundle yaml", async () => {

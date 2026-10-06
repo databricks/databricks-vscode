@@ -22,7 +22,7 @@ import type {AuthProvider} from "../auth/AuthProvider";
  * These tests lock how setTarget treats auth. Normal mode: setTarget clears the
  * auth provider on every path, so the login flow re-applies it after the
  * target. Remote SSH mode: RemoteBundleManager pins the environment provider,
- * which setTarget keeps and only sends to an allowed host.
+ * which setTarget keeps and only sends to a target on the session's own host.
  */
 
 const HOST_A = "https://a.cloud.databricks.com";
@@ -52,11 +52,8 @@ describe("ConfigModel target/auth ordering", () => {
         when(bundleValidateModel.refresh()).thenResolve();
     }
 
-    function pin(allowOtherHost: (host: URL) => boolean = () => false) {
-        return configModel.pinAuthProvider(
-            instance(authProvider),
-            allowOtherHost
-        );
+    function pin() {
+        return configModel.pinAuthProvider(instance(authProvider));
     }
 
     beforeEach(() => {
@@ -239,23 +236,27 @@ describe("ConfigModel target/auth ordering", () => {
         verify(whenContext.isTargetSet(true)).once();
     });
 
-    it("only lets bundle commands send pinned credentials to the provider's host or an allowed one", async () => {
+    it("sends pinned credentials only to the session host, or a host-less target", async () => {
         when(bundlePreValidateModel.targets).thenResolve({
             dev: {workspace: {host: HOST_A}},
             other: {workspace: {host: HOST_B}},
-            allowedOther: {workspace: {host: "https://c.cloud.databricks.com"}},
             noHost: {},
+            badHost: {workspace: {host: "has a space"}},
         } as any);
-        await pin((host) => host.hostname === "c.cloud.databricks.com");
+        await pin();
 
         const [, authGuard] = capture(
             bundleValidateModel.setAuthProvider
         ).last();
 
+        // Same host as the session: allowed. A different host: refused.
         assert.strictEqual(await authGuard!("dev"), true);
         assert.strictEqual(await authGuard!("other"), false);
-        assert.strictEqual(await authGuard!("allowedOther"), true);
-        assert.strictEqual(await authGuard!("noHost"), false);
+        // No workspace.host: the CLI falls back to the session's own host, so
+        // sending the credentials is safe.
+        assert.strictEqual(await authGuard!("noHost"), true);
+        // A host that's present but can't be parsed here: fail closed.
+        assert.strictEqual(await authGuard!("badHost"), false);
     });
 
     it("pinAuthProvider skips a provider with the same credentials", async () => {
@@ -266,10 +267,7 @@ describe("ConfigModel target/auth ordering", () => {
         reset(bundleValidateModel);
         stubValidateModel();
 
-        await configModel.pinAuthProvider(
-            instance(sameCredentials),
-            () => false
-        );
+        await configModel.pinAuthProvider(instance(sameCredentials));
 
         assert.equal(configModel.authProvider, instance(authProvider));
         verify(bundleValidateModel.refresh()).never();
@@ -277,11 +275,20 @@ describe("ConfigModel target/auth ordering", () => {
 });
 
 describe("ConfigModel target resolution", () => {
+    // The serialising mutex, the "keep the saved target when it resolves to
+    // none" persist rule, and resolving a target when a bundle file appears are
+    // all gated on a pinned auth provider (Remote SSH mode). Normal mode keeps
+    // its original behaviour, so tests pin only where they exercise the new one.
     let bundleValidateModel: BundleValidateModel;
     let bundlePreValidateModel: BundlePreValidateModel;
     let stateStorage: StateStorage;
     let bundleFilesChange: EventEmitter<void>;
+    let authProvider: AuthProvider;
     let configModel: ConfigModel;
+
+    function pin() {
+        return configModel.pinAuthProvider(instance(authProvider));
+    }
 
     beforeEach(() => {
         bundleValidateModel = mock<BundleValidateModel>();
@@ -290,6 +297,9 @@ describe("ConfigModel target resolution", () => {
         const bundleRemoteStateModel = mock<BundleRemoteStateModel>();
         stateStorage = mock<StateStorage>();
         bundleFilesChange = new EventEmitter<void>();
+        authProvider = mock<AuthProvider>();
+        when(authProvider.host).thenReturn(new URL(HOST_A));
+        when(authProvider.toJSON()).thenReturn({host: HOST_A});
 
         for (const event of [
             () => overrideableConfigModel.onDidChange,
@@ -335,7 +345,9 @@ describe("ConfigModel target resolution", () => {
         configModel.dispose();
     });
 
-    it("resolves the target once when resolutions overlap", async () => {
+    it("resolves the target once when resolutions overlap (remote mode)", async () => {
+        await pin();
+
         await Promise.all([
             configModel.resolveTarget(),
             configModel.resolveTarget(),
@@ -345,7 +357,8 @@ describe("ConfigModel target resolution", () => {
         verify(stateStorage.set("databricks.bundle.target", "dev")).once();
     });
 
-    it("resolving to no target keeps the saved one", async () => {
+    it("resolving to no target keeps the saved one (remote mode)", async () => {
+        await pin();
         await configModel.setTarget("dev");
         // databricks.yml deleted: no targets left.
         when(bundlePreValidateModel.targets).thenResolve({} as any);
@@ -358,14 +371,36 @@ describe("ConfigModel target resolution", () => {
         verify(stateStorage.set("databricks.bundle.target", undefined)).never();
     });
 
-    it("resolves a missing target when bundle files change", async () => {
+    it("normal mode clears the saved target when it resolves to none", async () => {
+        await configModel.setTarget("dev");
+        when(bundlePreValidateModel.targets).thenResolve({} as any);
+        when(bundlePreValidateModel.defaultTarget).thenResolve(undefined);
+        when(stateStorage.get("databricks.bundle.target")).thenReturn("dev");
+
+        await configModel.resolveTarget();
+
+        assert.equal(configModel.target, undefined);
+        verify(stateStorage.set("databricks.bundle.target", undefined)).once();
+    });
+
+    it("resolves a missing target when bundle files change (remote mode)", async () => {
+        await pin();
+
         bundleFilesChange.fire();
         await flush();
 
         assert.equal(configModel.target, "dev");
     });
 
-    it("leaves a set target alone when bundle files change", async () => {
+    it("normal mode ignores bundle-file changes with no target", async () => {
+        bundleFilesChange.fire();
+        await flush();
+
+        assert.equal(configModel.target, undefined);
+    });
+
+    it("leaves a set target alone when bundle files change (remote mode)", async () => {
+        await pin();
         await configModel.setTarget("dev");
         when(bundlePreValidateModel.targets).thenResolve({} as any);
 
