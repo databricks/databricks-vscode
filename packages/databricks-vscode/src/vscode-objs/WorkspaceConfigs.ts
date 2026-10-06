@@ -80,6 +80,14 @@ export const workspaceConfigs = {
         return workspace.getConfiguration("python").get<string>("envFile");
     },
 
+    get configureJupyterCellMarkers(): boolean {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<boolean>("notebooks.configureJupyterCellMarkers") ?? true
+        );
+    },
+
     get jupyterCellMarkerRegex(): string | undefined {
         return workspace
             .getConfiguration("jupyter")

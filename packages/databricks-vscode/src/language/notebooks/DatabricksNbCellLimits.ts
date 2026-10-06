@@ -11,6 +11,10 @@ export async function setDbnbCellLimits(
         workspaceFolderManager.activeProjectUri,
         connectionManager
     );
+    if (!workspaceConfigs.configureJupyterCellMarkers) {
+        return;
+    }
+
     if (workspaceConfigs.jupyterCellMarkerRegex === undefined) {
         workspaceConfigs.jupyterCellMarkerRegex =
             "^(# Databricks notebook source|# COMMAND ----------)";
