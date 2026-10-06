@@ -141,6 +141,18 @@
                 "icon": "$(cloud-download)"
             },
             {
+                "command": "databricks.unityGateway.signIn",
+                "title": "Sign in to Unity Gateway",
+                "category": "Databricks",
+                "enablement": "databricks.feature.chat.unityGateway"
+            },
+            {
+                "command": "databricks.unityGateway.signOut",
+                "title": "Sign out of Unity Gateway",
+                "category": "Databricks",
+                "enablement": "databricks.feature.chat.unityGateway && databricks.context.unityGateway.hasSavedProfile"
+            },
+            {
                 "command": "databricks.cluster.filterByAll",
                 "title": "All",
                 "enablement": "databricks.context.activated && databricks.context.loggedIn && !databricks.context.remoteMode"
@@ -1488,6 +1500,14 @@
                     "when": "false"
                 },
                 {
+                    "command": "databricks.unityGateway.signIn",
+                    "when": "databricks.feature.chat.unityGateway"
+                },
+                {
+                    "command": "databricks.unityGateway.signOut",
+                    "when": "databricks.feature.chat.unityGateway && databricks.context.unityGateway.hasSavedProfile"
+                },
+                {
                     "command": "databricks.environment.setupPythonEnv",
                     "when": "false"
                 },
@@ -1815,7 +1835,7 @@
                             "enumDescriptions": [
                                 "Show cluster view in the explorer.",
                                 "Show workspace browser in the explorer.",
-                                "Use Databricks Unity Gateway models in Chat. VS Code only; ignored in Cursor."
+                                "Use Databricks Unity Gateway models in Chat. VS Code only; ignored in Cursor and in Databricks remote sessions."
                             ],
                             "type": "string"
                         },

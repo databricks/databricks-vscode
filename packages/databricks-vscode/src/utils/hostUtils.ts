@@ -12,6 +12,17 @@ export function isCursor(): boolean {
 }
 
 /**
+ * Whether the extension runs in a Databricks remote development session,
+ * which sets these variables in the remote environment.
+ */
+export function isRemoteSshMode(): boolean {
+    return (
+        process.env["DATABRICKS_REMOTE_ENV"] === "1" &&
+        Boolean(process.env["DATABRICKS_VIRTUAL_ENV"])
+    );
+}
+
+/**
  * The name of the host editor's shell command on PATH: `cursor` in Cursor,
  * `code` otherwise. This is the command the `databricks ssh connect` CLI shells
  * out to when opening the remote window, and it mirrors how the CLI resolves

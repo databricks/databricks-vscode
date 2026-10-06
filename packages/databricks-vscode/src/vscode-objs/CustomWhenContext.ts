@@ -93,6 +93,14 @@ export class CustomWhenContext {
         );
     }
 
+    setUnityGatewayHasSavedProfile(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.unityGateway.hasSavedProfile",
+            value
+        );
+    }
+
     setIsActiveFileInActiveWorkspace(value: boolean) {
         commands.executeCommand(
             "setContext",
