@@ -54,6 +54,7 @@ import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
 import {isLanguageModelChatEnabled} from "./lm-chat/languageModelChatExperiment";
 import {UnityGatewayConnectionManager} from "./lm-chat/UnityGatewayConnectionManager";
 import {UnityGatewayCommands} from "./lm-chat/UnityGatewayCommands";
+import {registerUnityGatewayChatProvider} from "./lm-chat/UnityGatewayChatProvider";
 import {PythonSetupManagerDetector} from "./python-setup/utils/PythonSetupManagerDetector";
 import {PythonSetupCliClient} from "./python-setup/gateways/PythonSetupCliClient";
 import {PythonSetupEnvironmentSetup} from "./python-setup/controllers/PythonSetupEnvironmentSetup";
@@ -464,6 +465,11 @@ export async function activate(
     updateLanguageModelChat();
     context.subscriptions.push(
         unityGatewayConnectionManager,
+        registerUnityGatewayChatProvider(
+            unityGatewayConnectionManager,
+            isLanguageModelChatEnabled,
+            workspaceConfigs.onDidChangeExperimentsOptInto
+        ),
         unityGatewayConnectionManager.onDidChange(updateUnityGatewayContext),
         workspaceConfigs.onDidChangeExperimentsOptInto(updateLanguageModelChat),
         telemetry.registerCommand(
