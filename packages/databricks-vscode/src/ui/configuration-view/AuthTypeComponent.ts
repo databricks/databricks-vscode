@@ -7,9 +7,6 @@ import {ConfigurationTreeItem} from "./types";
 import {getProfilesForHost} from "../../configuration/LoginWizard";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {LabelUtils} from "../utils";
-import {isLanguageModelChatEnabled} from "../../lm-chat/languageModelChatExperiment";
-import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
-import {connectedRow, profileRows} from "./connectionRows";
 
 export const AUTH_TYPE_SWITCH_ID = "AUTH-TYPE";
 export const AUTH_TYPE_LOGIN_ID = "LOGIN";
@@ -23,10 +20,10 @@ export class AuthTypeComponent extends BaseComponent {
         private readonly connectionManager: ConnectionManager,
         private readonly configModel: ConfigModel,
         private readonly cli: CliWrapper,
-        // With Unity Gateway Chat on, the row matches the Gateway Connection
-        // row next to it.
-        private readonly isUnityGatewayEnabled = isLanguageModelChatEnabled,
-        onDidChangeUnityGatewayEnabled: Event<void> = workspaceConfigs.onDidChangeExperimentsOptInto
+        // With Unity Gateway Chat on, the row is named to pair with the
+        // Gateway Connection row next to it.
+        private readonly isUnityGatewayEnabled: () => boolean,
+        onDidChangeUnityGatewayEnabled: Event<void>
     ) {
         super();
         this.disposables.push(
@@ -97,31 +94,21 @@ export class AuthTypeComponent extends BaseComponent {
             return [];
         }
 
-        const contextValue = getContextValue(authProvider.authType);
-        if (this.isUnityGatewayEnabled()) {
-            return [
-                connectedRow(
-                    "Bundle Connection",
-                    AUTH_TYPE_SWITCH_ID,
-                    authProvider,
-                    contextValue
-                ),
-            ];
-        }
         return [
             {
-                label: "Auth Type",
+                label: this.isUnityGatewayEnabled()
+                    ? "Bundle Connection"
+                    : "Auth Type",
                 iconPath: new ThemeIcon(
                     "account",
                     new ThemeColor("debugIcon.startForeground")
                 ),
                 description: authProvider.describe(),
-                contextValue,
+                contextValue: getContextValue(authProvider.authType),
                 id: AUTH_TYPE_SWITCH_ID,
             },
         ];
     }
-
     public async getChildren(
         parent?: ConfigurationTreeItem
     ): Promise<ConfigurationTreeItem[]> {
@@ -129,15 +116,6 @@ export class AuthTypeComponent extends BaseComponent {
             return this.getRoot();
         }
 
-        if (
-            parent.id !== AUTH_TYPE_SWITCH_ID ||
-            !this.isUnityGatewayEnabled()
-        ) {
-            return [];
-        }
-        return profileRows(
-            AUTH_TYPE_SWITCH_ID,
-            this.connectionManager.databricksWorkspace?.authProvider
-        );
+        return [];
     }
 }

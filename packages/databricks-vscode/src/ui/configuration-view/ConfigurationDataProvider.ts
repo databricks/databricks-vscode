@@ -59,6 +59,8 @@ export class ConfigurationDataProvider
         private readonly workspaceFolderManager: WorkspaceFolderManager,
         private readonly aiToolsManager: AiToolsManager,
         private readonly unityGatewayConnectionManager: UnityGatewayConnectionManager,
+        isUnityGatewayEnabled: () => boolean,
+        onDidChangeUnityGatewayEnabled: Event<void>,
         private readonly pythonSetup?: PythonSetupEntry
     ) {
         this.components = [
@@ -68,10 +70,14 @@ export class ConfigurationDataProvider
             new AuthTypeComponent(
                 this.connectionManager,
                 this.configModel,
-                this.cli
+                this.cli,
+                isUnityGatewayEnabled,
+                onDidChangeUnityGatewayEnabled
             ),
             new UnityGatewayConnectionComponent(
-                this.unityGatewayConnectionManager
+                this.unityGatewayConnectionManager,
+                isUnityGatewayEnabled,
+                onDidChangeUnityGatewayEnabled
             ),
             new ClusterComponent(this.connectionManager, this.configModel),
             new SyncDestinationComponent(

@@ -434,7 +434,8 @@ export async function activate(
     );
     const unityGatewayCommands = new UnityGatewayCommands(
         cli,
-        unityGatewayConnectionManager
+        unityGatewayConnectionManager,
+        isLanguageModelChatEnabled
     );
     const updateUnityGatewayContext = () => {
         customWhenContext.setUnityGatewayHasSavedProfile(
@@ -1477,6 +1478,8 @@ export async function activate(
         workspaceFolderManager,
         aiToolsManager,
         unityGatewayConnectionManager,
+        isLanguageModelChatEnabled,
+        workspaceConfigs.onDidChangeExperimentsOptInto,
         pythonSetupEntry
     );
     const configurationView = window.createTreeView("configurationView", {

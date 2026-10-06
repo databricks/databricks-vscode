@@ -23,8 +23,8 @@ describe(__filename, () => {
         return new UnityGatewayCommands(
             instance(mock(CliWrapper)),
             instance(connectionManager),
-            async () => wizardResult,
-            () => enabled
+            () => enabled,
+            async () => wizardResult
         );
     }
 
@@ -76,6 +76,7 @@ describe(__filename, () => {
         const commands = new UnityGatewayCommands(
             instance(mock(CliWrapper)),
             instance(connectionManager),
+            () => true,
             () => {
                 wizardRuns++;
                 return new Promise((resolve) => {

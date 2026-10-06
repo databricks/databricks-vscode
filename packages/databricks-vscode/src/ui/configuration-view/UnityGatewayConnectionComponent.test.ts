@@ -114,13 +114,13 @@ describe(__filename, () => {
         assert.strictEqual(item.contextValue, undefined);
     });
 
-    it("shows the workspace URL when connected", async () => {
+    it("shows the auth type when connected, as the bundle's row does", async () => {
         connect("a");
 
         const [item] = await component.getChildren();
 
         assert.strictEqual(label(item), "Gateway Connection");
-        assert.strictEqual(item.description, "https://a.cloud.databricks.com/");
+        assert.strictEqual(item.description, "Profile 'a'");
         assert.strictEqual(
             item.contextValue,
             "databricks.configuration.unityGateway.connected"
@@ -131,18 +131,7 @@ describe(__filename, () => {
         );
     });
 
-    it("keeps a non-default port in the URL", async () => {
-        connect("a", "https://a.cloud.databricks.com:8443");
-
-        const [item] = await component.getChildren();
-
-        assert.strictEqual(
-            item.description,
-            "https://a.cloud.databricks.com:8443/"
-        );
-    });
-
-    it("lists the profile under the connected row", async () => {
+    it("lists the workspace URL under the connected row", async () => {
         connect("a");
         const [item] = await component.getChildren();
 
@@ -150,7 +139,19 @@ describe(__filename, () => {
 
         assert.deepStrictEqual(
             children.map((child) => [child.label, child.description]),
-            [["Profile", "a"]]
+            [["Host", "https://a.cloud.databricks.com/"]]
+        );
+    });
+
+    it("keeps a non-default port in the URL", async () => {
+        connect("a", "https://a.cloud.databricks.com:8443");
+        const [item] = await component.getChildren();
+
+        const [host] = await component.getChildren(item);
+
+        assert.strictEqual(
+            host.description,
+            "https://a.cloud.databricks.com:8443/"
         );
     });
 
@@ -160,13 +161,13 @@ describe(__filename, () => {
         assert.deepStrictEqual(await component.getChildren({id: "OTHER"}), []);
         assert.deepStrictEqual(
             await component.getChildren({
-                id: `${UNITY_GATEWAY_CONNECTION_ID}.profile`,
+                id: `${UNITY_GATEWAY_CONNECTION_ID}.host`,
             }),
             []
         );
     });
 
-    it("only offers Copy Host on the connected row, and Copy Profile on its profile", async () => {
+    it("only offers Copy Auth Type on the connected row, and Copy Host on its host", async () => {
         const stamped = async () => {
             const [item] = await component.getChildren();
             stampCopyKind(item);
@@ -182,15 +183,15 @@ describe(__filename, () => {
         connect("a");
         assert.strictEqual(
             await stamped(),
-            "databricks.configuration.unityGateway.connected.copy=host"
+            "databricks.configuration.unityGateway.connected.copy=authType"
         );
 
         const [row] = await component.getChildren();
-        const [profile] = await component.getChildren(row);
-        stampCopyKind(profile);
+        const [host] = await component.getChildren(row);
+        stampCopyKind(host);
         assert.strictEqual(
-            profile.contextValue,
-            "databricks.configuration.copy=profile"
+            host.contextValue,
+            "databricks.configuration.copy=host"
         );
     });
 

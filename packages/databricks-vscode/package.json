@@ -521,12 +521,6 @@
                 "category": "Databricks"
             },
             {
-                "command": "databricks.configuration.copyProfile",
-                "title": "Copy Profile",
-                "enablement": "databricks.context.activated",
-                "category": "Databricks"
-            },
-            {
                 "command": "databricks.configuration.copyMode",
                 "title": "Copy Mode",
                 "enablement": "databricks.context.activated",
@@ -1299,11 +1293,6 @@
                     "group": "navigation_2@0"
                 },
                 {
-                    "command": "databricks.configuration.copyProfile",
-                    "when": "view == configurationView && viewItem =~ /\\.copy=profile$/",
-                    "group": "navigation_2@0"
-                },
-                {
                     "command": "databricks.configuration.copyMode",
                     "when": "view == configurationView && viewItem =~ /\\.copy=mode$/",
                     "group": "navigation_2@0"
@@ -1472,10 +1461,6 @@
                 },
                 {
                     "command": "databricks.configuration.copyHost",
-                    "when": "false"
-                },
-                {
-                    "command": "databricks.configuration.copyProfile",
                     "when": "false"
                 },
                 {

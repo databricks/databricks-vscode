@@ -1,11 +1,8 @@
-import {ThemeColor, ThemeIcon} from "vscode";
+import {ThemeColor, ThemeIcon, TreeItemCollapsibleState} from "vscode";
 import type {Event} from "vscode";
-import {isLanguageModelChatEnabled} from "../../lm-chat/languageModelChatExperiment";
 import type {UnityGatewayConnectionManager} from "../../lm-chat/UnityGatewayConnectionManager";
-import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {LabelUtils} from "../utils";
 import {BaseComponent} from "./BaseComponent";
-import {connectedRow, profileRows} from "./connectionRows";
 import type {ConfigurationTreeItem} from "./types";
 
 export const UNITY_GATEWAY_CONNECTION_ID = "UNITY-GATEWAY";
@@ -18,8 +15,8 @@ function getContextValue(key: "signedOut" | "disconnected" | "connected") {
 export class UnityGatewayConnectionComponent extends BaseComponent {
     constructor(
         private readonly connectionManager: UnityGatewayConnectionManager,
-        private readonly isEnabled = isLanguageModelChatEnabled,
-        onDidChangeEnabled: Event<void> = workspaceConfigs.onDidChangeExperimentsOptInto
+        private readonly isEnabled: () => boolean,
+        onDidChangeEnabled: Event<void>
     ) {
         super();
         this.disposables.push(
@@ -72,12 +69,35 @@ export class UnityGatewayConnectionComponent extends BaseComponent {
         }
 
         return [
-            connectedRow(
-                "Gateway Connection",
-                UNITY_GATEWAY_CONNECTION_ID,
-                authProvider,
-                getContextValue("connected")
-            ),
+            {
+                label: "Gateway Connection",
+                iconPath: new ThemeIcon(
+                    "account",
+                    new ThemeColor("debugIcon.startForeground")
+                ),
+                // As on the bundle's connection row; the host is under it.
+                description: authProvider.describe(),
+                contextValue: getContextValue("connected"),
+                id: UNITY_GATEWAY_CONNECTION_ID,
+                collapsibleState: TreeItemCollapsibleState.Collapsed,
+            },
+        ];
+    }
+
+    private getHost(): ConfigurationTreeItem[] {
+        const authProvider =
+            this.connectionManager.databricksWorkspace?.authProvider;
+        if (authProvider === undefined) {
+            return [];
+        }
+        return [
+            {
+                label: "Host",
+                id: `${UNITY_GATEWAY_CONNECTION_ID}.host`,
+                // The full URL, as on the bundle's Host row, so Copy Host
+                // copies the same form from both.
+                description: authProvider.host.toString(),
+            },
         ];
     }
 
@@ -91,10 +111,7 @@ export class UnityGatewayConnectionComponent extends BaseComponent {
             return this.getRoot();
         }
         if (parent.id === UNITY_GATEWAY_CONNECTION_ID) {
-            return profileRows(
-                UNITY_GATEWAY_CONNECTION_ID,
-                this.connectionManager.databricksWorkspace?.authProvider
-            );
+            return this.getHost();
         }
         return [];
     }
