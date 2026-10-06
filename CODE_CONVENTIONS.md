@@ -294,8 +294,10 @@ The Databricks SDK (`@databricks/sdk-experimental`) is the biggest unguarded
 cross-cutting dependency in the codebase — dozens of files import it, and many
 reach the `WorkspaceClient` / `apiClient` directly.
 
-- **Reach the workspace client through the connection seam** (`ConnectionManager`),
-  not by constructing your own client in a feature.
+- **Reach the workspace client through a connection seam**, not by constructing
+  your own client in a feature: `ConnectionManager` for the bundle project,
+  `UnityGatewayConnectionManager` for Unity Gateway features. Both keep their
+  connection in a `WorkspaceConnectionModel`.
 - **Never import through deep `/dist/...` paths** (`.../dist/apis/…`,
   `.../dist/retries/…`). They're not a stable entry point — import from the package
   root. Keeping SDK access behind one seam is also what turns a future SDK migration
