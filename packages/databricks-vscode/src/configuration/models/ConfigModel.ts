@@ -171,8 +171,10 @@ export class ConfigModel implements Disposable {
                 await this.configCache.refresh();
             }),
             this.onDidChangeKey("mode")(async () => {
+                // readState's @onError resolves the cached value to undefined
+                // when a child model throws (same case the `get` guard handles).
                 this.vscodeWhenContext.isDevTarget(
-                    (await this.configCache.value).mode === "development"
+                    (await this.configCache.value)?.mode === "development"
                 );
             })
         );

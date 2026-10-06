@@ -77,16 +77,6 @@ export class BundleTargetComponent extends BaseComponent {
         }
 
         try {
-            const humanisedMode = humaniseMode(
-                await this.configModel.get("mode")
-            );
-            if (humanisedMode === undefined) {
-                window.showErrorMessage(
-                    `Could not find "mode" for target ${target}`
-                );
-                return [];
-            }
-
             if ((await this.configModel.get("host")) === undefined) {
                 throw new UrlError("Host not found");
             }
@@ -119,6 +109,16 @@ export class BundleTargetComponent extends BaseComponent {
                         },
                     },
                 ];
+            }
+
+            const humanisedMode = humaniseMode(
+                await this.configModel.get("mode")
+            );
+            if (humanisedMode === undefined) {
+                window.showErrorMessage(
+                    `Could not find "mode" for target ${target}`
+                );
+                return [];
             }
 
             return [
