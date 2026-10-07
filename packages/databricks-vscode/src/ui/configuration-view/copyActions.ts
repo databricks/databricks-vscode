@@ -17,6 +17,8 @@ export const COPY_KINDS: Readonly<Record<string, string>> = {
     "Host": "host",
     "Mode": "mode",
     "Auth Type": "authType",
+    "Bundle Connection": "authType",
+    "Gateway Connection": "authType",
     "Cluster": "clusterName",
     "Cluster ID": "clusterId",
     "Databricks Runtime": "runtime",
