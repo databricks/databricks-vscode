@@ -1,3 +1,4 @@
+import {Event} from "vscode";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
@@ -18,6 +19,8 @@ import {CodeSynchronizer} from "../../sync";
 import {AiToolsComponent} from "./AiToolsComponent";
 import {AiToolsManager} from "../../aitools/AiToolsManager";
 import {PythonSetupEntry} from "./pythonSetupEntry";
+import {UnityGatewayConnectionComponent} from "./UnityGatewayConnectionComponent";
+import type {UnityGatewayConnectionManager} from "../../lm-chat/UnityGatewayConnectionManager";
 
 /** The Configuration view in normal mode; empty until the workspace is a bundle project. */
 export class ConfigurationDataProvider extends BaseConfigurationDataProvider {
@@ -30,13 +33,27 @@ export class ConfigurationDataProvider extends BaseConfigurationDataProvider {
         featureManager: FeatureManager,
         workspaceFolderManager: WorkspaceFolderManager,
         aiToolsManager: AiToolsManager,
+        unityGatewayConnectionManager: UnityGatewayConnectionManager,
+        isUnityGatewayEnabled: () => boolean,
+        onDidChangeUnityGatewayEnabled: Event<void>,
         pythonSetup?: PythonSetupEntry
     ) {
         super([
             new WorkspaceFolderComponent(workspaceFolderManager),
             new AiToolsComponent(aiToolsManager.model),
             new BundleTargetComponent(configModel),
-            new AuthTypeComponent(connectionManager, configModel, cli),
+            new AuthTypeComponent(
+                connectionManager,
+                configModel,
+                cli,
+                isUnityGatewayEnabled,
+                onDidChangeUnityGatewayEnabled
+            ),
+            new UnityGatewayConnectionComponent(
+                unityGatewayConnectionManager,
+                isUnityGatewayEnabled,
+                onDidChangeUnityGatewayEnabled
+            ),
             new ClusterComponent(connectionManager, configModel),
             new SyncDestinationComponent(
                 connectionManager,

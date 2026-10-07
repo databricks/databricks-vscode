@@ -1,8 +1,9 @@
+import {ThemeIcon, ThemeColor} from "vscode";
+import type {Event} from "vscode";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
-import {ThemeIcon, ThemeColor} from "vscode";
 import {getProfilesForHost} from "../../configuration/LoginWizard";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {LabelUtils} from "../utils";
@@ -18,7 +19,11 @@ export class AuthTypeComponent extends BaseComponent {
     constructor(
         private readonly connectionManager: ConnectionManager,
         private readonly configModel: ConfigModel,
-        private readonly cli: CliWrapper
+        private readonly cli: CliWrapper,
+        // With Unity Gateway Chat on, the row is named to pair with the
+        // Gateway Connection row next to it.
+        private readonly isUnityGatewayEnabled: () => boolean,
+        onDidChangeUnityGatewayEnabled: Event<void>
     ) {
         super();
         this.disposables.push(
@@ -26,6 +31,9 @@ export class AuthTypeComponent extends BaseComponent {
                 this.onDidChangeEmitter.fire();
             }),
             this.configModel.onDidChangeTarget(() => {
+                this.onDidChangeEmitter.fire();
+            }),
+            onDidChangeUnityGatewayEnabled(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
@@ -88,7 +96,9 @@ export class AuthTypeComponent extends BaseComponent {
 
         return [
             {
-                label: "Auth Type",
+                label: this.isUnityGatewayEnabled()
+                    ? "Bundle Connection"
+                    : "Auth Type",
                 iconPath: new ThemeIcon(
                     "account",
                     new ThemeColor("debugIcon.startForeground")

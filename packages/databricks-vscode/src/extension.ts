@@ -620,32 +620,38 @@ export async function activate(
     );
     const unityGatewayCommands = new UnityGatewayCommands(
         cli,
-        unityGatewayConnectionManager
+        unityGatewayConnectionManager,
+        isLanguageModelChatEnabled
     );
-    const updateUnityGatewayHasSavedProfile = () =>
+    const updateUnityGatewayContext = () => {
         customWhenContext.setUnityGatewayHasSavedProfile(
             unityGatewayConnectionManager.hasSavedProfile
         );
+        customWhenContext.setUnityGatewayState(
+            unityGatewayConnectionManager.state
+        );
+    };
     // Opting out keeps the saved profile, so opting back in restores it.
+    let languageModelChatEnabled: boolean | undefined;
     const updateLanguageModelChat = () => {
         const enabled = isLanguageModelChatEnabled();
+        // Only act when it changes, so editing another experiment doesn't
+        // retry a failed restore.
+        if (enabled === languageModelChatEnabled) {
+            return;
+        }
+        languageModelChatEnabled = enabled;
         customWhenContext.setLanguageModelChatEnabled(enabled);
         void (enabled
             ? unityGatewayConnectionManager.restore()
             : unityGatewayConnectionManager.disconnect());
     };
-    updateUnityGatewayHasSavedProfile();
+    updateUnityGatewayContext();
     updateLanguageModelChat();
     context.subscriptions.push(
         unityGatewayConnectionManager,
-        unityGatewayConnectionManager.onDidChange(
-            updateUnityGatewayHasSavedProfile
-        ),
-        workspace.onDidChangeConfiguration((e) => {
-            if (e.affectsConfiguration("databricks.experiments.optInto")) {
-                updateLanguageModelChat();
-            }
-        }),
+        unityGatewayConnectionManager.onDidChange(updateUnityGatewayContext),
+        workspaceConfigs.onDidChangeExperimentsOptInto(updateLanguageModelChat),
         telemetry.registerCommand(
             "databricks.unityGateway.signIn",
             unityGatewayCommands.signInCommand,
@@ -1732,6 +1738,9 @@ export async function activate(
         featureManager,
         workspaceFolderManager,
         aiToolsManager,
+        unityGatewayConnectionManager,
+        isLanguageModelChatEnabled,
+        workspaceConfigs.onDidChangeExperimentsOptInto,
         pythonSetupEntry
     );
     const configurationView = window.createTreeView("configurationView", {
