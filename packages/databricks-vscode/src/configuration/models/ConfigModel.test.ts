@@ -237,12 +237,26 @@ describe("ConfigModel target/auth ordering", () => {
     });
 
     it("sends pinned credentials only to the session host, or a host-less target", async () => {
-        when(bundlePreValidateModel.targets).thenResolve({
-            dev: {workspace: {host: HOST_A}},
-            other: {workspace: {host: HOST_B}},
-            noHost: {},
-            badHost: {workspace: {host: "has a space"}},
-        } as any);
+        // The guard reads the workspace fresh from disk (bypassing the cache),
+        // so stub that path rather than the cached `targets`.
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("dev")
+        ).thenResolve({host: HOST_A});
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("other")
+        ).thenResolve({host: HOST_B});
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("noHost")
+        ).thenResolve({});
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("badHost")
+        ).thenResolve({host: "has a space"});
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("profile")
+        ).thenResolve({profile: "other-workspace"});
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("wholeVar")
+        ).thenResolve("${var.ws}");
         await pin();
 
         const [, authGuard] = capture(
@@ -257,6 +271,11 @@ describe("ConfigModel target/auth ordering", () => {
         assert.strictEqual(await authGuard!("noHost"), true);
         // A host that's present but can't be parsed here: fail closed.
         assert.strictEqual(await authGuard!("badHost"), false);
+        // A profile picks its own host (overriding DATABRICKS_HOST): fail
+        // closed, since the session's credentials could reach another host.
+        assert.strictEqual(await authGuard!("profile"), false);
+        // The whole workspace block is an unresolved variable: fail closed.
+        assert.strictEqual(await authGuard!("wholeVar"), false);
     });
 
     it("pinAuthProvider skips a provider with the same credentials", async () => {

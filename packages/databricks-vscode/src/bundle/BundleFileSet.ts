@@ -92,13 +92,23 @@ function splitGlobBase(absolutePath: string): {base: string; pattern: string} {
 
 export class BundleFileSet {
     public readonly bundleDataCache: CachedValue<BundleSchema> =
-        new CachedValue<BundleSchema>(async () => {
-            let bundle = {};
-            await this.forEach(async (data) => {
-                bundle = merge(bundle, data);
-            });
-            return bundle as BundleSchema;
+        new CachedValue<BundleSchema>(() => this.readMergedBundleFromDisk());
+
+    /**
+     * Reads and merges every bundle file fresh from disk, bypassing
+     * bundleDataCache. The remote-mode credential guard reads the target host
+     * through this (via BundlePreValidateModel), so a missed BundleWatcher
+     * event — an inotify limit, a `files.watcherExclude` entry, or the race
+     * between `git pull` writing a file and the event arriving — can't leave it
+     * approving a host that no longer matches the YAML on disk.
+     */
+    async readMergedBundleFromDisk(): Promise<BundleSchema> {
+        let bundle = {};
+        await this.forEach(async (data) => {
+            bundle = merge(bundle, data);
         });
+        return bundle as BundleSchema;
+    }
 
     private get projectRoot() {
         return this.workspaceFolderManager.activeProjectUri;
@@ -148,6 +158,12 @@ export class BundleFileSet {
             );
             const files = await glob.glob(absolutePattern, {
                 nocase: process.platform === "win32",
+                // Match the CLI's Go glob, where `*` matches dotfiles (e.g.
+                // `targets/.prod.yml` for `targets/*.yml`). Without this the
+                // extension would miss a dotfile that sets `workspace.host`, so
+                // the remote-mode credential guard would read a different host
+                // than the CLI resolves and could send the session token there.
+                dot: true,
             });
             allFiles.push(...files);
         }
@@ -230,7 +246,10 @@ export class BundleFileSet {
             const absolutePattern = toGlobPath(
                 path.resolve(this.projectRoot.fsPath, pattern)
             );
-            if (minimatch(toGlobPath(e.fsPath), absolutePattern)) {
+            // {dot: true} to stay consistent with getIncludedFiles, so an edit
+            // to a dotfile include (matching the CLI's glob) is recognised as a
+            // bundle-file change rather than silently ignored.
+            if (minimatch(toGlobPath(e.fsPath), absolutePattern, {dot: true})) {
                 return true;
             }
         }

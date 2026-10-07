@@ -409,25 +409,50 @@ export class ConfigModel implements Disposable {
     }
 
     /**
-     * How the CLI would resolve this target's `workspace.host`, read fresh from
-     * the YAML. The credential guard and the host-mismatch UI both read it here
-     * so they always agree on the target's host.
-     *  - `session`: no `workspace.host`, so the CLI falls back to
-     *    `DATABRICKS_HOST` — the session's own host in Remote SSH mode.
+     * How the CLI would resolve this target's workspace host, read fresh from
+     * the YAML on disk (bypassing the config cache, so a missed file-watcher
+     * event can't leave a stale host approved). The credential guard and the
+     * host-mismatch UI both read it here so they always agree on the target's
+     * host.
+     *  - `session`: no `workspace.host` and no `workspace.profile`, so the CLI
+     *    falls back to `DATABRICKS_HOST` — the session's own host in Remote SSH
+     *    mode.
      *  - `host`: an explicit, parseable host.
-     *  - `unresolved`: a host that's present but can't be parsed here (e.g. a
-     *    `${...}` variable the CLI resolves but we don't). Callers fail closed.
+     *  - `unresolved`: a host we can't vouch for, so callers fail closed. Either
+     *    a `workspace.profile` (the profile picks its own host, overriding
+     *    `DATABRICKS_HOST`, and the CLI doesn't report the resolved host so we
+     *    can't compare it); a host that's present but can't be parsed here (e.g.
+     *    a `${...}` variable the CLI resolves but we don't); or a whole
+     *    `workspace` block supplied as a `${...}` variable.
      */
     public async getTargetWorkspaceHost(
         target: string
     ): Promise<TargetWorkspaceHost> {
-        let host: string | undefined;
+        let workspace: {host?: string; profile?: string} | string | undefined;
         try {
-            host = (await this.bundlePreValidateModel.targets)?.[target]
-                ?.workspace?.host;
+            workspace =
+                await this.bundlePreValidateModel.getTargetWorkspaceFromDisk(
+                    target
+                );
         } catch {
             return {kind: "unresolved"};
         }
+        // The whole `workspace` block resolved to an unresolved `${...}`
+        // variable: we can't tell where it points, so fail closed.
+        if (typeof workspace === "string") {
+            return {kind: "unresolved"};
+        }
+        // A profile authenticates against its own host (overriding
+        // DATABRICKS_HOST), so the session's credentials could reach another
+        // workspace. Remote mode only authenticates against the ambient
+        // session, so refuse rather than guess the profile's host.
+        if (
+            typeof workspace?.profile === "string" &&
+            workspace.profile.trim() !== ""
+        ) {
+            return {kind: "unresolved"};
+        }
+        const host = workspace?.host;
         if (host === undefined || host.trim() === "") {
             return {kind: "session"};
         }

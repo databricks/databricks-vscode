@@ -62,6 +62,48 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         })();
     }
 
+    /**
+     * The target's `workspace` auth fields (`host`, `profile`) resolved fresh
+     * from disk, bypassing bundleDataCache, with the global `workspace` block
+     * merged in the same way as `targets` so they match what the CLI resolves.
+     * The remote-mode credential guard reads these through here (ConfigModel),
+     * so a missed BundleWatcher event can't leave it approving a host that no
+     * longer matches the YAML on disk.
+     *
+     * `profile` matters because a target that authenticates via a named profile
+     * takes its host from that profile (overriding `DATABRICKS_HOST`), and the
+     * CLI reports `workspace.profile` rather than the resolved host — so the
+     * guard can't catch it by comparing hosts and fails closed on it instead.
+     *
+     * Returns the merged `{host, profile}`; the raw string when the whole
+     * `workspace` block is an unresolved `${...}` variable (the guard fails
+     * closed on that); or undefined when the target isn't defined.
+     */
+    public async getTargetWorkspaceFromDisk(
+        target: string
+    ): Promise<{host?: string; profile?: string} | string | undefined> {
+        const bundle = await this.bundleFileSet.readMergedBundleFromDisk();
+        if (bundle?.targets?.[target] === undefined) {
+            return undefined;
+        }
+        // A whole `workspace` block given as an unresolved `${...}` variable
+        // parses as a string; the merged view below would mangle it into an
+        // indexed object with no host, so surface the string and let the guard
+        // fail closed rather than read an empty host.
+        const targetWorkspace: unknown = bundle.targets?.[target]?.workspace;
+        if (typeof targetWorkspace === "string") {
+            return targetWorkspace;
+        }
+        const globalWorkspace: unknown = bundle.workspace;
+        if (typeof globalWorkspace === "string") {
+            return globalWorkspace;
+        }
+        const workspace = this.getRawTargetData(bundle, target)?.workspace as
+            | {host?: string; profile?: string}
+            | undefined;
+        return {host: workspace?.host, profile: workspace?.profile};
+    }
+
     get defaultTarget() {
         return this.targets.then((targets) => {
             if (targets === undefined) {

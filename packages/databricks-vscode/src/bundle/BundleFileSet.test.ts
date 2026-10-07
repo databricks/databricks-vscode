@@ -83,6 +83,56 @@ describe(__filename, async function () {
         expect(devWorkspace).to.not.have.property("<<");
     });
 
+    it("getIncludedFiles matches dotfiles like the CLI's Go glob", async () => {
+        // Go's filepath.Glob (the CLI) matches dotfiles with `*`; node-glob
+        // skips them unless {dot: true}. A dotfile include that sets
+        // workspace.host must be visible to the extension, or the remote-mode
+        // credential guard reads a different host than the CLI resolves and
+        // could send the session token there.
+        const targetsDir = path.join(tmpdir.path, "targets");
+        await fs.mkdir(targetsDir);
+        const dotfile = path.join(targetsDir, ".prod.yml");
+        const regular = path.join(targetsDir, "dev.yml");
+        await fs.writeFile(dotfile, "");
+        await fs.writeFile(regular, "");
+
+        const rootBundleData: BundleSchema = {
+            include: [path.join("targets", "*.yml")],
+        };
+        await fs.writeFile(
+            path.join(tmpdir.path, "databricks.yml"),
+            yaml.stringify(rootBundleData)
+        );
+
+        const bundleFileSet = new BundleFileSet(
+            getWorkspaceFolderManagerMock()
+        );
+        const files = (await bundleFileSet.getIncludedFiles())?.map(
+            (f) => f.fsPath
+        );
+        expect(files).to.include(Uri.file(dotfile).fsPath);
+        expect(files).to.include(Uri.file(regular).fsPath);
+    });
+
+    it("isIncludedBundleFile matches a dotfile include", async () => {
+        const rootBundleData: BundleSchema = {
+            include: [path.join("targets", "*.yml")],
+        };
+        await fs.writeFile(
+            path.join(tmpdir.path, "databricks.yml"),
+            yaml.stringify(rootBundleData)
+        );
+
+        const bundleFileSet = new BundleFileSet(
+            getWorkspaceFolderManagerMock()
+        );
+        expect(
+            await bundleFileSet.isIncludedBundleFile(
+                Uri.file(path.join(tmpdir.path, "targets", ".prod.yml"))
+            )
+        ).to.be.true;
+    });
+
     it("should find the correct root bundle yaml", async () => {
         const tmpdirUri = Uri.file(tmpdir.path);
         const bundleFileSet = new BundleFileSet(
