@@ -2001,7 +2001,7 @@
         "markdown-it": "^15.0.1",
         "minimatch": "^10.2.3",
         "shell-env": "^4.0.3",
-        "shell-quote": "^1.9.0",
+        "shell-quote": "^1.11.0",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
         "yaml": "^2.8.3"
