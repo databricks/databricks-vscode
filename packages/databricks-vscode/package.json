@@ -888,7 +888,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Unity Gateway isn't connected. [Sign out](command:databricks.unityGateway.signOut)\n[Sign in to Unity Gateway](command:databricks.unityGateway.signIn)",
+                "contents": "Unity Gateway isn't connected.\n[Sign in to Unity Gateway](command:databricks.unityGateway.signIn)",
                 "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == DISCONNECTED && databricks.context.unityGateway.hasSavedProfile"
             },
             {
@@ -898,7 +898,7 @@
             },
             {
                 "view": "configurationView",
-                "contents": "Signed in to Unity Gateway. [Sign out](command:databricks.unityGateway.signOut)\n[Change Unity Gateway workspace](command:databricks.unityGateway.signIn)",
+                "contents": "Signed in to Unity Gateway.\n[Change Unity Gateway workspace](command:databricks.unityGateway.signIn)",
                 "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == CONNECTED"
             },
             {

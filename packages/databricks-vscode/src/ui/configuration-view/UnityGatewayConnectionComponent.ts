@@ -51,7 +51,7 @@ export class UnityGatewayConnectionComponent extends BaseComponent {
                     label: LabelUtils.highlightedLabel(
                         saved
                             ? "Unity Gateway isn't connected. Click to sign in."
-                            : "Sign in to Unity Gateway"
+                            : "Connect to Unity Gateway for model access"
                     ),
                     iconPath: new ThemeIcon(
                         "account",

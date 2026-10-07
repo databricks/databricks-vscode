@@ -75,7 +75,10 @@ describe(__filename, () => {
     it("offers to sign in when not connected", async () => {
         const [item] = await component.getChildren();
 
-        assert.strictEqual(label(item), "Sign in to Unity Gateway");
+        assert.strictEqual(
+            label(item),
+            "Connect to Unity Gateway for model access"
+        );
         assert.strictEqual(
             item.command?.command,
             "databricks.unityGateway.signIn"
