@@ -1931,7 +1931,7 @@
                     "databricks.proxy.useSystemCertificates": {
                         "type": "boolean",
                         "default": true,
-                        "markdownDescription": "Controls whether the extension adds the OS certificate store (macOS and Linux) to the trusted CAs of its Databricks SDK calls. Set to `false` to troubleshoot TLS or extension host problems on a machine with a large certificate store. Then VS Code's own `#http.systemCertificates#` handling applies instead. If `#databricks.proxy.caCert#` is also set, only Node's built-in roots, that file and `NODE_EXTRA_CA_CERTS` are trusted. Reload the window after you change this setting."
+                        "markdownDescription": "Controls whether the extension adds the OS certificate store (macOS and Linux) to the trusted CAs of its Databricks SDK calls. Set to `false` to troubleshoot TLS or extension host problems. Then VS Code's own `#http.systemCertificates#` handling applies instead, unless `#databricks.proxy.caCert#` is set: in that case only Node's built-in roots, that file and `NODE_EXTRA_CA_CERTS` are trusted. Reload the window after you change this setting."
                     }
                 }
             }

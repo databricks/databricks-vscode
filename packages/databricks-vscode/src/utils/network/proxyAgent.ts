@@ -245,10 +245,10 @@ async function loadNodeExtraCaCerts(): Promise<string | undefined> {
  * roots) and then extended with the OS trust store, the configured PEM, and the
  * `NODE_EXTRA_CA_CERTS` bundle. Setting `ca` *replaces* Node's defaults, so if we
  * set it to only the extra certs, public-root TLS would break — hence the merge.
- * When we have nothing to add (system store unreadable or disabled via
- * `databricks.proxy.useSystemCertificates`, no `caCert`, no
- * `NODE_EXTRA_CA_CERTS`), return `undefined` so the caller omits `ca` and Node
- * keeps its defaults.
+ * When neither OS certs nor a `caCert` need an explicit list, return
+ * `undefined` so the caller omits `ca`. Node's default store already has
+ * `NODE_EXTRA_CA_CERTS`, and any explicit `ca` stops VS Code's own TLS patch
+ * from adding the OS store (its `http.systemCertificates` handling).
  *
  * Deduped because the OS store commonly re-lists the public roots already in
  * `tls.rootCertificates`; a `Set` keeps the handed-off list minimal.
@@ -259,9 +259,8 @@ function buildCaBundle(
     nodeExtraCaCerts: string | undefined
 ): string[] | undefined {
     // @vscode/proxy-agent swallows a failed OS-store read and returns `[]`, so
-    // treat empty the same as unreadable: nothing to add on top of Node's
-    // bundled roots.
-    if (!systemCerts?.length && !configuredCaCert && !nodeExtraCaCerts) {
+    // treat empty the same as unreadable or disabled.
+    if (!systemCerts?.length && !configuredCaCert) {
         return undefined;
     }
     return [
@@ -332,23 +331,18 @@ export async function getDatabricksHttpAgent(
     const params = getProxyAgentParams(host);
     const isHttps = host.protocol === "https:";
 
-    const useSystemCerts = workspaceConfigs.proxyUseSystemCertificates;
     // Independent reads (OS trust store, the configured PEM, the
     // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
     const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
         [
-            useSystemCerts ? getSystemCertificates(params) : undefined,
+            workspaceConfigs.proxyUseSystemCertificates
+                ? getSystemCertificates(params)
+                : undefined,
             loadConfiguredCaCert(),
             loadNodeExtraCaCerts(),
         ]
     );
-    // With the OS store off, only `caCert` needs an explicit `ca`. Any explicit
-    // `ca` stops VS Code's TLS patch from adding the OS store itself, and Node's
-    // default store already has NODE_EXTRA_CA_CERTS.
-    const ca =
-        useSystemCerts || configuredCaCert
-            ? buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts)
-            : undefined;
+    const ca = buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts);
     const rejectUnauthorized = strictSSL();
 
     const resolver = createProxyResolver(params);
