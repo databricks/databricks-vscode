@@ -9,19 +9,25 @@ import {Time, TimeUnits} from "@databricks/sdk-experimental";
 export type PythonEnvironmentSetupMode = "auto" | "manual";
 
 /**
- * The user's explicit value for a `databricks.*` override setting, or
- * `undefined` when it isn't set at any level. Uses `inspect`, not `get`: VS Code
- * gives a boolean setting without a declared default an implicit `false`, which
- * `get` returns and which would hide the built-in fallback.
+ * The explicitly set boolean in an `inspect` result, workspace before global, or
+ * `undefined` when none is set. Ignores the declared default (so an override
+ * setting can fall back to its built-in `http.*` counterpart) and any
+ * non-boolean value such as a `null` written to settings.json.
  */
+export function explicitBoolean(
+    setting: {workspaceValue?: unknown; globalValue?: unknown} | undefined
+): boolean | undefined {
+    for (const value of [setting?.workspaceValue, setting?.globalValue]) {
+        if (typeof value === "boolean") {
+            return value;
+        }
+    }
+    return undefined;
+}
+
 function explicitDatabricksBoolean(key: string): boolean | undefined {
-    const setting = workspace
-        .getConfiguration("databricks")
-        .inspect<boolean>(key);
-    return (
-        setting?.workspaceFolderValue ??
-        setting?.workspaceValue ??
-        setting?.globalValue
+    return explicitBoolean(
+        workspace.getConfiguration("databricks").inspect<boolean>(key)
     );
 }
 

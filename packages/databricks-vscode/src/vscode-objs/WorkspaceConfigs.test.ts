@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import {ConfigurationTarget, workspace} from "vscode";
-import {workspaceConfigs} from "./WorkspaceConfigs";
+import {explicitBoolean, workspaceConfigs} from "./WorkspaceConfigs";
 
 async function set(section: string, key: string, value?: boolean) {
     await workspace
@@ -9,6 +9,49 @@ async function set(section: string, key: string, value?: boolean) {
 }
 
 describe(__filename, () => {
+    describe("explicitBoolean", () => {
+        it("prefers the workspace value over the global value", () => {
+            assert.strictEqual(
+                explicitBoolean({
+                    globalValue: true,
+                    workspaceValue: false,
+                }),
+                false
+            );
+        });
+
+        it("treats null and missing values as unset", () => {
+            const nullValue = null;
+            assert.strictEqual(
+                explicitBoolean({
+                    globalValue: nullValue,
+                    workspaceValue: nullValue,
+                }),
+                undefined
+            );
+            assert.strictEqual(
+                explicitBoolean({
+                    globalValue: false,
+                    workspaceValue: nullValue,
+                }),
+                false
+            );
+            assert.strictEqual(explicitBoolean(undefined), undefined);
+        });
+    });
+
+    // The Settings UI removes a user value that equals the default, so a
+    // missing (implicitly `false`) default would make `false` impossible to set.
+    for (const key of ["proxy.strictSSL", "proxy.useSystemCertificates"]) {
+        it(`declares a true default for databricks.${key}`, () => {
+            assert.strictEqual(
+                workspace.getConfiguration("databricks").inspect(key)
+                    ?.defaultValue,
+                true
+            );
+        });
+    }
+
     describe("proxyStrictSSL", () => {
         afterEach(async () => {
             await set("databricks", "proxy.strictSSL", undefined);
