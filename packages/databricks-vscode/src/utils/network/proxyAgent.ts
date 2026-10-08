@@ -245,7 +245,8 @@ async function loadNodeExtraCaCerts(): Promise<string | undefined> {
  * roots) and then extended with the OS trust store, the configured PEM, and the
  * `NODE_EXTRA_CA_CERTS` bundle. Setting `ca` *replaces* Node's defaults, so if we
  * set it to only the extra certs, public-root TLS would break — hence the merge.
- * When we have nothing to add (system store unreadable, no `caCert`, no
+ * When we have nothing to add (system store unreadable or disabled via
+ * `databricks.proxy.useSystemCertificates`, no `caCert`, no
  * `NODE_EXTRA_CA_CERTS`), return `undefined` so the caller omits `ca` and Node
  * keeps its defaults.
  *
@@ -319,7 +320,8 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
 /**
  * Build the HTTP(S) agent the Databricks SDK should use, wiring in the proxy
  * (VS Code `http.proxy` setting + `http(s)_proxy` env vars, honouring
- * `NO_PROXY`) and the OS certificate trust store. This is what lets the
+ * `NO_PROXY`) and, unless `databricks.proxy.useSystemCertificates` is off, the
+ * OS certificate trust store. This is what lets the
  * in-process SDK calls work behind corporate proxies and internal-CA TLS
  * interception, matching the bundled CLI's behaviour.
  */
@@ -332,8 +334,8 @@ export async function getDatabricksHttpAgent(
 
     // Independent reads (OS trust store, the configured PEM, the
     // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
-    // `databricks.proxy.useSystemCertificates: false` skips the OS store, so
-    // without a caCert or NODE_EXTRA_CA_CERTS Node keeps its default store.
+    // With the OS store off and no other PEMs, `ca` stays unset and VS Code's
+    // own `http.systemCertificates` handling applies, as before 2.19.0.
     const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
         [
             workspaceConfigs.proxyUseSystemCertificates

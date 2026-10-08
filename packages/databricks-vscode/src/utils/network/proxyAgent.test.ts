@@ -30,6 +30,8 @@ describe(__filename, () => {
 
     beforeEach(() => {
         existingEnv = Object.assign({}, process.env);
+        // Corporate machines often export this; tests that need it set it.
+        delete process.env.NODE_EXTRA_CA_CERTS;
         resetProxyAgentCaches();
         configsSpy = spy(workspaceConfigs);
         // Defaults: strict SSL on, no proxy or custom CA configured.
