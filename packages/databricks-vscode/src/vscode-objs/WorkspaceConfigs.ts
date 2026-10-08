@@ -253,13 +253,29 @@ export const workspaceConfigs = {
 
     /**
      * Whether the extension merges the OS certificate store into the CA bundle of
-     * its SDK calls. When off, the extension leaves the OS store to VS Code's
-     * own `http.systemCertificates` handling, unless `caCert` is set.
+     * its SDK calls. `databricks.proxy.useSystemCertificates`, when explicitly
+     * set, overrides the built-in `http.systemCertificates`; both default to
+     * `true`. When off, the extension leaves the OS store to VS Code's own
+     * handling, unless `caCert` is set.
      */
     get proxyUseSystemCertificates(): boolean {
-        return workspace
+        // `inspect`, not `get`: VS Code gives a boolean setting without a
+        // declared default an implicit `false`, which would hide the fallback.
+        const setting = workspace
             .getConfiguration("databricks")
-            .get<boolean>("proxy.useSystemCertificates", true);
+            .inspect<boolean>("proxy.useSystemCertificates");
+        const override =
+            setting?.workspaceFolderValue ??
+            setting?.workspaceValue ??
+            setting?.globalValue;
+        if (override !== undefined) {
+            return override;
+        }
+        return (
+            workspace
+                .getConfiguration("http")
+                .get<boolean>("systemCertificates") ?? true
+        );
     },
 };
 
