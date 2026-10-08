@@ -351,10 +351,9 @@ export async function getDatabricksHttpAgent(
         isHttps ||
         (proxyUrl !== undefined && new URL(proxyUrl).protocol === "https:");
 
-    // Only set `ca` when we have certs to add on top of Node's bundled roots
-    // (which `buildCaBundle` already folds in). On the fallback path `ca` is
-    // `undefined`, so we omit it entirely and Node keeps its default store —
-    // passing `undefined`/`[]` would instead trust nothing.
+    // Only set `ca` when `buildCaBundle` built an explicit list (it already
+    // folds in Node's bundled roots). Otherwise omit it entirely so Node keeps
+    // its default store — passing `undefined`/`[]` would instead trust nothing.
     const agentOptions: https.AgentOptions = {
         keepAlive: true,
         keepAliveMsecs: KEEP_ALIVE_MSECS,

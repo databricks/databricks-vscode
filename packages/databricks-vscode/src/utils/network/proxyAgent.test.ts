@@ -359,6 +359,8 @@ describe(__filename, () => {
             fs.writeFileSync(pemPath, FAKE_CA_PEM);
             process.env.NODE_EXTRA_CA_CERTS = pemPath;
             when(configsSpy.proxyUseSystemCertificates).thenReturn(false);
+            // A non-empty store, so the test fails if the setting is ignored.
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
             try {
                 const agent = (await getDatabricksHttpAgent(
                     new URL("https://example.com")
