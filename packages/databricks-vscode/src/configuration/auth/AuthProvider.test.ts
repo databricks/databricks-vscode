@@ -18,7 +18,7 @@ describe(__filename, () => {
             );
         }
 
-        it("should expose DATABRICKS_CLI_PATH so the SDK/Terraform provider can locate the bundled CLI", () => {
+        it("should expose DATABRICKS_CLI_PATH so the SDK can locate the bundled CLI", () => {
             const env = createProvider("dev").toEnv();
 
             assert.equal(env["DATABRICKS_CLI_PATH"], cliPath);

@@ -36,7 +36,6 @@ import {
     HostUtils,
     PackageJsonUtils,
     ProxyAgent,
-    TerraformUtils,
     UrlUtils,
     UtilsCommands,
 } from "./utils";
@@ -97,7 +96,6 @@ import {
 } from "./bundle";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
-import {BundleEngineManager} from "./bundle/BundleEngineManager";
 import {ConfigModel} from "./configuration/models/ConfigModel";
 import {OverrideableConfigModel} from "./configuration/models/OverrideableConfigModel";
 import {BundlePreValidateModel} from "./bundle/models/BundlePreValidateModel";
@@ -113,7 +111,6 @@ import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigu
 import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
-import {getCLIDependenciesEnvVars} from "./utils/envVarGenerators";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {PackageManagerTelemetry} from "./language/PackageManagerTelemetry";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
@@ -126,9 +123,6 @@ import {
     UnityCatalogTreeNode,
 } from "./ui/unity-catalog/UnityCatalogTreeDataProvider";
 import {registerDetailPanel} from "./ui/unity-catalog/registerDetailPanel";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const packageJson = require("../package.json");
 
 const customWhenContext = new CustomWhenContext();
 
@@ -577,27 +571,6 @@ export async function activate(
         packageMetadata.version
     );
 
-    // We always use bundled terraform and databricks provider.
-    // Updating environment collection means that the variables will be set in all terminals.
-    // If users use different CLI version in their terminal it will only pick the variables if
-    // the dependency versions (that we set together with bin and config paths) match the internal versions of the CLI.
-    const cliDeps = getCLIDependenciesEnvVars(context);
-    for (const [key, value] of Object.entries(cliDeps)) {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
-            `Setting env var ${key}=${value}`
-        );
-        context.environmentVariableCollection.replace(key, value);
-    }
-    TerraformUtils.updateTerraformCliConfig(
-        context,
-        packageJson.terraformMetadata
-    ).catch((e) => {
-        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-            "Failed to update terraform cli config",
-            e
-        );
-    });
-
     logging.NamedLogger.getOrCreate(Loggers.Extension).debug("Metadata", {
         metadata: packageMetadata,
     });
@@ -780,12 +753,6 @@ export async function activate(
         stateStorage
     );
 
-    const bundleEngineManager = new BundleEngineManager(
-        bundleValidateModel,
-        stateStorage,
-        telemetry
-    );
-
     const connectionManager = new ConnectionManager(
         cli,
         configModel,
@@ -819,7 +786,6 @@ export async function activate(
         bundlePreValidateModel,
         bundleRemoteStateModel,
         configModel,
-        bundleEngineManager,
         connectionManager,
         connectionManager.onDidChangeState(async () => {
             telemetry.setMetadata(

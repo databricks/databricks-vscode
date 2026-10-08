@@ -68,7 +68,7 @@ const realTerminatePrimitives: TerminatePrimitives = {
  * tree with `taskkill /T /F` (always forceful — `signal` is moot there); on
  * POSIX the child is a process-group leader (spawned detached), so signalling
  * the negated pid tears down the whole group — including any grandchild a
- * direct-child signal would orphan (e.g. `terraform`, `uv`) — with a fallback
+ * direct-child signal would orphan (e.g. `uv`) — with a fallback
  * to a direct kill if the group is already gone.
  */
 export function terminateProcessTree(
