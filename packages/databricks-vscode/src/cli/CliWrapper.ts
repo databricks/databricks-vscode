@@ -493,8 +493,8 @@ function defaultCliPath(context: ExtensionContext) {
     // include the extension here: while spawning the CLI ourselves works
     // without it (Windows' CreateProcess auto-appends `.exe`), this path is
     // also forwarded to the Databricks Go SDK via the DATABRICKS_CLI_PATH env
-    // var, and it does a literal file lookup that
-    // fails on an extensionless path with "databricks CLI not found".
+    // var, and it does a literal file lookup that fails on an extensionless
+    // path with "databricks CLI not found".
     const binName =
         process.platform === "win32" ? "databricks.exe" : "databricks";
     return context.asAbsolutePath(`./bin/${binName}`);
