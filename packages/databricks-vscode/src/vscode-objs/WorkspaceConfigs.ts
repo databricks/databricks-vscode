@@ -250,6 +250,17 @@ export const workspaceConfigs = {
                 .get<string>("proxy.caCert") || undefined
         );
     },
+
+    /**
+     * Whether the extension's SDK calls trust the OS certificate store on top of
+     * Node's built-in roots. Defaults to `true`; `false` is an opt-out for
+     * machines where reading or applying the store breaks the extension host.
+     */
+    get proxyUseSystemCertificates(): boolean {
+        return workspace
+            .getConfiguration("databricks")
+            .get<boolean>("proxy.useSystemCertificates", true);
+    },
 };
 
 export type WorkspaceConfigs = typeof workspaceConfigs;

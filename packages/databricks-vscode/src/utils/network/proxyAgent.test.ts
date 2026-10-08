@@ -37,6 +37,7 @@ describe(__filename, () => {
         when(configsSpy.httpProxy).thenReturn(undefined);
         when(configsSpy.httpNoProxy).thenReturn([]);
         when(configsSpy.proxyCaCert).thenReturn(undefined);
+        when(configsSpy.proxyUseSystemCertificates).thenReturn(true);
     });
 
     afterEach(() => {
@@ -297,6 +298,43 @@ describe(__filename, () => {
                 (agent.options as https.AgentOptions).rejectUnauthorized,
                 true
             );
+        });
+
+        it("skips the system store when databricks.proxy.useSystemCertificates is off", async () => {
+            when(configsSpy.proxyUseSystemCertificates).thenReturn(false);
+            let loaderCalled = false;
+            setSystemCertificatesLoaderForTests(async () => {
+                loaderCalled = true;
+                return [FAKE_CA_PEM];
+            });
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            assert.strictEqual(loaderCalled, false);
+            // Nothing to add, so `ca` is omitted and Node keeps its defaults.
+            assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+        });
+
+        it("still applies databricks.proxy.caCert when useSystemCertificates is off", async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "corp-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            const systemPem =
+                "-----BEGIN CERTIFICATE-----\nMIIBSystem\n-----END CERTIFICATE-----\n";
+            when(configsSpy.proxyCaCert).thenReturn(pemPath);
+            when(configsSpy.proxyUseSystemCertificates).thenReturn(false);
+            setSystemCertificatesLoaderForTests(async () => [systemPem]);
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(ca.includes(FAKE_CA_PEM));
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+                assert.ok(!ca.includes(systemPem));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
         });
 
         it("merges databricks.proxy.caCert onto the trust store", async () => {

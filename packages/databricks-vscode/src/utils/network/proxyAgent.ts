@@ -332,9 +332,13 @@ export async function getDatabricksHttpAgent(
 
     // Independent reads (OS trust store, the configured PEM, the
     // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
+    // `databricks.proxy.useSystemCertificates: false` skips the OS store, so
+    // without a caCert or NODE_EXTRA_CA_CERTS Node keeps its default store.
     const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
         [
-            getSystemCertificates(params),
+            workspaceConfigs.proxyUseSystemCertificates
+                ? getSystemCertificates(params)
+                : undefined,
             loadConfiguredCaCert(),
             loadNodeExtraCaCerts(),
         ]

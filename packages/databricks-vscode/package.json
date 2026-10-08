@@ -1927,6 +1927,11 @@
                     "databricks.proxy.caCert": {
                         "type": "string",
                         "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with the OS trust store and Node's built-in roots. Use when a corporate CA cannot be read from the system store — in particular on Windows, where the extension does not read the system certificate store and relies on this setting for internal CAs."
+                    },
+                    "databricks.proxy.useSystemCertificates": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "Controls whether the extension's Databricks SDK calls trust the OS certificate store in addition to Node's built-in roots. Set to `false` if the extension host crashes or is slow on a machine with many certificates. `#databricks.proxy.caCert#` and `NODE_EXTRA_CA_CERTS` still apply."
                     }
                 }
             }
