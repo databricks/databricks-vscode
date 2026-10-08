@@ -8,6 +8,23 @@ import {Time, TimeUnits} from "@databricks/sdk-experimental";
  */
 export type PythonEnvironmentSetupMode = "auto" | "manual";
 
+/**
+ * The user's explicit value for a `databricks.*` override setting, or
+ * `undefined` when it isn't set at any level. Uses `inspect`, not `get`: VS Code
+ * gives a boolean setting without a declared default an implicit `false`, which
+ * `get` returns and which would hide the built-in fallback.
+ */
+function explicitDatabricksBoolean(key: string): boolean | undefined {
+    const setting = workspace
+        .getConfiguration("databricks")
+        .inspect<boolean>(key);
+    return (
+        setting?.workspaceFolderValue ??
+        setting?.workspaceValue ??
+        setting?.globalValue
+    );
+}
+
 export const workspaceConfigs = {
     get maxFieldLength() {
         return (
@@ -212,10 +229,8 @@ export const workspaceConfigs = {
      * built-in `http.proxyStrictSSL`; both default to `true`.
      */
     get proxyStrictSSL(): boolean {
-        const override = workspace
-            .getConfiguration("databricks")
-            .get<boolean | null>("proxy.strictSSL");
-        if (override !== undefined && override !== null) {
+        const override = explicitDatabricksBoolean("proxy.strictSSL");
+        if (override !== undefined) {
             return override;
         }
         return (
@@ -259,15 +274,9 @@ export const workspaceConfigs = {
      * handling, unless `caCert` is set.
      */
     get proxyUseSystemCertificates(): boolean {
-        // `inspect`, not `get`: VS Code gives a boolean setting without a
-        // declared default an implicit `false`, which would hide the fallback.
-        const setting = workspace
-            .getConfiguration("databricks")
-            .inspect<boolean>("proxy.useSystemCertificates");
-        const override =
-            setting?.workspaceFolderValue ??
-            setting?.workspaceValue ??
-            setting?.globalValue;
+        const override = explicitDatabricksBoolean(
+            "proxy.useSystemCertificates"
+        );
         if (override !== undefined) {
             return override;
         }
