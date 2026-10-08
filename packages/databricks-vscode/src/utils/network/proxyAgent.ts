@@ -321,9 +321,9 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
  * Build the HTTP(S) agent the Databricks SDK should use, wiring in the proxy
  * (VS Code `http.proxy` setting + `http(s)_proxy` env vars, honouring
  * `NO_PROXY`) and, unless `databricks.proxy.useSystemCertificates` is off, the
- * OS certificate trust store. This is what lets the
- * in-process SDK calls work behind corporate proxies and internal-CA TLS
- * interception, matching the bundled CLI's behaviour.
+ * OS certificate trust store. This is what lets the in-process SDK calls work
+ * behind corporate proxies and internal-CA TLS interception, matching the
+ * bundled CLI's behaviour.
  */
 export async function getDatabricksHttpAgent(
     host: URL,
@@ -332,20 +332,23 @@ export async function getDatabricksHttpAgent(
     const params = getProxyAgentParams(host);
     const isHttps = host.protocol === "https:";
 
+    const useSystemCerts = workspaceConfigs.proxyUseSystemCertificates;
     // Independent reads (OS trust store, the configured PEM, the
     // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
-    // With the OS store off and no other PEMs, `ca` stays unset and VS Code's
-    // own `http.systemCertificates` handling applies, as before 2.19.0.
     const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
         [
-            workspaceConfigs.proxyUseSystemCertificates
-                ? getSystemCertificates(params)
-                : undefined,
+            useSystemCerts ? getSystemCertificates(params) : undefined,
             loadConfiguredCaCert(),
             loadNodeExtraCaCerts(),
         ]
     );
-    const ca = buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts);
+    // With the OS store off, only `caCert` needs an explicit `ca`. Any explicit
+    // `ca` stops VS Code's TLS patch from adding the OS store itself, and Node's
+    // default store already has NODE_EXTRA_CA_CERTS.
+    const ca =
+        useSystemCerts || configuredCaCert
+            ? buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts)
+            : undefined;
     const rejectUnauthorized = strictSSL();
 
     const resolver = createProxyResolver(params);

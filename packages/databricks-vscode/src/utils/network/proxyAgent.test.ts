@@ -317,6 +317,24 @@ describe(__filename, () => {
             assert.ok(!("ca" in (agent.options as https.AgentOptions)));
         });
 
+        it("leaves NODE_EXTRA_CA_CERTS to Node's default store when useSystemCertificates is off", async () => {
+            // An explicit `ca` would stop VS Code from adding the OS store to
+            // the connection; Node's default store already has this bundle.
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "extra-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            process.env.NODE_EXTRA_CA_CERTS = pemPath;
+            when(configsSpy.proxyUseSystemCertificates).thenReturn(false);
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
         it("still applies databricks.proxy.caCert when useSystemCertificates is off", async () => {
             const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
             const pemPath = path.join(dir, "corp-ca.pem");

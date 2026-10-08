@@ -239,9 +239,9 @@ export const workspaceConfigs = {
     /**
      * Absolute path to a PEM bundle of additional CA certificates to trust for
      * the extension's SDK calls, merged with Node's built-in roots and (unless
-     * `databricks.proxy.useSystemCertificates` is off) the OS trust store. An escape hatch for corporate CAs that can't be read from
-     * the system store (e.g. older runtimes where the native reader is
-     * unavailable).
+     * `databricks.proxy.useSystemCertificates` is off) the OS trust store. An
+     * escape hatch for corporate CAs that can't be read from the system store
+     * (e.g. older runtimes where the native reader is unavailable).
      */
     get proxyCaCert(): string | undefined {
         return (
@@ -253,8 +253,8 @@ export const workspaceConfigs = {
 
     /**
      * Whether the extension merges the OS certificate store into the CA bundle of
-     * its SDK calls. Defaults to `true`. With `false`, VS Code's own
-     * `http.systemCertificates` handling applies instead, as before 2.19.0.
+     * its SDK calls. When off, the extension leaves the OS store to VS Code's
+     * own `http.systemCertificates` handling, unless `caCert` is set.
      */
     get proxyUseSystemCertificates(): boolean {
         return workspace
