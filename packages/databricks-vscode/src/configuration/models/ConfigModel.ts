@@ -422,8 +422,10 @@ export class ConfigModel implements Disposable {
      *    a `workspace.profile` (the profile picks its own host, overriding
      *    `DATABRICKS_HOST`, and the CLI doesn't report the resolved host so we
      *    can't compare it); a host that's present but can't be parsed here (e.g.
-     *    a `${...}` variable the CLI resolves but we don't); or a whole
-     *    `workspace` block supplied as a `${...}` variable.
+     *    a `${...}` variable the CLI resolves but we don't); a whole
+     *    `workspace` block supplied as a `${...}` variable; or a `host`/
+     *    `profile` set in more than one file, where the CLI's last-file-wins
+     *    merge decides the host and we won't trust our file order to match it.
      */
     public async getTargetWorkspaceHost(
         target: string
@@ -440,6 +442,20 @@ export class ConfigModel implements Disposable {
         // The whole `workspace` block resolved to an unresolved `${...}`
         // variable: we can't tell where it points, so fail closed.
         if (typeof workspace === "string") {
+            return {kind: "unresolved"};
+        }
+        // Backstop: if the host or profile is contested across files, the CLI's
+        // last-file-wins merge picks the host and we won't bet the session
+        // token on our file order matching the CLI's. Fail closed.
+        try {
+            const {hostFiles, profileFiles} =
+                await this.bundlePreValidateModel.getWorkspaceAuthFileCounts(
+                    target
+                );
+            if (hostFiles > 1 || profileFiles > 1) {
+                return {kind: "unresolved"};
+            }
+        } catch {
             return {kind: "unresolved"};
         }
         // A profile authenticates against its own host (overriding

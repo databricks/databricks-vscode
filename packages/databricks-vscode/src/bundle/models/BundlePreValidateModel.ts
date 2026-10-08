@@ -104,6 +104,46 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         return {host: workspace?.host, profile: workspace?.profile};
     }
 
+    /**
+     * How many bundle files set this target's `workspace.host` / `.profile`,
+     * counting a file's top-level `workspace` block and its `targets[target]`
+     * `workspace` block together (one file sets the field at most once each).
+     * Read fresh from disk, per file, bypassing the merged view.
+     *
+     * The guard fails closed when either is set in more than one file: the CLI
+     * merges include files "last file wins", and we only match that order if
+     * our glob + sort mirror Go's exactly. Rather than trust the merge where it
+     * decides which host the session token reaches, refuse when the host (or
+     * profile) is contested across files.
+     */
+    public async getWorkspaceAuthFileCounts(
+        target: string
+    ): Promise<{hostFiles: number; profileFiles: number}> {
+        const isSet = (workspace: unknown, key: "host" | "profile") => {
+            if (typeof workspace !== "object" || workspace === null) {
+                return false;
+            }
+            const value = (workspace as Record<string, unknown>)[key];
+            return typeof value === "string" && value.trim() !== "";
+        };
+
+        let hostFiles = 0;
+        let profileFiles = 0;
+        await this.bundleFileSet.forEach(async (data) => {
+            const blocks: unknown[] = [
+                data?.workspace,
+                data?.targets?.[target]?.workspace,
+            ];
+            if (blocks.some((w) => isSet(w, "host"))) {
+                hostFiles++;
+            }
+            if (blocks.some((w) => isSet(w, "profile"))) {
+                profileFiles++;
+            }
+        });
+        return {hostFiles, profileFiles};
+    }
+
     get defaultTarget() {
         return this.targets.then((targets) => {
             if (targets === undefined) {

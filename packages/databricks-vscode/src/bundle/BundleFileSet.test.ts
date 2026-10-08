@@ -133,6 +133,70 @@ describe(__filename, async function () {
         ).to.be.true;
     });
 
+    it("getIncludedFiles sorts each pattern's matches byte-wise like the CLI (Repro A)", async () => {
+        // The CLI sorts each pattern's matches (Go sort.Strings) and lets the
+        // last file win on merge; node-glob's order is filesystem-dependent. If
+        // a host is split across targets/a.yml and targets/z.yml, an unsorted
+        // list could merge the wrong one and the remote-mode credential guard
+        // would read a host the CLI never deploys to. Create z.yml before a.yml
+        // so a naive readdir order wouldn't already be sorted.
+        const targetsDir = path.join(tmpdir.path, "targets");
+        await fs.mkdir(targetsDir);
+        await fs.writeFile(path.join(targetsDir, "z.yml"), "");
+        await fs.writeFile(path.join(targetsDir, "a.yml"), "");
+
+        const rootBundleData: BundleSchema = {
+            include: [path.join("targets", "*.yml")],
+        };
+        await fs.writeFile(
+            path.join(tmpdir.path, "databricks.yml"),
+            yaml.stringify(rootBundleData)
+        );
+
+        const bundleFileSet = new BundleFileSet(
+            getWorkspaceFolderManagerMock()
+        );
+        const files = (await bundleFileSet.getIncludedFiles())?.map(
+            (f) => f.fsPath
+        );
+        expect(files).to.deep.equal([
+            Uri.file(path.join(targetsDir, "a.yml")).fsPath,
+            Uri.file(path.join(targetsDir, "z.yml")).fsPath,
+        ]);
+    });
+
+    it("getIncludedFiles treats ** as one level like the CLI's Go glob (Repro B)", async () => {
+        // Go's filepath.Glob has no `**`, so `conf/**/*.yml` reaches exactly one
+        // directory deep. node-glob's recursive `**` would merge files the CLI
+        // never loads, so the guard could read a host from outside the deployed
+        // bundle. {noglobstar: true} matches the CLI: conf/a/x.yml loads,
+        // conf/a/b/dev.yml does not.
+        const confA = path.join(tmpdir.path, "conf", "a");
+        const confAB = path.join(confA, "b");
+        await fs.mkdir(confAB, {recursive: true});
+        const shallow = path.join(confA, "x.yml");
+        const deep = path.join(confAB, "dev.yml");
+        await fs.writeFile(shallow, "");
+        await fs.writeFile(deep, "");
+
+        const rootBundleData: BundleSchema = {
+            include: [path.join("conf", "**", "*.yml")],
+        };
+        await fs.writeFile(
+            path.join(tmpdir.path, "databricks.yml"),
+            yaml.stringify(rootBundleData)
+        );
+
+        const bundleFileSet = new BundleFileSet(
+            getWorkspaceFolderManagerMock()
+        );
+        const files = (await bundleFileSet.getIncludedFiles())?.map(
+            (f) => f.fsPath
+        );
+        expect(files).to.include(Uri.file(shallow).fsPath);
+        expect(files).to.not.include(Uri.file(deep).fsPath);
+    });
+
     it("should find the correct root bundle yaml", async () => {
         const tmpdirUri = Uri.file(tmpdir.path);
         const bundleFileSet = new BundleFileSet(
@@ -285,9 +349,14 @@ describe(__filename, async function () {
 
             await fs.writeFile(path.join(tmpdir.path, "included.yaml"), "");
             await fs.writeFile(path.join(tmpdir.path, "notIncluded.yaml"), "");
-            await fs.mkdir(path.join(tmpdir.path, "includes"));
+            // `includes/**/*.yaml` reaches exactly one directory deep (Go glob
+            // semantics, {noglobstar: true}), so the matched file lives in a
+            // subdirectory of `includes`, not directly in it.
+            await fs.mkdir(path.join(tmpdir.path, "includes", "nested"), {
+                recursive: true,
+            });
             await fs.writeFile(
-                path.join(tmpdir.path, "includes", "included.yaml"),
+                path.join(tmpdir.path, "includes", "nested", "included.yaml"),
                 ""
             );
         });
@@ -304,7 +373,7 @@ describe(__filename, async function () {
             const expected = [
                 Uri.joinPath(tmpdirUri, "bundle.yaml"),
                 Uri.joinPath(tmpdirUri, "included.yaml"),
-                Uri.joinPath(tmpdirUri, "includes", "included.yaml"),
+                Uri.joinPath(tmpdirUri, "includes", "nested", "included.yaml"),
             ].map((v) => v.fsPath);
             expect(actual).to.deep.equal(expected);
         });
@@ -352,7 +421,12 @@ describe(__filename, async function () {
             expect(
                 await bundleFileSet.isIncludedBundleFile(
                     Uri.file(
-                        path.join(tmpdirUri.fsPath, "includes", "included.yaml")
+                        path.join(
+                            tmpdirUri.fsPath,
+                            "includes",
+                            "nested",
+                            "included.yaml"
+                        )
                     )
                 )
             ).to.be.true;
@@ -376,7 +450,7 @@ describe(__filename, async function () {
                 "databricks.yaml",
                 "databricks.yml",
                 "included.yaml",
-                path.join("includes", "included.yaml"),
+                path.join("includes", "nested", "included.yaml"),
             ];
 
             for (const bundleFile of possibleBundleFiles) {

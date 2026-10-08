@@ -176,4 +176,77 @@ describe("BundlePreValidateModel", async function () {
         expect(ws.host).to.be.undefined;
         expect(ws.profile).to.be.undefined;
     });
+
+    it("getWorkspaceAuthFileCounts counts a host set in more than one file (Repro B)", async () => {
+        // Top-level workspace.host in databricks.yml plus a target host in an
+        // included file: two files set the host. The CLI's last-file-wins merge
+        // decides which host the session token reaches, so the guard fails
+        // closed rather than trust our file order matches the CLI's.
+        await writeRoot([
+            "bundle:",
+            "  name: p",
+            'include: ["targets/*.yml"]',
+            "workspace:",
+            `  host: ${OTHER_HOST}`,
+            "targets:",
+            "  dev:",
+            "    default: true",
+        ]);
+        await fs.mkdir(path.join(tmpdir.path, "targets"));
+        await fs.writeFile(
+            path.join(tmpdir.path, "targets", "a.yml"),
+            [
+                "targets:",
+                "  dev:",
+                "    workspace:",
+                `      host: ${SESSION_HOST}`,
+                "",
+            ].join("\n")
+        );
+
+        const counts = await makeModel().getWorkspaceAuthFileCounts("dev");
+        expect(counts.hostFiles).to.equal(2);
+        expect(counts.profileFiles).to.equal(0);
+    });
+
+    it("getWorkspaceAuthFileCounts counts a host set in a single file once", async () => {
+        await writeRoot([
+            "targets:",
+            "  dev:",
+            "    default: true",
+            "    workspace:",
+            `      host: ${SESSION_HOST}`,
+        ]);
+
+        const counts = await makeModel().getWorkspaceAuthFileCounts("dev");
+        expect(counts.hostFiles).to.equal(1);
+        expect(counts.profileFiles).to.equal(0);
+    });
+
+    it("getWorkspaceAuthFileCounts counts a profile set in more than one file", async () => {
+        await writeRoot([
+            "bundle:",
+            "  name: p",
+            'include: ["targets/*.yml"]',
+            "workspace:",
+            "  profile: root-profile",
+            "targets:",
+            "  dev:",
+            "    default: true",
+        ]);
+        await fs.mkdir(path.join(tmpdir.path, "targets"));
+        await fs.writeFile(
+            path.join(tmpdir.path, "targets", "a.yml"),
+            [
+                "targets:",
+                "  dev:",
+                "    workspace:",
+                "      profile: target-profile",
+                "",
+            ].join("\n")
+        );
+
+        const counts = await makeModel().getWorkspaceAuthFileCounts("dev");
+        expect(counts.profileFiles).to.equal(2);
+    });
 });

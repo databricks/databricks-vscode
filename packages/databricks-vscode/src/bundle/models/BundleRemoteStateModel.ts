@@ -76,17 +76,22 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
 
     @Mutex.synchronise("mutex")
     public async deploy(force = false, token?: CancellationToken) {
-        if (this.target === undefined) {
+        // Snapshot target + auth before the guard's await: a setTarget /
+        // setAuthProvider that lands during the await must not let the CLI run
+        // a target the guard never checked (or with swapped credentials).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        if (target === undefined) {
             throw new Error("Target is undefined");
         }
-        if (this.authProvider === undefined) {
+        if (authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
-        await this.assertAuthAllowed(this.target);
+        await this.assertAuthAllowed(target);
 
         await this.cli.bundleDeploy(
-            this.target,
-            this.authProvider,
+            target,
+            authProvider,
             this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
@@ -97,17 +102,20 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
 
     @Mutex.synchronise("mutex")
     public async destroy(force = false, token: CancellationToken) {
-        if (this.target === undefined) {
+        // Snapshot target + auth before the guard await (TOCTOU, see deploy()).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        if (target === undefined) {
             throw new Error("Target is undefined");
         }
-        if (this.authProvider === undefined) {
+        if (authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
-        await this.assertAuthAllowed(this.target);
+        await this.assertAuthAllowed(target);
 
         await this.cli.bundleDestroy(
-            this.target,
-            this.authProvider,
+            target,
+            authProvider,
             this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
@@ -118,17 +126,20 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
 
     @Mutex.synchronise("mutex")
     public async sync(token: CancellationToken) {
-        if (this.target === undefined) {
+        // Snapshot target + auth before the guard await (TOCTOU, see deploy()).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        if (target === undefined) {
             throw new Error("Target is undefined");
         }
-        if (this.authProvider === undefined) {
+        if (authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
-        await this.assertAuthAllowed(this.target);
+        await this.assertAuthAllowed(target);
 
         await this.cli.bundleSync(
-            this.target,
-            this.authProvider,
+            target,
+            authProvider,
             this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
@@ -140,17 +151,20 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         resourceKey: string,
         additionalArgs: string[] = []
     ) {
-        if (this.target === undefined) {
+        // Snapshot target + auth before the guard await (TOCTOU, see deploy()).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        if (target === undefined) {
             throw new Error("Target is undefined");
         }
-        if (this.authProvider === undefined) {
+        if (authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
-        await this.assertAuthAllowed(this.target);
+        await this.assertAuthAllowed(target);
 
         return await this.cli.getBundleRunCommand(
-            this.target,
-            this.authProvider,
+            target,
+            authProvider,
             resourceKey,
             this.projectRoot,
             this.workspaceConfigs.databrickscfgLocation,

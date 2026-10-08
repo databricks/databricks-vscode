@@ -257,6 +257,29 @@ describe("ConfigModel target/auth ordering", () => {
         when(
             bundlePreValidateModel.getTargetWorkspaceFromDisk("wholeVar")
         ).thenResolve("${var.ws}");
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("multiFile")
+        ).thenResolve({host: HOST_A});
+        // The guard also reads how many files set the host/profile: single-file
+        // for the normal targets, a two-file host conflict for `multiFile`.
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("dev")
+        ).thenResolve({hostFiles: 1, profileFiles: 0});
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("other")
+        ).thenResolve({hostFiles: 1, profileFiles: 0});
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("noHost")
+        ).thenResolve({hostFiles: 0, profileFiles: 0});
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("badHost")
+        ).thenResolve({hostFiles: 1, profileFiles: 0});
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("profile")
+        ).thenResolve({hostFiles: 0, profileFiles: 1});
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("multiFile")
+        ).thenResolve({hostFiles: 2, profileFiles: 0});
         await pin();
 
         const [, authGuard] = capture(
@@ -276,6 +299,10 @@ describe("ConfigModel target/auth ordering", () => {
         assert.strictEqual(await authGuard!("profile"), false);
         // The whole workspace block is an unresolved variable: fail closed.
         assert.strictEqual(await authGuard!("wholeVar"), false);
+        // The host is contested across files: even though the merged host is
+        // the session host, the CLI's last-file-wins merge decides it, so don't
+        // bet the token on our file order matching the CLI's. Fail closed.
+        assert.strictEqual(await authGuard!("multiFile"), false);
     });
 
     it("pinAuthProvider skips a provider with the same credentials", async () => {

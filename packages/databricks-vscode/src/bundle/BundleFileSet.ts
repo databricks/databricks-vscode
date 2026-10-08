@@ -12,6 +12,23 @@ import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
 const subProjectFilePattern: string = path.join("**", rootFilePattern);
 
+/**
+ * Glob/minimatch options that make node-glob resolve a bundle `include` pattern
+ * the way the CLI's Go `filepath.Glob` does, so the remote-mode credential
+ * guard builds the same merged bundle (and resolves the same `workspace.host`)
+ * the CLI will. Go's glob matches dotfiles with `*` (`dot`), and has no `**`
+ * (`noglobstar`), no brace expansion (`nobrace`) and no extglobs (`noext`) — so
+ * e.g. `conf/**` only reaches one directory deep. `getIncludedFiles` and
+ * `isIncludedBundleFile` must use the same set, or an edit to an included file
+ * could be classified differently from the way that file is actually loaded.
+ */
+const goGlobOptions = {
+    dot: true,
+    noglobstar: true,
+    nobrace: true,
+    noext: true,
+} as const;
+
 export async function parseBundleYaml(file: Uri) {
     const data = yaml.parse(await readFile(file.fsPath, "utf-8"), {
         // Bundles might have a lot of aliases (#1706), default 100 limit is too low
@@ -158,16 +175,24 @@ export class BundleFileSet {
             );
             const files = await glob.glob(absolutePattern, {
                 nocase: process.platform === "win32",
-                // Match the CLI's Go glob, where `*` matches dotfiles (e.g.
-                // `targets/.prod.yml` for `targets/*.yml`). Without this the
-                // extension would miss a dotfile that sets `workspace.host`, so
-                // the remote-mode credential guard would read a different host
-                // than the CLI resolves and could send the session token there.
-                dot: true,
+                // Match the CLI's Go glob so the remote-mode credential guard
+                // reads the same include files (and the same workspace.host)
+                // the CLI resolves, rather than sending the session token to a
+                // host it never checked.
+                ...goGlobOptions,
             });
+            // The CLI sorts each pattern's matches (Go's sort.Strings, a
+            // byte-wise comparison) and lets the last file win on merge. Match
+            // that order exactly — plain `<`/`>`, not localeCompare — so a host
+            // split across e.g. `targets/a.yml` and `targets/z.yml` resolves to
+            // the same file here as in the CLI. node-glob doesn't sort, so its
+            // order is filesystem-dependent.
+            files.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
             allFiles.push(...files);
         }
 
+        // Keep the first occurrence of each file, so a file matched by more
+        // than one pattern stays in the position its earliest pattern gave it.
         return [...new Set(allFiles)].map((f) => Uri.file(f));
     }
 
@@ -246,10 +271,12 @@ export class BundleFileSet {
             const absolutePattern = toGlobPath(
                 path.resolve(this.projectRoot.fsPath, pattern)
             );
-            // {dot: true} to stay consistent with getIncludedFiles, so an edit
-            // to a dotfile include (matching the CLI's glob) is recognised as a
-            // bundle-file change rather than silently ignored.
-            if (minimatch(toGlobPath(e.fsPath), absolutePattern, {dot: true})) {
+            // Use the same Go-glob options as getIncludedFiles so an edit is
+            // recognised as a bundle-file change exactly when that file is one
+            // the CLI (and getIncludedFiles) would load.
+            if (
+                minimatch(toGlobPath(e.fsPath), absolutePattern, goGlobOptions)
+            ) {
                 return true;
             }
         }
