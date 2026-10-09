@@ -1988,7 +1988,11 @@
     },
     "dependencies": {
         "@databricks/databricks-vscode-types": "workspace:^",
+        "@databricks/sdk-aigateway": "0.23.0",
+        "@databricks/sdk-auth": "0.51.0",
+        "@databricks/sdk-core": "0.51.0",
         "@databricks/sdk-experimental": "^0.18.0",
+        "@databricks/sdk-options": "0.51.0",
         "@types/lodash": "^4.14.202",
         "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",

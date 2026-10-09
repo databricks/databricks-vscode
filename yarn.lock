@@ -285,6 +285,40 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@databricks/sdk-aigateway@npm:0.23.0":
+  version: 0.23.0
+  resolution: "@databricks/sdk-aigateway@npm:0.23.0"
+  dependencies:
+    "@databricks/sdk-auth": ">=0.51.0 <1.0.0"
+    "@databricks/sdk-core": ">=0.51.0 <1.0.0"
+    "@databricks/sdk-options": ">=0.51.0 <1.0.0"
+    "@js-temporal/polyfill": ^0.5.0
+    json-bigint: ^1.0.0
+    zod: ^4.3.6
+  checksum: 3494c652577a8ab2b21a8e7aeb464052906c7d94eb416aa5e580623f4a0e7631d097c889acd8e6d2532f32e6dd7b879336f53187ec5c56db9a7694c4b192b8f2
+  languageName: node
+  linkType: hard
+
+"@databricks/sdk-auth@npm:0.51.0, @databricks/sdk-auth@npm:>=0.51.0 <1.0.0":
+  version: 0.51.0
+  resolution: "@databricks/sdk-auth@npm:0.51.0"
+  dependencies:
+    "@databricks/sdk-core": ">=0.51.0 <1.0.0"
+    zod: ^4.3.6
+  checksum: 060d42ee3052f3bd9f3ae437e9f9c17100123821e0074363416ca8685fa7f7c769a049ffb00599d9c7f205c8ae4e336f8e61d8e07b97512ead8a7e5c2669cf93
+  languageName: node
+  linkType: hard
+
+"@databricks/sdk-core@npm:0.51.0, @databricks/sdk-core@npm:>=0.51.0 <1.0.0":
+  version: 0.51.0
+  resolution: "@databricks/sdk-core@npm:0.51.0"
+  dependencies:
+    json-bigint: ^1.0.0
+    zod: ^4.3.6
+  checksum: dc1192a93bb7252c35c79a77b4b70850a83d1820d8b0c6393ba0221cb9ddd350992dd2d96e8b8c0f46131fca6f2e26230c067410c52c077ad715df2d3588d42e
+  languageName: node
+  linkType: hard
+
 "@databricks/sdk-experimental@npm:^0.18.0":
   version: 0.18.0
   resolution: "@databricks/sdk-experimental@npm:0.18.0"
@@ -294,6 +328,16 @@ __metadata:
     reflect-metadata: ^0.2.2
     semver: ^7.7.3
   checksum: eefb552284eaa5577baaa173f1612611833bd805cbd822f11373223d74b2e2b37d2a6dbe7bdf522312339bcecf8384a2510c5a74b51612664ddca7a4b51fa503
+  languageName: node
+  linkType: hard
+
+"@databricks/sdk-options@npm:0.51.0, @databricks/sdk-options@npm:>=0.51.0 <1.0.0":
+  version: 0.51.0
+  resolution: "@databricks/sdk-options@npm:0.51.0"
+  dependencies:
+    "@databricks/sdk-auth": ">=0.51.0 <1.0.0"
+    "@databricks/sdk-core": ">=0.51.0 <1.0.0"
+  checksum: 0db8474b92cabebf11643d340d97dd46b378e644c8fd77c9e295797db04dd6a37084f51cb923a4af5cbcddfc85f2bae2a59fd971ddeda6488b8baf2c5a9c7a8c
   languageName: node
   linkType: hard
 
@@ -1212,6 +1256,15 @@ __metadata:
     "@jridgewell/resolve-uri": ^3.1.0
     "@jridgewell/sourcemap-codec": ^1.4.14
   checksum: af8fda2431348ad507fbddf8e25f5d08c79ecc94594061ce402cf41bc5aba1a7b3e59bf0fd70a619b35f33983a3f488ceeba8faf56bff784f98bb5394a8b7d47
+  languageName: node
+  linkType: hard
+
+"@js-temporal/polyfill@npm:^0.5.0":
+  version: 0.5.1
+  resolution: "@js-temporal/polyfill@npm:0.5.1"
+  dependencies:
+    jsbi: ^4.3.0
+  checksum: f87127500d4532034d74836160bc013d02989dfe4f67f9264aeca6b2bb1eaed66e1bdb80e37e6e1c647d698726d317459ff13d8b2aa25b107af24c06590e8bd0
   languageName: node
   linkType: hard
 
@@ -4053,7 +4106,11 @@ __metadata:
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
     "@databricks/databricks-vscode-types": "workspace:^"
+    "@databricks/sdk-aigateway": 0.23.0
+    "@databricks/sdk-auth": 0.51.0
+    "@databricks/sdk-core": 0.51.0
     "@databricks/sdk-experimental": ^0.18.0
+    "@databricks/sdk-options": 0.51.0
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^15.4.0
     "@types/chai": ^4.3.11
@@ -6929,6 +6986,13 @@ __metadata:
   bin:
     js-yaml: bin/js-yaml.mjs
   checksum: 87811ae075b0daa4b6f9d958fb52c31d366db80587ca63f2d8396c9706f7269be6ab3a58699d73d0bdf3707e70bebb8e7a72f11b42462fe47a87899fd85c06a9
+  languageName: node
+  linkType: hard
+
+"jsbi@npm:^4.3.0":
+  version: 4.3.2
+  resolution: "jsbi@npm:4.3.2"
+  checksum: 58e06ea3328c1f455ab92219254b4ac09257fee2b611f4af73c0a6606022bbf2f5b9bf1f6f713eda3c943a842454e8ee0948b0525362cb0182e54e851e8d67c4
   languageName: node
   linkType: hard
 
@@ -11141,5 +11205,12 @@ __metadata:
     compress-commons: ^6.0.2
     readable-stream: ^4.0.0
   checksum: aa5abd6a89590eadeba040afbc375f53337f12637e5e98330012a12d9886cde7a3ccc28bd91aafab50576035bbb1de39a9a316eecf2411c8b9009c9f94f0db27
+  languageName: node
+  linkType: hard
+
+"zod@npm:^4.3.6":
+  version: 4.6.5
+  resolution: "zod@npm:4.6.5"
+  checksum: bc73aaee52bc9137bae3f5bf9b49f4475223c24be86d81881856dd26696cb693d1a3f51d9cf5c86c6f9b081316557673806d00ab3a0f244c9576ff39a11ae6ea
   languageName: node
   linkType: hard
