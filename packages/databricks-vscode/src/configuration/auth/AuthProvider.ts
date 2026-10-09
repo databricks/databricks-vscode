@@ -366,7 +366,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         const env: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: "databricks-cli",
-            // Point the SDK/Terraform provider at the bundled CLI so they don't
+            // Point the SDK at the bundled CLI so it doesn't
             // fall back to searching PATH (and fail with "databricks CLI not
             // found") in subprocesses that don't inherit our resolved path.
             DATABRICKS_CLI_PATH: this.cliPath,

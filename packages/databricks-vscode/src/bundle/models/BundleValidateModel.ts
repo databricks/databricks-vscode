@@ -17,9 +17,6 @@ import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 export type BundleValidateState = {
     clusterId?: string;
     remoteRootPath?: string;
-    // The bundle deployment engine ("terraform" | "direct"). Not modelled in the
-    // generated BundleSchema, so read off the validate output directly.
-    engine?: string;
 } & BundleTarget;
 
 export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateState> {
@@ -105,8 +102,6 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
                 validateOutput?.bundle?.compute_id ??
                 validateOutput?.bundle?.cluster_id,
             remoteRootPath: validateOutput?.workspace?.file_path,
-            engine: (validateOutput?.bundle as {engine?: string} | undefined)
-                ?.engine,
             ...validateOutput,
         };
     }

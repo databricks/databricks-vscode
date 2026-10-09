@@ -40,14 +40,6 @@ describe("BundleValidateModel", () => {
         return model;
     }
 
-    it("reads bundle.engine off the validate output", async () => {
-        const model = buildModel({
-            bundle: {name: "proj", engine: "terraform"},
-        });
-
-        assert.strictEqual(await model.get("engine"), "terraform");
-    });
-
     it("skips the CLI when the auth guard refuses the target", async () => {
         const model = buildModel({bundle: {name: "proj"}});
         model.setAuthProvider(
@@ -65,13 +57,5 @@ describe("BundleValidateModel", () => {
                 anything()
             )
         ).never();
-    });
-
-    it("leaves engine undefined when the validate output omits it", async () => {
-        const model = buildModel({
-            bundle: {name: "proj"},
-        });
-
-        assert.strictEqual(await model.get("engine"), undefined);
     });
 });

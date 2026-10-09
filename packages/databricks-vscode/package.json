@@ -1942,12 +1942,16 @@
                         "description": "Override location for the Databricks CLI (defaults to the CLI bundled with this extension). *Warning:* it is recommended NOT to set this. If you override the CLI to an outdated version this extension may break."
                     },
                     "databricks.proxy.strictSSL": {
-                        "type": "boolean",
-                        "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. When unset, the built-in `#http.proxyStrictSSL#` value is used. Set to `false` only when a corporate CA certificate cannot be resolved from the system trust store."
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "default": null,
+                        "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. When unset (`null`), the built-in `#http.proxyStrictSSL#` value is used. Set to `false` only when a corporate CA certificate cannot be resolved from the system trust store."
                     },
                     "databricks.proxy.caCert": {
                         "type": "string",
-                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with the OS trust store and Node's built-in roots. Use when a corporate CA cannot be read from the system store — in particular on Windows, where the extension does not read the system certificate store and relies on this setting for internal CAs."
+                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with Node's built-in roots and, on macOS and Linux (unless `#http.systemCertificates#` is off), the OS trust store. Use when a corporate CA cannot be read from the system store. On Windows, setting this stops VS Code from adding the Windows certificate store to these calls, so the file must contain every internal CA you need."
                     }
                 }
             }
@@ -1964,7 +1968,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.19.0"
+        "version": "1.20.0"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
@@ -2005,7 +2009,11 @@
     },
     "dependencies": {
         "@databricks/databricks-vscode-types": "workspace:^",
+        "@databricks/sdk-aigateway": "0.23.0",
+        "@databricks/sdk-auth": "0.51.0",
+        "@databricks/sdk-core": "0.51.0",
         "@databricks/sdk-experimental": "^0.18.0",
+        "@databricks/sdk-options": "0.51.0",
         "@types/lodash": "^4.14.202",
         "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",
@@ -2054,7 +2062,6 @@
         "esbuild": "^0.28.1",
         "eslint": "^10.6.0",
         "eslint-plugin-local-rules": "^3.0.2",
-        "extract-zip": "^2.0.1",
         "fs-extra": "^11.2.0",
         "glob": "^13.0.6",
         "mocha": "^12.0.2",
