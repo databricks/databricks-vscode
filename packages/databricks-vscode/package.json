@@ -1878,6 +1878,11 @@
                         "uniqueItems": true,
                         "description": "Opt into experimental features."
                     },
+                    "databricks.notebooks.configureJupyterCellMarkers": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Automatically configure Jupyter cell markers in workspace settings for Databricks Python notebooks. Disable in User settings to leave Jupyter cell markers unchanged. Reload the window after changing this setting. Previously written settings are not removed."
+                    },
                     "databricks.wsfs.rearrangeCells": {
                         "type": "boolean",
                         "default": true,
