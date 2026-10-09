@@ -17,6 +17,7 @@ import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
 import {Cluster} from "./sdk-extensions/Cluster";
 import {ConfigurationDataProvider} from "./ui/configuration-view/ConfigurationDataProvider";
+import {RemoteConfigurationDataProvider} from "./ui/configuration-view/RemoteConfigurationDataProvider";
 import {composePythonSetupEntry} from "./ui/configuration-view/pythonSetupEntry";
 import {routeEnvironmentSetup} from "./language/pythonSetupRouting";
 import {COPY_COMMAND_IDS} from "./ui/configuration-view/copyActions";
@@ -95,6 +96,13 @@ import {
     BundleFileSet,
     registerBundleAutocompleteProvider,
 } from "./bundle";
+import {getSubProjects} from "./bundle/BundleFileSet";
+import {
+    promptToSelectBundleTarget,
+    selectActiveProjectFolder,
+} from "./bundle/activeBundleUtils";
+import {RemoteBundleManager} from "./bundle/RemoteBundleManager";
+import {RemoteTargetHostManager} from "./bundle/RemoteTargetHostManager";
 import {showWhatsNewPopup} from "./whatsNewPopup";
 import {BundleValidateModel} from "./bundle/models/BundleValidateModel";
 import {ConfigModel} from "./configuration/models/ConfigModel";
@@ -112,6 +120,7 @@ import {DatabricksDebugConfigurationProvider} from "./run/DatabricksDebugConfigu
 import {BundleVariableModel} from "./bundle/models/BundleVariableModel";
 import {BundleVariableTreeDataProvider} from "./ui/bundle-variables/BundleVariableTreeDataProvider";
 import {ConfigurationTreeViewManager} from "./ui/configuration-view/ConfigurationTreeViewManager";
+import {withOnErrorHandler} from "./utils/onErrorDecorator";
 import {EnvironmentCommands} from "./language/EnvironmentCommands";
 import {PackageManagerTelemetry} from "./language/PackageManagerTelemetry";
 import {WorkspaceFolderManager} from "./vscode-objs/WorkspaceFolderManager";
@@ -275,6 +284,183 @@ function registerDocsView(context: ExtensionContext): void {
             docsViewTreeDataProvider
         ),
         docsViewTreeDataProvider
+    );
+}
+
+/**
+ * Register the Bundle Resource Explorer tree view and its commands. Shared
+ * between the normal activation flow and the remote (Databricks Remote SSH)
+ * flow. The two flows differ only in whether the Configuration view feeds the
+ * decoration provider - everything else is identical, so the command set
+ * (deploy/run/destroy/…) is registered the same way in both modes.
+ *
+ * Returns the BundleCommands instance, which the run/debug adapter factories
+ * depend on in the normal flow.
+ */
+function registerBundleResourceExplorer(
+    context: ExtensionContext,
+    telemetry: Telemetry,
+    customWhenContext: CustomWhenContext,
+    configModel: ConfigModel,
+    connectionManager: ConnectionManager,
+    bundleRemoteStateModel: BundleRemoteStateModel,
+    bundleValidateModel: BundleValidateModel,
+    // Omitted in remote mode: its Configuration view has no decorated rows
+    // (only the Cluster and Sync components use decorations).
+    configurationDataProvider?: ConfigurationDataProvider
+): BundleCommands {
+    const bundleRunTerminalManager = new BundleRunTerminalManager(
+        bundleRemoteStateModel
+    );
+    const bundleRunStatusManager = new BundleRunStatusManager(
+        configModel,
+        bundleRunTerminalManager
+    );
+    const bundlePipelinesManager = new BundlePipelinesManager(
+        connectionManager,
+        bundleRunStatusManager,
+        configModel
+    );
+    const bundleResourceExplorerTreeDataProvider =
+        new BundleResourceExplorerTreeDataProvider(
+            context,
+            configModel,
+            connectionManager,
+            bundleRunStatusManager,
+            bundlePipelinesManager
+        );
+
+    const bundleCommands = new BundleCommands(
+        bundleRemoteStateModel,
+        bundleRunStatusManager,
+        bundlePipelinesManager,
+        bundleValidateModel,
+        configModel,
+        customWhenContext,
+        telemetry
+    );
+    const decorationProvider = new TreeItemDecorationProvider(
+        bundleResourceExplorerTreeDataProvider,
+        configurationDataProvider
+    );
+    context.subscriptions.push(
+        bundleResourceExplorerTreeDataProvider,
+        bundleCommands,
+        bundleRunTerminalManager,
+        bundlePipelinesManager,
+        decorationProvider,
+        window.registerFileDecorationProvider(decorationProvider),
+        window.registerTreeDataProvider(
+            "dabsResourceExplorerView",
+            bundleResourceExplorerTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.refreshRemoteState",
+            bundleCommands.refreshCommand,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deploy",
+            bundleCommands.deployCommand,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.forceDeploy",
+            bundleCommands.forceDeployCommand,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.forceDestroy",
+            bundleCommands.forceDestroyCommand,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndRunFromInput",
+            bundleCommands.deployAndRunFromInput,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndRunJob",
+            bundleCommands.deployAndRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndRunPipeline",
+            bundleCommands.deployAndRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndValidatePipeline",
+            bundleCommands.deployAndValidate,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.deployAndRunSelectedTables",
+            bundleCommands.deployAndRunSelectedTables,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.clearPipelineDiagnostics",
+            bundleCommands.clearPipelineDiagnostics,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.showPipelineEventDetails",
+            bundleCommands.showPipelineEventDetails,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.cancelRun",
+            bundleCommands.cancelRun,
+            bundleCommands
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.destroy",
+            bundleCommands.destroy,
+            bundleCommands
+        )
+    );
+
+    return bundleCommands;
+}
+
+/**
+ * Register the Bundle Variables tree view and its commands. Shared between the
+ * normal and remote (Databricks Remote SSH) flows.
+ */
+function registerBundleVariablesView(
+    context: ExtensionContext,
+    telemetry: Telemetry,
+    cli: CliWrapper,
+    configModel: ConfigModel,
+    bundleValidateModel: BundleValidateModel,
+    workspaceFolderManager: WorkspaceFolderManager
+): void {
+    const bundleVariableModel = new BundleVariableModel(
+        configModel,
+        bundleValidateModel,
+        workspaceFolderManager
+    );
+    cli.bundleVariableModel = bundleVariableModel;
+    const bundleVariableTreeDataProvider = new BundleVariableTreeDataProvider(
+        bundleVariableModel
+    );
+    context.subscriptions.push(
+        bundleVariableModel,
+        window.registerTreeDataProvider(
+            "dabsVariableView",
+            bundleVariableTreeDataProvider
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.variable.openFile",
+            bundleVariableModel.openBundleVariableFile,
+            bundleVariableModel
+        ),
+        telemetry.registerCommand(
+            "databricks.bundle.variable.reset",
+            bundleVariableModel.deleteBundleVariableFile,
+            bundleVariableModel
+        )
     );
 }
 
@@ -544,7 +730,7 @@ export async function activate(
     // The Configuration view exposes an explicit, per-row copy action
     // ("Copy Target", "Copy Path", …). Each titled command shares the single
     // clipboard handler; the row's `copy=<kind>` contextValue (stamped in
-    // ConfigurationDataProvider.getTreeItem) selects which one shows. The ids
+    // BaseConfigurationDataProvider.getTreeItem) selects which one shows. The ids
     // are derived from COPY_KINDS (the single source of truth), hidden from the
     // command palette (package.json commandPalette when:false), and registered
     // WITHOUT the telemetry wrapper on purpose — copying a config value is not
@@ -628,10 +814,12 @@ export async function activate(
             );
         }
 
-        // Surface only the Unity Catalog view and connect it using the ambient
-        // environment credentials (no bundle/config project required). The
-        // ConfigModel is only needed to satisfy the ConnectionManager
-        // constructor; connectFromEnvironment() never reads from it.
+        // Surface the Unity Catalog, Docs, Bundle Resource Explorer and Bundle
+        // Variables views, connected using the ambient environment credentials
+        // (no login flow). Unlike normal mode, the bundle target is auto-resolved
+        // (saved target from workspace state, else the bundle default) and the
+        // RemoteBundleManager pins the environment auth on the ConfigModel - see
+        // below.
         const remoteBundleFileSet = new BundleFileSet(workspaceFolderManager);
         const remoteBundleFileWatcher = new BundleWatcher(
             remoteBundleFileSet,
@@ -649,6 +837,33 @@ export async function activate(
             remoteBundleFileSet,
             remoteBundleFileWatcher
         );
+        // Seed the session host from the ambient DATABRICKS_HOST now, before the
+        // environment connect pins the provider. ConfigModel.init() runs in
+        // parallel with that connect, so a host-less target would otherwise call
+        // normalizeHost("") first and throw (an unhandled rejection at startup,
+        // and a stuck "Invalid host" row if the connect fails). pinAuthProvider
+        // overwrites this with the resolved provider host once connected.
+        const sessionHostEnv = process.env.DATABRICKS_HOST;
+        if (sessionHostEnv) {
+            try {
+                // No target is set yet, so the refresh resolves to {} and can't
+                // reject — but .catch() keeps a future refactor from leaking an
+                // unhandled rejection, the very thing this seeding prevents.
+                remoteBundlePreValidateModel
+                    .setSessionHost(UrlUtils.normalizeHost(sessionHostEnv))
+                    .catch((e) =>
+                        logging.NamedLogger.getOrCreate(
+                            Loggers.Extension
+                        ).error(
+                            "Remote mode: failed to seed the session host",
+                            e
+                        )
+                    );
+            } catch {
+                // Malformed DATABRICKS_HOST: leave it unset; pinAuthProvider
+                // sets the resolved host on connect.
+            }
+        }
         const remoteBundleRemoteStateModel = new BundleRemoteStateModel(
             cli,
             workspaceFolderManager,
@@ -660,7 +875,8 @@ export async function activate(
             remoteBundlePreValidateModel,
             remoteBundleRemoteStateModel,
             customWhenContext,
-            stateStorage
+            stateStorage,
+            true // remote mode
         );
         const remoteConnectionManager = new ConnectionManager(
             cli,
@@ -681,6 +897,23 @@ export async function activate(
             remoteConnectionManager
         );
 
+        const remoteTargetHostManager = new RemoteTargetHostManager(
+            remoteConfigModel,
+            remoteBundlePreValidateModel.onDidChangeBundleFiles
+        );
+        const remoteBundleManager = new RemoteBundleManager(
+            remoteConfigModel,
+            remoteConnectionManager,
+            workspaceFolderManager,
+            remoteBundleFileWatcher
+        );
+        context.subscriptions.push(
+            remoteTargetHostManager,
+            remoteBundleManager
+        );
+
+        // The Unity Catalog refresh only needs a fresh connection; re-pinning
+        // the same credentials doesn't re-pull bundle state.
         const connectRemote = () =>
             remoteConnectionManager.connectFromEnvironment().catch((e) => {
                 logging.NamedLogger.getOrCreate(Loggers.Extension).error(
@@ -697,8 +930,64 @@ export async function activate(
             connectRemote
         );
         registerDocsView(context);
+        // The normal-mode provider gates on BundleProjectManager (absent here)
+        // and builds login/cluster/sync/env components that don't apply.
+        const remoteConfigurationDataProvider =
+            new RemoteConfigurationDataProvider(
+                remoteConfigModel,
+                workspaceFolderManager,
+                remoteBundleFileSet,
+                remoteBundleFileWatcher,
+                remoteTargetHostManager
+            );
+        context.subscriptions.push(
+            remoteConfigurationDataProvider,
+            window.createTreeView("configurationView", {
+                treeDataProvider: remoteConfigurationDataProvider,
+            })
+        );
+        registerBundleResourceExplorer(
+            context,
+            telemetry,
+            customWhenContext,
+            remoteConfigModel,
+            remoteConnectionManager,
+            remoteBundleRemoteStateModel,
+            remoteBundleValidateModel
+        );
+        registerBundleVariablesView(
+            context,
+            telemetry,
+            cli,
+            remoteConfigModel,
+            remoteBundleValidateModel,
+            workspaceFolderManager
+        );
 
-        connectRemote();
+        // Normal mode registers these through BundleProjectManager and
+        // ConnectionCommands, whose init runs the login flow.
+        context.subscriptions.push(
+            telemetry.registerCommand(
+                "databricks.bundle.selectActiveProjectFolder",
+                () =>
+                    selectActiveProjectFolder(workspaceFolderManager, () =>
+                        // The workspace folder root, so sibling projects stay
+                        // reachable.
+                        getSubProjects(
+                            workspaceFolderManager.activeWorkspaceFolder.uri
+                        )
+                    )
+            ),
+            telemetry.registerCommand(
+                "databricks.connection.bundle.selectTarget",
+                withOnErrorHandler(
+                    () => promptToSelectBundleTarget(remoteConfigModel),
+                    {popup: {prefix: "Error selecting target."}}
+                )
+            )
+        );
+
+        remoteBundleManager.initialize();
 
         customWhenContext.setActivated(true);
         telemetry.recordEvent(Events.EXTENSION_ACTIVATION);
@@ -756,7 +1045,8 @@ export async function activate(
         bundlePreValidateModel,
         bundleRemoteStateModel,
         customWhenContext,
-        stateStorage
+        stateStorage,
+        false // normal mode
     );
 
     const connectionManager = new ConnectionManager(
@@ -1579,144 +1869,25 @@ export async function activate(
     );
 
     // Bundle resource explorer
-    const bundleRunTerminalManager = new BundleRunTerminalManager(
-        bundleRemoteStateModel
-    );
-    const bundleRunStatusManager = new BundleRunStatusManager(
-        configModel,
-        bundleRunTerminalManager
-    );
-    const bundlePipelinesManager = new BundlePipelinesManager(
-        connectionManager,
-        bundleRunStatusManager,
-        configModel
-    );
-    const bundleResourceExplorerTreeDataProvider =
-        new BundleResourceExplorerTreeDataProvider(
-            context,
-            configModel,
-            connectionManager,
-            bundleRunStatusManager,
-            bundlePipelinesManager
-        );
-
-    const bundleCommands = new BundleCommands(
-        bundleRemoteStateModel,
-        bundleRunStatusManager,
-        bundlePipelinesManager,
-        bundleValidateModel,
-        configModel,
+    const bundleCommands = registerBundleResourceExplorer(
+        context,
+        telemetry,
         customWhenContext,
-        telemetry
-    );
-    const decorationProvider = new TreeItemDecorationProvider(
-        bundleResourceExplorerTreeDataProvider,
+        configModel,
+        connectionManager,
+        bundleRemoteStateModel,
+        bundleValidateModel,
         configurationDataProvider
-    );
-    context.subscriptions.push(
-        bundleResourceExplorerTreeDataProvider,
-        bundleCommands,
-        bundleRunTerminalManager,
-        bundlePipelinesManager,
-        decorationProvider,
-        window.registerFileDecorationProvider(decorationProvider),
-        window.registerTreeDataProvider(
-            "dabsResourceExplorerView",
-            bundleResourceExplorerTreeDataProvider
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.refreshRemoteState",
-            bundleCommands.refreshCommand,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.deploy",
-            bundleCommands.deployCommand,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.forceDeploy",
-            bundleCommands.forceDeployCommand,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.forceDestroy",
-            bundleCommands.forceDestroyCommand,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.deployAndRunFromInput",
-            bundleCommands.deployAndRunFromInput,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.deployAndRunJob",
-            bundleCommands.deployAndRun,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.deployAndRunPipeline",
-            bundleCommands.deployAndRun,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.deployAndValidatePipeline",
-            bundleCommands.deployAndValidate,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.deployAndRunSelectedTables",
-            bundleCommands.deployAndRunSelectedTables,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.clearPipelineDiagnostics",
-            bundleCommands.clearPipelineDiagnostics,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.showPipelineEventDetails",
-            bundleCommands.showPipelineEventDetails,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.cancelRun",
-            bundleCommands.cancelRun,
-            bundleCommands
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.destroy",
-            bundleCommands.destroy,
-            bundleCommands
-        )
     );
 
     // Bundle variables
-    const bundleVariableModel = new BundleVariableModel(
+    registerBundleVariablesView(
+        context,
+        telemetry,
+        cli,
         configModel,
         bundleValidateModel,
         workspaceFolderManager
-    );
-    cli.bundleVariableModel = bundleVariableModel;
-    const bundleVariableTreeDataProvider = new BundleVariableTreeDataProvider(
-        bundleVariableModel
-    );
-    context.subscriptions.push(
-        bundleVariableModel,
-        window.registerTreeDataProvider(
-            "dabsVariableView",
-            bundleVariableTreeDataProvider
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.variable.openFile",
-            bundleVariableModel.openBundleVariableFile,
-            bundleVariableModel
-        ),
-        telemetry.registerCommand(
-            "databricks.bundle.variable.reset",
-            bundleVariableModel.deleteBundleVariableFile,
-            bundleVariableModel
-        )
     );
 
     // Run/debug group

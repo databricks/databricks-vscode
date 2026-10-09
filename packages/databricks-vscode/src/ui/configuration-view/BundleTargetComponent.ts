@@ -1,10 +1,20 @@
-import {ThemeIcon, ThemeColor, TreeItemCollapsibleState, window} from "vscode";
+import {
+    Event,
+    ThemeIcon,
+    ThemeColor,
+    TreeItemCollapsibleState,
+    window,
+} from "vscode";
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {BaseComponent} from "./BaseComponent";
 import {ConfigurationTreeItem} from "./types";
 import {UrlError} from "../../utils/urlUtils";
 import {LabelUtils} from "../utils";
 import {humaniseMode} from "../utils/BundleUtils";
+import {
+    describePausedTarget,
+    PausedTarget,
+} from "../../bundle/RemoteTargetHostManager";
 
 const TREE_ICON_ID = "TARGET";
 
@@ -12,14 +22,35 @@ function getTreeIconId(key: string) {
     return `${TREE_ICON_ID}.${key}`;
 }
 
+/**
+ * The subset of {@link RemoteTargetHostManager} this component reads to render
+ * the persistent "paused" badge on the Target node (remote mode only).
+ */
+export interface PausedTargetProvider {
+    readonly paused: PausedTarget | undefined;
+    readonly onDidChangePaused: Event<void>;
+}
+
 export class BundleTargetComponent extends BaseComponent {
-    constructor(private readonly configModel: ConfigModel) {
+    constructor(
+        private readonly configModel: ConfigModel,
+        // Present only in remote mode, where a target's bundle commands can be
+        // paused because the session isn't authenticated against its workspace.
+        private readonly pausedTargetProvider?: PausedTargetProvider
+    ) {
         super();
         this.disposables.push(
             this.configModel.onDidChangeTarget(() => {
                 this.onDidChangeEmitter.fire();
             })
         );
+        if (this.pausedTargetProvider !== undefined) {
+            this.disposables.push(
+                this.pausedTargetProvider.onDidChangePaused(() => {
+                    this.onDidChangeEmitter.fire();
+                })
+            );
+        }
     }
 
     private async getRoot(): Promise<ConfigurationTreeItem[]> {
@@ -45,7 +76,45 @@ export class BundleTargetComponent extends BaseComponent {
             ];
         }
 
+        // Remote mode only: a persistent badge when the guard pauses the
+        // target's bundle commands. Checked before the host read below, since an
+        // unresolved target (e.g. a profile or an unparseable host) has no host
+        // to show and would otherwise fall through to "Invalid host". Clicking
+        // the row picks another target.
+        const paused = this.pausedTargetProvider?.paused;
+        if (paused !== undefined) {
+            const description =
+                paused.targetHost !== undefined
+                    ? `${target} — targets ${paused.targetHost}, paused`
+                    : `${target} — paused`;
+            return [
+                {
+                    label: LabelUtils.highlightedLabel("Target"),
+                    id: TREE_ICON_ID,
+                    iconPath: new ThemeIcon(
+                        "target",
+                        new ThemeColor("problemsWarningIcon.foreground")
+                    ),
+                    description,
+                    // "Copy Target" copies the name, not the description.
+                    copyText: target,
+                    tooltip: describePausedTarget(paused),
+                    contextValue:
+                        "databricks.configuration.target.hostMismatch",
+                    collapsibleState: TreeItemCollapsibleState.Collapsed,
+                    command: {
+                        title: "Select a bundle target",
+                        command: "databricks.connection.bundle.selectTarget",
+                    },
+                },
+            ];
+        }
+
         try {
+            if ((await this.configModel.get("host")) === undefined) {
+                throw new UrlError("Host not found");
+            }
+
             const humanisedMode = humaniseMode(
                 await this.configModel.get("mode")
             );
@@ -54,10 +123,6 @@ export class BundleTargetComponent extends BaseComponent {
                     `Could not find "mode" for target ${target}`
                 );
                 return [];
-            }
-
-            if ((await this.configModel.get("host")) === undefined) {
-                throw new UrlError("Host not found");
             }
 
             return [

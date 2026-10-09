@@ -17,7 +17,7 @@ import {ConfigModel} from "./models/ConfigModel";
 import {saveNewProfile} from "./LoginWizard";
 import {PersonalAccessTokenAuthProvider} from "./auth/AuthProvider";
 import {normalizeHost} from "../utils/urlUtils";
-import {CliWrapper, ProcessError} from "../cli/CliWrapper";
+import {CliWrapper} from "../cli/CliWrapper";
 import {
     AUTH_TYPE_SWITCH_ID,
     AUTH_TYPE_LOGIN_ID,
@@ -30,6 +30,7 @@ import {collectServerlessVersionObservations} from "../python-setup/utils/server
 import type {SetupCompute} from "../python-setup/controllers/PythonSetupEnvironmentSetup";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {Loggers} from "../logger";
+import {promptToSelectBundleTarget} from "../bundle/activeBundleUtils";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const {NamedLogger} = logging;
@@ -364,35 +365,7 @@ export class ConnectionCommands implements Disposable {
 
     @onError({popup: {prefix: "Error selecting target."}})
     async selectTarget() {
-        const targets = await this.configModel.targets;
-        const currentTarget = this.configModel.target;
-        if (targets === undefined) {
-            return;
-        }
-
-        const selectedTarget = await window.showQuickPick(
-            Object.keys(targets)
-                .map((t) => {
-                    return {
-                        label: t,
-                        description: targets[t].mode ?? "dev",
-                        detail: targets[t].workspace?.host,
-                    };
-                })
-                .sort((a) => (a.label === currentTarget ? -1 : 1)),
-            {title: "Select bundle target"}
-        );
-        if (selectedTarget === undefined) {
-            return;
-        }
-        try {
-            await this.configModel.setTarget(selectedTarget.label);
-        } catch (e) {
-            if (e instanceof ProcessError) {
-                e.showErrorMessage("Error selecting target");
-            }
-            throw e;
-        }
+        await promptToSelectBundleTarget(this.configModel);
     }
 
     dispose() {

@@ -187,7 +187,7 @@ export class AiToolsComponent extends BaseComponent {
         const {installLocation, version, detectError, agents} =
             this.aiToolsModel.state;
         // Only the tree root gets the AI tools row. Guarding solely on
-        // `parent === undefined` is important: ConfigurationDataProvider fans
+        // `parent === undefined` is important: BaseConfigurationDataProvider fans
         // every getChildren(parent) call out to all components and flattens the
         // results, so returning the root row for a foreign parent (e.g. when a
         // cluster/auth node is expanded) would register a second element with

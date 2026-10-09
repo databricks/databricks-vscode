@@ -1,5 +1,8 @@
 import {BundleWatcher} from "../BundleWatcher";
-import {AuthProvider} from "../../configuration/auth/AuthProvider";
+import {
+    AuthProvider,
+    BundleAuthGuard,
+} from "../../configuration/auth/AuthProvider";
 import {Mutex} from "../../locking";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {BundleTarget} from "../types";
@@ -19,6 +22,7 @@ export type BundleValidateState = {
 export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateState> {
     public target: string | undefined;
     public authProvider: AuthProvider | undefined;
+    private authGuard: BundleAuthGuard | undefined;
     protected mutex = new Mutex();
     protected logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
@@ -51,31 +55,42 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         this.target = target;
         this.resetCache();
         this.authProvider = undefined;
+        this.authGuard = undefined;
     }
 
-    public setAuthProvider(authProvider: AuthProvider | undefined) {
+    public setAuthProvider(
+        authProvider: AuthProvider | undefined,
+        authGuard?: BundleAuthGuard
+    ) {
         if (
             !lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
         ) {
             this.authProvider = authProvider;
         }
+        this.authGuard = authGuard;
     }
 
     protected async readState(): Promise<BundleValidateState> {
-        if (
-            !this.target ||
-            !this.authProvider ||
-            !this.workspaceFolderManager.activeProjectUri
-        ) {
+        // Snapshot target + auth + project root before the guard's await: a
+        // setTarget / setAuthProvider / folder change that lands during the
+        // await must not let the CLI run a target the guard never checked (or
+        // with swapped credentials or a different project root).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        const projectRoot = this.workspaceFolderManager.activeProjectUri;
+        if (!target || !authProvider || !projectRoot) {
+            return {};
+        }
+        if (this.authGuard && !(await this.authGuard(target)).allowed) {
             return {};
         }
 
         const validateOutput = JSON.parse(
             (
                 await this.cli.bundleValidate(
-                    this.target,
-                    this.authProvider,
-                    this.workspaceFolderManager.activeProjectUri,
+                    target,
+                    authProvider,
+                    projectRoot,
                     workspaceConfigs.databrickscfgLocation,
                     this.logger
                 )
