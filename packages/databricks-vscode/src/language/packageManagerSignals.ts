@@ -7,10 +7,9 @@ import {
     PackageManagerSignals,
     pyprojectHasPackagingTable,
     pyprojectHasToolSection,
-    parseUvWorkspace,
     pyvenvCfgMarksUv,
-    uvWorkspaceIncludes,
 } from "./packageManagerDetection";
+import {parseUvWorkspace, uvWorkspaceIncludes} from "./uvWorkspace";
 
 /**
  * Optional sink for best-effort probe failures. A collector callsite that has a

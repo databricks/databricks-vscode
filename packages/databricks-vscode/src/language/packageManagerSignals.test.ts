@@ -116,7 +116,8 @@ describe("uv workspace signals", () => {
         });
 
         it("stops at a nearer pyproject that cannot be read", function () {
-            if (process.platform === "win32") {
+            // chmod does not stop root, and Windows has no such mode.
+            if (process.platform === "win32" || process.getuid?.() === 0) {
                 this.skip();
             }
             write("pyproject.toml", '[tool.uv.workspace]\nmembers = ["**"]\n');
