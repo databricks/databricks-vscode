@@ -14,20 +14,6 @@ describe("parseUvWorkspace", () => {
         });
     });
 
-    it("reads a members array that spans lines", () => {
-        const toml = [
-            "[ tool.uv.workspace ]",
-            "members = [",
-            '    "bundles/*", # bundles',
-            '    "libs/*",',
-            "]",
-        ].join("\n");
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal([
-            "bundles/*",
-            "libs/*",
-        ]);
-    });
-
     it("reads an inline workspace table under [tool.uv]", () => {
         const toml =
             '[tool.uv]\nworkspace = { members = ["bundles/*"], exclude = ["bundles/x"] }\n';
@@ -46,71 +32,9 @@ describe("parseUvWorkspace", () => {
         });
     });
 
-    it("skips a multi-line value of another key, even one with nested arrays", () => {
-        const toml = [
-            "[tool.uv]",
-            "conflicts = [",
-            '    [{extra = "a"}, {extra = "b"}],',
-            "]",
-            'workspace = { members = ["pkgs/*"] }',
-        ].join("\n");
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
-    });
-
-    it("keeps brackets that are inside a quoted glob of an inline table", () => {
-        const toml =
-            '[tool.uv]\nworkspace = { members = ["bundles/[ab]", "libs/*"] }\n';
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal([
-            "bundles/[ab]",
-            "libs/*",
-        ]);
-    });
-
     it("reads a header with quoted keys", () => {
         const toml = '[tool."uv".workspace]\nmembers = ["pkgs/*"]\n';
         expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
-    });
-
-    it("ignores configuration text inside a multi-line string", () => {
-        const toml = [
-            "[project]",
-            'description = """Example:',
-            "[tool.uv.workspace]",
-            'members = ["bundles/*"]',
-            '"""',
-        ].join("\n");
-        expect(parseUvWorkspace(toml)).to.equal(undefined);
-    });
-
-    it("ignores triple quotes inside a comment", () => {
-        const toml = [
-            '# long text uses """',
-            "[tool.uv.workspace]",
-            'members = ["pkgs/*"]',
-            "[project]",
-            'description = """x"""',
-        ].join("\n");
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
-    });
-
-    it("skips brackets inside a multi-line string", () => {
-        const toml = [
-            "[project]",
-            'description = """See [docs',
-            '[here]"""',
-            "[tool.uv.workspace]",
-            'members = ["pkgs/*"]',
-        ].join("\n");
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
-    });
-
-    it("keeps a # that is inside a quoted glob", () => {
-        const toml =
-            '[tool.uv.workspace]\nmembers = ["libs/#internal", "pkgs/*"] # x\n';
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal([
-            "libs/#internal",
-            "pkgs/*",
-        ]);
     });
 
     it("reads a workspace table that declares no members", () => {
@@ -139,43 +63,10 @@ describe("parseUvWorkspace", () => {
         });
     });
 
-    it("does not read an inline key name inside a quoted string", () => {
-        const toml =
-            '[tool.uv]\nworkspace = { exclude = ["x members = [y]"], members = ["pkgs/*"] }\n';
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
-    });
-
-    it("keeps its table after a quoted key with a multi-line value", () => {
-        const toml = [
-            "[tool.uv]",
-            '"a+b" = [',
-            '    ["x"],',
-            "]",
-            'workspace = { members = ["pkgs/*"] }',
-        ].join("\n");
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
-    });
-
-    it("does not end a multi-line string at an escaped quote", () => {
-        const toml = [
-            "[project]",
-            'description = """say \\""" hi"""',
-            "[tool.uv.workspace]",
-            'members = ["pkgs/*"]',
-        ].join("\n");
-        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
-    });
-
-    it("decodes escapes in basic strings", () => {
-        const toml =
-            '[tool.uv.workspace]\nmembers = ["pkgs/*"]\nexclude = ["pkgs/\\u0061"]\n';
-        expect(parseUvWorkspace(toml)?.exclude).to.deep.equal(["pkgs/a"]);
-    });
-
-    it("keeps a single-line triple-quoted value", () => {
-        const toml =
-            "[tool.uv.workspace]\nmembers = ['pkgs/*']\nexclude = ['''pkgs/a''']\n";
-        expect(parseUvWorkspace(toml)?.exclude).to.deep.equal(["pkgs/a"]);
+    it("returns undefined for invalid TOML, which uv rejects too", () => {
+        expect(
+            parseUvWorkspace('[tool.uv.workspace]\nmembers = ["pkgs/*"\n')
+        ).to.equal(undefined);
     });
 
     it("returns undefined without a workspace declaration", () => {

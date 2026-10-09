@@ -4160,6 +4160,7 @@ __metadata:
     quicktype-core: ^26.0.0
     shell-env: ^4.0.3
     shell-quote: ^1.11.0
+    smol-toml: ^1.9.0
     tmp-promise: ^3.0.3
     triple-beam: ^1.4.1
     ts-mockito: ^2.6.1
@@ -9549,6 +9550,13 @@ __metadata:
   version: 4.2.0
   resolution: "smart-buffer@npm:4.2.0"
   checksum: b5167a7142c1da704c0e3af85c402002b597081dd9575031a90b4f229ca5678e9a36e8a374f1814c8156a725d17008ae3bde63b92f9cfd132526379e580bec8b
+  languageName: node
+  linkType: hard
+
+"smol-toml@npm:^1.9.0":
+  version: 1.9.0
+  resolution: "smol-toml@npm:1.9.0"
+  checksum: d9de32f3d361d1ed38e7d316a08c610d3ca5bf1645ac81e99467da7d15672620dd1a760ff58f2e0888b29823991713269d369c212b2b21fee7cf254f5d4d7ed5
   languageName: node
   linkType: hard
 
