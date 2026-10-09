@@ -118,15 +118,6 @@ const StorageConfigurations = {
         defaultValue: false,
     }),
 
-    // Set when the user picks "Don't show again" on the deprecation warning for
-    // the Terraform bundle deployment engine, so it stays silenced for this
-    // workspace. A plain dismissal leaves it false so the warning can resurface
-    // on a later session (see BundleEngineManager).
-    "databricks.bundle.hideTerraformEngineWarning": withType<boolean>()({
-        location: "workspace",
-        defaultValue: false,
-    }),
-
     // The ~/.databrickscfg profile of the Unity Gateway sign-in, with its host
     // and workspace id. Global because that sign-in is per user, separate from
     // each project's bundle sign-in. Both are checked on restore, since the

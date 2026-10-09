@@ -4146,7 +4146,6 @@ __metadata:
     esbuild: ^0.28.1
     eslint: ^10.6.0
     eslint-plugin-local-rules: ^3.0.2
-    extract-zip: ^2.0.1
     fs-extra: ^11.2.0
     glob: ^13.0.6
     highlight.js: ^11.10.0

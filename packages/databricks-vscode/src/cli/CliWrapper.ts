@@ -492,9 +492,9 @@ function defaultCliPath(context: ExtensionContext) {
     // The bundled binary is named `databricks.exe` on Windows. We must
     // include the extension here: while spawning the CLI ourselves works
     // without it (Windows' CreateProcess auto-appends `.exe`), this path is
-    // also forwarded to the Databricks Go SDK / Terraform provider via the
-    // DATABRICKS_CLI_PATH env var, and they do a literal file lookup that
-    // fails on an extensionless path with "databricks CLI not found".
+    // also forwarded to the Databricks Go SDK via the DATABRICKS_CLI_PATH env
+    // var, and it does a literal file lookup that fails on an extensionless
+    // path with "databricks CLI not found".
     const binName =
         process.platform === "win32" ? "databricks.exe" : "databricks";
     return context.asAbsolutePath(`./bin/${binName}`);
@@ -713,10 +713,7 @@ export class CliWrapper {
         try {
             res = await execFile(cmd.command, cmd.args, {
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(
-                        this.extensionContext,
-                        configfilePath
-                    ),
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                 },
             });
@@ -802,7 +799,7 @@ export class CliWrapper {
 
     private aitoolsEnv(): Record<string, string | undefined> {
         return {
-            ...EnvVarGenerators.getEnvVarsForCli(this.extensionContext),
+            ...EnvVarGenerators.getEnvVarsForCli(),
             ...EnvVarGenerators.getProxyEnvVars(),
         };
     }
@@ -965,10 +962,7 @@ export class CliWrapper {
     ) {
         // Add python executable to PATH
         const executable = await this.pythonExtension?.getPythonExecutable();
-        const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(
-            this.extensionContext,
-            configfilePath
-        );
+        const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(configfilePath);
         let shellPath = cliEnvVars.PATH;
         if (executable) {
             shellPath = `${path.dirname(executable)}${
@@ -1032,9 +1026,8 @@ export class CliWrapper {
                 "--include-locations",
                 "--target",
                 target,
-                // Forces the CLI to regenerate local terraform state and pull the remote state.
-                // Regenerating terraform state is useful when we want to ensure that the provider version
-                // used in the local state matches the bundled version we supply with the extension.
+                // Skips the local cache and loads the deployment state from the
+                // remote workspace, so the summary reflects the latest deploy.
                 "--force-pull",
             ],
             workspaceFolder,
@@ -1054,7 +1047,6 @@ export class CliWrapper {
     getBundleInitEnvVars(authProvider: AuthProvider) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
-                this.extensionContext,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -1072,7 +1064,6 @@ export class CliWrapper {
     getSshConnectEnvVars(authProvider: AuthProvider) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
-                this.extensionContext,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -1116,7 +1107,6 @@ export class CliWrapper {
     getSetupLocalEnvVars(authProvider: AuthProvider, target?: string) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
-                this.extensionContext,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -1261,10 +1251,7 @@ export class CliWrapper {
         options: SpawnOptionsWithoutStdio;
     }> {
         const env: Record<string, string> = removeUndefinedKeys({
-            ...EnvVarGenerators.getEnvVarsForCli(
-                this.extensionContext,
-                configfilePath
-            ),
+            ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
             ...EnvVarGenerators.getProxyEnvVars(),
             ...authProvider.toEnv(),
             ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
@@ -1301,7 +1288,7 @@ export class CliWrapper {
         }
 
         const env = {
-            ...EnvVarGenerators.getEnvVarsForCli(this.extensionContext),
+            ...EnvVarGenerators.getEnvVarsForCli(),
             ...EnvVarGenerators.getProxyEnvVars(),
         };
         const overrideResult = await getCliVersion(overridePath, env);

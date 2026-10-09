@@ -229,7 +229,7 @@ describe(__filename, function () {
             Object.defineProperty(process, "platform", {value: platform});
         try {
             // On Windows the bundled binary is `databricks.exe`. The `.exe` is
-            // required because cliPath is forwarded to the SDK/Terraform via
+            // required because cliPath is forwarded to the SDK via
             // DATABRICKS_CLI_PATH, which does a literal (no auto-`.exe`) lookup.
             setPlatform("win32");
             assert.ok(
