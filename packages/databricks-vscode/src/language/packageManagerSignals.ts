@@ -83,7 +83,9 @@ export function findUvWorkspaceRoot(
     projectRoot: string,
     log: SignalDebugLog = noopLog
 ): string | undefined {
-    const project = path.resolve(projectRoot);
+    // uv discovers from the real path, so a symlinked project is judged where
+    // it really is.
+    const project = realPath(path.resolve(projectRoot));
     // A project that declares its own workspace is that workspace's root.
     if (parseUvWorkspace(readPyproject(project, log)) !== undefined) {
         return undefined;
@@ -205,6 +207,14 @@ function hasActiveCondaInterpreter(
         env?.executable.sysPrefix,
         process.env["CONDA_PREFIX"]
     );
+}
+
+function realPath(file: string): string {
+    try {
+        return fs.realpathSync(file);
+    } catch {
+        return file;
+    }
 }
 
 function fileExists(

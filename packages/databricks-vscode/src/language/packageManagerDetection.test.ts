@@ -547,6 +547,33 @@ describe("parseUvWorkspace", () => {
         ]);
     });
 
+    it("reads a header with quoted keys", () => {
+        const toml = '[tool."uv".workspace]\nmembers = ["pkgs/*"]\n';
+        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
+    });
+
+    it("ignores configuration text inside a multi-line string", () => {
+        const toml = [
+            "[project]",
+            'description = """Example:',
+            "[tool.uv.workspace]",
+            'members = ["bundles/*"]',
+            '"""',
+        ].join("\n");
+        expect(parseUvWorkspace(toml)).to.equal(undefined);
+    });
+
+    it("skips brackets inside a multi-line string", () => {
+        const toml = [
+            "[project]",
+            'description = """See [docs',
+            '[here]"""',
+            "[tool.uv.workspace]",
+            'members = ["pkgs/*"]',
+        ].join("\n");
+        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
+    });
+
     it("keeps a # that is inside a quoted glob", () => {
         const toml =
             '[tool.uv.workspace]\nmembers = ["libs/#internal", "pkgs/*"] # x\n';
@@ -600,6 +627,38 @@ describe("uvWorkspaceIncludes", () => {
 
     it("does not include a folder that no member glob matches", () => {
         expect(uvWorkspaceIncludes(workspace, "tools/a")).to.equal(false);
+    });
+
+    it("lets an exclude star cross folders, as uv does", () => {
+        // uv finds members by walking folders but matches exclude as a plain
+        // pattern, where `*` also matches `/`.
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["bundles/x/a"], exclude: ["bundles/*"]},
+                "bundles/x/a"
+            )
+        ).to.equal(false);
+    });
+
+    it("matches ** as zero or more folders", () => {
+        const workspace = {members: ["bundles/**/app"], exclude: []};
+        expect(uvWorkspaceIncludes(workspace, "bundles/app")).to.equal(true);
+        expect(uvWorkspaceIncludes(workspace, "bundles/x/y/app")).to.equal(
+            true
+        );
+        expect(uvWorkspaceIncludes(workspace, "libs/app")).to.equal(false);
+    });
+
+    it("matches character classes, including negated ones", () => {
+        const workspace = {members: ["pkgs/[!b]"], exclude: []};
+        expect(uvWorkspaceIncludes(workspace, "pkgs/a")).to.equal(true);
+        expect(uvWorkspaceIncludes(workspace, "pkgs/b")).to.equal(false);
+    });
+
+    it("reads ^ literally inside a character class, as uv does", () => {
+        const workspace = {members: ["pkgs/[^b]"], exclude: []};
+        expect(uvWorkspaceIncludes(workspace, "pkgs/a")).to.equal(false);
+        expect(uvWorkspaceIncludes(workspace, "pkgs/^")).to.equal(true);
     });
 
     it("matches braces literally, as uv does", () => {

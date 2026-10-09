@@ -39,7 +39,7 @@ weak signals never attribute a manager on their own. The collector also does not
 probe PATH: running an external `uv`/`poetry` binary for a non-attributing
 signal is not worth the cost.
 
-### Why `uv.workspaceMember` makes the project report `setupMode: pip`
+### Why `uv.workspaceMember` makes the project report `setupMode: pip` on `auto`
 
 It fires when the nearest ancestor `pyproject.toml` declares a uv workspace that
 includes the project. uv then keeps the `.venv` at the workspace root, while

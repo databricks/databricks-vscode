@@ -129,6 +129,23 @@ describe("uv workspace signals", () => {
             );
         });
 
+        it("follows a symlinked project to its real location", function () {
+            if (process.platform === "win32") {
+                this.skip();
+            }
+            write("repo/pyproject.toml", WORKSPACE_PYPROJECT);
+            write("standalone/pyproject.toml", MEMBER_PYPROJECT);
+            fs.mkdirSync(path.join(tmp, "repo/bundles"));
+            fs.symlinkSync(
+                path.join(tmp, "standalone"),
+                path.join(tmp, "repo/bundles/a")
+            );
+
+            expect(
+                findUvWorkspaceRoot(path.join(tmp, "repo/bundles/a"))
+            ).to.equal(undefined);
+        });
+
         it("ignores an ancestor pyproject without a workspace table", () => {
             write("pyproject.toml", '[project]\nname = "root"\n[tool.uv]\n');
             write("bundles/a/pyproject.toml", MEMBER_PYPROJECT);

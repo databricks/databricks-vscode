@@ -1,5 +1,4 @@
 import path from "node:path";
-import {minimatch} from "minimatch";
 
 /**
  * Pure, signal-based detection of the Python package/environment manager(s) a
@@ -297,19 +296,24 @@ export function parseUvWorkspace(
     }
     let workspace: UvWorkspace | undefined;
     const declare = () => (workspace ??= {members: [], exclude: []});
-    const lines = contents.split(/\r?\n/).map(stripTomlComment);
+    // Multi-line strings can hold anything, including text that looks like a
+    // header or a bracket, so blank them out first.
+    const lines = contents
+        .replace(/"""[\s\S]*?"""|'''[\s\S]*?'''/g, '""')
+        .split(/\r?\n/)
+        .map(stripTomlComment);
     let table = "";
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         if (line.startsWith("[")) {
-            const header = /^\[\s*([\w.\- ]+?)\s*\]$/.exec(line);
-            table = header ? header[1].replace(/\s+/g, "") : ARRAY_TABLE;
+            const header = /^\[\s*([\w.\- "']+?)\s*\]$/.exec(line);
+            table = header ? tomlKey(header[1]) : ARRAY_TABLE;
             if (table === UV_WORKSPACE_KEY) {
                 declare();
             }
             continue;
         }
-        const assignment = /^([\w.\- ]+?)\s*=\s*(.*)$/.exec(line);
+        const assignment = /^([\w.\- "']+?)\s*=\s*(.*)$/.exec(line);
         if (!assignment) {
             continue;
         }
@@ -319,9 +323,7 @@ export function parseUvWorkspace(
         while (!bracketsClosed(value) && i + 1 < lines.length) {
             value += " " + lines[++i];
         }
-        const key = [table, assignment[1].replace(/\s+/g, "")]
-            .filter(Boolean)
-            .join(".");
+        const key = [table, tomlKey(assignment[1])].filter(Boolean).join(".");
         if (
             key !== UV_WORKSPACE_KEY &&
             !key.startsWith(`${UV_WORKSPACE_KEY}.`)
@@ -367,6 +369,11 @@ function stripTomlComment(line: string): string {
     return (comment === -1 ? line : line.slice(0, comment)).trim();
 }
 
+/** A dotted TOML key without its quotes and spaces: `tool."uv"` → `tool.uv`. */
+function tomlKey(key: string): string {
+    return key.replace(/["'\s]/g, "");
+}
+
 function bracketsClosed(value: string): boolean {
     const bare = value.replace(TOML_STRING, "");
     const opened = (bare.match(/[[{]/g) ?? []).length;
@@ -391,29 +398,71 @@ function inlineArray(value: string, name: string): string[] {
 /**
  * Whether a uv workspace includes the folder at `memberPath` (relative to the
  * workspace root, `/`-separated): a `members` glob matches it and no `exclude`
- * glob does. As in uv, a `*` does not cross a folder boundary and braces are
- * literal.
+ * glob does.
  */
 export function uvWorkspaceIncludes(
     workspace: UvWorkspace,
     memberPath: string
 ): boolean {
-    const matches = (globs: string[]) =>
-        globs.some((glob) =>
-            minimatch(
-                memberPath,
-                path.posix.normalize(glob).replace(/\/+$/, ""),
-                {
-                    // uv's glob syntax has no braces, extglobs, negation, or comments.
-                    dot: true,
-                    nobrace: true,
-                    noext: true,
-                    nonegate: true,
-                    nocomment: true,
+    // uv finds members by walking folders, so a member `*` stays inside one
+    // folder. It matches `exclude` as a plain pattern, where `*` also crosses
+    // folders.
+    const matches = (globs: string[], crossFolders: boolean) =>
+        globs.some((glob) => uvGlob(glob, crossFolders).test(memberPath));
+    return (
+        matches(workspace.members, false) && !matches(workspace.exclude, true)
+    );
+}
+
+/**
+ * A uv (Rust `glob` crate) pattern as a RegExp: `*`, `?`, `**` as a whole
+ * folder, and `[...]` / `[!...]` classes. Braces and `^` are literal.
+ */
+function uvGlob(glob: string, crossFolders: boolean): RegExp {
+    const anyChar = crossFolders ? "." : "[^/]";
+    const folders = path.posix
+        .normalize(glob)
+        .replace(/\/+$/, "")
+        .split("/")
+        .map((folder) => {
+            if (folder === "**") {
+                return undefined;
+            }
+            let pattern = "";
+            for (let i = 0; i < folder.length; i++) {
+                const char = folder[i];
+                const classEnd = folder.indexOf("]", i + 2);
+                if (char === "*") {
+                    pattern += `${anyChar}*`;
+                } else if (char === "?") {
+                    pattern += anyChar;
+                } else if (char === "[" && classEnd !== -1) {
+                    let body = folder.slice(i + 1, classEnd);
+                    const negated = body.startsWith("!");
+                    body = (negated ? body.slice(1) : body).replace(
+                        /[\\\]^]/g,
+                        "\\$&"
+                    );
+                    pattern += `[${negated ? "^" : ""}${body}]`;
+                    i = classEnd;
+                } else {
+                    pattern += char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                 }
-            )
-        );
-    return matches(workspace.members) && !matches(workspace.exclude);
+            }
+            return pattern;
+        });
+    // A `**` folder matches zero or more folders, with their separators.
+    let source = "";
+    folders.forEach((folder, index) => {
+        if (folder === undefined) {
+            source +=
+                index > 0 ? "(?:/.*)?" : folders.length > 1 ? "(?:.*/)?" : ".*";
+        } else {
+            const leadingStars = index === 1 && folders[0] === undefined;
+            source += (index === 0 || leadingStars ? "" : "/") + folder;
+        }
+    });
+    return new RegExp(`^${source}$`);
 }
 
 /**
