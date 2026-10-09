@@ -237,6 +237,32 @@ describe("BundlePreValidateModel", async function () {
         expect(counts.profileFiles).to.equal(0);
     });
 
+    it("getWorkspaceAuthFileCounts counts an empty host too (any value, not just non-empty)", async () => {
+        // The CLI's last-file-wins merge means an empty host in a later file can
+        // still change the resolved host, so a host key present with "" counts
+        // as a contested file.
+        await writeRoot([
+            "bundle:",
+            "  name: p",
+            'include: ["targets/*.yml"]',
+            "workspace:",
+            `  host: ${OTHER_HOST}`,
+            "targets:",
+            "  dev:",
+            "    default: true",
+        ]);
+        await fs.mkdir(path.join(tmpdir.path, "targets"));
+        await fs.writeFile(
+            path.join(tmpdir.path, "targets", "a.yml"),
+            ["targets:", "  dev:", "    workspace:", '      host: ""', ""].join(
+                "\n"
+            )
+        );
+
+        const counts = await makeModel().getWorkspaceAuthFileCounts("dev");
+        expect(counts.hostFiles).to.equal(2);
+    });
+
     it("getWorkspaceAuthFileCounts counts a profile set in more than one file", async () => {
         await writeRoot([
             "bundle:",

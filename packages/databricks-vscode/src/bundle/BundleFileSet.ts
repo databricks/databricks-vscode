@@ -1,6 +1,6 @@
 import {Uri} from "vscode";
 import * as glob from "glob";
-import {merge} from "lodash";
+import {mergeWith} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
 import {BundleSchema} from "./types";
@@ -11,6 +11,14 @@ import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
 const subProjectFilePattern: string = path.join("**", rootFilePattern);
+
+/** The root bundle file names (the expansion of {@link rootFilePattern}). */
+const rootFileNames = [
+    "databricks.yml",
+    "databricks.yaml",
+    "bundle.yml",
+    "bundle.yaml",
+];
 
 /**
  * Glob/minimatch options that make node-glob resolve a bundle `include` pattern
@@ -28,6 +36,31 @@ const goGlobOptions = {
     nobrace: true,
     noext: true,
 } as const;
+
+/**
+ * Merge bundle data the way the CLI does. `lodash.merge` lets a later `null`
+ * (`~`) overwrite an earlier value; the CLI's dynamic-value merge keeps the
+ * earlier value when the new one is null. Without this an include that sets
+ * `workspace: ~` would blank a host the guard then reads as absent (→ allow),
+ * while the CLI keeps and uses the real host. Everything non-null merges as
+ * before (recursively; last non-null wins).
+ *
+ * Note: this only *keeps* an earlier value; when there is no earlier value a
+ * later null still writes through (lodash's customizer can't leave a key unset).
+ * That's fine for the host/profile the guard reads, where a null and an absent
+ * value both mean "unset" — but don't rely on null-vs-absent for other fields.
+ */
+export function mergeBundleData<T extends object>(
+    target: T,
+    ...sources: unknown[]
+): T {
+    return mergeWith(
+        target,
+        ...sources,
+        (objValue: unknown, srcValue: unknown) =>
+            srcValue === null ? objValue : undefined
+    );
+}
 
 export async function parseBundleYaml(file: Uri) {
     const yamlOptions = {
@@ -52,13 +85,23 @@ export async function parseBundleYaml(file: Uri) {
         await readFile(file.fsPath, "utf-8"),
         yamlOptions
     );
+    // `yaml.parse` threw on a syntax error; `parseDocument` collects them in
+    // `doc.errors` and `toJS` still returns partial data. Keep failing closed on
+    // a broken file (the guard reads this) rather than resolving a half-parsed
+    // bundle.
+    if (doc.errors.length > 0) {
+        throw doc.errors[0];
+    }
     yaml.visit(doc, {
         // yaml's visitor API keys on the capitalised node type.
         // eslint-disable-next-line @typescript-eslint/naming-convention
         Pair(_, pair) {
+            // Identify a merge key by its parsed value (the merge symbol), not by
+            // its source text: `<<` and an explicitly tagged `!!merge foo` are
+            // both merge keys, and both must be reordered to the CLI's last-wins.
             if (
                 yaml.isScalar(pair.key) &&
-                pair.key.source === "<<" &&
+                typeof pair.key.value === "symbol" &&
                 yaml.isSeq(pair.value)
             ) {
                 pair.value.items.reverse();
@@ -145,9 +188,9 @@ export class BundleFileSet {
      * approving a host that no longer matches the YAML on disk.
      */
     async readMergedBundleFromDisk(): Promise<BundleSchema> {
-        let bundle = {};
+        let bundle: object = {};
         await this.forEach(async (data) => {
-            bundle = merge(bundle, data);
+            bundle = mergeBundleData(bundle, data);
         });
         return bundle as BundleSchema;
     }
@@ -193,10 +236,14 @@ export class BundleFileSet {
             return undefined;
         }
 
+        const projectRoot = this.projectRoot.fsPath;
+        const relativeKey = (file: string) =>
+            toGlobPath(path.relative(projectRoot, file));
+
         const allFiles: string[] = [];
         for (const pattern of patterns) {
             const absolutePattern = toGlobPath(
-                path.resolve(this.projectRoot.fsPath, pattern)
+                path.resolve(projectRoot, pattern)
             );
             const files = await glob.glob(absolutePattern, {
                 nocase: process.platform === "win32",
@@ -206,19 +253,40 @@ export class BundleFileSet {
                 // host it never checked.
                 ...goGlobOptions,
             });
-            // The CLI sorts each pattern's matches (Go's sort.Strings, a
-            // byte-wise comparison) and lets the last file win on merge. Match
-            // that order exactly — plain `<`/`>`, not localeCompare — so a host
-            // split across e.g. `targets/a.yml` and `targets/z.yml` resolves to
-            // the same file here as in the CLI. node-glob doesn't sort, so its
-            // order is filesystem-dependent.
-            files.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-            allFiles.push(...files);
+            // The CLI marks the root bundle files (databricks.yml etc.) as loaded
+            // before expanding `include`, so it never re-loads one as an include.
+            // node-glob has no such filter: an include like `*.yml` matches the
+            // root file, and allFiles() merges it again last, letting its values
+            // win over the includes'. Drop them to match the CLI.
+            const includes = files.filter((f) => !this.isRootInclude(f));
+            // The CLI sorts each pattern's matches by their path relative to the
+            // bundle root (Go's slices.Sort, byte-wise) and lets the last file
+            // win on merge. Sort by that same key — not the absolute path, whose
+            // leading segments can reorder matches that reach outside the root
+            // via `../` — so a contested host resolves to the same file here.
+            includes.sort((a, b) => {
+                const ra = relativeKey(a);
+                const rb = relativeKey(b);
+                return ra < rb ? -1 : ra > rb ? 1 : 0;
+            });
+            allFiles.push(...includes);
         }
 
         // Keep the first occurrence of each file, so a file matched by more
         // than one pattern stays in the position its earliest pattern gave it.
         return [...new Set(allFiles)].map((f) => Uri.file(f));
+    }
+
+    /**
+     * Whether an absolute path is a root bundle file at the project root
+     * (`databricks.yml`/`.yaml`, `bundle.yml`/`.yaml`) — the files the CLI
+     * excludes from `include` expansion.
+     */
+    private isRootInclude(absFile: string): boolean {
+        const rel = path.relative(this.projectRoot.fsPath, absFile);
+        const normalised =
+            process.platform === "win32" ? rel.toLowerCase() : rel;
+        return rootFileNames.includes(normalised);
     }
 
     /**
@@ -313,15 +381,17 @@ export class BundleFileSet {
     }
 
     /**
-     * True if any `include` pattern uses a `[!…]` character class. Go's
-     * `filepath.Match` treats `[!x]` as the literal characters `!` and `x` (only
-     * `[^x]` negates), while minimatch/glob negate `[!…]`. So the two can load
-     * different files, and `getIncludedFiles` here can't be trusted to match the
-     * CLI. The remote-mode credential guard uses this to fail closed rather than
-     * resolve a host from a file set that may differ from the CLI's.
+     * True if any `include` pattern uses a `[…]` character class. Go's
+     * `filepath.Match` reads several classes differently from minimatch/glob —
+     * `[!x]` is literal `!`/`x` in Go but a negation here, and Go has no POSIX
+     * classes so `[[:alpha:]]` is a literal set there but "one letter" here. The
+     * cases are hard to enumerate, so rather than reproduce each one we treat any
+     * `[` as unreliable: `getIncludedFiles` can't be trusted to match the CLI, so
+     * the remote-mode credential guard fails closed instead of resolving a host
+     * from a possibly-different file set.
      */
-    async hasNegatedGlobClass(): Promise<boolean> {
+    async hasUnsupportedGlobClass(): Promise<boolean> {
         const patterns = await this.getIncludePatterns();
-        return patterns.some((pattern) => pattern.includes("[!"));
+        return patterns.some((pattern) => pattern.includes("["));
     }
 }

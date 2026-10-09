@@ -12,7 +12,7 @@ export type UnresolvedReason =
     | "multi-file"
     | "invalid-host"
     | "absent-target"
-    | "glob-negation"
+    | "glob-class"
     | "unreadable";
 
 /** Every reason a target can be paused, including a confirmed host mismatch. */
@@ -43,8 +43,8 @@ export function describePausedReason(reason: PausedReason): string {
             return "its workspace host can't be parsed";
         case "absent-target":
             return "it isn't defined in the bundle on disk";
-        case "glob-negation":
-            return "an include pattern uses a [!…] class the CLI reads differently";
+        case "glob-class":
+            return "an include pattern uses a […] class the CLI reads differently";
         case "unreadable":
             return "its bundle configuration couldn't be read";
     }

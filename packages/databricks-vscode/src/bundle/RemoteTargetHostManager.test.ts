@@ -1,25 +1,27 @@
 import assert from "assert";
-import {Disposable} from "vscode";
+import {Disposable, EventEmitter} from "vscode";
 import {
     ConfigModel,
     TargetWorkspaceHost,
 } from "../configuration/models/ConfigModel";
-import {ConnectionManager} from "../configuration/ConnectionManager";
 import {RemoteTargetHostManager} from "./RemoteTargetHostManager";
 
 const ENV_HOST = new URL("https://dogfood.cloud.databricks.com");
 const TARGET_HOST = new URL("https://logfood.cloud.databricks.com");
 
 /**
- * Hand-rolled stand-in for {@link ConfigModel}: the base model exposes
- * `onDidChangeTarget` and `getTargetWorkspaceHost` as bound instance fields
- * ts-mockito can't stub, so we drive them directly. `fire()` replays a target
- * change and `fireHostChange()` an edit to the target's workspace.host.
+ * Hand-rolled stand-in for {@link ConfigModel}: the base model exposes its
+ * change events and `getTargetWorkspaceHost` as bound instance fields ts-mockito
+ * can't stub, so we drive them directly. `pinnedHost` stands in for the pinned
+ * (session) provider's host — the manager compares against it, not a live
+ * connection. `fire*()` replay the various change events.
  */
 class FakeConfigModel {
-    private listeners: Array<() => unknown> = [];
+    private targetListeners: Array<() => unknown> = [];
     private hostListeners: Array<() => unknown> = [];
+    private authListeners: Array<() => unknown> = [];
     public target: string | undefined;
+    public pinnedHost: URL | undefined;
     public resolution: TargetWorkspaceHost = {kind: "session"};
     public getError: Error | undefined;
 
@@ -30,7 +32,7 @@ class FakeConfigModel {
     }
 
     onDidChangeTarget(cb: () => unknown): Disposable {
-        this.listeners.push(cb);
+        this.targetListeners.push(cb);
         return {dispose() {}};
     }
 
@@ -41,11 +43,22 @@ class FakeConfigModel {
         };
     }
 
+    onDidChangeAuthProvider(cb: () => unknown): Disposable {
+        this.authListeners.push(cb);
+        return {dispose() {}};
+    }
+
     async getTargetWorkspaceHost(): Promise<TargetWorkspaceHost> {
         if (this.getError) {
             throw this.getError;
         }
         return this.resolution;
+    }
+
+    async fire(): Promise<void> {
+        for (const cb of this.targetListeners) {
+            await cb();
+        }
     }
 
     async fireHostChange(): Promise<void> {
@@ -54,45 +67,23 @@ class FakeConfigModel {
         }
     }
 
-    async fire(): Promise<void> {
-        for (const cb of this.listeners) {
+    async fireAuthChange(): Promise<void> {
+        for (const cb of this.authListeners) {
             await cb();
         }
     }
 
-    // Invoke the listener twice without awaiting between, so the second call
+    // Invoke the target listener twice without awaiting between, so the second
     // runs while the first is still awaiting the host — the concurrency the
     // manager must tolerate.
     async fireConcurrentTwice(): Promise<void> {
-        await Promise.all(this.listeners.flatMap((cb) => [cb(), cb()]));
-    }
-}
-
-/** Stand-in for {@link ConnectionManager}: exposes the two things the manager reads. */
-class FakeConnectionManager {
-    private listeners: Array<() => unknown> = [];
-    public databricksWorkspace: {authProvider: {host: URL}} | undefined;
-
-    onDidChangeState(cb: () => unknown): Disposable {
-        this.listeners.push(cb);
-        return {dispose() {}};
-    }
-
-    async fireStateChange(): Promise<void> {
-        for (const cb of this.listeners) {
-            await cb();
-        }
-    }
-
-    setEnvHost(host: URL | undefined) {
-        this.databricksWorkspace =
-            host === undefined ? undefined : {authProvider: {host}};
+        await Promise.all(this.targetListeners.flatMap((cb) => [cb(), cb()]));
     }
 }
 
 describe("RemoteTargetHostManager", () => {
     let fakeConfig: FakeConfigModel;
-    let fakeConnection: FakeConnectionManager;
+    let bundleFiles: EventEmitter<void>;
 
     function build(): {
         manager: RemoteTargetHostManager;
@@ -100,7 +91,7 @@ describe("RemoteTargetHostManager", () => {
     } {
         const manager = new RemoteTargetHostManager(
             fakeConfig as unknown as ConfigModel,
-            fakeConnection as unknown as ConnectionManager
+            bundleFiles.event
         );
         let count = 0;
         manager.onDidChangePaused(() => count++);
@@ -109,12 +100,16 @@ describe("RemoteTargetHostManager", () => {
 
     beforeEach(() => {
         fakeConfig = new FakeConfigModel();
-        fakeConnection = new FakeConnectionManager();
+        bundleFiles = new EventEmitter<void>();
+    });
+
+    afterEach(() => {
+        bundleFiles.dispose();
     });
 
     it("detects a host mismatch and exposes it", async () => {
         const {manager, changes} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
 
@@ -131,8 +126,8 @@ describe("RemoteTargetHostManager", () => {
 
     it("does not flag when the hosts match (trailing-slash tolerant)", async () => {
         const {manager} = build();
-        fakeConnection.setEnvHost(
-            new URL("https://dogfood.cloud.databricks.com/")
+        fakeConfig.pinnedHost = new URL(
+            "https://dogfood.cloud.databricks.com/"
         );
         fakeConfig.target = "dev";
         fakeConfig.setTargetHost(
@@ -146,7 +141,7 @@ describe("RemoteTargetHostManager", () => {
 
     it("does not flag when no target is selected", async () => {
         const {manager} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = undefined;
         fakeConfig.setTargetHost(TARGET_HOST);
 
@@ -155,9 +150,9 @@ describe("RemoteTargetHostManager", () => {
         assert.strictEqual(manager.paused, undefined);
     });
 
-    it("does not flag when not connected (no environment host)", async () => {
+    it("does not flag when no provider is pinned yet", async () => {
         const {manager} = build();
-        fakeConnection.setEnvHost(undefined);
+        fakeConfig.pinnedHost = undefined;
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
 
@@ -168,7 +163,7 @@ describe("RemoteTargetHostManager", () => {
 
     it("does not flag a target with no host (the CLI uses the session host)", async () => {
         const {manager} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.resolution = {kind: "session"};
 
@@ -179,7 +174,7 @@ describe("RemoteTargetHostManager", () => {
 
     it("pauses an unresolved target and names its reason", async () => {
         const {manager} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.resolution = {kind: "unresolved", reason: "multi-file"};
 
@@ -194,7 +189,7 @@ describe("RemoteTargetHostManager", () => {
 
     it("re-evaluates when the target's workspace.host changes", async () => {
         const {manager, changes} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
 
@@ -215,9 +210,47 @@ describe("RemoteTargetHostManager", () => {
         assert.strictEqual(changes(), 3);
     });
 
+    it("re-evaluates on a bundle-file change that moves the decision", async () => {
+        const {manager} = build();
+        fakeConfig.pinnedHost = ENV_HOST;
+        fakeConfig.target = "prod";
+        // A second include file adds a profile: unresolved, but no `host` key
+        // changed, so only the bundle-files event fires.
+        fakeConfig.resolution = {kind: "unresolved", reason: "profile"};
+
+        bundleFiles.fire();
+        await flush();
+        assert.deepStrictEqual(manager.paused, {
+            target: "prod",
+            reason: "profile",
+            envHost: ENV_HOST.hostname,
+        });
+
+        // The user removes the profile; the badge clears on the next file change.
+        fakeConfig.resolution = {kind: "session"};
+        bundleFiles.fire();
+        await flush();
+        assert.strictEqual(manager.paused, undefined);
+    });
+
+    it("re-evaluates when the provider is pinned", async () => {
+        const {manager} = build();
+        fakeConfig.target = "prod";
+        fakeConfig.setTargetHost(TARGET_HOST);
+
+        // Not pinned yet: nothing shows even though the target points elsewhere.
+        await fakeConfig.fire();
+        assert.strictEqual(manager.paused, undefined);
+
+        // The environment connect pins the provider.
+        fakeConfig.pinnedHost = ENV_HOST;
+        await fakeConfig.fireAuthChange();
+        assert.notStrictEqual(manager.paused, undefined);
+    });
+
     it("fires onDidChangePaused only when the paused state changes", async () => {
         const {changes} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
 
@@ -230,7 +263,7 @@ describe("RemoteTargetHostManager", () => {
 
     it("clears the paused state when the target clears, and restores it when it returns", async () => {
         const {manager} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
 
@@ -248,24 +281,25 @@ describe("RemoteTargetHostManager", () => {
         assert.notStrictEqual(manager.paused, undefined);
     });
 
-    it("clears the paused state when the connection drops", async () => {
+    it("keeps the paused state while the provider stays pinned", async () => {
         const {manager} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
         await fakeConfig.fire();
         assert.notStrictEqual(manager.paused, undefined);
 
-        // A failed reconnect ends DISCONNECTED with no workspace.
-        fakeConnection.setEnvHost(undefined);
-        await fakeConnection.fireStateChange();
+        // The connection drops, but ConfigModel keeps the pinned provider, so the
+        // guard still refuses — the badge must stay (a re-eval doesn't clear it).
+        bundleFiles.fire();
+        await flush();
 
-        assert.strictEqual(manager.paused, undefined);
+        assert.notStrictEqual(manager.paused, undefined);
     });
 
     it("clears the paused state when evaluating it throws", async () => {
         const {manager} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
         await fakeConfig.fire();
@@ -279,7 +313,7 @@ describe("RemoteTargetHostManager", () => {
 
     it("changes the paused state only once when two evaluations overlap", async () => {
         const {manager, changes} = build();
-        fakeConnection.setEnvHost(ENV_HOST);
+        fakeConfig.pinnedHost = ENV_HOST;
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
 
@@ -289,3 +323,7 @@ describe("RemoteTargetHostManager", () => {
         assert.strictEqual(changes(), 1);
     });
 });
+
+function flush() {
+    return new Promise((resolve) => setImmediate(resolve));
+}

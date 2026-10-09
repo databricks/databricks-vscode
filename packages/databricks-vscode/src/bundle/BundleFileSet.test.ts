@@ -112,23 +112,165 @@ describe(__filename, async function () {
         expect(devWorkspace).to.not.have.property("<<");
     });
 
-    it("flags an include pattern with a `[!…]` class (Go reads it literally)", async () => {
-        // minimatch/glob negate `[!_]`; Go's filepath.Match treats `[!_]` as the
-        // literal chars `!`/`_`. The guard can't trust which files loaded, so it
-        // fails closed via this signal.
+    it("reverses a tagged `!!merge` sequence too, like the CLI", async () => {
+        // A merge key can carry an explicit tag (`!!merge foo`), which the source
+        // text `foo` doesn't reveal — so we detect merge keys by their parsed
+        // value (the merge symbol), not by the `<<` text, and still reverse.
+        const file = path.join(tmpdir.path, "databricks.yml");
+        await fs.writeFile(
+            file,
+            [
+                "x-s: &s {host: https://session.invalid}",
+                "x-o: &o {host: https://other.invalid}",
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "    workspace:",
+                "      !!merge foo: [*s, *o]",
+                "",
+            ].join("\n")
+        );
+
+        const data = await parseBundleYaml(Uri.file(file));
+
+        const devWorkspace = data.targets?.dev?.workspace as
+            | Record<string, unknown>
+            | undefined;
+        expect(devWorkspace?.host).to.equal("https://other.invalid");
+    });
+
+    it("throws on a bundle file with syntax errors (fails closed)", async () => {
+        // parseDocument collects syntax errors instead of throwing like
+        // yaml.parse did; the guard reads this, so a broken file must still fail
+        // closed rather than resolve from partial data.
+        const file = path.join(tmpdir.path, "databricks.yml");
+        await fs.writeFile(file, "workspace: {host: https://x\ntargets: {}\n");
+
+        let threw = false;
+        try {
+            await parseBundleYaml(Uri.file(file));
+        } catch {
+            threw = true;
+        }
+        expect(threw).to.be.true;
+    });
+
+    it("keeps an earlier host when a later file sets it null, like the CLI", async () => {
+        // `lodash.merge` lets a later null overwrite; the CLI keeps the earlier
+        // value. An include's `workspace: ~` must not blank the root's host (or
+        // the guard would read it as absent and allow).
         await fs.writeFile(
             path.join(tmpdir.path, "databricks.yml"),
-            yaml.stringify({include: ["conf/[!_]*.yml"]} as BundleSchema)
+            [
+                "bundle: {name: p}",
+                'include: ["targets/*.yml"]',
+                "workspace: {host: https://root.invalid}",
+                "targets: {dev: {default: true}}",
+                "",
+            ].join("\n")
         );
-        const flagged = new BundleFileSet(getWorkspaceFolderManagerMock());
-        expect(await flagged.hasNegatedGlobClass()).to.be.true;
+        await fs.mkdir(path.join(tmpdir.path, "targets"));
+        await fs.writeFile(
+            path.join(tmpdir.path, "targets", "a.yml"),
+            "workspace: ~\n"
+        );
+
+        const bundle = await new BundleFileSet(
+            getWorkspaceFolderManagerMock()
+        ).readMergedBundleFromDisk();
+        expect((bundle.workspace as {host?: string})?.host).to.equal(
+            "https://root.invalid"
+        );
+    });
+
+    it("does not re-load a root file matched by an include glob (merges it once)", async () => {
+        // The CLI never loads databricks.yml as an include. node-glob's `*.yml`
+        // matches it; without filtering, allFiles() merges it again last and its
+        // values win over the includes'. getIncludedFiles must drop it.
+        await fs.writeFile(
+            path.join(tmpdir.path, "databricks.yml"),
+            [
+                "bundle: {name: p}",
+                'include: ["*.yml"]',
+                "targets: {dev: {default: true}}",
+                "",
+            ].join("\n")
+        );
+        await fs.writeFile(path.join(tmpdir.path, "a.yml"), "variables: {}\n");
+
+        const files = (
+            await new BundleFileSet(
+                getWorkspaceFolderManagerMock()
+            ).getIncludedFiles()
+        )?.map((f) => f.fsPath);
+        expect(files).to.include(
+            Uri.file(path.join(tmpdir.path, "a.yml")).fsPath
+        );
+        expect(files).to.not.include(
+            Uri.file(path.join(tmpdir.path, "databricks.yml")).fsPath
+        );
+    });
+
+    it("flags any `[…]` include class the CLI may read differently (fails closed)", async () => {
+        // Go's filepath.Match reads `[!x]` as literal, has no POSIX classes
+        // (`[[:alpha:]]`), etc. Rather than reproduce each case we treat any `[`
+        // as unreliable and fail closed; `[abc]` is over-refused on purpose.
+        for (const pattern of [
+            "conf/[!_]*.yml",
+            "conf/[[:alpha:]]*.yml",
+            "conf/[abc]*.yml",
+        ]) {
+            await fs.writeFile(
+                path.join(tmpdir.path, "databricks.yml"),
+                yaml.stringify({include: [pattern]} as BundleSchema)
+            );
+            const flagged = new BundleFileSet(getWorkspaceFolderManagerMock());
+            expect(
+                await flagged.hasUnsupportedGlobClass(),
+                `pattern ${pattern}`
+            ).to.be.true;
+        }
 
         await fs.writeFile(
             path.join(tmpdir.path, "databricks.yml"),
             yaml.stringify({include: ["conf/*.yml"]} as BundleSchema)
         );
         const plain = new BundleFileSet(getWorkspaceFolderManagerMock());
-        expect(await plain.hasNegatedGlobClass()).to.be.false;
+        expect(await plain.hasUnsupportedGlobClass()).to.be.false;
+    });
+
+    it("sorts include matches by path relative to the root, like the CLI", async () => {
+        // Matches that reach outside the root via `../` sort differently by
+        // absolute vs relative path. The CLI sorts by the relative path (last
+        // wins on merge), so a contested host resolves to the same file only if
+        // we sort the same way.
+        const root = path.join(tmpdir.path, "root");
+        const sib = path.join(tmpdir.path, "sib");
+        await fs.mkdir(root);
+        await fs.mkdir(sib);
+        await fs.writeFile(
+            path.join(root, "databricks.yml"),
+            [
+                "bundle: {name: p}",
+                'include: ["../*/t.yml"]',
+                "targets: {dev: {default: true}}",
+                "",
+            ].join("\n")
+        );
+        await fs.writeFile(path.join(root, "t.yml"), "variables: {}\n");
+        await fs.writeFile(path.join(sib, "t.yml"), "variables: {}\n");
+
+        const files = (
+            await new BundleFileSet(
+                getWorkspaceFolderManagerMock(root)
+            ).getIncludedFiles()
+        )?.map((f) => f.fsPath);
+        // Relative keys: "../sib/t.yml" < "t.yml" (byte-wise), so sib sorts
+        // first and root/t.yml last — the reverse of the absolute-path order.
+        expect(files).to.deep.equal([
+            Uri.file(path.join(sib, "t.yml")).fsPath,
+            Uri.file(path.join(root, "t.yml")).fsPath,
+        ]);
     });
 
     it("getIncludedFiles matches dotfiles like the CLI's Go glob", async () => {

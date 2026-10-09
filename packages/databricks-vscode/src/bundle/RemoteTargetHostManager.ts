@@ -1,7 +1,6 @@
 import {Disposable, Event, EventEmitter} from "vscode";
 import lodash from "lodash";
 import {ConfigModel} from "../configuration/models/ConfigModel";
-import {ConnectionManager} from "../configuration/ConnectionManager";
 import {withOnErrorHandler} from "../utils/onErrorDecorator";
 import {describePausedReason, PausedReason} from "./BundleAuthReason";
 
@@ -48,6 +47,13 @@ export function describePausedTarget(p: PausedTarget): string {
  * vouch for where the CLI would send the credentials (a profile, a `${…}`
  * variable, a host split across files, an unparseable host, an absent target,
  * or an unsupported include glob). This surfaces that state on the Target row.
+ *
+ * It compares against the pinned provider's host (the guard's own basis), not
+ * the live connection host, so the badge keeps matching the guard even if the
+ * connection drops while the provider stays pinned. It re-evaluates on anything
+ * that can change the guard's decision: the target, an edit to `workspace.host`,
+ * the pinned provider, and any bundle-file change (a profile, a second include,
+ * a glob the guard rejects — none of which move the `host` key).
  */
 export class RemoteTargetHostManager implements Disposable {
     private disposables: Disposable[] = [];
@@ -57,15 +63,19 @@ export class RemoteTargetHostManager implements Disposable {
 
     constructor(
         private readonly configModel: ConfigModel,
-        private readonly connectionManager: ConnectionManager
+        onDidChangeBundleFiles: Event<void>
     ) {
         this.disposables.push(
             this._onDidChangePaused,
             this.configModel.onDidChangeTarget(() => this.reevaluate()),
             // An edit to the target's workspace.host in databricks.yml.
             this.configModel.onDidChangeKey("host")(() => this.reevaluate()),
-            // Every state: a failed reconnect leaves no session host to compare.
-            this.connectionManager.onDidChangeState(() => this.reevaluate())
+            // The environment provider being pinned (or re-pinned on reconnect).
+            this.configModel.onDidChangeAuthProvider(() => this.reevaluate()),
+            // Edits that change the guard's decision without touching the host
+            // key: a profile added/removed, a second include file setting the
+            // host, an include pattern the guard rejects.
+            onDidChangeBundleFiles(() => this.reevaluate())
         );
     }
 
@@ -96,11 +106,11 @@ export class RemoteTargetHostManager implements Disposable {
     );
 
     private async evaluate(): Promise<void> {
-        const envHost =
-            this.connectionManager.databricksWorkspace?.authProvider.host;
+        const envHost = this.configModel.pinnedHost;
         const target = this.configModel.target;
-        // Not connected, or no target resolved: nothing to compare. The
-        // state / target subscriptions re-evaluate once both land.
+        // No pinned provider (not remote, or not connected yet) or no target
+        // resolved: nothing to compare. The subscriptions re-evaluate once both
+        // land.
         if (envHost === undefined || target === undefined) {
             this.setPaused(undefined);
             return;
@@ -111,11 +121,10 @@ export class RemoteTargetHostManager implements Disposable {
         const resolution =
             await this.configModel.getTargetWorkspaceHost(target);
 
-        // Re-read after the await: a folder change or reconnect may have moved a
-        // host while getTargetWorkspaceHost resolved. Bail on stale input rather
-        // than reporting a pairing that no longer holds.
-        const currentEnvHost =
-            this.connectionManager.databricksWorkspace?.authProvider.host;
+        // Re-read after the await: the target or pinned host may have moved while
+        // getTargetWorkspaceHost resolved. Bail on stale input rather than
+        // reporting a pairing that no longer holds.
+        const currentEnvHost = this.configModel.pinnedHost;
         if (
             this.configModel.target !== target ||
             currentEnvHost?.toString() !== envHost.toString()

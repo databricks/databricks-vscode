@@ -448,19 +448,20 @@ export class ConfigModel implements Disposable {
      *    `workspace` block supplied as a `${...}` variable; a `host`/`profile`
      *    set in more than one file, where the CLI's last-file-wins merge decides
      *    the host and we won't trust our file order to match it; a target absent
-     *    from the bundle we built; or an `include` pattern whose `[!…]` class the
+     *    from the bundle we built; or an `include` pattern with a `[…]` class the
      *    CLI reads differently from node-glob.
      */
     public async getTargetWorkspaceHost(
         target: string
     ): Promise<TargetWorkspaceHost> {
         // The include file set has to match the CLI's for the resolved host to
-        // be trustworthy. A `[!…]` class is read as a negation by node-glob but
-        // as literal characters by Go, so we can't tell which files the CLI
-        // loads: fail closed before resolving anything.
+        // be trustworthy. node-glob and Go read several `[…]` classes
+        // differently (e.g. `[!x]` negates here but is literal in Go; Go has no
+        // POSIX classes), so we can't tell which files the CLI loads: fail closed
+        // before resolving anything.
         try {
             if (await this.bundlePreValidateModel.hasUnsupportedIncludeGlob()) {
-                return {kind: "unresolved", reason: "glob-negation"};
+                return {kind: "unresolved", reason: "glob-class"};
             }
         } catch {
             return {kind: "unresolved", reason: "unreadable"};
@@ -509,8 +510,21 @@ export class ConfigModel implements Disposable {
         ) {
             return {kind: "unresolved", reason: "profile"};
         }
-        const host = workspace?.host;
-        if (host === undefined || host.trim() === "") {
+        // Read as `unknown`: the YAML value can be a non-string at runtime
+        // despite the type, and we must not let `.trim()` throw on it.
+        const host: unknown = workspace?.host;
+        // Absent or null (`host: ~`): the CLI treats the host as unset and falls
+        // back to DATABRICKS_HOST — the session host.
+        if (host === undefined || host === null) {
+            return {kind: "session"};
+        }
+        // A non-string host (e.g. `host: 8080`) is malformed; fail closed rather
+        // than throw on it.
+        if (typeof host !== "string") {
+            return {kind: "unresolved", reason: "invalid-host"};
+        }
+        // An explicit empty string also falls back to the session host.
+        if (host.trim() === "") {
             return {kind: "session"};
         }
         try {
@@ -541,6 +555,17 @@ export class ConfigModel implements Disposable {
 
     get authProvider(): AuthProvider | undefined {
         return this._authProvider;
+    }
+
+    /**
+     * The host of the pinned (Remote SSH) credentials, or undefined in normal
+     * mode / before the environment connect. The host-mismatch UI compares
+     * against this rather than the live connection host, so the paused badge
+     * tracks what the guard actually enforces — which keeps refusing while the
+     * provider stays pinned, even if the connection drops.
+     */
+    get pinnedHost(): URL | undefined {
+        return this.pinned?.authProvider.host;
     }
 
     @Mutex.synchronise("configsMutex")

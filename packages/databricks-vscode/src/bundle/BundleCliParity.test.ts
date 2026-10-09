@@ -91,10 +91,10 @@ describe("BundleFileSet vs bundled CLI (glob/merge parity)", async function () {
         await tmpdir.cleanup();
     });
 
-    function makeModel() {
+    function makeModel(root: string = tmpdir.path) {
         const workspaceFolderManager = mock<WorkspaceFolderManager>();
         const workspaceFolder = mock<WorkspaceFolder>();
-        const uri = Uri.file(tmpdir.path);
+        const uri = Uri.file(root);
         when(workspaceFolder.uri).thenReturn(uri);
         when(workspaceFolderManager.activeWorkspaceFolder).thenReturn(
             instance(workspaceFolder)
@@ -254,5 +254,107 @@ describe("BundleFileSet vs bundled CLI (glob/merge parity)", async function () {
         // The model flags the pattern so the guard refuses rather than trust the
         // divergent file set.
         expect(await model.hasUnsupportedIncludeGlob()).to.be.true;
+    });
+
+    it("reverses a tagged `!!merge` sequence the same host as the CLI", async () => {
+        // A merge key can be tagged (`!!merge foo`); its source text isn't `<<`,
+        // so we detect it by the parsed merge symbol and still reverse to the
+        // CLI's last-map-wins.
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "x-s: &s {host: https://tag-session.invalid}",
+                "x-o: &o {host: https://tag-other.invalid}",
+                "bundle: {name: p}",
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "    workspace:",
+                "      !!merge foo: [*s, *o]",
+                "",
+            ].join("\n")
+        );
+
+        const cliHost = cliResolvedHost(tmpdir.path, "dev");
+        const extHost = extensionResolvedHost(
+            await makeModel().getTargetWorkspaceFromDisk("dev")
+        );
+
+        expect(cliHost, "CLI should resolve a host").to.be.a("string");
+        expect(extHost).to.equal(cliHost);
+        expect(extHost).to.equal("https://tag-other.invalid");
+    });
+
+    it("keeps the earlier host when a later file sets it null, like the CLI", async () => {
+        // `lodash.merge` would let the include's `workspace: ~` blank the host;
+        // mergeBundleData keeps the root's host, matching the CLI.
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "bundle: {name: p}",
+                'include: ["targets/*.yml"]',
+                "workspace: {host: https://null-root.invalid}",
+                "targets: {dev: {default: true}}",
+                "",
+            ].join("\n")
+        );
+        await writeBundleFile(path.join("targets", "a.yml"), "workspace: ~\n");
+
+        const cliHost = cliResolvedHost(tmpdir.path, "dev");
+        const extHost = extensionResolvedHost(
+            await makeModel().getTargetWorkspaceFromDisk("dev")
+        );
+
+        expect(cliHost, "CLI should resolve a host").to.be.a("string");
+        expect(extHost).to.equal(cliHost);
+        expect(extHost).to.equal("https://null-root.invalid");
+    });
+
+    it("does not re-merge a root file matched by an include, like the CLI", async () => {
+        // `include: ["*.yml"]` matches databricks.yml; the CLI never re-loads it,
+        // so the include (a.yml) wins. The extension must drop the root file from
+        // the matches, or its empty host would win and blank the resolved host.
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "bundle: {name: p}",
+                'include: ["*.yml"]',
+                'targets: {dev: {default: true, workspace: {host: ""}}}',
+                "",
+            ].join("\n")
+        );
+        await writeBundleFile(
+            "a.yml",
+            "targets: {dev: {workspace: {host: https://root-twice.invalid}}}\n"
+        );
+
+        const cliHost = cliResolvedHost(tmpdir.path, "dev");
+        const extHost = extensionResolvedHost(
+            await makeModel().getTargetWorkspaceFromDisk("dev")
+        );
+
+        expect(cliHost, "CLI should resolve a host").to.be.a("string");
+        expect(extHost).to.equal(cliHost);
+        expect(extHost).to.equal("https://root-twice.invalid");
+    });
+
+    it("flags a POSIX `[[:alpha:]]` include the CLI reads differently", async () => {
+        // Go has no POSIX classes: `[[:alpha:]]` is a literal set there but "one
+        // letter" to minimatch, so the file sets diverge. The model fails closed.
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "bundle: {name: p}",
+                'include: ["conf/[[:alpha:]]*.yml"]',
+                "targets: {dev: {default: true}}",
+                "",
+            ].join("\n")
+        );
+        await writeBundleFile(
+            path.join("conf", "dev.yml"),
+            "targets: {dev: {workspace: {host: https://posix.invalid}}}\n"
+        );
+
+        expect(await makeModel().hasUnsupportedIncludeGlob()).to.be.true;
     });
 });

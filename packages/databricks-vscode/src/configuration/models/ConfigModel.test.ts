@@ -272,6 +272,11 @@ describe("ConfigModel target/auth ordering", () => {
         when(
             bundlePreValidateModel.getTargetWorkspaceFromDisk("globNeg")
         ).thenResolve({host: HOST_A});
+        // A malformed, non-string host (e.g. `host: 8080`): fail closed rather
+        // than throw on `.trim()`.
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("nonString")
+        ).thenResolve({host: 8080 as unknown as string});
         // The guard also reads how many files set the host/profile: single-file
         // for the normal targets, a two-file host conflict for `multiFile`.
         when(
@@ -298,7 +303,10 @@ describe("ConfigModel target/auth ordering", () => {
         when(
             bundlePreValidateModel.getWorkspaceAuthFileCounts("globNeg")
         ).thenResolve({hostFiles: 1, profileFiles: 0});
-        // An include pattern uses a `[!…]` class the CLI reads differently, so
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("nonString")
+        ).thenResolve({hostFiles: 1, profileFiles: 0});
+        // An include pattern uses a `[…]` class the CLI reads differently, so
         // we can't trust which files loaded: fail closed, before resolving.
         when(bundlePreValidateModel.hasUnsupportedIncludeGlob()).thenResolve(
             true
@@ -337,6 +345,8 @@ describe("ConfigModel target/auth ordering", () => {
         assert.strictEqual((await authGuard!("multiFile")).allowed, false);
         // The target isn't in the bundle we built: fail closed.
         assert.strictEqual((await authGuard!("absent")).allowed, false);
+        // A non-string host is malformed: fail closed, not throw.
+        assert.strictEqual((await authGuard!("nonString")).allowed, false);
     });
 
     it("pinAuthProvider skips a provider with the same credentials", async () => {

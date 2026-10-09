@@ -858,6 +858,33 @@ export async function activate(
             remoteBundleFileSet,
             remoteBundleFileWatcher
         );
+        // Seed the session host from the ambient DATABRICKS_HOST now, before the
+        // environment connect pins the provider. ConfigModel.init() runs in
+        // parallel with that connect, so a host-less target would otherwise call
+        // normalizeHost("") first and throw (an unhandled rejection at startup,
+        // and a stuck "Invalid host" row if the connect fails). pinAuthProvider
+        // overwrites this with the resolved provider host once connected.
+        const sessionHostEnv = process.env.DATABRICKS_HOST;
+        if (sessionHostEnv) {
+            try {
+                // No target is set yet, so the refresh resolves to {} and can't
+                // reject — but .catch() keeps a future refactor from leaking an
+                // unhandled rejection, the very thing this seeding prevents.
+                remoteBundlePreValidateModel
+                    .setSessionHost(UrlUtils.normalizeHost(sessionHostEnv))
+                    .catch((e) =>
+                        logging.NamedLogger.getOrCreate(
+                            Loggers.Extension
+                        ).error(
+                            "Remote mode: failed to seed the session host",
+                            e
+                        )
+                    );
+            } catch {
+                // Malformed DATABRICKS_HOST: leave it unset; pinAuthProvider
+                // sets the resolved host on connect.
+            }
+        }
         const remoteBundleRemoteStateModel = new BundleRemoteStateModel(
             cli,
             workspaceFolderManager,
@@ -893,7 +920,7 @@ export async function activate(
 
         const remoteTargetHostManager = new RemoteTargetHostManager(
             remoteConfigModel,
-            remoteConnectionManager
+            remoteBundlePreValidateModel.onDidChangeBundleFiles
         );
         const remoteBundleManager = new RemoteBundleManager(
             remoteConfigModel,

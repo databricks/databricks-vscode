@@ -1,10 +1,9 @@
 import {Event, Uri} from "vscode";
-import {BundleFileSet, BundleWatcher} from "..";
+import {BundleFileSet, BundleWatcher, mergeBundleData} from "..";
 import {BundleSchema, BundleTarget} from "../types";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {UrlUtils} from "../../utils";
 import {Mutex} from "../../locking";
-import * as lodash from "lodash";
 import {withOnErrorHandler} from "../../utils/onErrorDecorator";
 
 export type BundlePreValidateState = {
@@ -127,12 +126,16 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
     public async getWorkspaceAuthFileCounts(
         target: string
     ): Promise<{hostFiles: number; profileFiles: number}> {
+        // Count the file when the key is *present*, whatever its value —
+        // including "" and null. The CLI's last-file-wins merge decides which
+        // file's value survives, and an empty or null value in a later file can
+        // still change the resolved host, so a contested key is untrustworthy
+        // regardless of value.
         const isSet = (workspace: unknown, key: "host" | "profile") => {
             if (typeof workspace !== "object" || workspace === null) {
                 return false;
             }
-            const value = (workspace as Record<string, unknown>)[key];
-            return typeof value === "string" && value.trim() !== "";
+            return key in (workspace as Record<string, unknown>);
         };
 
         let hostFiles = 0;
@@ -200,20 +203,20 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         };
     }
 
-    /** See {@link BundleFileSet.hasNegatedGlobClass}. */
+    /** See {@link BundleFileSet.hasUnsupportedGlobClass}. */
     public hasUnsupportedIncludeGlob(): Promise<boolean> {
-        return this.bundleFileSet.hasNegatedGlobClass();
+        return this.bundleFileSet.hasUnsupportedGlobClass();
     }
 
     private getRawTargetData(bundle: BundleSchema, target: string) {
         const targetObject = Object.assign({}, bundle?.targets?.[target]);
         const globalWorkspace = Object.assign({}, bundle?.workspace);
-        if (targetObject !== undefined) {
-            targetObject.workspace = lodash.merge(
-                globalWorkspace ?? {},
-                targetObject.workspace
-            );
-        }
+        // Merge like the CLI (a later null keeps the earlier value), the same as
+        // readMergedBundleFromDisk, so a `workspace: ~` can't blank a host.
+        targetObject.workspace = mergeBundleData(
+            globalWorkspace,
+            targetObject.workspace
+        );
         return targetObject;
     }
 
