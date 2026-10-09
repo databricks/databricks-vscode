@@ -34,7 +34,8 @@ describe("BundleRemoteStateModel auth guard", () => {
         model.setTarget("dev");
         model.setAuthProvider(
             {toJSON: () => ({})} as unknown as AuthProvider,
-            async () => allowed
+            async () =>
+                allowed ? {allowed: true} : {allowed: false, reason: "nope"}
         );
         return model;
     }

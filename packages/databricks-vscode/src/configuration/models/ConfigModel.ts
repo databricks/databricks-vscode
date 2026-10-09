@@ -4,7 +4,15 @@ import {Mutex} from "../../locking";
 import {CachedValue} from "../../locking/CachedValue";
 import {StateStorage} from "../../vscode-objs/StateStorage";
 import {onError, withOnErrorHandler} from "../../utils/onErrorDecorator";
-import {AuthProvider, BundleAuthGuard} from "../auth/AuthProvider";
+import {
+    AuthProvider,
+    BundleAuthDecision,
+    BundleAuthGuard,
+} from "../auth/AuthProvider";
+import {
+    describePausedReason,
+    UnresolvedReason,
+} from "../../bundle/BundleAuthReason";
 import {normalizeHost} from "../../utils/urlUtils";
 import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
@@ -35,7 +43,7 @@ const defaults: ConfigState = {
 export type TargetWorkspaceHost =
     | {kind: "session"}
     | {kind: "host"; host: URL}
-    | {kind: "unresolved"};
+    | {kind: "unresolved"; reason: UnresolvedReason};
 
 const TOP_LEVEL_VALIDATE_CONFIG_KEYS = ["clusterId", "remoteRootPath"] as const;
 
@@ -143,7 +151,15 @@ export class ConfigModel implements Disposable {
         private readonly bundlePreValidateModel: BundlePreValidateModel,
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly vscodeWhenContext: CustomWhenContext,
-        private readonly stateStorage: StateStorage
+        private readonly stateStorage: StateStorage,
+        // Remote SSH mode. The target-resolution rules below (serialised resolve,
+        // keep the saved target when it resolves to none, resolve when a bundle
+        // file appears) are remote-only. They must key off this static flag, not
+        // off a pinned auth provider: the provider is pinned only after the
+        // environment connect succeeds, which races ConfigModel.init() and never
+        // happens at all if the connect fails — leaving a bundle file that
+        // appears later without a resolved target until a reload.
+        private readonly remoteMode: boolean = false
     ) {
         this.disposables.push(
             this.overrideableConfigModel.onDidChange(async () => {
@@ -155,17 +171,14 @@ export class ConfigModel implements Disposable {
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
-            // Remote mode only (gated on `pinned`): with no target the
-            // pre-validate state stays empty, so nothing else notices a bundle
-            // file appearing or gaining targets. Normal mode's
-            // BundleProjectManager owns this, so leave its behaviour unchanged.
+            // Remote mode only: with no target the pre-validate state stays
+            // empty, so nothing else notices a bundle file appearing or gaining
+            // targets. Normal mode's BundleProjectManager owns this, so leave its
+            // behaviour unchanged.
             this.bundlePreValidateModel.onDidChangeBundleFiles(
                 withOnErrorHandler(
                     async () => {
-                        if (
-                            this.pinned !== undefined &&
-                            this.target === undefined
-                        ) {
+                        if (this.remoteMode && this.target === undefined) {
                             await this.resolveTarget();
                         }
                     },
@@ -207,7 +220,7 @@ export class ConfigModel implements Disposable {
         // Normal mode keeps its original un-serialised behaviour. Remote mode
         // resolves from several triggers (startup, folder change, bundle-file
         // change) that can overlap, so it serialises them.
-        if (this.pinned === undefined) {
+        if (!this.remoteMode) {
             await this.resolveTargetLocked();
             return;
         }
@@ -247,8 +260,7 @@ export class ConfigModel implements Disposable {
             // saved one, so a bundle file that briefly disappears (e.g. during a
             // git checkout) gets its target back. Normal mode persists as
             // before, so clearing the target still clears the saved value.
-            const persist =
-                this.pinned === undefined || savedTarget !== undefined;
+            const persist = !this.remoteMode || savedTarget !== undefined;
             await this.commitTarget(savedTarget, persist);
         } catch (e: any) {
             let message: string = String(e);
@@ -344,23 +356,33 @@ export class ConfigModel implements Disposable {
         }
         this.pinned = {
             authProvider,
-            authGuard: async (target) => {
+            authGuard: async (target): Promise<BundleAuthDecision> => {
                 const resolution = await this.getTargetWorkspaceHost(target);
                 switch (resolution.kind) {
                     case "session":
-                        return true;
+                        return {allowed: true};
                     case "host":
-                        return (
-                            resolution.host.hostname ===
+                        return resolution.host.hostname ===
                             authProvider.host.hostname
-                        );
+                            ? {allowed: true}
+                            : {
+                                  allowed: false,
+                                  reason: describePausedReason("host-mismatch"),
+                              };
                     case "unresolved":
                         // Fail closed: we can't tell where the CLI would send
                         // the credentials, so don't send them.
-                        return false;
+                        return {
+                            allowed: false,
+                            reason: describePausedReason(resolution.reason),
+                        };
                 }
             },
         };
+        // Config loading mirrors the guard's `session` rule: a host-less target
+        // uses the session host (the CLI falls back to DATABRICKS_HOST), so the
+        // pre-validate state resolves instead of throwing on an empty host.
+        await this.bundlePreValidateModel.setSessionHost(authProvider.host);
         await this.reapplyPinnedAuthProvider();
     }
 
@@ -418,18 +440,31 @@ export class ConfigModel implements Disposable {
      *    falls back to `DATABRICKS_HOST` — the session's own host in Remote SSH
      *    mode.
      *  - `host`: an explicit, parseable host.
-     *  - `unresolved`: a host we can't vouch for, so callers fail closed. Either
-     *    a `workspace.profile` (the profile picks its own host, overriding
-     *    `DATABRICKS_HOST`, and the CLI doesn't report the resolved host so we
-     *    can't compare it); a host that's present but can't be parsed here (e.g.
-     *    a `${...}` variable the CLI resolves but we don't); a whole
-     *    `workspace` block supplied as a `${...}` variable; or a `host`/
-     *    `profile` set in more than one file, where the CLI's last-file-wins
-     *    merge decides the host and we won't trust our file order to match it.
+     *  - `unresolved`: a host we can't vouch for, so callers fail closed, with a
+     *    `reason` naming which case. A `workspace.profile` (the profile picks its
+     *    own host, overriding `DATABRICKS_HOST`, and the CLI doesn't report the
+     *    resolved host so we can't compare it); a host present but unparseable
+     *    here (e.g. a `${...}` variable the CLI resolves but we don't); a whole
+     *    `workspace` block supplied as a `${...}` variable; a `host`/`profile`
+     *    set in more than one file, where the CLI's last-file-wins merge decides
+     *    the host and we won't trust our file order to match it; a target absent
+     *    from the bundle we built; or an `include` pattern whose `[!…]` class the
+     *    CLI reads differently from node-glob.
      */
     public async getTargetWorkspaceHost(
         target: string
     ): Promise<TargetWorkspaceHost> {
+        // The include file set has to match the CLI's for the resolved host to
+        // be trustworthy. A `[!…]` class is read as a negation by node-glob but
+        // as literal characters by Go, so we can't tell which files the CLI
+        // loads: fail closed before resolving anything.
+        try {
+            if (await this.bundlePreValidateModel.hasUnsupportedIncludeGlob()) {
+                return {kind: "unresolved", reason: "glob-negation"};
+            }
+        } catch {
+            return {kind: "unresolved", reason: "unreadable"};
+        }
         let workspace: {host?: string; profile?: string} | string | undefined;
         try {
             workspace =
@@ -437,12 +472,18 @@ export class ConfigModel implements Disposable {
                     target
                 );
         } catch {
-            return {kind: "unresolved"};
+            return {kind: "unresolved", reason: "unreadable"};
+        }
+        // The target isn't in the merged bundle we built (no root file, or two
+        // of them). The CLI may still define it from a file set we read
+        // differently, so don't treat "no host here" as the safe session case.
+        if (workspace === undefined) {
+            return {kind: "unresolved", reason: "absent-target"};
         }
         // The whole `workspace` block resolved to an unresolved `${...}`
         // variable: we can't tell where it points, so fail closed.
         if (typeof workspace === "string") {
-            return {kind: "unresolved"};
+            return {kind: "unresolved", reason: "variable"};
         }
         // Backstop: if the host or profile is contested across files, the CLI's
         // last-file-wins merge picks the host and we won't bet the session
@@ -453,10 +494,10 @@ export class ConfigModel implements Disposable {
                     target
                 );
             if (hostFiles > 1 || profileFiles > 1) {
-                return {kind: "unresolved"};
+                return {kind: "unresolved", reason: "multi-file"};
             }
         } catch {
-            return {kind: "unresolved"};
+            return {kind: "unresolved", reason: "unreadable"};
         }
         // A profile authenticates against its own host (overriding
         // DATABRICKS_HOST), so the session's credentials could reach another
@@ -466,7 +507,7 @@ export class ConfigModel implements Disposable {
             typeof workspace?.profile === "string" &&
             workspace.profile.trim() !== ""
         ) {
-            return {kind: "unresolved"};
+            return {kind: "unresolved", reason: "profile"};
         }
         const host = workspace?.host;
         if (host === undefined || host.trim() === "") {
@@ -475,7 +516,7 @@ export class ConfigModel implements Disposable {
         try {
             return {kind: "host", host: normalizeHost(host)};
         } catch {
-            return {kind: "unresolved"};
+            return {kind: "unresolved", reason: "invalid-host"};
         }
     }
 

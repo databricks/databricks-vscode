@@ -71,6 +71,10 @@ describe("ConfigModel target/auth ordering", () => {
         bundleFilesChange = new EventEmitter<void>();
         when(authProvider.host).thenReturn(new URL(HOST_A));
         when(authProvider.toJSON()).thenReturn({host: HOST_A});
+        when(bundlePreValidateModel.setSessionHost(anything())).thenResolve();
+        when(bundlePreValidateModel.hasUnsupportedIncludeGlob()).thenResolve(
+            false
+        );
 
         // Constructor wires up listeners on the child models' change events.
         // The listeners are never fired here, so the payload type is irrelevant.
@@ -260,6 +264,14 @@ describe("ConfigModel target/auth ordering", () => {
         when(
             bundlePreValidateModel.getTargetWorkspaceFromDisk("multiFile")
         ).thenResolve({host: HOST_A});
+        // Not defined in the bundle we built: fail closed (the CLI may define it
+        // from a file set we read differently).
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("absent")
+        ).thenResolve(undefined);
+        when(
+            bundlePreValidateModel.getTargetWorkspaceFromDisk("globNeg")
+        ).thenResolve({host: HOST_A});
         // The guard also reads how many files set the host/profile: single-file
         // for the normal targets, a two-file host conflict for `multiFile`.
         when(
@@ -280,29 +292,51 @@ describe("ConfigModel target/auth ordering", () => {
         when(
             bundlePreValidateModel.getWorkspaceAuthFileCounts("multiFile")
         ).thenResolve({hostFiles: 2, profileFiles: 0});
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("absent")
+        ).thenResolve({hostFiles: 0, profileFiles: 0});
+        when(
+            bundlePreValidateModel.getWorkspaceAuthFileCounts("globNeg")
+        ).thenResolve({hostFiles: 1, profileFiles: 0});
+        // An include pattern uses a `[!…]` class the CLI reads differently, so
+        // we can't trust which files loaded: fail closed, before resolving.
+        when(bundlePreValidateModel.hasUnsupportedIncludeGlob()).thenResolve(
+            true
+        );
         await pin();
 
         const [, authGuard] = capture(
             bundleValidateModel.setAuthProvider
         ).last();
 
+        // With an unsupported include glob, every target is refused.
+        assert.strictEqual((await authGuard!("globNeg")).allowed, false);
+
+        // The remaining cases depend on the per-target resolution, so drop the
+        // glob backstop first.
+        when(bundlePreValidateModel.hasUnsupportedIncludeGlob()).thenResolve(
+            false
+        );
+
         // Same host as the session: allowed. A different host: refused.
-        assert.strictEqual(await authGuard!("dev"), true);
-        assert.strictEqual(await authGuard!("other"), false);
+        assert.strictEqual((await authGuard!("dev")).allowed, true);
+        assert.strictEqual((await authGuard!("other")).allowed, false);
         // No workspace.host: the CLI falls back to the session's own host, so
         // sending the credentials is safe.
-        assert.strictEqual(await authGuard!("noHost"), true);
+        assert.strictEqual((await authGuard!("noHost")).allowed, true);
         // A host that's present but can't be parsed here: fail closed.
-        assert.strictEqual(await authGuard!("badHost"), false);
+        assert.strictEqual((await authGuard!("badHost")).allowed, false);
         // A profile picks its own host (overriding DATABRICKS_HOST): fail
         // closed, since the session's credentials could reach another host.
-        assert.strictEqual(await authGuard!("profile"), false);
+        assert.strictEqual((await authGuard!("profile")).allowed, false);
         // The whole workspace block is an unresolved variable: fail closed.
-        assert.strictEqual(await authGuard!("wholeVar"), false);
+        assert.strictEqual((await authGuard!("wholeVar")).allowed, false);
         // The host is contested across files: even though the merged host is
         // the session host, the CLI's last-file-wins merge decides it, so don't
         // bet the token on our file order matching the CLI's. Fail closed.
-        assert.strictEqual(await authGuard!("multiFile"), false);
+        assert.strictEqual((await authGuard!("multiFile")).allowed, false);
+        // The target isn't in the bundle we built: fail closed.
+        assert.strictEqual((await authGuard!("absent")).allowed, false);
     });
 
     it("pinAuthProvider skips a provider with the same credentials", async () => {
@@ -326,7 +360,9 @@ describe("ConfigModel target resolution", () => {
     // all gated on a pinned auth provider (Remote SSH mode). Normal mode keeps
     // its original behaviour, so tests pin only where they exercise the new one.
     let bundleValidateModel: BundleValidateModel;
+    let overrideableConfigModel: OverrideableConfigModel;
     let bundlePreValidateModel: BundlePreValidateModel;
+    let bundleRemoteStateModel: BundleRemoteStateModel;
     let stateStorage: StateStorage;
     let bundleFilesChange: EventEmitter<void>;
     let authProvider: AuthProvider;
@@ -338,14 +374,18 @@ describe("ConfigModel target resolution", () => {
 
     beforeEach(() => {
         bundleValidateModel = mock<BundleValidateModel>();
-        const overrideableConfigModel = mock<OverrideableConfigModel>();
+        overrideableConfigModel = mock<OverrideableConfigModel>();
         bundlePreValidateModel = mock<BundlePreValidateModel>();
-        const bundleRemoteStateModel = mock<BundleRemoteStateModel>();
+        bundleRemoteStateModel = mock<BundleRemoteStateModel>();
         stateStorage = mock<StateStorage>();
         bundleFilesChange = new EventEmitter<void>();
         authProvider = mock<AuthProvider>();
         when(authProvider.host).thenReturn(new URL(HOST_A));
         when(authProvider.toJSON()).thenReturn({host: HOST_A});
+        when(bundlePreValidateModel.setSessionHost(anything())).thenResolve();
+        when(bundlePreValidateModel.hasUnsupportedIncludeGlob()).thenResolve(
+            false
+        );
 
         for (const event of [
             () => overrideableConfigModel.onDidChange,
@@ -376,22 +416,30 @@ describe("ConfigModel target resolution", () => {
             undefined
         );
         when(stateStorage.set(anything(), anything())).thenResolve();
+    });
 
+    // The serialising resolve, the "keep the saved target when it resolves to
+    // none" persist rule, and resolving on a bundle-file change are gated on the
+    // remote-mode flag, so each test builds the model in the mode it exercises.
+    function build(remoteMode: boolean) {
         configModel = new ConfigModel(
             instance(bundleValidateModel),
             instance(overrideableConfigModel),
             instance(bundlePreValidateModel),
             instance(bundleRemoteStateModel),
             instance(mock<CustomWhenContext>()),
-            instance(stateStorage)
+            instance(stateStorage),
+            remoteMode
         );
-    });
+        return configModel;
+    }
 
     afterEach(() => {
-        configModel.dispose();
+        configModel?.dispose();
     });
 
     it("resolves the target once when resolutions overlap (remote mode)", async () => {
+        build(true);
         await pin();
 
         await Promise.all([
@@ -404,6 +452,7 @@ describe("ConfigModel target resolution", () => {
     });
 
     it("resolving to no target keeps the saved one (remote mode)", async () => {
+        build(true);
         await pin();
         await configModel.setTarget("dev");
         // databricks.yml deleted: no targets left.
@@ -418,6 +467,7 @@ describe("ConfigModel target resolution", () => {
     });
 
     it("normal mode clears the saved target when it resolves to none", async () => {
+        build(false);
         await configModel.setTarget("dev");
         when(bundlePreValidateModel.targets).thenResolve({} as any);
         when(bundlePreValidateModel.defaultTarget).thenResolve(undefined);
@@ -430,6 +480,7 @@ describe("ConfigModel target resolution", () => {
     });
 
     it("resolves a missing target when bundle files change (remote mode)", async () => {
+        build(true);
         await pin();
 
         bundleFilesChange.fire();
@@ -439,6 +490,7 @@ describe("ConfigModel target resolution", () => {
     });
 
     it("normal mode ignores bundle-file changes with no target", async () => {
+        build(false);
         bundleFilesChange.fire();
         await flush();
 
@@ -446,6 +498,7 @@ describe("ConfigModel target resolution", () => {
     });
 
     it("leaves a set target alone when bundle files change (remote mode)", async () => {
+        build(true);
         await pin();
         await configModel.setTarget("dev");
         when(bundlePreValidateModel.targets).thenResolve({} as any);
@@ -457,6 +510,7 @@ describe("ConfigModel target resolution", () => {
     });
 
     it("reresolveTarget clears the target and resolves it again", async () => {
+        build(false);
         await configModel.setTarget("dev");
 
         await configModel.reresolveTarget();

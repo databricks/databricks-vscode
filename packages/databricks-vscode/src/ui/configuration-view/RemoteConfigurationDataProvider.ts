@@ -3,7 +3,7 @@ import {BaseComponent} from "./BaseComponent";
 import {BaseConfigurationDataProvider} from "./BaseConfigurationDataProvider";
 import {
     BundleTargetComponent,
-    HostMismatchProvider,
+    PausedTargetProvider,
 } from "./BundleTargetComponent";
 import {WorkspaceFolderComponent} from "./WorkspaceFolderComponent";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
@@ -32,11 +32,11 @@ export class RemoteConfigurationDataProvider extends BaseConfigurationDataProvid
         workspaceFolderManager: WorkspaceFolderManager,
         private readonly bundleFileSet: BundleFileSet,
         bundleWatcher: BundleWatcher,
-        hostMismatchProvider: HostMismatchProvider
+        pausedTargetProvider: PausedTargetProvider
     ) {
         const bundleTargetComponent = new BundleTargetComponent(
             configModel,
-            hostMismatchProvider
+            pausedTargetProvider
         );
         super([
             new WorkspaceFolderComponent(workspaceFolderManager, "Bundle"),

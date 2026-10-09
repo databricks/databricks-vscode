@@ -30,7 +30,7 @@ const goGlobOptions = {
 } as const;
 
 export async function parseBundleYaml(file: Uri) {
-    const data = yaml.parse(await readFile(file.fsPath, "utf-8"), {
+    const yamlOptions = {
         // Bundles might have a lot of aliases (#1706), default 100 limit is too low
         maxAliasCount: -1,
         // Apply `<<` merge keys like the CLI's Go yaml does. Without this the JS
@@ -39,8 +39,33 @@ export async function parseBundleYaml(file: Uri) {
         // here than in the CLI — which the remote-mode credential guard relies
         // on reading correctly.
         merge: true,
+    };
+    // Parse to a document (not straight to JS) so we can fix one remaining
+    // divergence from the CLI's Go yaml: a *sequence* merge key `<<: [*a, *b]`.
+    // The JS parser follows the YAML 1.1 spec (earlier maps in the sequence win),
+    // but the CLI's loader merges each map in order so the *last* map wins. Left
+    // alone, a target could resolve to a different host here than in the CLI,
+    // letting the guard allow a token the CLI would send elsewhere. Reversing the
+    // sequence before converting to JS makes the merge order match the CLI. A
+    // scalar `<<: *a` has no order to disagree on and is untouched.
+    const doc = yaml.parseDocument(
+        await readFile(file.fsPath, "utf-8"),
+        yamlOptions
+    );
+    yaml.visit(doc, {
+        // yaml's visitor API keys on the capitalised node type.
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        Pair(_, pair) {
+            if (
+                yaml.isScalar(pair.key) &&
+                pair.key.source === "<<" &&
+                yaml.isSeq(pair.value)
+            ) {
+                pair.value.items.reverse();
+            }
+        },
     });
-    return data as BundleSchema;
+    return doc.toJS(yamlOptions) as BundleSchema;
 }
 
 export async function writeBundleYaml(file: Uri, data: BundleSchema) {
@@ -285,5 +310,18 @@ export class BundleFileSet {
 
     async isBundleFile(e: Uri) {
         return this.isRootBundleFile(e) || (await this.isIncludedBundleFile(e));
+    }
+
+    /**
+     * True if any `include` pattern uses a `[!…]` character class. Go's
+     * `filepath.Match` treats `[!x]` as the literal characters `!` and `x` (only
+     * `[^x]` negates), while minimatch/glob negate `[!…]`. So the two can load
+     * different files, and `getIncludedFiles` here can't be trusted to match the
+     * CLI. The remote-mode credential guard uses this to fail closed rather than
+     * resolve a host from a file set that may differ from the CLI's.
+     */
+    async hasNegatedGlobClass(): Promise<boolean> {
+        const patterns = await this.getIncludePatterns();
+        return patterns.some((pattern) => pattern.includes("[!"));
     }
 }

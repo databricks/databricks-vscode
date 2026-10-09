@@ -5,6 +5,7 @@ import {Mutex} from "../../locking";
 import {BundleTarget, Resource, ResourceKey, Resources} from "../types";
 import {
     AuthProvider,
+    BundleAuthDecision,
     BundleAuthGuard,
 } from "../../configuration/auth/AuthProvider";
 import lodash from "lodash";
@@ -194,33 +195,41 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         this.authGuard = authGuard;
     }
 
-    private async isAuthAllowed(target: string) {
-        return this.authGuard === undefined || (await this.authGuard(target));
+    private async authDecision(target: string): Promise<BundleAuthDecision> {
+        return this.authGuard === undefined
+            ? {allowed: true}
+            : this.authGuard(target);
     }
 
     private async assertAuthAllowed(target: string) {
-        if (!(await this.isAuthAllowed(target))) {
+        const decision = await this.authDecision(target);
+        if (!decision.allowed) {
             throw new Error(
-                `Bundle commands for target "${target}" are paused because it ` +
-                    "deploys to a different workspace than this session. " +
-                    "Review the Target row in the Configuration view."
+                `Bundle commands for target "${target}" are paused because ` +
+                    `${decision.reason}. Review the Target row in the ` +
+                    "Configuration view."
             );
         }
     }
 
     protected async readState(): Promise<BundleRemoteState> {
+        // Snapshot target + auth + project root before the guard await (TOCTOU,
+        // see deploy()).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
         if (
-            this.target === undefined ||
-            this.authProvider === undefined ||
-            !(await this.isAuthAllowed(this.target))
+            target === undefined ||
+            authProvider === undefined ||
+            !(await this.authDecision(target)).allowed
         ) {
             return {};
         }
 
         const {stdout} = await this.cli.bundleSummarise(
-            this.target,
-            this.authProvider,
-            this.projectRoot,
+            target,
+            authProvider,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger
         );

@@ -190,4 +190,69 @@ describe("BundleFileSet vs bundled CLI (glob/merge parity)", async function () {
         expect(extHost).to.equal(cliHost);
         expect(extHost).to.equal("https://shallow.invalid");
     });
+
+    it("merges a `<<` sequence the same host as the CLI (last-map-wins)", async () => {
+        // A sequence merge key is first-map-wins in the JS parser but
+        // last-map-wins in the CLI. parseBundleYaml reverses the sequence to
+        // match, so both resolve the second map's host (other.invalid).
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "x-s: &s {host: https://seq-session.invalid}",
+                "x-o: &o {host: https://seq-other.invalid}",
+                "bundle: {name: p}",
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "    workspace:",
+                "      <<: [*s, *o]",
+                "",
+            ].join("\n")
+        );
+
+        const cliHost = cliResolvedHost(tmpdir.path, "dev");
+        const extHost = extensionResolvedHost(
+            await makeModel().getTargetWorkspaceFromDisk("dev")
+        );
+
+        expect(cliHost, "CLI should resolve a host").to.be.a("string");
+        expect(extHost).to.equal(cliHost);
+        expect(extHost).to.equal("https://seq-other.invalid");
+    });
+
+    it("flags a `[!…]` include the CLI reads differently, and fails closed", async () => {
+        // Go's filepath.Match reads `[!_]` as the literal chars `!`/`_`; node-glob
+        // negates it. So the extension's raw merge loads conf/dev.yml while the
+        // CLI never does. We can't reconcile the file sets, so the model flags
+        // the pattern and the guard fails closed.
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "bundle:",
+                "  name: p",
+                'include: ["conf/[!_]*.yml"]',
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "",
+            ].join("\n")
+        );
+        await writeBundleFile(
+            path.join("conf", "dev.yml"),
+            "targets:\n  dev:\n    workspace:\n      host: https://negated.invalid\n"
+        );
+
+        const model = makeModel();
+        // node-glob's negation loads conf/dev.yml into the extension's merge...
+        expect(
+            extensionResolvedHost(await model.getTargetWorkspaceFromDisk("dev"))
+        ).to.equal("https://negated.invalid");
+        // ...but the CLI never loads it, so it resolves a different host.
+        expect(cliResolvedHost(tmpdir.path, "dev")).to.not.equal(
+            "https://negated.invalid"
+        );
+        // The model flags the pattern so the guard refuses rather than trust the
+        // divergent file set.
+        expect(await model.hasUnsupportedIncludeGlob()).to.be.true;
+    });
 });

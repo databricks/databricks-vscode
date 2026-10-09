@@ -5,7 +5,7 @@ import {RemoteConfigurationDataProvider} from "./RemoteConfigurationDataProvider
 import {ConfigModel} from "../../configuration/models/ConfigModel";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 import {ConfigurationTreeItem} from "./types";
-import {HostMismatchProvider} from "./BundleTargetComponent";
+import {PausedTargetProvider} from "./BundleTargetComponent";
 import {BundleFileSet} from "../../bundle/BundleFileSet";
 import {BundleWatcher} from "../../bundle/BundleWatcher";
 
@@ -21,8 +21,8 @@ describe("RemoteConfigurationDataProvider", () => {
     let bundleChangeEmitter: EventEmitter<void>;
     let folderChangeEmitter: EventEmitter<Uri | undefined>;
     let targetChangeEmitter: EventEmitter<void>;
-    let mismatchChangeEmitter: EventEmitter<void>;
-    let hostMismatchProvider: HostMismatchProvider;
+    let pausedChangeEmitter: EventEmitter<void>;
+    let pausedTargetProvider: PausedTargetProvider;
     let provider: RemoteConfigurationDataProvider;
 
     beforeEach(() => {
@@ -41,11 +41,11 @@ describe("RemoteConfigurationDataProvider", () => {
         );
         folderChangeEmitter = new EventEmitter<Uri | undefined>();
         targetChangeEmitter = new EventEmitter<void>();
-        mismatchChangeEmitter = new EventEmitter<void>();
-        // No mismatch by default, so the Target node renders normally.
-        hostMismatchProvider = {
-            mismatch: undefined,
-            onDidChangeMismatch: mismatchChangeEmitter.event,
+        pausedChangeEmitter = new EventEmitter<void>();
+        // Not paused by default, so the Target node renders normally.
+        pausedTargetProvider = {
+            paused: undefined,
+            onDidChangePaused: pausedChangeEmitter.event,
         };
 
         // Components and the provider subscribe to these in their constructors.
@@ -77,7 +77,7 @@ describe("RemoteConfigurationDataProvider", () => {
             instance(mockWorkspaceFolderManager),
             instance(mockBundleFileSet),
             instance(mockBundleWatcher),
-            hostMismatchProvider
+            pausedTargetProvider
         );
         return provider;
     }
@@ -179,13 +179,14 @@ describe("RemoteConfigurationDataProvider", () => {
     });
 
     it("copies just the target name from the host-mismatch Target row", async () => {
-        hostMismatchProvider = {
-            mismatch: {
+        pausedTargetProvider = {
+            paused: {
+                target: "dev",
+                reason: "host-mismatch",
                 envHost: "dogfood.cloud.databricks.com",
                 targetHost: "logfood.cloud.databricks.com",
-                target: "dev",
             },
-            onDidChangeMismatch: mismatchChangeEmitter.event,
+            onDidChangePaused: pausedChangeEmitter.event,
         };
         when(mockConfigModel.target).thenReturn("dev");
         when(mockConfigModel.get("mode")).thenResolve("development" as any);
@@ -198,5 +199,27 @@ describe("RemoteConfigurationDataProvider", () => {
 
         expect(targetRow?.description).to.contain("targets");
         expect(targetRow?.copyText).to.equal("dev");
+    });
+
+    it("shows a paused Target row (no host) for an unresolved target", async () => {
+        pausedTargetProvider = {
+            paused: {
+                target: "dev",
+                reason: "multi-file",
+                envHost: "dogfood.cloud.databricks.com",
+            },
+            onDidChangePaused: pausedChangeEmitter.event,
+        };
+        when(mockConfigModel.target).thenReturn("dev");
+        // The config never loaded for this target, so there's no host — the
+        // paused badge must still render instead of "Invalid host".
+        when(mockConfigModel.get("host")).thenResolve(undefined as any);
+
+        const roots = await make().getChildren();
+        const targetRow = roots.find((r) => labelOf(r) === "Target");
+
+        expect(targetRow?.description).to.equal("dev — paused");
+        expect(targetRow?.copyText).to.equal("dev");
+        expect(labelOf(targetRow!)).to.equal("Target");
     });
 });

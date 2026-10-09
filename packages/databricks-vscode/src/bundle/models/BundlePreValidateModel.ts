@@ -28,6 +28,14 @@ export type BundlePreValidateState = {
 export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreValidateState> {
     protected mutex = new Mutex();
     private target: string | undefined;
+    /**
+     * The host of the pinned session credentials in Remote SSH mode. A target
+     * with no `workspace.host` of its own is run by the CLI against
+     * `DATABRICKS_HOST` (the session host), so config loading uses this as the
+     * host rather than throwing on an empty one. Unset in normal mode, where a
+     * host-less target still surfaces as an invalid host.
+     */
+    private sessionHost: URL | undefined;
     /** Any bundle file changed, whether or not a target is set. */
     public readonly onDidChangeBundleFiles: Event<void>;
 
@@ -161,17 +169,40 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         this.resetCache();
     }
 
+    /**
+     * Set (or clear) the session host used as the fallback for a host-less
+     * target, and reload so the pre-validate state reflects it. Called when the
+     * environment credentials are pinned in Remote SSH mode.
+     */
+    public async setSessionHost(host: URL | undefined) {
+        if (this.sessionHost?.toString() === host?.toString()) {
+            return;
+        }
+        this.sessionHost = host;
+        await this.stateCache.refresh();
+    }
+
     protected readStateFromTarget(
         target?: BundleTarget
     ): BundlePreValidateState | undefined {
-        return target
-            ? {
-                  ...target,
-                  host: UrlUtils.normalizeHost(target?.workspace?.host ?? ""),
-                  mode: target?.mode as BundlePreValidateState["mode"],
-                  authParams: undefined,
-              }
-            : undefined;
+        if (target === undefined) {
+            return undefined;
+        }
+        // Fall back to the session host (remote mode only) when the target sets
+        // no host of its own, mirroring the credential guard's `session` case.
+        const host =
+            target.workspace?.host || this.sessionHost?.toString() || "";
+        return {
+            ...target,
+            host: UrlUtils.normalizeHost(host),
+            mode: target?.mode as BundlePreValidateState["mode"],
+            authParams: undefined,
+        };
+    }
+
+    /** See {@link BundleFileSet.hasNegatedGlobClass}. */
+    public hasUnsupportedIncludeGlob(): Promise<boolean> {
+        return this.bundleFileSet.hasNegatedGlobClass();
     }
 
     private getRawTargetData(bundle: BundleSchema, target: string) {

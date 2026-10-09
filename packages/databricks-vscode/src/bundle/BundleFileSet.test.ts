@@ -83,6 +83,54 @@ describe(__filename, async function () {
         expect(devWorkspace).to.not.have.property("<<");
     });
 
+    it("merges a `<<` sequence last-map-wins, like the CLI's Go yaml", async () => {
+        // A sequence merge key `<<: [*s, *o]` is first-map-wins in the JS parser
+        // (YAML 1.1 spec) but last-map-wins in the CLI's loader, so the guard
+        // would read `session` while the CLI sends the token to `other`.
+        // parseBundleYaml reverses the sequence to match the CLI.
+        const file = path.join(tmpdir.path, "databricks.yml");
+        await fs.writeFile(
+            file,
+            [
+                "x-s: &s {host: https://session.invalid}",
+                "x-o: &o {host: https://other.invalid}",
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "    workspace:",
+                "      <<: [*s, *o]",
+                "",
+            ].join("\n")
+        );
+
+        const data = await parseBundleYaml(Uri.file(file));
+
+        const devWorkspace = data.targets?.dev?.workspace as
+            | Record<string, unknown>
+            | undefined;
+        expect(devWorkspace?.host).to.equal("https://other.invalid");
+        expect(devWorkspace).to.not.have.property("<<");
+    });
+
+    it("flags an include pattern with a `[!…]` class (Go reads it literally)", async () => {
+        // minimatch/glob negate `[!_]`; Go's filepath.Match treats `[!_]` as the
+        // literal chars `!`/`_`. The guard can't trust which files loaded, so it
+        // fails closed via this signal.
+        await fs.writeFile(
+            path.join(tmpdir.path, "databricks.yml"),
+            yaml.stringify({include: ["conf/[!_]*.yml"]} as BundleSchema)
+        );
+        const flagged = new BundleFileSet(getWorkspaceFolderManagerMock());
+        expect(await flagged.hasNegatedGlobClass()).to.be.true;
+
+        await fs.writeFile(
+            path.join(tmpdir.path, "databricks.yml"),
+            yaml.stringify({include: ["conf/*.yml"]} as BundleSchema)
+        );
+        const plain = new BundleFileSet(getWorkspaceFolderManagerMock());
+        expect(await plain.hasNegatedGlobClass()).to.be.false;
+    });
+
     it("getIncludedFiles matches dotfiles like the CLI's Go glob", async () => {
         // Go's filepath.Glob (the CLI) matches dotfiles with `*`; node-glob
         // skips them unless {dot: true}. A dotfile include that sets

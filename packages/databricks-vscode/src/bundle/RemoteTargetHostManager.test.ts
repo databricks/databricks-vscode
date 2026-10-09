@@ -103,7 +103,7 @@ describe("RemoteTargetHostManager", () => {
             fakeConnection as unknown as ConnectionManager
         );
         let count = 0;
-        manager.onDidChangeMismatch(() => count++);
+        manager.onDidChangePaused(() => count++);
         return {manager, changes: () => count};
     }
 
@@ -120,10 +120,11 @@ describe("RemoteTargetHostManager", () => {
 
         await fakeConfig.fire();
 
-        assert.deepStrictEqual(manager.mismatch, {
+        assert.deepStrictEqual(manager.paused, {
+            target: "prod",
+            reason: "host-mismatch",
             envHost: ENV_HOST.hostname,
             targetHost: TARGET_HOST.hostname,
-            target: "prod",
         });
         assert.strictEqual(changes(), 1);
     });
@@ -140,7 +141,7 @@ describe("RemoteTargetHostManager", () => {
 
         await fakeConfig.fire();
 
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.strictEqual(manager.paused, undefined);
     });
 
     it("does not flag when no target is selected", async () => {
@@ -151,7 +152,7 @@ describe("RemoteTargetHostManager", () => {
 
         await fakeConfig.fire();
 
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.strictEqual(manager.paused, undefined);
     });
 
     it("does not flag when not connected (no environment host)", async () => {
@@ -162,7 +163,7 @@ describe("RemoteTargetHostManager", () => {
 
         await fakeConfig.fire();
 
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.strictEqual(manager.paused, undefined);
     });
 
     it("does not flag a target with no host (the CLI uses the session host)", async () => {
@@ -173,18 +174,22 @@ describe("RemoteTargetHostManager", () => {
 
         await fakeConfig.fire();
 
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.strictEqual(manager.paused, undefined);
     });
 
-    it("does not flag an unparseable host (invalid-host path owns it)", async () => {
+    it("pauses an unresolved target and names its reason", async () => {
         const {manager} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
-        fakeConfig.resolution = {kind: "unresolved"};
+        fakeConfig.resolution = {kind: "unresolved", reason: "multi-file"};
 
         await fakeConfig.fire();
 
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.deepStrictEqual(manager.paused, {
+            target: "prod",
+            reason: "multi-file",
+            envHost: ENV_HOST.hostname,
+        });
     });
 
     it("re-evaluates when the target's workspace.host changes", async () => {
@@ -194,23 +199,23 @@ describe("RemoteTargetHostManager", () => {
         fakeConfig.setTargetHost(TARGET_HOST);
 
         await fakeConfig.fire();
-        assert.notStrictEqual(manager.mismatch, undefined);
+        assert.notStrictEqual(manager.paused, undefined);
 
         // The user fixes workspace.host in databricks.yml; the target name
         // doesn't change, so only the host-key event fires.
         fakeConfig.setTargetHost(ENV_HOST);
         await fakeConfig.fireHostChange();
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.strictEqual(manager.paused, undefined);
 
         // Breaking it again flags again.
         fakeConfig.setTargetHost(TARGET_HOST);
         await fakeConfig.fireHostChange();
-        assert.notStrictEqual(manager.mismatch, undefined);
+        assert.notStrictEqual(manager.paused, undefined);
         // set → clear → set is three distinct changes.
         assert.strictEqual(changes(), 3);
     });
 
-    it("fires onDidChangeMismatch only when the mismatch changes", async () => {
+    it("fires onDidChangePaused only when the paused state changes", async () => {
         const {changes} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
@@ -223,56 +228,56 @@ describe("RemoteTargetHostManager", () => {
         assert.strictEqual(changes(), 1);
     });
 
-    it("clears the mismatch when the target clears, and restores it when it returns", async () => {
+    it("clears the paused state when the target clears, and restores it when it returns", async () => {
         const {manager} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
 
         await fakeConfig.fire();
-        assert.notStrictEqual(manager.mismatch, undefined);
+        assert.notStrictEqual(manager.paused, undefined);
 
         // A folder switch clears the target before resolving the new folder's.
         fakeConfig.target = undefined;
         await fakeConfig.fire();
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.strictEqual(manager.paused, undefined);
 
         // The new folder's target has the same mismatch: it shows again.
         fakeConfig.target = "prod";
         await fakeConfig.fire();
-        assert.notStrictEqual(manager.mismatch, undefined);
+        assert.notStrictEqual(manager.paused, undefined);
     });
 
-    it("clears the mismatch when the connection drops", async () => {
+    it("clears the paused state when the connection drops", async () => {
         const {manager} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
         await fakeConfig.fire();
-        assert.notStrictEqual(manager.mismatch, undefined);
+        assert.notStrictEqual(manager.paused, undefined);
 
         // A failed reconnect ends DISCONNECTED with no workspace.
         fakeConnection.setEnvHost(undefined);
         await fakeConnection.fireStateChange();
 
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.strictEqual(manager.paused, undefined);
     });
 
-    it("clears the mismatch when evaluating it throws", async () => {
+    it("clears the paused state when evaluating it throws", async () => {
         const {manager} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
         fakeConfig.setTargetHost(TARGET_HOST);
         await fakeConfig.fire();
-        assert.notStrictEqual(manager.mismatch, undefined);
+        assert.notStrictEqual(manager.paused, undefined);
 
         fakeConfig.getError = new Error("no config");
         await fakeConfig.fire();
 
-        assert.strictEqual(manager.mismatch, undefined);
+        assert.strictEqual(manager.paused, undefined);
     });
 
-    it("changes the mismatch only once when two evaluations overlap", async () => {
+    it("changes the paused state only once when two evaluations overlap", async () => {
         const {manager, changes} = build();
         fakeConnection.setEnvHost(ENV_HOST);
         fakeConfig.target = "prod";
@@ -280,7 +285,7 @@ describe("RemoteTargetHostManager", () => {
 
         await fakeConfig.fireConcurrentTwice();
 
-        assert.notStrictEqual(manager.mismatch, undefined);
+        assert.notStrictEqual(manager.paused, undefined);
         assert.strictEqual(changes(), 1);
     });
 });

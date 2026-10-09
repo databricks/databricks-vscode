@@ -177,6 +177,20 @@ describe("BundlePreValidateModel", async function () {
         expect(ws.profile).to.be.undefined;
     });
 
+    it("resolves a host-less target to the session host (remote mode)", async () => {
+        // The CLI runs a target with no workspace.host against DATABRICKS_HOST
+        // (the session host). Config loading mirrors that: with a session host
+        // pinned, readStateFromTarget uses it instead of throwing on "", so the
+        // Target row and the Bundle Resource Explorer populate.
+        await writeRoot(["targets:", "  dev:", "    default: true"]);
+        const model = makeModel();
+        model.setTarget("dev");
+        await model.setSessionHost(new URL(SESSION_HOST));
+
+        const host = await model.get("host");
+        expect(host?.toString()).to.equal(new URL(SESSION_HOST).toString());
+    });
+
     it("getWorkspaceAuthFileCounts counts a host set in more than one file (Repro B)", async () => {
         // Top-level workspace.host in databricks.yml plus a target host in an
         // included file: two files set the host. The CLI's last-file-wins merge

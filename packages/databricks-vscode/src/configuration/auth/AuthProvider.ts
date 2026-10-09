@@ -19,11 +19,20 @@ export type AuthType =
     | "pat";
 
 /**
+ * The outcome of a {@link BundleAuthGuard} check. When refused, `reason` is a
+ * short phrase naming why (e.g. "it deploys to a different workspace than this
+ * session"), so callers can show the real cause instead of a fixed message.
+ */
+export type BundleAuthDecision =
+    | {allowed: true}
+    | {allowed: false; reason: string};
+
+/**
  * Checked right before an authenticated bundle CLI call: whether the
  * credentials may be sent for this target. The CLI sends them to the target's
  * own workspace.host.
  */
-export type BundleAuthGuard = (target: string) => Promise<boolean>;
+export type BundleAuthGuard = (target: string) => Promise<BundleAuthDecision>;
 
 export abstract class AuthProvider {
     constructor(

@@ -74,23 +74,26 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
     }
 
     protected async readState(): Promise<BundleValidateState> {
-        if (
-            !this.target ||
-            !this.authProvider ||
-            !this.workspaceFolderManager.activeProjectUri
-        ) {
+        // Snapshot target + auth + project root before the guard's await: a
+        // setTarget / setAuthProvider / folder change that lands during the
+        // await must not let the CLI run a target the guard never checked (or
+        // with swapped credentials or a different project root).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        const projectRoot = this.workspaceFolderManager.activeProjectUri;
+        if (!target || !authProvider || !projectRoot) {
             return {};
         }
-        if (this.authGuard && !(await this.authGuard(this.target))) {
+        if (this.authGuard && !(await this.authGuard(target)).allowed) {
             return {};
         }
 
         const validateOutput = JSON.parse(
             (
                 await this.cli.bundleValidate(
-                    this.target,
-                    this.authProvider,
-                    this.workspaceFolderManager.activeProjectUri,
+                    target,
+                    authProvider,
+                    projectRoot,
                     workspaceConfigs.databrickscfgLocation,
                     this.logger
                 )

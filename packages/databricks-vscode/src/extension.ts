@@ -869,7 +869,8 @@ export async function activate(
             remoteBundlePreValidateModel,
             remoteBundleRemoteStateModel,
             customWhenContext,
-            stateStorage
+            stateStorage,
+            true // remote mode
         );
         const remoteConnectionManager = new ConnectionManager(
             cli,
@@ -1038,7 +1039,8 @@ export async function activate(
         bundlePreValidateModel,
         bundleRemoteStateModel,
         customWhenContext,
-        stateStorage
+        stateStorage,
+        false // normal mode
     );
 
     const bundleEngineManager = new BundleEngineManager(

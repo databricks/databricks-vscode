@@ -52,7 +52,7 @@ describe("BundleValidateModel", () => {
         const model = buildModel({bundle: {name: "proj"}});
         model.setAuthProvider(
             {toJSON: () => ({})} as unknown as AuthProvider,
-            async () => false
+            async () => ({allowed: false, reason: "nope"})
         );
 
         assert.deepStrictEqual(await model.load(), {});
