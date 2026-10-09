@@ -1921,13 +1921,16 @@
                         "description": "Override location for the Databricks CLI (defaults to the CLI bundled with this extension). *Warning:* it is recommended NOT to set this. If you override the CLI to an outdated version this extension may break."
                     },
                     "databricks.proxy.strictSSL": {
-                        "type": "boolean",
-                        "default": true,
-                        "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. When unset, the built-in `#http.proxyStrictSSL#` value is used. Set to `false` only when a corporate CA certificate cannot be resolved from the system trust store."
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "default": null,
+                        "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. When unset (`null`), the built-in `#http.proxyStrictSSL#` value is used. Set to `false` only when a corporate CA certificate cannot be resolved from the system trust store."
                     },
                     "databricks.proxy.caCert": {
                         "type": "string",
-                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with Node's built-in roots and (unless `#http.systemCertificates#` is off) the OS trust store. Use when a corporate CA cannot be read from the system store — in particular on Windows, where the extension does not read the system certificate store and relies on this setting for internal CAs."
+                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with Node's built-in roots and, on macOS and Linux (unless `#http.systemCertificates#` is off), the OS trust store. Use when a corporate CA cannot be read from the system store. On Windows, setting this stops VS Code from adding the Windows certificate store to these calls, so the file must contain every internal CA you need."
                     }
                 }
             }

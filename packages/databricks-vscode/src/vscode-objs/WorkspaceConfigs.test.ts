@@ -37,24 +37,30 @@ describe(__filename, () => {
                 false
             );
             assert.strictEqual(explicitBoolean(undefined), undefined);
+            assert.strictEqual(
+                explicitBoolean({globalValue: "false"}),
+                undefined
+            );
         });
     });
 
-    // The Settings UI removes a user value that equals the default, so a
-    // missing (implicitly `false`) default would make `false` impossible to set.
-    it("declares a true default for databricks.proxy.strictSSL", () => {
+    // The Settings UI removes a user value that equals the default, so any
+    // boolean default (including the implicit `false`) blocks one direction.
+    it("declares a null default for databricks.proxy.strictSSL", () => {
         assert.strictEqual(
             workspace.getConfiguration("databricks").inspect("proxy.strictSSL")
                 ?.defaultValue,
-            true
+            null
         );
     });
 
     describe("proxyStrictSSL", () => {
-        afterEach(async () => {
+        async function reset() {
             await set("databricks", "proxy.strictSSL", undefined);
             await set("http", "proxyStrictSSL", undefined);
-        });
+        }
+        beforeEach(reset);
+        afterEach(reset);
 
         it("defaults to true", () => {
             assert.strictEqual(workspaceConfigs.proxyStrictSSL, true);
@@ -77,9 +83,11 @@ describe(__filename, () => {
     });
 
     describe("httpSystemCertificates", () => {
-        afterEach(async () => {
+        async function reset() {
             await set("http", "systemCertificates", undefined);
-        });
+        }
+        beforeEach(reset);
+        afterEach(reset);
 
         it("defaults to true", () => {
             assert.strictEqual(workspaceConfigs.httpSystemCertificates, true);

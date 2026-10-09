@@ -260,9 +260,8 @@ export const workspaceConfigs = {
     /**
      * Absolute path to a PEM bundle of additional CA certificates to trust for
      * the extension's SDK calls, merged with Node's built-in roots and (unless
-     * `http.systemCertificates` is off) the OS trust store. An
-     * escape hatch for corporate CAs that can't be read from the system store
-     * (e.g. older runtimes where the native reader is unavailable).
+     * `http.systemCertificates` is off) the OS trust store. An escape hatch for
+     * corporate CAs that can't be read from the system store.
      */
     get proxyCaCert(): string | undefined {
         return (

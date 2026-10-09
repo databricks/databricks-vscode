@@ -121,9 +121,8 @@ let loadSystemCertificatesImpl: (
  * *not* ship (it publishes no prebuilds and can't be cross-compiled on the Linux
  * release runner), so on Windows that read throws and we fall back here. When the
  * read fails we swallow it so the caller uses Node's bundled roots instead of
- * failing the whole SDK request. Windows users behind an internal CA point
- * `databricks.proxy.caCert` at their PEM (or opt out via
- * `databricks.proxy.strictSSL`): a missing custom CA is recoverable, a broken
+ * failing the whole SDK request: with no explicit `ca`, VS Code's own TLS patch
+ * still adds the Windows store. A missing custom CA is recoverable, a broken
  * agent is not.
  */
 async function getSystemCertificates(
@@ -319,10 +318,10 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
 /**
  * Build the HTTP(S) agent the Databricks SDK should use, wiring in the proxy
  * (VS Code `http.proxy` setting + `http(s)_proxy` env vars, honouring
- * `NO_PROXY`) and, unless `http.systemCertificates` is off, the
- * OS certificate trust store. This is what lets the in-process SDK calls work
- * behind corporate proxies and internal-CA TLS interception, matching the
- * bundled CLI's behaviour.
+ * `NO_PROXY`) and, unless `http.systemCertificates` is off, the OS certificate
+ * trust store. This is what lets the in-process SDK calls work behind corporate
+ * proxies and internal-CA TLS interception, matching the bundled CLI's
+ * behaviour.
  */
 export async function getDatabricksHttpAgent(
     host: URL,
