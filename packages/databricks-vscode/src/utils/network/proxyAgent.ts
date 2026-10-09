@@ -319,7 +319,7 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
 /**
  * Build the HTTP(S) agent the Databricks SDK should use, wiring in the proxy
  * (VS Code `http.proxy` setting + `http(s)_proxy` env vars, honouring
- * `NO_PROXY`) and, unless `databricks.proxy.useSystemCertificates` is off, the
+ * `NO_PROXY`) and, unless `http.systemCertificates` is off, the
  * OS certificate trust store. This is what lets the in-process SDK calls work
  * behind corporate proxies and internal-CA TLS interception, matching the
  * bundled CLI's behaviour.
@@ -335,7 +335,7 @@ export async function getDatabricksHttpAgent(
     // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
     const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
         [
-            workspaceConfigs.proxyUseSystemCertificates
+            workspaceConfigs.httpSystemCertificates
                 ? getSystemCertificates(params)
                 : undefined,
             loadConfiguredCaCert(),

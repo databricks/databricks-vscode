@@ -42,15 +42,13 @@ describe(__filename, () => {
 
     // The Settings UI removes a user value that equals the default, so a
     // missing (implicitly `false`) default would make `false` impossible to set.
-    for (const key of ["proxy.strictSSL", "proxy.useSystemCertificates"]) {
-        it(`declares a true default for databricks.${key}`, () => {
-            assert.strictEqual(
-                workspace.getConfiguration("databricks").inspect(key)
-                    ?.defaultValue,
-                true
-            );
-        });
-    }
+    it("declares a true default for databricks.proxy.strictSSL", () => {
+        assert.strictEqual(
+            workspace.getConfiguration("databricks").inspect("proxy.strictSSL")
+                ?.defaultValue,
+            true
+        );
+    });
 
     describe("proxyStrictSSL", () => {
         afterEach(async () => {
@@ -78,41 +76,18 @@ describe(__filename, () => {
         });
     });
 
-    describe("proxyUseSystemCertificates", () => {
+    describe("httpSystemCertificates", () => {
         afterEach(async () => {
-            await set("databricks", "proxy.useSystemCertificates", undefined);
             await set("http", "systemCertificates", undefined);
         });
 
         it("defaults to true", () => {
-            assert.strictEqual(
-                workspaceConfigs.proxyUseSystemCertificates,
-                true
-            );
+            assert.strictEqual(workspaceConfigs.httpSystemCertificates, true);
         });
 
-        it("falls back to http.systemCertificates when unset", async () => {
+        it("follows http.systemCertificates", async () => {
             await set("http", "systemCertificates", false);
-            assert.strictEqual(
-                workspaceConfigs.proxyUseSystemCertificates,
-                false
-            );
-        });
-
-        it("lets databricks.proxy.useSystemCertificates override http.systemCertificates", async () => {
-            await set("http", "systemCertificates", false);
-            await set("databricks", "proxy.useSystemCertificates", true);
-            assert.strictEqual(
-                workspaceConfigs.proxyUseSystemCertificates,
-                true
-            );
-
-            await set("http", "systemCertificates", true);
-            await set("databricks", "proxy.useSystemCertificates", false);
-            assert.strictEqual(
-                workspaceConfigs.proxyUseSystemCertificates,
-                false
-            );
+            assert.strictEqual(workspaceConfigs.httpSystemCertificates, false);
         });
     });
 });

@@ -260,7 +260,7 @@ export const workspaceConfigs = {
     /**
      * Absolute path to a PEM bundle of additional CA certificates to trust for
      * the extension's SDK calls, merged with Node's built-in roots and (unless
-     * `databricks.proxy.useSystemCertificates` is off) the OS trust store. An
+     * `http.systemCertificates` is off) the OS trust store. An
      * escape hatch for corporate CAs that can't be read from the system store
      * (e.g. older runtimes where the native reader is unavailable).
      */
@@ -273,19 +273,10 @@ export const workspaceConfigs = {
     },
 
     /**
-     * Whether the extension merges the OS certificate store into the CA bundle of
-     * its SDK calls. `databricks.proxy.useSystemCertificates`, when explicitly
-     * set, overrides the built-in `http.systemCertificates`; both default to
-     * `true`. When off, the extension leaves the OS store to VS Code's own
-     * handling, unless `caCert` is set.
+     * The `http.systemCertificates` VS Code setting, mirrored for the SDK CA
+     * bundle: when off, the extension doesn't merge the OS certificate store.
      */
-    get proxyUseSystemCertificates(): boolean {
-        const override = explicitDatabricksBoolean(
-            "proxy.useSystemCertificates"
-        );
-        if (override !== undefined) {
-            return override;
-        }
+    get httpSystemCertificates(): boolean {
         return (
             workspace
                 .getConfiguration("http")
