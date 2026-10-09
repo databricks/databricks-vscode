@@ -61,6 +61,19 @@ describe("uv workspace signals", () => {
             ).to.equal(undefined);
         });
 
+        it("does not treat a project that declares its own workspace as a member", () => {
+            // uv uses the project's own workspace, and its local .venv.
+            write("pyproject.toml", WORKSPACE_PYPROJECT);
+            write(
+                "bundles/a/pyproject.toml",
+                MEMBER_PYPROJECT + "[tool.uv.workspace]\nmembers = []\n"
+            );
+
+            expect(findUvWorkspaceRoot(path.join(tmp, "bundles/a"))).to.equal(
+                undefined
+            );
+        });
+
         it("does not treat the workspace root itself as a member", () => {
             // setup-local at the root provisions the root .venv uv uses, so the
             // managed flow works there.
@@ -96,6 +109,20 @@ describe("uv workspace signals", () => {
             write("pyproject.toml", '[tool.uv.workspace]\nmembers = ["**"]\n');
             write("bundles/pyproject.toml", "[tool.ruff]\nline-length = 88\n");
             write("bundles/a/pyproject.toml", MEMBER_PYPROJECT);
+
+            expect(findUvWorkspaceRoot(path.join(tmp, "bundles/a"))).to.equal(
+                undefined
+            );
+        });
+
+        it("stops at a nearer pyproject that cannot be read", function () {
+            if (process.platform === "win32") {
+                this.skip();
+            }
+            write("pyproject.toml", '[tool.uv.workspace]\nmembers = ["**"]\n');
+            write("bundles/pyproject.toml", "[tool.ruff]\n");
+            write("bundles/a/pyproject.toml", MEMBER_PYPROJECT);
+            fs.chmodSync(path.join(tmp, "bundles/pyproject.toml"), 0o000);
 
             expect(findUvWorkspaceRoot(path.join(tmp, "bundles/a"))).to.equal(
                 undefined

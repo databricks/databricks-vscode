@@ -527,6 +527,35 @@ describe("parseUvWorkspace", () => {
         });
     });
 
+    it("skips a multi-line value of another key, even one with nested arrays", () => {
+        const toml = [
+            "[tool.uv]",
+            "conflicts = [",
+            '    [{extra = "a"}, {extra = "b"}],',
+            "]",
+            'workspace = { members = ["pkgs/*"] }',
+        ].join("\n");
+        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
+    });
+
+    it("keeps brackets that are inside a quoted glob of an inline table", () => {
+        const toml =
+            '[tool.uv]\nworkspace = { members = ["bundles/[ab]", "libs/*"] }\n';
+        expect(parseUvWorkspace(toml)?.members).to.deep.equal([
+            "bundles/[ab]",
+            "libs/*",
+        ]);
+    });
+
+    it("keeps a # that is inside a quoted glob", () => {
+        const toml =
+            '[tool.uv.workspace]\nmembers = ["libs/#internal", "pkgs/*"] # x\n';
+        expect(parseUvWorkspace(toml)?.members).to.deep.equal([
+            "libs/#internal",
+            "pkgs/*",
+        ]);
+    });
+
     it("reads a workspace table that declares no members", () => {
         expect(parseUvWorkspace("[tool.uv.workspace]\n")).to.deep.equal({
             members: [],
@@ -571,6 +600,21 @@ describe("uvWorkspaceIncludes", () => {
 
     it("does not include a folder that no member glob matches", () => {
         expect(uvWorkspaceIncludes(workspace, "tools/a")).to.equal(false);
+    });
+
+    it("matches braces literally, as uv does", () => {
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["pkgs/{a,b}"], exclude: []},
+                "pkgs/a"
+            )
+        ).to.equal(false);
+    });
+
+    it("ignores a trailing slash or a leading ./ in a glob", () => {
+        expect(
+            uvWorkspaceIncludes({members: ["./pkgs/a/"], exclude: []}, "pkgs/a")
+        ).to.equal(true);
     });
 
     it("does not include an excluded folder", () => {

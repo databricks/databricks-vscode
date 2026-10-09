@@ -297,9 +297,7 @@ export function parseUvWorkspace(
     }
     let workspace: UvWorkspace | undefined;
     const declare = () => (workspace ??= {members: [], exclude: []});
-    const lines = contents
-        .split(/\r?\n/)
-        .map((line) => line.split("#", 1)[0].trim());
+    const lines = contents.split(/\r?\n/).map(stripTomlComment);
     let table = "";
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -315,6 +313,12 @@ export function parseUvWorkspace(
         if (!assignment) {
             continue;
         }
+        // An array or inline table may span lines until its brackets close;
+        // consume them all, so a nested line is never read as a header.
+        let value = assignment[2];
+        while (!bracketsClosed(value) && i + 1 < lines.length) {
+            value += " " + lines[++i];
+        }
         const key = [table, assignment[1].replace(/\s+/g, "")]
             .filter(Boolean)
             .join(".");
@@ -323,11 +327,6 @@ export function parseUvWorkspace(
             !key.startsWith(`${UV_WORKSPACE_KEY}.`)
         ) {
             continue;
-        }
-        // An array or inline table may span lines until its brackets close.
-        let value = assignment[2];
-        while (!bracketsClosed(value) && i + 1 < lines.length) {
-            value += " " + lines[++i];
         }
         const declared = declare();
         if (key === UV_WORKSPACE_KEY) {
@@ -344,6 +343,30 @@ export function parseUvWorkspace(
 
 const TOML_STRING = /"((?:[^"\\]|\\.)*)"|'([^']*)'/g;
 
+/** The index of the first `target` outside a quoted string, or -1. */
+function indexOutsideStrings(text: string, target: string, from = 0): number {
+    let quote: string | undefined;
+    for (let i = from; i < text.length; i++) {
+        const char = text[i];
+        if (quote === '"' && char === "\\") {
+            i++;
+        } else if (quote !== undefined) {
+            quote = char === quote ? undefined : quote;
+        } else if (char === '"' || char === "'") {
+            quote = char;
+        } else if (char === target) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/** The line without its `#` comment (a `#` inside a string stays), trimmed. */
+function stripTomlComment(line: string): string {
+    const comment = indexOutsideStrings(line, "#");
+    return (comment === -1 ? line : line.slice(0, comment)).trim();
+}
+
 function bracketsClosed(value: string): boolean {
     const bare = value.replace(TOML_STRING, "");
     const opened = (bare.match(/[[{]/g) ?? []).length;
@@ -356,16 +379,20 @@ function tomlStrings(value: string): string[] {
 }
 
 function inlineArray(value: string, name: string): string[] {
-    const array = new RegExp(
-        `(?:^|[{,\\s])${name}\\s*=\\s*\\[([^\\]]*)\\]`
-    ).exec(value);
-    return array ? tomlStrings(array[1]) : [];
+    const start = new RegExp(`(?:^|[{,\\s])${name}\\s*=\\s*\\[`).exec(value);
+    if (!start) {
+        return [];
+    }
+    const from = start.index + start[0].length;
+    const end = indexOutsideStrings(value, "]", from);
+    return tomlStrings(value.slice(from, end === -1 ? undefined : end));
 }
 
 /**
  * Whether a uv workspace includes the folder at `memberPath` (relative to the
  * workspace root, `/`-separated): a `members` glob matches it and no `exclude`
- * glob does. A `*` does not cross a folder boundary, as in uv.
+ * glob does. As in uv, a `*` does not cross a folder boundary and braces are
+ * literal.
  */
 export function uvWorkspaceIncludes(
     workspace: UvWorkspace,
@@ -373,7 +400,18 @@ export function uvWorkspaceIncludes(
 ): boolean {
     const matches = (globs: string[]) =>
         globs.some((glob) =>
-            minimatch(memberPath, path.posix.normalize(glob), {dot: true})
+            minimatch(
+                memberPath,
+                path.posix.normalize(glob).replace(/\/+$/, ""),
+                {
+                    // uv's glob syntax has no braces, extglobs, negation, or comments.
+                    dot: true,
+                    nobrace: true,
+                    noext: true,
+                    nonegate: true,
+                    nocomment: true,
+                }
+            )
         );
     return matches(workspace.members) && !matches(workspace.exclude);
 }

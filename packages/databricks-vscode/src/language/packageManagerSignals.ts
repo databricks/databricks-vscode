@@ -74,19 +74,24 @@ export function collectPackageManagerSignals(
 
 /**
  * The root of the uv workspace that `projectRoot` is a member of, or
- * `undefined` for a standalone project. Follows uv's discovery: only the
- * nearest ancestor `pyproject.toml` counts, and it makes the project a member
- * only if it declares a workspace whose globs include the project.
+ * `undefined` for a standalone project or a workspace root. Follows uv's
+ * discovery: only the nearest ancestor `pyproject.toml` counts, and it makes
+ * the project a member only if it declares a workspace whose globs include the
+ * project.
  */
 export function findUvWorkspaceRoot(
     projectRoot: string,
     log: SignalDebugLog = noopLog
 ): string | undefined {
     const project = path.resolve(projectRoot);
+    // A project that declares its own workspace is that workspace's root.
+    if (parseUvWorkspace(readPyproject(project, log)) !== undefined) {
+        return undefined;
+    }
     for (let dir = path.dirname(project); ; dir = path.dirname(dir)) {
-        const pyproject = readPyproject(dir, log);
-        if (pyproject !== undefined) {
-            const workspace = parseUvWorkspace(pyproject);
+        // An unreadable pyproject.toml still ends discovery, as in uv.
+        if (fileExists(dir, "pyproject.toml", log)) {
+            const workspace = parseUvWorkspace(readPyproject(dir, log));
             const memberPath = path
                 .relative(dir, project)
                 .split(path.sep)

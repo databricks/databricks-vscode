@@ -28,7 +28,9 @@ VPEX setup flow with first-party data. The signal ids are the closed
 It is emitted only while `CONNECTED`, so the data describes active users'
 projects, not installs that never authenticate. Emissions are deduplicated per
 session on `(setupTrigger, projectRoot)`; no path is sent, so treat each event
-as one `(session, trigger)` observation.
+as one `(session, trigger)` observation. Detection is best-effort: a failed probe
+degrades to an absent signal or `unknown`, and is never thrown into the
+setup or run flow.
 
 ### Why `*.onPath` never appears in real data
 
