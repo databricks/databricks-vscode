@@ -563,6 +563,17 @@ describe("parseUvWorkspace", () => {
         expect(parseUvWorkspace(toml)).to.equal(undefined);
     });
 
+    it("ignores triple quotes inside a comment", () => {
+        const toml = [
+            '# long text uses """',
+            "[tool.uv.workspace]",
+            'members = ["pkgs/*"]',
+            "[project]",
+            'description = """x"""',
+        ].join("\n");
+        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
+    });
+
     it("skips brackets inside a multi-line string", () => {
         const toml = [
             "[project]",

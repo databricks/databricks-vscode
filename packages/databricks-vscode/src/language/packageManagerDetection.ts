@@ -285,8 +285,8 @@ const ARRAY_TABLE = "[[]]";
 /**
  * The uv workspace a `pyproject.toml` declares, or `undefined` if none. Reads
  * the `[tool.uv.workspace]` table, an inline `workspace = {...}` under
- * `[tool.uv]`, and dotted `workspace.members` keys. A bounded, comment-aware
- * line scan like {@link pyprojectHasToolSection}, not a full TOML parser.
+ * `[tool.uv]`, and dotted `workspace.members` keys. A bounded scan that knows
+ * comments, strings, and multi-line values, not a full TOML parser.
  */
 export function parseUvWorkspace(
     contents: string | undefined
@@ -296,12 +296,20 @@ export function parseUvWorkspace(
     }
     let workspace: UvWorkspace | undefined;
     const declare = () => (workspace ??= {members: [], exclude: []});
-    // Multi-line strings can hold anything, including text that looks like a
-    // header or a bracket, so blank them out first.
+    // One left-to-right pass drops comments and blanks multi-line strings,
+    // which can hold anything, including text that looks like a header. A
+    // single-line string is kept whole, so a `#` inside it survives, and a
+    // `"""` inside a comment never opens a string.
     const lines = contents
-        .replace(/"""[\s\S]*?"""|'''[\s\S]*?'''/g, '""')
+        .replace(TOML_TOKEN, (token) =>
+            token.startsWith("#")
+                ? ""
+                : token.startsWith('"""') || token.startsWith("'''")
+                  ? '""'
+                  : token
+        )
         .split(/\r?\n/)
-        .map(stripTomlComment);
+        .map((line) => line.trim());
     let table = "";
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -344,6 +352,8 @@ export function parseUvWorkspace(
 }
 
 const TOML_STRING = /"((?:[^"\\]|\\.)*)"|'([^']*)'/g;
+const TOML_TOKEN =
+    /"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|#[^\n]*/g;
 
 /** The index of the first `target` outside a quoted string, or -1. */
 function indexOutsideStrings(text: string, target: string, from = 0): number {
@@ -361,12 +371,6 @@ function indexOutsideStrings(text: string, target: string, from = 0): number {
         }
     }
     return -1;
-}
-
-/** The line without its `#` comment (a `#` inside a string stays), trimmed. */
-function stripTomlComment(line: string): string {
-    const comment = indexOutsideStrings(line, "#");
-    return (comment === -1 ? line : line.slice(0, comment)).trim();
 }
 
 /** A dotted TOML key without its quotes and spaces: `tool."uv"` → `tool.uv`. */
