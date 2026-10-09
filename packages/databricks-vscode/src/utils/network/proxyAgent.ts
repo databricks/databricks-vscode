@@ -121,9 +121,8 @@ let loadSystemCertificatesImpl: (
  * *not* ship (it publishes no prebuilds and can't be cross-compiled on the Linux
  * release runner), so on Windows that read throws and we fall back here. When the
  * read fails we swallow it so the caller uses Node's bundled roots instead of
- * failing the whole SDK request. Windows users behind an internal CA point
- * `databricks.proxy.caCert` at their PEM (or opt out via
- * `databricks.proxy.strictSSL`): a missing custom CA is recoverable, a broken
+ * failing the whole SDK request: with no explicit `ca`, VS Code's own TLS patch
+ * still adds the Windows store. A missing custom CA is recoverable, a broken
  * agent is not.
  */
 async function getSystemCertificates(
@@ -245,9 +244,10 @@ async function loadNodeExtraCaCerts(): Promise<string | undefined> {
  * roots) and then extended with the OS trust store, the configured PEM, and the
  * `NODE_EXTRA_CA_CERTS` bundle. Setting `ca` *replaces* Node's defaults, so if we
  * set it to only the extra certs, public-root TLS would break — hence the merge.
- * When we have nothing to add (system store unreadable, no `caCert`, no
- * `NODE_EXTRA_CA_CERTS`), return `undefined` so the caller omits `ca` and Node
- * keeps its defaults.
+ * When neither OS certs nor a `caCert` need an explicit list, return
+ * `undefined` so the caller omits `ca`. Node's default store already has
+ * `NODE_EXTRA_CA_CERTS`, and any explicit `ca` stops VS Code's own TLS patch
+ * from adding the OS store (its `http.systemCertificates` handling).
  *
  * Deduped because the OS store commonly re-lists the public roots already in
  * `tls.rootCertificates`; a `Set` keeps the handed-off list minimal.
@@ -258,9 +258,8 @@ function buildCaBundle(
     nodeExtraCaCerts: string | undefined
 ): string[] | undefined {
     // @vscode/proxy-agent swallows a failed OS-store read and returns `[]`, so
-    // treat empty the same as unreadable: nothing to add on top of Node's
-    // bundled roots.
-    if (!systemCerts?.length && !configuredCaCert && !nodeExtraCaCerts) {
+    // treat empty the same as unreadable or disabled.
+    if (!systemCerts?.length && !configuredCaCert) {
         return undefined;
     }
     return [
@@ -319,9 +318,10 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
 /**
  * Build the HTTP(S) agent the Databricks SDK should use, wiring in the proxy
  * (VS Code `http.proxy` setting + `http(s)_proxy` env vars, honouring
- * `NO_PROXY`) and the OS certificate trust store. This is what lets the
- * in-process SDK calls work behind corporate proxies and internal-CA TLS
- * interception, matching the bundled CLI's behaviour.
+ * `NO_PROXY`) and, unless `http.systemCertificates` is off, the OS certificate
+ * trust store. This is what lets the in-process SDK calls work behind corporate
+ * proxies and internal-CA TLS interception, matching the bundled CLI's
+ * behaviour.
  */
 export async function getDatabricksHttpAgent(
     host: URL,
@@ -334,7 +334,9 @@ export async function getDatabricksHttpAgent(
     // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
     const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
         [
-            getSystemCertificates(params),
+            workspaceConfigs.httpSystemCertificates
+                ? getSystemCertificates(params)
+                : undefined,
             loadConfiguredCaCert(),
             loadNodeExtraCaCerts(),
         ]
@@ -348,10 +350,9 @@ export async function getDatabricksHttpAgent(
         isHttps ||
         (proxyUrl !== undefined && new URL(proxyUrl).protocol === "https:");
 
-    // Only set `ca` when we have certs to add on top of Node's bundled roots
-    // (which `buildCaBundle` already folds in). On the fallback path `ca` is
-    // `undefined`, so we omit it entirely and Node keeps its default store —
-    // passing `undefined`/`[]` would instead trust nothing.
+    // Only set `ca` when `buildCaBundle` built an explicit list (it already
+    // folds in Node's bundled roots). Otherwise omit it entirely so Node keeps
+    // its default store — passing `undefined`/`[]` would instead trust nothing.
     const agentOptions: https.AgentOptions = {
         keepAlive: true,
         keepAliveMsecs: KEEP_ALIVE_MSECS,
