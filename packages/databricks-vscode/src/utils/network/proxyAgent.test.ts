@@ -23,6 +23,8 @@ import {
 // `ca` list. It never has to verify anything — the tests only check membership.
 const FAKE_CA_PEM =
     "-----BEGIN CERTIFICATE-----\nMIIBFake\n-----END CERTIFICATE-----\n";
+const SYSTEM_CA_PEM =
+    "-----BEGIN CERTIFICATE-----\nMIIBSystem\n-----END CERTIFICATE-----\n";
 
 describe(__filename, () => {
     let configsSpy: typeof workspaceConfigs;
@@ -30,6 +32,8 @@ describe(__filename, () => {
 
     beforeEach(() => {
         existingEnv = Object.assign({}, process.env);
+        // Corporate machines often export this; tests that need it set it.
+        delete process.env.NODE_EXTRA_CA_CERTS;
         resetProxyAgentCaches();
         configsSpy = spy(workspaceConfigs);
         // Defaults: strict SSL on, no proxy or custom CA configured.
@@ -37,6 +41,7 @@ describe(__filename, () => {
         when(configsSpy.httpProxy).thenReturn(undefined);
         when(configsSpy.httpNoProxy).thenReturn([]);
         when(configsSpy.proxyCaCert).thenReturn(undefined);
+        when(configsSpy.httpSystemCertificates).thenReturn(true);
     });
 
     afterEach(() => {
@@ -299,6 +304,93 @@ describe(__filename, () => {
             );
         });
 
+        it("skips the system store when http.systemCertificates is off", async () => {
+            when(configsSpy.httpSystemCertificates).thenReturn(false);
+            let loaderCalled = false;
+            setSystemCertificatesLoaderForTests(async () => {
+                loaderCalled = true;
+                return [FAKE_CA_PEM];
+            });
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            assert.strictEqual(loaderCalled, false);
+            // Nothing to add, so `ca` is omitted and Node keeps its defaults.
+            assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+        });
+
+        it("leaves NODE_EXTRA_CA_CERTS to Node's default store when the system store is empty", async () => {
+            // E.g. Windows, where the extension can't read the store: VS Code's
+            // own patch must still be able to add it.
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "extra-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            process.env.NODE_EXTRA_CA_CERTS = pemPath;
+            setSystemCertificatesLoaderForTests(async () => []);
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
+        it("leaves the endpoint CA unset through a proxy when http.systemCertificates is off", async () => {
+            when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+            when(configsSpy.httpSystemCertificates).thenReturn(false);
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as HttpsProxyAgent<string>;
+            assert.ok(agent instanceof HttpsProxyAgent);
+
+            const opts = await captureEndpointConnectOpts(agent);
+            assert.strictEqual(opts?.ca, undefined);
+        });
+
+        it("leaves NODE_EXTRA_CA_CERTS to Node's default store when http.systemCertificates is off", async () => {
+            // An explicit `ca` would stop VS Code from adding the OS store to
+            // the connection; Node's default store already has this bundle.
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "extra-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            process.env.NODE_EXTRA_CA_CERTS = pemPath;
+            when(configsSpy.httpSystemCertificates).thenReturn(false);
+            // A non-empty store, so the test fails if the setting is ignored.
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
+        it("still applies databricks.proxy.caCert when http.systemCertificates is off", async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "corp-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            when(configsSpy.proxyCaCert).thenReturn(pemPath);
+            when(configsSpy.httpSystemCertificates).thenReturn(false);
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(ca.includes(FAKE_CA_PEM));
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+                assert.ok(!ca.includes(SYSTEM_CA_PEM));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
         it("merges databricks.proxy.caCert onto the trust store", async () => {
             const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
             const pemPath = path.join(dir, "corp-ca.pem");
@@ -356,6 +448,9 @@ describe(__filename, () => {
             const pemPath = path.join(dir, "extra-ca.pem");
             fs.writeFileSync(pemPath, FAKE_CA_PEM);
             process.env.NODE_EXTRA_CA_CERTS = pemPath;
+            // A non-empty OS store forces an explicit `ca`, which replaces
+            // Node's default store, so the bundle must carry this file too.
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
             try {
                 const agent = (await getDatabricksHttpAgent(
                     new URL("https://example.com")
