@@ -4,6 +4,7 @@ import {
     interpreterUnderCondaPrefix,
     PackageManagerSignals,
     pyprojectHasPackagingTable,
+    pyprojectDeclaresUvWorkspace,
     pyprojectHasToolSection,
     pyvenvCfgMarksUv,
 } from "./packageManagerDetection";
@@ -23,6 +24,14 @@ describe("detectPackageManagers", () => {
             expect(result.managers).to.deep.equal(["uv"]);
             expect(result.primary).to.equal("uv");
             expect(result.signals).to.deep.equal(["pyproject.tool.uv"]);
+            expect(result.hasLockfile).to.equal(false);
+        });
+
+        it("detects uv from membership in a uv workspace", () => {
+            const result = detectPackageManagers({isUvWorkspaceMember: true});
+            expect(result.managers).to.deep.equal(["uv"]);
+            expect(result.primary).to.equal("uv");
+            expect(result.signals).to.deep.equal(["uv.workspaceMember"]);
             expect(result.hasLockfile).to.equal(false);
         });
 
@@ -469,5 +478,41 @@ describe("pyprojectHasPackagingTable", () => {
         expect(
             pyprojectHasPackagingTable('desc = "see [build-system]"\n')
         ).to.equal(false);
+    });
+});
+
+describe("pyprojectDeclaresUvWorkspace", () => {
+    it("matches a [tool.uv.workspace] table", () => {
+        const toml = '[tool.uv.workspace]\nmembers = ["bundles/*"]\n';
+        expect(pyprojectDeclaresUvWorkspace(toml)).to.equal(true);
+    });
+
+    it("tolerates whitespace and a trailing comment", () => {
+        expect(
+            pyprojectDeclaresUvWorkspace("  [ tool.uv.workspace ]  # root\n")
+        ).to.equal(true);
+    });
+
+    it("does not match [tool.uv] or its other subtables", () => {
+        expect(pyprojectDeclaresUvWorkspace("[tool.uv]\n")).to.equal(false);
+        expect(pyprojectDeclaresUvWorkspace("[[tool.uv.index]]\n")).to.equal(
+            false
+        );
+        expect(
+            pyprojectDeclaresUvWorkspace("[tool.uv.workspace-extra]\n")
+        ).to.equal(false);
+    });
+
+    it("ignores commented and in-value mentions", () => {
+        expect(
+            pyprojectDeclaresUvWorkspace("# [tool.uv.workspace]\n")
+        ).to.equal(false);
+        expect(
+            pyprojectDeclaresUvWorkspace('desc = "[tool.uv.workspace]"\n')
+        ).to.equal(false);
+    });
+
+    it("returns false for undefined input", () => {
+        expect(pyprojectDeclaresUvWorkspace(undefined)).to.equal(false);
     });
 });

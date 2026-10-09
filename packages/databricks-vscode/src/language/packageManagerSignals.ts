@@ -5,6 +5,7 @@ import {
     interpreterUnderCondaPrefix,
     InterpreterSource,
     PackageManagerSignals,
+    pyprojectDeclaresUvWorkspace,
     pyprojectHasPackagingTable,
     pyprojectHasToolSection,
     pyvenvCfgMarksUv,
@@ -52,6 +53,8 @@ export function collectPackageManagerSignals(
     return {
         hasUvLock: exists("uv.lock"),
         hasPyprojectToolUv,
+        isUvWorkspaceMember:
+            findUvWorkspaceRoot(projectRoot, log) !== undefined,
         // uvOnPath is intentionally left unset: it is a weak signal that never
         // attributes a project to uv, and probing it would mean executing a
         // PATH-resolved `uv` binary purely for this classification.
@@ -66,6 +69,51 @@ export function collectPackageManagerSignals(
         hasCondaPrefix: hasActiveCondaInterpreter(env),
         interpreterSource,
     };
+}
+
+/**
+ * The root of the uv workspace `projectRoot` is a member of: the nearest
+ * *ancestor* whose `pyproject.toml` declares `[tool.uv.workspace]`, or
+ * `undefined` when there is none. The project folder itself is never its own
+ * workspace root here — a project at the root keeps its `.venv` in place, while
+ * a member's `.venv` and `uv.lock` live at the ancestor.
+ *
+ * Member globs are deliberately not matched: uv rejects a project nested under a
+ * workspace root that neither lists nor excludes it, so any such ancestor
+ * reliably means the project is not standalone.
+ */
+export function findUvWorkspaceRoot(
+    projectRoot: string,
+    log: SignalDebugLog = noopLog
+): string | undefined {
+    let dir = path.dirname(path.resolve(projectRoot));
+    for (;;) {
+        if (pyprojectDeclaresUvWorkspace(readPyproject(dir, log))) {
+            return dir;
+        }
+        const parent = path.dirname(dir);
+        if (parent === dir) {
+            return undefined;
+        }
+        dir = parent;
+    }
+}
+
+/**
+ * Whether uv manages the project's lockfile: a `uv.lock` in the project root,
+ * or at the root of the uv workspace it belongs to.
+ */
+export function projectHasUvLock(
+    projectRoot: string,
+    log: SignalDebugLog = noopLog
+): boolean {
+    if (fileExists(projectRoot, "uv.lock", log)) {
+        return true;
+    }
+    const workspaceRoot = findUvWorkspaceRoot(projectRoot, log);
+    return (
+        workspaceRoot !== undefined && fileExists(workspaceRoot, "uv.lock", log)
+    );
 }
 
 /**

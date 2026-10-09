@@ -42,6 +42,7 @@ export type DetectionSignal =
     | "uv.lock"
     | "pyproject.tool.uv"
     | "uv.onPath"
+    | "uv.workspaceMember"
     | "interpreter.uv"
     | "poetry.lock"
     | "pyproject.tool.poetry"
@@ -68,6 +69,12 @@ export interface PackageManagerSignals {
     hasPyprojectToolUv?: boolean;
     /** A `uv` executable is resolvable on PATH. */
     uvOnPath?: boolean;
+    /**
+     * An ancestor folder's `pyproject.toml` declares `[tool.uv.workspace]`, so
+     * uv treats the project as a workspace member and keeps its `.venv` and
+     * `uv.lock` at that ancestor rather than in the project root.
+     */
+    isUvWorkspaceMember?: boolean;
 
     /** A `poetry.lock` file exists in the project root. */
     hasPoetryLock?: boolean;
@@ -157,6 +164,7 @@ export function detectPackageManagers(
     fire(signals.hasUvLock, "uv.lock");
     fire(signals.hasPyprojectToolUv, "pyproject.tool.uv");
     fire(signals.uvOnPath, "uv.onPath");
+    fire(signals.isUvWorkspaceMember, "uv.workspaceMember");
     fire(interpreterSource === "uv", "interpreter.uv");
 
     fire(signals.hasPoetryLock, "poetry.lock");
@@ -180,6 +188,7 @@ export function detectPackageManagers(
     const usesUv =
         Boolean(signals.hasUvLock) ||
         Boolean(signals.hasPyprojectToolUv) ||
+        Boolean(signals.isUvWorkspaceMember) ||
         interpreterSource === "uv";
     const usesPoetry =
         Boolean(signals.hasPoetryLock) ||
@@ -254,6 +263,28 @@ export function pyprojectHasToolSection(
     // after `#` on the line is a comment and never reaches here because we
     // strip it first.
     const header = new RegExp(`^\\[\\[?\\s*tool\\.${name}\\s*(\\.|\\])`);
+    for (const rawLine of contents.split(/\r?\n/)) {
+        const line = rawLine.split("#", 1)[0].trim();
+        if (header.test(line)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Whether a `pyproject.toml` declares a uv workspace -- a `[tool.uv.workspace]`
+ * table header. Same bounded, comment-aware line scan as
+ * {@link pyprojectHasToolSection}. Pure over the file contents; returns false
+ * for undefined input.
+ */
+export function pyprojectDeclaresUvWorkspace(
+    contents: string | undefined
+): boolean {
+    if (contents === undefined) {
+        return false;
+    }
+    const header = /^\[\s*tool\.uv\.workspace\s*\]/;
     for (const rawLine of contents.split(/\r?\n/)) {
         const line = rawLine.split("#", 1)[0].trim();
         if (header.test(line)) {

@@ -40,10 +40,15 @@ schema.
 
 ### `signals` value domain (closed set)
 
-`uv.lock`, `pyproject.tool.uv`, `uv.onPath`, `interpreter.uv`, `poetry.lock`,
-`pyproject.tool.poetry`, `poetry.onPath`, `interpreter.poetry`,
-`requirements.txt`, `constraints.txt`, `pyproject.pipOnly`, `interpreter.venv`,
-`environment.yml`, `conda.prefix`, `interpreter.conda`.
+`uv.lock`, `pyproject.tool.uv`, `uv.onPath`, `uv.workspaceMember`,
+`interpreter.uv`, `poetry.lock`, `pyproject.tool.poetry`, `poetry.onPath`,
+`interpreter.poetry`, `requirements.txt`, `constraints.txt`,
+`pyproject.pipOnly`, `interpreter.venv`, `environment.yml`, `conda.prefix`,
+`interpreter.conda`.
+
+> `uv.workspaceMember` fires when an ancestor folder's `pyproject.toml` declares
+> `[tool.uv.workspace]`. It attributes the project to uv, and it makes the
+> project unsuitable for uv-native setup (`setupMode` reports `pip`).
 
 > `*.onPath` are **weak** signals: they record that a tool is installed, but do
 > not by themselves attribute the project to that manager. Attribution requires

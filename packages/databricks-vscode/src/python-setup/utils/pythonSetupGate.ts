@@ -75,9 +75,17 @@ export type SuitabilityDetection = Pick<
  * hatch, flit). Those are precisely the projects this feature exists to set up,
  * so pip attributed from that signal alone is not treated as competing. Poetry
  * and conda are never discounted.
+ *
+ * A uv workspace member is never suitable: `setup-local` provisions and adopts
+ * `<project>/.venv`, but uv keeps a member's `.venv` at the workspace root, so
+ * the run would fail. Such a project gets the legacy checklist instead.
  */
 export function isUvSetupSuitable(detection: SuitabilityDetection): boolean {
     const {managers, signals} = detection;
+
+    if (signals.includes("uv.workspaceMember")) {
+        return false;
+    }
 
     // Discount a pip attribution that rests only on the pyproject's shape, then
     // judge the project on what is left.

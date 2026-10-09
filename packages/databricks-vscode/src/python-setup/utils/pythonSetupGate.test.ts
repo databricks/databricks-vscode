@@ -30,6 +30,14 @@ describe("isUvSetupSuitable", () => {
         expect(isUvSetupSuitable(det("unknown", []))).to.equal(true);
     });
 
+    it("rejects a uv workspace member", () => {
+        // setup-local provisions <project>/.venv, but uv puts a member's venv at
+        // the workspace root, so the managed flow cannot work there.
+        expect(
+            isUvSetupSuitable(det("uv", ["uv"], ["uv.workspaceMember"]))
+        ).to.equal(false);
+    });
+
     it("rejects a pip project", () => {
         expect(isUvSetupSuitable(det("pip", ["pip"]))).to.equal(false);
     });
