@@ -41,12 +41,24 @@ describe("uv workspace signals", () => {
             );
         });
 
-        it("finds the root from a nested folder without its own pyproject", () => {
+        it("finds the root of a matched folder that has no pyproject yet", () => {
+            // setup-local writes a fresh pyproject.toml there, which makes the
+            // folder a member.
             write("pyproject.toml", WORKSPACE_PYPROJECT);
+            fs.mkdirSync(path.join(tmp, "bundles/a"), {recursive: true});
+
+            expect(findUvWorkspaceRoot(path.join(tmp, "bundles/a"))).to.equal(
+                tmp
+            );
+        });
+
+        it("does not treat a nested folder the globs miss as a member", () => {
+            write("pyproject.toml", WORKSPACE_PYPROJECT);
+            fs.mkdirSync(path.join(tmp, "bundles/a/src"), {recursive: true});
 
             expect(
-                findUvWorkspaceRoot(path.join(tmp, "bundles/a/src/deep"))
-            ).to.equal(tmp);
+                findUvWorkspaceRoot(path.join(tmp, "bundles/a/src"))
+            ).to.equal(undefined);
         });
 
         it("does not treat the workspace root itself as a member", () => {
@@ -55,6 +67,39 @@ describe("uv workspace signals", () => {
             write("pyproject.toml", WORKSPACE_PYPROJECT);
 
             expect(findUvWorkspaceRoot(tmp)).to.equal(undefined);
+        });
+
+        it("does not treat an excluded project as a member", () => {
+            write(
+                "pyproject.toml",
+                WORKSPACE_PYPROJECT + 'exclude = ["bundles/a"]\n'
+            );
+            write("bundles/a/pyproject.toml", MEMBER_PYPROJECT);
+
+            expect(findUvWorkspaceRoot(path.join(tmp, "bundles/a"))).to.equal(
+                undefined
+            );
+        });
+
+        it("does not treat a project the members globs miss as a member", () => {
+            write("pyproject.toml", WORKSPACE_PYPROJECT);
+            write("tools/a/pyproject.toml", MEMBER_PYPROJECT);
+
+            expect(findUvWorkspaceRoot(path.join(tmp, "tools/a"))).to.equal(
+                undefined
+            );
+        });
+
+        it("stops at a nearer pyproject that declares no workspace", () => {
+            // uv stops discovery at the first ancestor pyproject.toml, even a
+            // tool-only one, so the farther workspace root does not apply.
+            write("pyproject.toml", '[tool.uv.workspace]\nmembers = ["**"]\n');
+            write("bundles/pyproject.toml", "[tool.ruff]\nline-length = 88\n");
+            write("bundles/a/pyproject.toml", MEMBER_PYPROJECT);
+
+            expect(findUvWorkspaceRoot(path.join(tmp, "bundles/a"))).to.equal(
+                undefined
+            );
         });
 
         it("ignores an ancestor pyproject without a workspace table", () => {

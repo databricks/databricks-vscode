@@ -1,3 +1,6 @@
+import path from "node:path";
+import {minimatch} from "minimatch";
+
 /**
  * Pure, signal-based detection of the Python package/environment manager(s) a
  * project uses.
@@ -69,11 +72,7 @@ export interface PackageManagerSignals {
     hasPyprojectToolUv?: boolean;
     /** A `uv` executable is resolvable on PATH. */
     uvOnPath?: boolean;
-    /**
-     * An ancestor folder's `pyproject.toml` declares `[tool.uv.workspace]`, so
-     * uv treats the project as a workspace member and keeps its `.venv` and
-     * `uv.lock` at that ancestor rather than in the project root.
-     */
+    /** The project is a uv workspace member; its `.venv` is at the root. */
     isUvWorkspaceMember?: boolean;
 
     /** A `poetry.lock` file exists in the project root. */
@@ -184,7 +183,8 @@ export function detectPackageManagers(
     // A bare `uv`/`poetry` on PATH is a weak signal: it says the tool is
     // installed, not that this project uses it. We still record the signal, but
     // it alone does not attribute the project to that manager — that requires a
-    // project-local marker (lockfile, pyproject section, or interpreter).
+    // project marker (lockfile, pyproject section, workspace membership, or
+    // interpreter).
     const usesUv =
         Boolean(signals.hasUvLock) ||
         Boolean(signals.hasPyprojectToolUv) ||
@@ -272,26 +272,110 @@ export function pyprojectHasToolSection(
     return false;
 }
 
+/** The member and exclude globs of a uv workspace declaration. */
+export interface UvWorkspace {
+    members: string[];
+    exclude: string[];
+}
+
+const UV_WORKSPACE_KEY = "tool.uv.workspace";
+// Stands in for the table of an array-of-tables header (`[[tool.uv.index]]`),
+// so its keys never resolve to a workspace key.
+const ARRAY_TABLE = "[[]]";
+
 /**
- * Whether a `pyproject.toml` declares a uv workspace -- a `[tool.uv.workspace]`
- * table header. Same bounded, comment-aware line scan as
- * {@link pyprojectHasToolSection}. Pure over the file contents; returns false
- * for undefined input.
+ * The uv workspace a `pyproject.toml` declares, or `undefined` if none. Reads
+ * the `[tool.uv.workspace]` table, an inline `workspace = {...}` under
+ * `[tool.uv]`, and dotted `workspace.members` keys. A bounded, comment-aware
+ * line scan like {@link pyprojectHasToolSection}, not a full TOML parser.
  */
-export function pyprojectDeclaresUvWorkspace(
+export function parseUvWorkspace(
     contents: string | undefined
-): boolean {
+): UvWorkspace | undefined {
     if (contents === undefined) {
-        return false;
+        return undefined;
     }
-    const header = /^\[\s*tool\.uv\.workspace\s*\]/;
-    for (const rawLine of contents.split(/\r?\n/)) {
-        const line = rawLine.split("#", 1)[0].trim();
-        if (header.test(line)) {
-            return true;
+    let workspace: UvWorkspace | undefined;
+    const declare = () => (workspace ??= {members: [], exclude: []});
+    const lines = contents
+        .split(/\r?\n/)
+        .map((line) => line.split("#", 1)[0].trim());
+    let table = "";
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.startsWith("[")) {
+            const header = /^\[\s*([\w.\- ]+?)\s*\]$/.exec(line);
+            table = header ? header[1].replace(/\s+/g, "") : ARRAY_TABLE;
+            if (table === UV_WORKSPACE_KEY) {
+                declare();
+            }
+            continue;
+        }
+        const assignment = /^([\w.\- ]+?)\s*=\s*(.*)$/.exec(line);
+        if (!assignment) {
+            continue;
+        }
+        const key = [table, assignment[1].replace(/\s+/g, "")]
+            .filter(Boolean)
+            .join(".");
+        if (
+            key !== UV_WORKSPACE_KEY &&
+            !key.startsWith(`${UV_WORKSPACE_KEY}.`)
+        ) {
+            continue;
+        }
+        // An array or inline table may span lines until its brackets close.
+        let value = assignment[2];
+        while (!bracketsClosed(value) && i + 1 < lines.length) {
+            value += " " + lines[++i];
+        }
+        const declared = declare();
+        if (key === UV_WORKSPACE_KEY) {
+            declared.members = inlineArray(value, "members");
+            declared.exclude = inlineArray(value, "exclude");
+        } else if (key === `${UV_WORKSPACE_KEY}.members`) {
+            declared.members = tomlStrings(value);
+        } else if (key === `${UV_WORKSPACE_KEY}.exclude`) {
+            declared.exclude = tomlStrings(value);
         }
     }
-    return false;
+    return workspace;
+}
+
+const TOML_STRING = /"((?:[^"\\]|\\.)*)"|'([^']*)'/g;
+
+function bracketsClosed(value: string): boolean {
+    const bare = value.replace(TOML_STRING, "");
+    const opened = (bare.match(/[[{]/g) ?? []).length;
+    const closed = (bare.match(/[\]}]/g) ?? []).length;
+    return opened <= closed;
+}
+
+function tomlStrings(value: string): string[] {
+    return [...value.matchAll(TOML_STRING)].map((m) => m[1] ?? m[2]);
+}
+
+function inlineArray(value: string, name: string): string[] {
+    const array = new RegExp(
+        `(?:^|[{,\\s])${name}\\s*=\\s*\\[([^\\]]*)\\]`
+    ).exec(value);
+    return array ? tomlStrings(array[1]) : [];
+}
+
+/**
+ * Whether a uv workspace includes the folder at `memberPath` (relative to the
+ * workspace root, `/`-separated): a `members` glob matches it and no `exclude`
+ * glob does. A `*` does not cross a folder boundary, as in uv.
+ */
+export function uvWorkspaceIncludes(
+    workspace: UvWorkspace,
+    memberPath: string
+): boolean {
+    const matches = (globs: string[]) =>
+        globs.some((glob) =>
+            minimatch(memberPath, path.posix.normalize(glob), {dot: true})
+        );
+    return matches(workspace.members) && !matches(workspace.exclude);
 }
 
 /**

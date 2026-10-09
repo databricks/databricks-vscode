@@ -14,8 +14,8 @@ import {Mutex} from "../locking";
 import * as childProcess from "node:child_process";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {execFile} from "../cli/CliWrapper";
-import {projectHasUvLock} from "./packageManagerSignals";
 import fs from "node:fs";
+import {projectHasUvLock} from "./packageManagerSignals";
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;

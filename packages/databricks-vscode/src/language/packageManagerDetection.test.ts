@@ -4,9 +4,10 @@ import {
     interpreterUnderCondaPrefix,
     PackageManagerSignals,
     pyprojectHasPackagingTable,
-    pyprojectDeclaresUvWorkspace,
+    parseUvWorkspace,
     pyprojectHasToolSection,
     pyvenvCfgMarksUv,
+    uvWorkspaceIncludes,
 } from "./packageManagerDetection";
 
 describe("detectPackageManagers", () => {
@@ -481,38 +482,103 @@ describe("pyprojectHasPackagingTable", () => {
     });
 });
 
-describe("pyprojectDeclaresUvWorkspace", () => {
-    it("matches a [tool.uv.workspace] table", () => {
-        const toml = '[tool.uv.workspace]\nmembers = ["bundles/*"]\n';
-        expect(pyprojectDeclaresUvWorkspace(toml)).to.equal(true);
+describe("parseUvWorkspace", () => {
+    it("reads members and exclude from a [tool.uv.workspace] table", () => {
+        const toml = [
+            "[tool.uv.workspace]",
+            'members = ["bundles/*", "libs/*"]',
+            "exclude = ['bundles/legacy'] # not ready",
+        ].join("\n");
+        expect(parseUvWorkspace(toml)).to.deep.equal({
+            members: ["bundles/*", "libs/*"],
+            exclude: ["bundles/legacy"],
+        });
     });
 
-    it("tolerates whitespace and a trailing comment", () => {
-        expect(
-            pyprojectDeclaresUvWorkspace("  [ tool.uv.workspace ]  # root\n")
-        ).to.equal(true);
+    it("reads a members array that spans lines", () => {
+        const toml = [
+            "[ tool.uv.workspace ]",
+            "members = [",
+            '    "bundles/*", # bundles',
+            '    "libs/*",',
+            "]",
+        ].join("\n");
+        expect(parseUvWorkspace(toml)?.members).to.deep.equal([
+            "bundles/*",
+            "libs/*",
+        ]);
     });
 
-    it("does not match [tool.uv] or its other subtables", () => {
-        expect(pyprojectDeclaresUvWorkspace("[tool.uv]\n")).to.equal(false);
-        expect(pyprojectDeclaresUvWorkspace("[[tool.uv.index]]\n")).to.equal(
-            false
+    it("reads an inline workspace table under [tool.uv]", () => {
+        const toml =
+            '[tool.uv]\nworkspace = { members = ["bundles/*"], exclude = ["bundles/x"] }\n';
+        expect(parseUvWorkspace(toml)).to.deep.equal({
+            members: ["bundles/*"],
+            exclude: ["bundles/x"],
+        });
+    });
+
+    it("reads dotted workspace keys under [tool.uv]", () => {
+        const toml =
+            '[tool.uv]\nworkspace.members = ["bundles/*"]\nworkspace.exclude = ["bundles/x"]\n';
+        expect(parseUvWorkspace(toml)).to.deep.equal({
+            members: ["bundles/*"],
+            exclude: ["bundles/x"],
+        });
+    });
+
+    it("reads a workspace table that declares no members", () => {
+        expect(parseUvWorkspace("[tool.uv.workspace]\n")).to.deep.equal({
+            members: [],
+            exclude: [],
+        });
+    });
+
+    it("ignores keys of other tables", () => {
+        const toml = [
+            "[tool.uv.workspace]",
+            'members = ["bundles/*"]',
+            "[project]",
+            'exclude = ["not-uv"]',
+        ].join("\n");
+        expect(parseUvWorkspace(toml)?.exclude).to.deep.equal([]);
+    });
+
+    it("returns undefined without a workspace declaration", () => {
+        expect(parseUvWorkspace(undefined)).to.equal(undefined);
+        expect(parseUvWorkspace("[tool.uv]\npackage = false\n")).to.equal(
+            undefined
         );
-        expect(
-            pyprojectDeclaresUvWorkspace("[tool.uv.workspace-extra]\n")
-        ).to.equal(false);
+        expect(parseUvWorkspace("[[tool.uv.index]]\n")).to.equal(undefined);
+        expect(parseUvWorkspace("# [tool.uv.workspace]\n")).to.equal(undefined);
+        expect(parseUvWorkspace('desc = "[tool.uv.workspace]"\n')).to.equal(
+            undefined
+        );
+    });
+});
+
+describe("uvWorkspaceIncludes", () => {
+    const workspace = {members: ["bundles/*", "libs/core"], exclude: []};
+
+    it("includes a folder that a member glob matches", () => {
+        expect(uvWorkspaceIncludes(workspace, "bundles/a")).to.equal(true);
+        expect(uvWorkspaceIncludes(workspace, "libs/core")).to.equal(true);
     });
 
-    it("ignores commented and in-value mentions", () => {
-        expect(
-            pyprojectDeclaresUvWorkspace("# [tool.uv.workspace]\n")
-        ).to.equal(false);
-        expect(
-            pyprojectDeclaresUvWorkspace('desc = "[tool.uv.workspace]"\n')
-        ).to.equal(false);
+    it("does not let a single star cross a folder boundary", () => {
+        expect(uvWorkspaceIncludes(workspace, "bundles/a/b")).to.equal(false);
     });
 
-    it("returns false for undefined input", () => {
-        expect(pyprojectDeclaresUvWorkspace(undefined)).to.equal(false);
+    it("does not include a folder that no member glob matches", () => {
+        expect(uvWorkspaceIncludes(workspace, "tools/a")).to.equal(false);
+    });
+
+    it("does not include an excluded folder", () => {
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["bundles/*"], exclude: ["bundles/a"]},
+                "bundles/a"
+            )
+        ).to.equal(false);
     });
 });

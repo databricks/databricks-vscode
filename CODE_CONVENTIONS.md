@@ -197,9 +197,8 @@ describes.
   `src/telemetry/MY_FEATURE_TELEMETRY.md`. A file named for one feature inside a
   shared folder is undiscoverable — nothing links to it, and the next person adds
   a second one rather than extending it. `README.md` is the name tooling and humans
-  already look for, and GitHub renders it when browsing the folder.
-  (`src/telemetry/PACKAGE_MANAGER_DETECTION.md` predates this rule; fold such files
-  into the folder's `README.md` when you next touch them.)
+  already look for, and GitHub renders it when browsing the folder. Fold any
+  older feature-named file into the folder's `README.md` when you next touch it.
 - **Document the _why_, not the _what_.** Schemas, field lists, and signatures
   belong in the code (or, for telemetry, in generated output). A doc that restates
   them acquires a second source of truth that drifts. Record the decisions and

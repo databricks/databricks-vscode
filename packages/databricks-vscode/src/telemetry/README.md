@@ -12,7 +12,48 @@ read `EventTypes`.
 
 ## Python package-manager detection
 
-`python_env.setup.detected` — see [PACKAGE_MANAGER_DETECTION.md](./PACKAGE_MANAGER_DETECTION.md).
+`python_env.setup.detected`, emitted by `language/PackageManagerTelemetry.ts`
+from the pure classifier in `language/packageManagerDetection.ts`. It sizes the
+real pip / conda / uv / poetry split among connected users, to prioritize the
+VPEX setup flow with first-party data. The signal ids are the closed
+`DetectionSignal` union.
+
+### Where it fires, and why only when connected
+
+-   `auto_open` — the first environment check after the workspace connects
+    (`EnvironmentDependenciesVerifier.check`).
+-   `explicit_command` — the legacy `databricks.environment.setup` command.
+-   `run` / `debug` — the first Run/Debug with Databricks Connect.
+
+It is emitted only while `CONNECTED`, so the data describes active users'
+projects, not installs that never authenticate. Emissions are deduplicated per
+session on `(setupTrigger, projectRoot)`; no path is sent, so treat each event
+as one `(session, trigger)` observation.
+
+### Why `*.onPath` never appears in real data
+
+A tool on PATH says it is installed, not that this project uses it, so these
+weak signals never attribute a manager on their own. The collector also does not
+probe PATH: running an external `uv`/`poetry` binary for a non-attributing
+signal is not worth the cost.
+
+### Why `uv.workspaceMember` makes the project report `setupMode: pip`
+
+It fires when the nearest ancestor `pyproject.toml` declares a uv workspace that
+includes the project. uv then keeps the `.venv` at the workspace root, while
+uv-native setup provisions `<project>/.venv`, so the gate sends such a project
+to the legacy checklist and `setupMode` reports that flow.
+
+### Known measurement caveats
+
+-   `pyproject.pipOnly` slightly over-counts pip: uv works with a bare
+    `[project]` table, so a uv project without a committed `uv.lock` reads as
+    pip. With `uv.lock` present, uv still wins primary.
+-   `interpreterSource` reflects the active interpreter only. A uv/poetry
+    project running a system or conda interpreter reports that real source, on
+    purpose — it surfaces the setup-flow gap.
+-   `hasLockfile` and the `uv.lock` signal look in the project folder only, so a
+    workspace member reports no lockfile. Use `uv.workspaceMember` for those.
 
 ## Python environment setup (VPEX)
 

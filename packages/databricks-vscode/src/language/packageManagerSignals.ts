@@ -5,10 +5,11 @@ import {
     interpreterUnderCondaPrefix,
     InterpreterSource,
     PackageManagerSignals,
-    pyprojectDeclaresUvWorkspace,
     pyprojectHasPackagingTable,
     pyprojectHasToolSection,
+    parseUvWorkspace,
     pyvenvCfgMarksUv,
+    uvWorkspaceIncludes,
 } from "./packageManagerDetection";
 
 /**
@@ -72,30 +73,31 @@ export function collectPackageManagerSignals(
 }
 
 /**
- * The root of the uv workspace `projectRoot` is a member of: the nearest
- * *ancestor* whose `pyproject.toml` declares `[tool.uv.workspace]`, or
- * `undefined` when there is none. The project folder itself is never its own
- * workspace root here — a project at the root keeps its `.venv` in place, while
- * a member's `.venv` and `uv.lock` live at the ancestor.
- *
- * Member globs are deliberately not matched: uv rejects a project nested under a
- * workspace root that neither lists nor excludes it, so any such ancestor
- * reliably means the project is not standalone.
+ * The root of the uv workspace that `projectRoot` is a member of, or
+ * `undefined` for a standalone project. Follows uv's discovery: only the
+ * nearest ancestor `pyproject.toml` counts, and it makes the project a member
+ * only if it declares a workspace whose globs include the project.
  */
 export function findUvWorkspaceRoot(
     projectRoot: string,
     log: SignalDebugLog = noopLog
 ): string | undefined {
-    let dir = path.dirname(path.resolve(projectRoot));
-    for (;;) {
-        if (pyprojectDeclaresUvWorkspace(readPyproject(dir, log))) {
-            return dir;
+    const project = path.resolve(projectRoot);
+    for (let dir = path.dirname(project); ; dir = path.dirname(dir)) {
+        const pyproject = readPyproject(dir, log);
+        if (pyproject !== undefined) {
+            const workspace = parseUvWorkspace(pyproject);
+            const memberPath = path
+                .relative(dir, project)
+                .split(path.sep)
+                .join("/");
+            return workspace && uvWorkspaceIncludes(workspace, memberPath)
+                ? dir
+                : undefined;
         }
-        const parent = path.dirname(dir);
-        if (parent === dir) {
+        if (path.dirname(dir) === dir) {
             return undefined;
         }
-        dir = parent;
     }
 }
 
