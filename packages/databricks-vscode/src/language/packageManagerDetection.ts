@@ -236,8 +236,8 @@ export function detectPackageManagers(
  * table itself or any subtable such as `[tool.uv.sources]`).
  *
  * A bounded, line-based scan of table headers, and more robust than a
- * substring match. (Unlike `uvWorkspaceUtils`, it predates the smol-toml
- * dependency; a later change can move it to a real parse.) It:
+ * substring match. Its results feed existing telemetry, so it is kept as is
+ * rather than moved to a full parse, which would shift those numbers. It:
  *  - ignores comments (`#`), including a commented-out header,
  *  - ignores `tool.<name>` mentions inside string values or other keys,
  *  - matches subtables, so projects that only have e.g. `[tool.uv.workspace]`

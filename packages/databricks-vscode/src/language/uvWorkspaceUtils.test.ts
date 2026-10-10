@@ -180,6 +180,19 @@ describe("uvWorkspaceIncludes", () => {
         ).to.equal(false);
     });
 
+    it("matches absolute Windows globs against the workspace root", function () {
+        if (process.platform !== "win32") {
+            this.skip();
+        }
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["C:\\ws\\pkgs\\*"], exclude: []},
+                "pkgs/a",
+                "C:\\ws"
+            )
+        ).to.equal(true);
+    });
+
     it("matches ? against a whole Unicode character", () => {
         expect(
             uvWorkspaceIncludes({members: ["pkgs/?"], exclude: []}, "pkgs/😀")
