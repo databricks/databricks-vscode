@@ -235,9 +235,9 @@ export function detectPackageManagers(
  * Whether a `pyproject.toml` declares a `[tool.<name>]` table (the `name`
  * table itself or any subtable such as `[tool.uv.sources]`).
  *
- * A bounded, line-based scan of table headers -- deliberately not a full TOML
- * parse (no dependency needed for this) and more robust than a substring
- * match. It:
+ * A bounded, line-based scan of table headers, and more robust than a
+ * substring match. (Unlike `uvWorkspaceUtils`, it predates the smol-toml
+ * dependency; a later change can move it to a real parse.) It:
  *  - ignores comments (`#`), including a commented-out header,
  *  - ignores `tool.<name>` mentions inside string values or other keys,
  *  - matches subtables, so projects that only have e.g. `[tool.uv.workspace]`
