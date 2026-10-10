@@ -23,8 +23,8 @@ const ENVIRONMENT_VERSION_KEY = /^environment_version\s*=\s*(.*)$/;
  *
  * Deliberately a bounded, comment-aware line scan rather than a full TOML parse
  * (the same approach as {@link ../../language/packageManagerDetection}): it
- * reads `environment_version` only from the
- * canonical `[tool.databricks.environment]` table the CLI writes. Like those
+ * reads `environment_version` only from the canonical
+ * `[tool.databricks.environment]` table the CLI writes. Like those
  * sibling scanners it is stateless about string context, so spellings that only
  * a real parser would resolve are out of scope: a key of the same name in
  * another table, a dotted-key / inline-table form, or a key that sits inside a

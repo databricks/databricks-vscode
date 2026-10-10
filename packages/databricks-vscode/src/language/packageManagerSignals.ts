@@ -9,7 +9,7 @@ import {
     pyprojectHasToolSection,
     pyvenvCfgMarksUv,
 } from "./packageManagerDetection";
-import {parseUvWorkspace, uvWorkspaceIncludes} from "./uvWorkspace";
+import {parseUvWorkspace, uvWorkspaceIncludes} from "./uvWorkspaceUtils";
 
 /**
  * Optional sink for best-effort probe failures. A collector callsite that has a
@@ -97,7 +97,7 @@ export function findUvWorkspaceRoot(
                 .relative(dir, project)
                 .split(path.sep)
                 .join("/");
-            return workspace && uvWorkspaceIncludes(workspace, memberPath)
+            return workspace && uvWorkspaceIncludes(workspace, memberPath, dir)
                 ? dir
                 : undefined;
         }

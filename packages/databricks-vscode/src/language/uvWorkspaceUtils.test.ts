@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {parseUvWorkspace, uvWorkspaceIncludes} from "./uvWorkspace";
+import {parseUvWorkspace, uvWorkspaceIncludes} from "./uvWorkspaceUtils";
 
 describe("parseUvWorkspace", () => {
     it("reads members and exclude from a [tool.uv.workspace] table", () => {
@@ -61,6 +61,12 @@ describe("parseUvWorkspace", () => {
             members: ["pkgs/*"],
             exclude: ["pkgs/a"],
         });
+    });
+
+    it("reads a file with an integer beyond JavaScript's safe range", () => {
+        const toml =
+            '[tool.uv.workspace]\nmembers = ["pkgs/*"]\n[tool.other]\nbig = 9223372036854775807\n';
+        expect(parseUvWorkspace(toml)?.members).to.deep.equal(["pkgs/*"]);
     });
 
     it("returns undefined for invalid TOML, which uv rejects too", () => {
@@ -151,6 +157,32 @@ describe("uvWorkspaceIncludes", () => {
                 {members: ["bundles\\*"], exclude: []},
                 "bundles/a"
             )
+        ).to.equal(true);
+    });
+
+    it("matches absolute globs against the workspace root", function () {
+        if (process.platform === "win32") {
+            this.skip();
+        }
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["/ws/pkgs/*"], exclude: []},
+                "pkgs/a",
+                "/ws"
+            )
+        ).to.equal(true);
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["pkgs/*"], exclude: ["/ws/pkgs/a"]},
+                "pkgs/a",
+                "/ws"
+            )
+        ).to.equal(false);
+    });
+
+    it("matches ? against a whole Unicode character", () => {
+        expect(
+            uvWorkspaceIncludes({members: ["pkgs/?"], exclude: []}, "pkgs/😀")
         ).to.equal(true);
     });
 

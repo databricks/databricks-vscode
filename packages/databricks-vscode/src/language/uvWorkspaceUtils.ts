@@ -20,7 +20,8 @@ export function parseUvWorkspace(
     }
     let document: unknown;
     try {
-        document = parse(contents);
+        // A large integer elsewhere in the file must not make it unreadable.
+        document = parse(contents, {integersAsBigInt: "asNeeded"});
     } catch {
         return undefined;
     }
@@ -56,16 +57,23 @@ function strings(value: unknown): string[] {
 /**
  * Whether a uv workspace includes the folder at `memberPath` (relative to the
  * workspace root, `/`-separated): a `members` glob matches it and no `exclude`
- * glob does.
+ * glob does. An absolute glob is matched relative to `root`, as uv joins it.
  */
 export function uvWorkspaceIncludes(
     workspace: UvWorkspace,
-    memberPath: string
+    memberPath: string,
+    root?: string
 ): boolean {
+    const relative = (glob: string) =>
+        root !== undefined && path.isAbsolute(glob)
+            ? path.relative(root, glob).split(path.sep).join("/")
+            : glob;
     // uv finds members by walking folders, so member wildcards stay inside one
     // folder. It matches `exclude` as a plain pattern, where they cross folders.
     const matches = (globs: string[], crossFolders: boolean) =>
-        globs.some((glob) => uvGlob(glob, crossFolders).test(memberPath));
+        globs.some((glob) =>
+            uvGlob(relative(glob), crossFolders).test(memberPath)
+        );
     return (
         matches(workspace.members, false) && !matches(workspace.exclude, true)
     );
@@ -110,7 +118,7 @@ function uvGlob(glob: string, crossFolders: boolean): RegExp {
         }
     });
     try {
-        return new RegExp(`^${source}$`);
+        return new RegExp(`^${source}$`, "u");
     } catch {
         // A class JavaScript rejects, such as the reversed range `[z-a]`,
         // matches nothing in uv.
