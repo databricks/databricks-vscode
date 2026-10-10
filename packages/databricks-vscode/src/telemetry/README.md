@@ -45,8 +45,8 @@ It fires when the nearest ancestor `pyproject.toml` declares a uv workspace that
 includes the project. uv then keeps the `.venv` at the workspace root, while
 uv-native setup provisions `<project>/.venv`, so the gate sends such a project
 to the legacy checklist and `setupMode` reports that flow. The signal also
-counts as uv evidence, so a member with no local `uv.lock` or `[tool.uv]` now
-reports `primaryManager: uv` rather than `pip`.
+counts as uv evidence, so a member with no local `uv.lock` or `[tool.uv]`
+reports `primaryManager: uv`.
 
 ### Known measurement caveats
 

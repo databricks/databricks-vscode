@@ -118,6 +118,42 @@ describe("uvWorkspaceIncludes", () => {
         expect(uvWorkspaceIncludes(workspace, "libs/app")).to.equal(false);
     });
 
+    it("matches a trailing ** only below its folder, as uv does", () => {
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["bundles/**"], exclude: []},
+                "bundles"
+            )
+        ).to.equal(false);
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["bundles/*"], exclude: ["bundles/a/**"]},
+                "bundles/a"
+            )
+        ).to.equal(true);
+    });
+
+    it("treats a reversed range as matching nothing, as uv does", () => {
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["bundles/*"], exclude: ["bundles/[z-a]"]},
+                "bundles/a"
+            )
+        ).to.equal(true);
+    });
+
+    it("reads a backslash in a glob as a separator on Windows", function () {
+        if (process.platform !== "win32") {
+            this.skip();
+        }
+        expect(
+            uvWorkspaceIncludes(
+                {members: ["bundles\\*"], exclude: []},
+                "bundles/a"
+            )
+        ).to.equal(true);
+    });
+
     it("matches character classes, including negated ones", () => {
         const workspace = {members: ["pkgs/[!b]"], exclude: []};
         expect(uvWorkspaceIncludes(workspace, "pkgs/a")).to.equal(true);

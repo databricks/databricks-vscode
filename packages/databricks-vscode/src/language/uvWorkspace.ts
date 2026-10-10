@@ -77,8 +77,11 @@ export function uvWorkspaceIncludes(
  */
 function uvGlob(glob: string, crossFolders: boolean): RegExp {
     const anyChar = crossFolders ? "." : "[^/]";
+    // On Windows uv also reads `\` as a folder separator.
+    const portable =
+        process.platform === "win32" ? glob.replace(/\\/g, "/") : glob;
     const folders = path.posix
-        .normalize(glob)
+        .normalize(portable)
         .replace(/\/+$/, "")
         .split("/")
         .map((folder) => (folder === "**" ? undefined : folderPattern(folder)))
@@ -87,18 +90,32 @@ function uvGlob(glob: string, crossFolders: boolean): RegExp {
             (folder, i, all) =>
                 folder !== undefined || i === 0 || all[i - 1] !== undefined
         );
-    // A `**` folder matches zero or more folders, with their separators.
+    // A leading or inner `**` folder matches zero or more folders; a trailing
+    // one matches only below its parent, as in uv.
     let source = "";
     folders.forEach((folder, index) => {
         if (folder === undefined) {
+            const last = index === folders.length - 1;
             source +=
-                index > 0 ? "(?:/.*)?" : folders.length > 1 ? "(?:.*/)?" : ".*";
+                index === 0
+                    ? last
+                        ? ".*"
+                        : "(?:.*/)?"
+                    : last
+                      ? "/.*"
+                      : "(?:/.*)?";
         } else {
             const leadingStars = index === 1 && folders[0] === undefined;
             source += (index === 0 || leadingStars ? "" : "/") + folder;
         }
     });
-    return new RegExp(`^${source}$`);
+    try {
+        return new RegExp(`^${source}$`);
+    } catch {
+        // A class JavaScript rejects, such as the reversed range `[z-a]`,
+        // matches nothing in uv.
+        return /(?!)/;
+    }
 
     function folderPattern(folder: string): string {
         let pattern = "";
