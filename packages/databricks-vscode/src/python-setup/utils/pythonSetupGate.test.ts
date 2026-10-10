@@ -30,6 +30,12 @@ describe("isUvSetupSuitable", () => {
         expect(isUvSetupSuitable(det("unknown", []))).to.equal(true);
     });
 
+    it("rejects a uv workspace member", () => {
+        expect(
+            isUvSetupSuitable(det("uv", ["uv"], ["uv.workspaceMember"]))
+        ).to.equal(false);
+    });
+
     it("rejects a pip project", () => {
         expect(isUvSetupSuitable(det("pip", ["pip"]))).to.equal(false);
     });

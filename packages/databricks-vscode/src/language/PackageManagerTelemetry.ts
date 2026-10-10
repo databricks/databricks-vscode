@@ -86,7 +86,7 @@ export class PackageManagerTelemetry {
                 setupMode: resolveSetupMode(this.getSetupMode(), detection),
             });
         } catch (e) {
-            // Detection is measurement-only and must never disrupt setup.
+            // This event is measurement-only and must never disrupt setup.
             this.logger.debug("Package manager detection failed", e);
         }
     }

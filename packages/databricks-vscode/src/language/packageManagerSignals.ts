@@ -9,6 +9,7 @@ import {
     pyprojectHasToolSection,
     pyvenvCfgMarksUv,
 } from "./packageManagerDetection";
+import {parseUvWorkspace, uvWorkspaceIncludes} from "./uvWorkspaceUtils";
 
 /**
  * Optional sink for best-effort probe failures. A collector callsite that has a
@@ -52,6 +53,8 @@ export function collectPackageManagerSignals(
     return {
         hasUvLock: exists("uv.lock"),
         hasPyprojectToolUv,
+        isUvWorkspaceMember:
+            findUvWorkspaceRoot(projectRoot, log) !== undefined,
         // uvOnPath is intentionally left unset: it is a weak signal that never
         // attributes a project to uv, and probing it would mean executing a
         // PATH-resolved `uv` binary purely for this classification.
@@ -66,6 +69,59 @@ export function collectPackageManagerSignals(
         hasCondaPrefix: hasActiveCondaInterpreter(env),
         interpreterSource,
     };
+}
+
+/**
+ * The root of the uv workspace that `projectRoot` is a member of, or
+ * `undefined` for a standalone project or a workspace root. Follows uv's
+ * discovery: only the nearest ancestor `pyproject.toml` counts, and it makes
+ * the project a member only if it declares a workspace whose globs include the
+ * project.
+ */
+export function findUvWorkspaceRoot(
+    projectRoot: string,
+    log: SignalDebugLog = noopLog
+): string | undefined {
+    // uv discovers from the real path, so a symlinked project is judged where
+    // it really is.
+    const project = realPath(path.resolve(projectRoot));
+    // A project that declares its own workspace is that workspace's root.
+    if (parseUvWorkspace(readPyproject(project, log)) !== undefined) {
+        return undefined;
+    }
+    for (let dir = path.dirname(project); ; dir = path.dirname(dir)) {
+        // An unreadable pyproject.toml still ends discovery, as in uv.
+        if (fileExists(dir, "pyproject.toml", log)) {
+            const workspace = parseUvWorkspace(readPyproject(dir, log));
+            const memberPath = path
+                .relative(dir, project)
+                .split(path.sep)
+                .join("/");
+            return workspace && uvWorkspaceIncludes(workspace, memberPath, dir)
+                ? dir
+                : undefined;
+        }
+        if (path.dirname(dir) === dir) {
+            return undefined;
+        }
+    }
+}
+
+/**
+ * Whether uv manages the project's lockfile: a `uv.lock` in the project root,
+ * or at the root of the uv workspace it belongs to.
+ */
+export function projectHasUvLock(
+    projectRoot: string,
+    log: SignalDebugLog = noopLog
+): boolean {
+    if (fileExists(projectRoot, "uv.lock", log)) {
+        return true;
+    }
+    const workspaceRoot = findUvWorkspaceRoot(projectRoot, log);
+    return (
+        workspaceRoot !== undefined && fileExists(workspaceRoot, "uv.lock", log)
+    );
 }
 
 /**
@@ -150,6 +206,14 @@ function hasActiveCondaInterpreter(
         env?.executable.sysPrefix,
         process.env["CONDA_PREFIX"]
     );
+}
+
+function realPath(file: string): string {
+    try {
+        return fs.realpathSync(file);
+    } catch {
+        return file;
+    }
 }
 
 function fileExists(

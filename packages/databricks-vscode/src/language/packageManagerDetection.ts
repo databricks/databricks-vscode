@@ -8,9 +8,10 @@
  * classification pure makes it deterministic and trivially unit-testable across
  * the overlap cases (uv+pip, conda+pip, poetry+uv, none).
  *
- * The detection feeds telemetry only (see Events.PYTHON_ENV_SETUP_DETECTED). It
- * never changes setup behaviour, and only categorical/enum data leaves this
- * module — no paths, package names, or other free-form content.
+ * The detection feeds telemetry (see Events.PYTHON_ENV_SETUP_DETECTED) and the
+ * python-setup gate (`isUvSetupSuitable`), so a signal can change which setup
+ * flow a project gets. Only categorical/enum data leaves this module — no
+ * paths, package names, or other free-form content.
  */
 
 /** A package/environment manager we can attribute a project to. */
@@ -42,6 +43,7 @@ export type DetectionSignal =
     | "uv.lock"
     | "pyproject.tool.uv"
     | "uv.onPath"
+    | "uv.workspaceMember"
     | "interpreter.uv"
     | "poetry.lock"
     | "pyproject.tool.poetry"
@@ -68,6 +70,8 @@ export interface PackageManagerSignals {
     hasPyprojectToolUv?: boolean;
     /** A `uv` executable is resolvable on PATH. */
     uvOnPath?: boolean;
+    /** The project is a uv workspace member; its `.venv` is at the root. */
+    isUvWorkspaceMember?: boolean;
 
     /** A `poetry.lock` file exists in the project root. */
     hasPoetryLock?: boolean;
@@ -157,6 +161,7 @@ export function detectPackageManagers(
     fire(signals.hasUvLock, "uv.lock");
     fire(signals.hasPyprojectToolUv, "pyproject.tool.uv");
     fire(signals.uvOnPath, "uv.onPath");
+    fire(signals.isUvWorkspaceMember, "uv.workspaceMember");
     fire(interpreterSource === "uv", "interpreter.uv");
 
     fire(signals.hasPoetryLock, "poetry.lock");
@@ -176,10 +181,12 @@ export function detectPackageManagers(
     // A bare `uv`/`poetry` on PATH is a weak signal: it says the tool is
     // installed, not that this project uses it. We still record the signal, but
     // it alone does not attribute the project to that manager — that requires a
-    // project-local marker (lockfile, pyproject section, or interpreter).
+    // project marker (lockfile, pyproject section, workspace membership, or
+    // interpreter).
     const usesUv =
         Boolean(signals.hasUvLock) ||
         Boolean(signals.hasPyprojectToolUv) ||
+        Boolean(signals.isUvWorkspaceMember) ||
         interpreterSource === "uv";
     const usesPoetry =
         Boolean(signals.hasPoetryLock) ||
@@ -228,9 +235,9 @@ export function detectPackageManagers(
  * Whether a `pyproject.toml` declares a `[tool.<name>]` table (the `name`
  * table itself or any subtable such as `[tool.uv.sources]`).
  *
- * A bounded, line-based scan of table headers -- deliberately not a full TOML
- * parse (no dependency needed for this) and more robust than a substring
- * match. It:
+ * A bounded, line-based scan of table headers, and more robust than a
+ * substring match. Its results feed existing telemetry, so it is kept as is
+ * rather than moved to a full parse, which would shift those numbers. It:
  *  - ignores comments (`#`), including a commented-out header,
  *  - ignores `tool.<name>` mentions inside string values or other keys,
  *  - matches subtables, so projects that only have e.g. `[tool.uv.workspace]`

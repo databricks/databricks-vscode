@@ -492,7 +492,8 @@ export class EventTypes {
             comment: "How the active interpreter was provisioned",
         },
         hasLockfile: {
-            comment: "Whether a uv.lock or poetry.lock was found",
+            comment:
+                "Whether a uv.lock or poetry.lock was found in the project folder",
         },
         targetCompute: {
             comment:

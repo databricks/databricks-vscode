@@ -26,6 +26,14 @@ describe("detectPackageManagers", () => {
             expect(result.hasLockfile).to.equal(false);
         });
 
+        it("detects uv from membership in a uv workspace", () => {
+            const result = detectPackageManagers({isUvWorkspaceMember: true});
+            expect(result.managers).to.deep.equal(["uv"]);
+            expect(result.primary).to.equal("uv");
+            expect(result.signals).to.deep.equal(["uv.workspaceMember"]);
+            expect(result.hasLockfile).to.equal(false);
+        });
+
         it("detects poetry from poetry.lock", () => {
             const result = detectPackageManagers({hasPoetryLock: true});
             expect(result.managers).to.deep.equal(["poetry"]);

@@ -21,10 +21,10 @@ const ENVIRONMENT_VERSION_KEY = /^environment_version\s*=\s*(.*)$/;
  * Collect the serverless environment version declared in a `pyproject.toml`, as
  * a scoring observation (source `pyproject`).
  *
- * Deliberately a bounded, comment-aware line scan rather than a full TOML parse
- * (the same approach as {@link ../../language/packageManagerDetection}, so no
- * TOML dependency is pulled in): it reads `environment_version` only from the
- * canonical `[tool.databricks.environment]` table the CLI writes. Like those
+ * A bounded, comment-aware line scan rather than a full TOML parse (the same
+ * approach as {@link ../../language/packageManagerDetection}): the CLI writes
+ * one canonical form, so it reads `environment_version` only from the
+ * `[tool.databricks.environment]` table. Like those
  * sibling scanners it is stateless about string context, so spellings that only
  * a real parser would resolve are out of scope: a key of the same name in
  * another table, a dotted-key / inline-table form, or a key that sits inside a

@@ -15,7 +15,7 @@ import * as childProcess from "node:child_process";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 import {execFile} from "../cli/CliWrapper";
 import fs from "node:fs";
-import path from "node:path";
+import {projectHasUvLock} from "./packageManagerSignals";
 
 export class MsPythonExtensionWrapper implements Disposable {
     public readonly api: MsPythonExtensionApi;
@@ -123,7 +123,7 @@ export class MsPythonExtensionWrapper implements Disposable {
     async isUsingUv() {
         try {
             await execFile("uv", ["--version"]);
-            return fs.existsSync(path.join(this.projectRoot, "uv.lock"));
+            return projectHasUvLock(this.projectRoot);
         } catch {
             return false;
         }
