@@ -4,9 +4,6 @@
 
 ## (2026-10-12)
 
--   Add a Unity Gateway sign-in, separate from the bundle project sign-in, behind the `chat.unityGateway` experiment in `databricks.experiments.optInto` (#2230) ([b3af32b](https://github.com/databricks/databricks-vscode/commit/b3af32b))
--   Show the Unity Gateway connection in the Configuration view (experimental) (#2237) ([65e83f1](https://github.com/databricks/databricks-vscode/commit/65e83f1))
--   Discover the models available through the Unity Gateway (experimental) (#2238) ([2691c78](https://github.com/databricks/databricks-vscode/commit/2691c78))
 -   Verify TLS certificates for SDK calls again by default: an unset `databricks.proxy.strictSSL` now falls back to `http.proxyStrictSSL` (verification was skipped since v2.19.0), and honor `http.systemCertificates` (#2244) ([8654191](https://github.com/databricks/databricks-vscode/commit/8654191))
 -   Sort folders alphabetically in the Workspace File System view (#2233) ([9b26c33](https://github.com/databricks/databricks-vscode/commit/9b26c33)), see #2231
 -   Update Databricks CLI to v1.20.0 (#2243) ([b087b77](https://github.com/databricks/databricks-vscode/commit/b087b77)) — the CLI removes the Terraform deployment engine, so `bundle.engine: terraform` now errors (use CLI v1.19.x to keep deploying with Terraform), and the extension no longer bundles the Terraform binary (#2166); see the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.20.0) for details
