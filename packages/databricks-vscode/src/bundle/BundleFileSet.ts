@@ -1,4 +1,4 @@
-import {Uri} from "vscode";
+import {RelativePattern, Uri, workspace} from "vscode";
 import * as glob from "glob";
 import {merge} from "lodash";
 import * as yaml from "yaml";
@@ -10,7 +10,8 @@ import {minimatch} from "minimatch";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
-const subProjectFilePattern: string = path.join("**", rootFilePattern);
+// Glob patterns in a RelativePattern always use "/", on every platform.
+const subProjectFilePattern: string = `**/${rootFilePattern}`;
 
 export async function parseBundleYaml(file: Uri) {
     const data = yaml.parse(await readFile(file.fsPath, "utf-8"), {
@@ -25,21 +26,24 @@ export async function writeBundleYaml(file: Uri, data: BundleSchema) {
 }
 
 export async function getSubProjects(root: Uri) {
-    const subProjectRoots = await glob.glob(
-        getAbsoluteGlobPath(subProjectFilePattern, root),
-        {nocase: process.platform === "win32"}
+    // VS Code searches outside the extension host, so large folders don't
+    // block it. Dot-folders are skipped, as the previous glob did.
+    const subProjectRoots = await workspace.findFiles(
+        new RelativePattern(root, subProjectFilePattern),
+        "**/.*/**"
     );
     const normalizedRoot = path.normalize(root.fsPath);
     return subProjectRoots
         .map((rootFile) => {
-            const dirname = path.dirname(path.normalize(rootFile));
+            const dirname = path.dirname(path.normalize(rootFile.fsPath));
             const absolute = Uri.file(dirname);
             const relative = path.relative(normalizedRoot, dirname);
             return {absolute, relative};
         })
         .filter(({absolute}) => {
             return absolute.fsPath !== normalizedRoot;
-        });
+        })
+        .sort((a, b) => a.relative.localeCompare(b.relative));
 }
 
 export function getAbsoluteGlobPath(path: string | Uri, root: Uri): string {

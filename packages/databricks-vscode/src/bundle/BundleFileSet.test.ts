@@ -1,5 +1,9 @@
-import {Uri, WorkspaceFolder} from "vscode";
-import {BundleFileSet, getAbsoluteGlobPath} from "./BundleFileSet";
+import {ConfigurationTarget, Uri, WorkspaceFolder, workspace} from "vscode";
+import {
+    BundleFileSet,
+    getAbsoluteGlobPath,
+    getSubProjects,
+} from "./BundleFileSet";
 import {expect} from "chai";
 import path from "path";
 import * as tmp from "tmp-promise";
@@ -305,6 +309,106 @@ describe(__filename, async function () {
                     Uri.file(path.join(tmpdirUri.fsPath, "notIncluded.yaml"))
                 )
             ).to.be.false;
+        });
+    });
+
+    describe("getSubProjects", async () => {
+        async function writeFile(...segments: string[]) {
+            const file = path.join(tmpdir.path, ...segments);
+            await fs.mkdir(path.dirname(file), {recursive: true});
+            await fs.writeFile(file, "");
+        }
+
+        async function getRelativeSubProjects() {
+            return (await getSubProjects(Uri.file(tmpdir.path))).map(
+                (p) => p.relative
+            );
+        }
+
+        it("should find nested bundles in order, without the root bundle", async () => {
+            await writeFile("databricks.yml");
+            await writeFile("b", "bundle.yaml");
+            await writeFile("a", "nested", "databricks.yaml");
+            await writeFile("node_modules", "pkg", "bundle.yml");
+
+            const subProjects = await getSubProjects(Uri.file(tmpdir.path));
+
+            expect(subProjects.map((p) => p.relative)).to.deep.equal([
+                path.join("a", "nested"),
+                "b",
+                path.join("node_modules", "pkg"),
+            ]);
+            expect(subProjects[1].absolute.fsPath).to.equal(
+                Uri.file(path.join(tmpdir.path, "b")).fsPath
+            );
+        });
+
+        it("should skip dot-folders", async () => {
+            await writeFile(".hidden", "databricks.yml");
+            await writeFile("visible", "databricks.yml");
+
+            expect(await getRelativeSubProjects()).to.deep.equal(["visible"]);
+        });
+
+        it("should ignore a folder named like a bundle file", async () => {
+            await fs.mkdir(path.join(tmpdir.path, "dir", "databricks.yml"), {
+                recursive: true,
+            });
+
+            expect(await getRelativeSubProjects()).to.deep.equal([]);
+        });
+
+        it("should skip folders in files.exclude", async () => {
+            await writeFile("excluded", "databricks.yml");
+            await writeFile("kept", "databricks.yml");
+            const config = workspace.getConfiguration("files");
+            const previous = config.inspect("exclude")?.globalValue;
+            await config.update(
+                "exclude",
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                {"**/excluded": true},
+                ConfigurationTarget.Global
+            );
+            try {
+                expect(await getRelativeSubProjects()).to.deep.equal(["kept"]);
+            } finally {
+                await config.update(
+                    "exclude",
+                    previous,
+                    ConfigurationTarget.Global
+                );
+            }
+        });
+
+        it("should match bundle file names in any case on Windows", async function () {
+            if (process.platform !== "win32") {
+                this.skip();
+            }
+            await writeFile("proj", "Databricks.yml");
+
+            expect(await getRelativeSubProjects()).to.deep.equal(["proj"]);
+        });
+
+        it("should follow symlinked folders", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            const target = await tmp.dir({unsafeCleanup: true});
+            try {
+                await fs.mkdir(path.join(target.path, "proj"));
+                await fs.writeFile(
+                    path.join(target.path, "proj", "databricks.yml"),
+                    ""
+                );
+                await fs.symlink(target.path, path.join(tmpdir.path, "linked"));
+
+                expect(await getRelativeSubProjects()).to.deep.equal([
+                    path.join("linked", "proj"),
+                ]);
+            } finally {
+                await target.cleanup();
+            }
         });
     });
 });
