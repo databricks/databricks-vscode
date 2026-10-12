@@ -4,9 +4,9 @@
 
 ## (2026-10-12)
 
+-   Remove the Terraform deployment engine, as part of the update to Databricks CLI v1.20.0 (#2243) ([b087b77](https://github.com/databricks/databricks-vscode/commit/b087b77)). Bundles now always deploy with the direct engine: setting `bundle.engine: terraform` or `DATABRICKS_BUNDLE_ENGINE=terraform` is an error, and if existing Terraform state can't be migrated, the deploy fails instead of falling back to Terraform. If you still need Terraform, stay on extension v2.20.0. The extension also no longer ships the Terraform binary that security scans flagged (#2166). See the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.20.0) for details
 -   Verify TLS certificates for SDK calls again by default: an unset `databricks.proxy.strictSSL` now falls back to `http.proxyStrictSSL` (verification was skipped since v2.19.0), and honor `http.systemCertificates` (#2244) ([8654191](https://github.com/databricks/databricks-vscode/commit/8654191))
 -   Sort folders alphabetically in the Workspace File System view (#2233) ([9b26c33](https://github.com/databricks/databricks-vscode/commit/9b26c33)), see #2231
--   Update Databricks CLI to v1.20.0 (#2243) ([b087b77](https://github.com/databricks/databricks-vscode/commit/b087b77)) — the CLI removes the Terraform deployment engine, so `bundle.engine: terraform` now errors (use CLI v1.19.x to keep deploying with Terraform), and the extension no longer bundles the Terraform binary (#2166); see the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.20.0) for details
 
 # Release: v2.20.0
 
