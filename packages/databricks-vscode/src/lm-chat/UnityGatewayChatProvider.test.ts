@@ -588,6 +588,26 @@ describe(__filename, () => {
                 );
             });
 
+            it("shows the code of a connection that failed on every address", async () => {
+                // As Node reports one when it tries each of a host's addresses.
+                const failure = Object.assign(
+                    new AggregateError(
+                        [
+                            new Error("connect ECONNREFUSED 127.0.0.1:443"),
+                            new Error("connect ECONNREFUSED ::1:443"),
+                        ],
+                        ""
+                    ),
+                    {code: "ECONNREFUSED"}
+                );
+                respondToChat = () => Promise.reject(failure);
+
+                await assert.rejects(
+                    chat(),
+                    (e) => e instanceof Error && e.message === "ECONNREFUSED"
+                );
+            });
+
             it("stops the request when the chat is cancelled", async () => {
                 respondToChat = async ({signal}) => ({
                     statusCode: 200,

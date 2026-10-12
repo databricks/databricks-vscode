@@ -177,6 +177,20 @@ export class UnityGatewayChatProvider
 }
 
 /**
+ * What a failure says. Node reports a connection that failed on every address
+ * of a host with an empty message and only a code.
+ */
+function errorText(e: unknown): string {
+    if (isRecord(e) && typeof e.message === "string" && e.message !== "") {
+        return e.message;
+    }
+    if (isRecord(e) && typeof e.code === "string") {
+        return e.code;
+    }
+    return String(e);
+}
+
+/**
  * What to end a failed chat turn with. Chat shows the message, so it carries
  * the gateway's reason but never the error object itself.
  */
@@ -187,9 +201,7 @@ function chatError(e: unknown): Error {
             : 0;
     if (status <= 0) {
         // Shown whole: a sign-in that can't refresh ends with the CLI's advice.
-        return new Error(
-            isRecord(e) && typeof e.message === "string" ? e.message : String(e)
-        );
+        return new Error(errorText(e));
     }
     const message = [
         `Unity Gateway returned HTTP ${status}`,
