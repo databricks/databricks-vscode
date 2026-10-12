@@ -1,3 +1,17 @@
+# Release: v2.21.0
+
+## packages/databricks-vscode
+
+## (2026-10-12)
+
+-   feat(lm-chat): add the Unity Gateway sign-in (#2230) ([b3af32b](https://github.com/databricks/databricks-vscode/commit/b3af32b)), closes [#2230](https://github.com/databricks/databricks-vscode/issues/2230)
+-   feat(lm-chat): add Unity Gateway model discovery (#2238) ([2691c78](https://github.com/databricks/databricks-vscode/commit/2691c78)), closes [#2238](https://github.com/databricks/databricks-vscode/issues/2238) [#2230](https://github.com/databricks/databricks-vscode/issues/2230)
+-   feat(lm-chat): show the Unity Gateway connection in the Configuration view (#2237) ([65e83f1](https://github.com/databricks/databricks-vscode/commit/65e83f1)), closes [#2237](https://github.com/databricks/databricks-vscode/issues/2237) [#2230](https://github.com/databricks/databricks-vscode/issues/2230) [#2230](https://github.com/databricks/databricks-vscode/issues/2230)
+-   Fix the strictSSL default and honor http.systemCertificates for SDK calls (#2244) ([8654191](https://github.com/databricks/databricks-vscode/commit/8654191)), closes [#2244](https://github.com/databricks/databricks-vscode/issues/2244)
+-   Update Databricks CLI to v1.20.0 and remove Terraform bundling (#2243) ([b087b77](https://github.com/databricks/databricks-vscode/commit/b087b77)), closes [#2243](https://github.com/databricks/databricks-vscode/issues/2243) [#2241](https://github.com/databricks/databricks-vscode/issues/2241) [#2241](https://github.com/databricks/databricks-vscode/issues/2241) [#2166](https://github.com/databricks/databricks-vscode/issues/2166)
+-   chore(deps): bump shell-quote from 1.9.0 to 1.11.0 (#2240) ([ccf29e2](https://github.com/databricks/databricks-vscode/commit/ccf29e2)), closes [#2240](https://github.com/databricks/databricks-vscode/issues/2240) [#15](https://github.com/databricks/databricks-vscode/issues/15) [#32](https://github.com/databricks/databricks-vscode/issues/32) [#1](https://github.com/databricks/databricks-vscode/issues/1) [#11](https://github.com/databricks/databricks-vscode/issues/11) [#14](https://github.com/databricks/databricks-vscode/issues/14) [#11](https://github.com/databricks/databricks-vscode/issues/11) [#9](https://github.com/databricks/databricks-vscode/issues/9)
+-   fix(wsfs): sort folders alphabetically in Workspace File System view (#2233) ([9b26c33](https://github.com/databricks/databricks-vscode/commit/9b26c33)), closes [#2233](https://github.com/databricks/databricks-vscode/issues/2233) [#2231](https://github.com/databricks/databricks-vscode/issues/2231)
+
 # Release: v2.20.0
 
 ## packages/databricks-vscode
