@@ -1,6 +1,6 @@
 import {randomBytes} from "crypto";
 import {existsSync} from "fs";
-import {access, copyFile, realpath, rename, rm} from "fs/promises";
+import {access, constants, copyFile, realpath, rename, rm} from "fs/promises";
 import path from "path";
 import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
@@ -292,7 +292,7 @@ export function makePythonSetupDeps(
         },
         checkProjectFileBackup: async (folder: string, backupPath: string) => {
             assertBackupInside(folder, backupPath);
-            await access(backupPath);
+            await access(backupPath, constants.R_OK);
         },
         restoreProjectFile: async (folder: string, backupPath: string) => {
             // Restore the CLI's pre-merge backup over pyproject.toml (the seam's

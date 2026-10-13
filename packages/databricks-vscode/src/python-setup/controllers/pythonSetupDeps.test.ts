@@ -1,5 +1,6 @@
 import {expect} from "chai";
 import {
+    chmod,
     mkdir,
     mkdtemp,
     readdir,
@@ -1180,6 +1181,29 @@ describe("makePythonSetupDeps checkProjectFileBackup", () => {
             await writeFile(backup, "original\n");
             const deps = makePythonSetupDeps(makeWiring());
             await deps.checkProjectFileBackup(dir, backup);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("rejects a backup that cannot be read", async function () {
+        if (process.platform === "win32" || process.getuid?.() === 0) {
+            // chmod does not remove read access there.
+            this.skip();
+        }
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-check-"));
+        try {
+            const backup = path.join(dir, "pyproject.toml.bak");
+            await writeFile(backup, "original\n");
+            await chmod(backup, 0o200);
+            const deps = makePythonSetupDeps(makeWiring());
+            let threw = false;
+            try {
+                await deps.checkProjectFileBackup(dir, backup);
+            } catch {
+                threw = true;
+            }
+            expect(threw).to.equal(true);
         } finally {
             await rm(dir, {recursive: true, force: true});
         }

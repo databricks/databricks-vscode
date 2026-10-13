@@ -339,11 +339,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      * "ready" line for it.
      */
     private readonly readyRoots = new Set<string>();
-    /**
-     * Setup runs started this session. Any later run can rewrite a shared uv
-     * workspace root pyproject.toml, so it makes an older member retry stale.
-     */
-    private runCount = 0;
+    /** The project folder of each setup run this session, in start order. */
+    private readonly runFolders: string[] = [];
     /**
      * True when the currently active project has been set up successfully this
      * session. Reads the live `projectRoot` so it tracks the active project the
@@ -491,7 +488,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         trigger?: PythonSetupRunTrigger
     ): Promise<void> {
         const {cli, withProgress} = this.deps;
-        this.runCount++;
+        this.runFolders.push(cwd);
 
         const flags = presetToFlags(preset);
         const invocation: SetupLocalInvocation = {
@@ -580,14 +577,15 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // back to. Without either, fall through to the ordinary doc-link
             // handling rather than offer a "retry as DB Connect" that can't work
             // (nothing to restore) or would loop (a run that already skipped pins).
-            const cwdForms = result.uvWorkspaceRoot
+            const isPinConflict =
+                result.error?.code === "E_PROVISION_CONFLICT" &&
+                !invocation.skipConstraints;
+            const cwdForms = isPinConflict
                 ? [cwd, await this.realPathForConflict(cwd)]
                 : [cwd];
-            const conflictBackups =
-                result.error?.code === "E_PROVISION_CONFLICT" &&
-                !invocation.skipConstraints
-                    ? conflictBackupsOf(result, cwdForms)
-                    : [];
+            const conflictBackups = isPinConflict
+                ? conflictBackupsOf(result, cwdForms)
+                : [];
             const recoverableConflict = conflictBackups.length > 0;
             const actions = recoverableConflict
                 ? this.buildConflictRecoveryActions(
@@ -804,11 +802,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      *   (`--no-constraints`). The restore is load-bearing: the conflict fails
      *   *after* the pins were merged to disk, so `--no-constraints` alone would
      *   leave the conflicting pins in place and only skip re-adding them. It runs
-     *   through {@link runGuarded} — so a click can't race an in-flight run, and
-     *   the restore only fires when the retry actually runs — and no-ops once the
-     *   project is ready, or once another member synced the same uv workspace, so
-     *   a stale toast's Retry can't undo what a later run provisioned. A failed
-     *   restore throws before the CLI spawns, leaving showError to log it.
+     *   through {@link runGuarded}, so a click can't race an in-flight run. It
+     *   does nothing once the project is ready, and it asks for a new setup once
+     *   a later run touched the same files, so a stale toast can't undo that run.
+     *   A failed restore throws before the CLI spawns, leaving showError to log it.
      * - "Open pyproject.toml" opens the merged file so the user can adjust the
      *   dependencies that clashed.
      */
@@ -818,7 +815,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         uvWorkspaceRoot: string | undefined,
         backups: ProjectFileBackup[]
     ): PythonSetupErrorAction[] {
-        const runsAtConflict = this.runCount;
+        const runsAtConflict = this.runFolders.length;
+        // The files the retry restores: the uv workspace root for a member, else
+        // the project. A later run inside this folder can have rewritten them;
+        // a run of the root project is inside it too.
+        const scope = uvWorkspaceRoot ?? cwd;
         return [
             {
                 label: "Retry DB Connect setup",
@@ -828,9 +829,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                     if (this.readyRoots.has(cwd)) {
                         return;
                     }
-                    // Any later run can rewrite a shared uv workspace root file,
-                    // also for the root project, whose result names no root.
-                    if (this.runCount !== runsAtConflict) {
+                    if (
+                        this.runFolders
+                            .slice(runsAtConflict)
+                            .some((folder) => containsPath(scope, folder))
+                    ) {
                         return this.deps.notify(
                             "Another Python environment setup ran after this " +
                                 "conflict. Run the setup again."
@@ -998,7 +1001,6 @@ function conflictBackupsOf(
     result: PythonSetupResult,
     cwdForms: string[]
 ): ProjectFileBackup[] {
-    const cwd = cwdForms[0];
     if (result.uvWorkspaceRoot) {
         // A member's pins live in the root file, and --no-constraints leaves
         // them. Without a root backup, a retry would conflict again.
@@ -1011,14 +1013,26 @@ function conflictBackupsOf(
         ];
         const {backupPath} = result;
         if (backupPath) {
-            // The CLI names the backup from its form of the project folder.
-            const folder =
-                cwdForms.find((form) => containsPath(form, backupPath)) ?? cwd;
-            backups.unshift({folder, backupPath});
+            backups.unshift({
+                folder: backupFolder(backupPath, cwdForms),
+                backupPath,
+            });
         }
         return backups;
     }
     return result.backupPath
-        ? [{folder: cwd, backupPath: result.backupPath}]
+        ? [
+              {
+                  folder: backupFolder(result.backupPath, cwdForms),
+                  backupPath: result.backupPath,
+              },
+          ]
         : [];
+}
+
+/** The form of the project folder that the CLI named `backupPath` from. */
+function backupFolder(backupPath: string, cwdForms: string[]): string {
+    return (
+        cwdForms.find((form) => containsPath(form, backupPath)) ?? cwdForms[0]
+    );
 }

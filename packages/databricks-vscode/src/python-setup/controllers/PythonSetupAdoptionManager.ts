@@ -1,4 +1,5 @@
 import path from "node:path";
+import {PythonSetupState} from "../../vscode-objs/StateStorage";
 import {TargetCompute} from "../../telemetry/constants";
 import {PythonSetupAdoption} from "../../telemetry/pythonSetupExtensions";
 
@@ -26,7 +27,9 @@ export interface PythonSetupAdoptionDeps {
      * The project and venv folders in the persisted setup state; each is
      * undefined in state saved by older versions.
      */
-    savedSetup: () => {projectRoot?: string; venvPath?: string} | undefined;
+    savedSetup: () =>
+        | Pick<PythonSetupState, "projectRoot" | "venvPath">
+        | undefined;
     /** Whether the managed venv interpreter in `venvDir` exists on disk. */
     venvExists: (venvDir: string) => boolean;
     /** Emit the gauge. Wraps telemetry; must be best-effort (never throw). */

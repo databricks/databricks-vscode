@@ -2233,6 +2233,75 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         expect(cli.calls).to.have.length(2);
     });
 
+    it("keeps a retry live after a setup run of an unrelated project", async () => {
+        let activeRoot = "/projA";
+        const restored: string[] = [];
+        const cli = makeScriptedCli([
+            conflictResult(),
+            SUCCESS_REAL_RUN,
+            SUCCESS_REAL_RUN,
+        ]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => activeRoot,
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (_root, backupPath) => {
+                    restored.push(backupPath);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        activeRoot = "/projB";
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal(["/proj/pyproject.toml.bak"]);
+        expect(cli.calls).to.have.length(3);
+    });
+
+    it("restores a backup that the CLI named from the real project folder", async () => {
+        // A standalone project open through a symlink: the CLI reports real paths.
+        const restored: Array<{root: string; backupPath: string}> = [];
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeScriptedCli([
+                    {
+                        ...conflictResult(),
+                        backupPath: "/real/proj/pyproject.toml.bak",
+                    },
+                    SUCCESS_REAL_RUN,
+                ]),
+                projectRoot: () => "/link/proj",
+                realPath: async () => "/real/proj",
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (root, backupPath) => {
+                    restored.push({root, backupPath});
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal([
+            {root: "/real/proj", backupPath: "/real/proj/pyproject.toml.bak"},
+        ]);
+    });
+
     it("offers the retry when only the uv workspace root was backed up", async () => {
         const {restored} = await retryMemberConflict({
             ...memberConflictResult(),
