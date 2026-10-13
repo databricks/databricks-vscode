@@ -339,8 +339,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      * "ready" line for it.
      */
     private readonly readyRoots = new Set<string>();
-    /** The project folder of each setup run this session, in start order. */
-    private readonly runFolders: string[] = [];
+    /**
+     * The project folder of each setup run this session, in start order, as
+     * opened and symlink-resolved (the CLI reports paths in the second form).
+     */
+    private readonly runFolders: string[][] = [];
     /**
      * True when the currently active project has been set up successfully this
      * session. Reads the live `projectRoot` so it tracks the active project the
@@ -488,7 +491,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         trigger?: PythonSetupRunTrigger
     ): Promise<void> {
         const {cli, withProgress} = this.deps;
-        this.runFolders.push(cwd);
+        this.runFolders.push([cwd, await this.realPathOrSelf(cwd)]);
 
         const flags = presetToFlags(preset);
         const invocation: SetupLocalInvocation = {
@@ -581,7 +584,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                 result.error?.code === "E_PROVISION_CONFLICT" &&
                 !invocation.skipConstraints;
             const cwdForms = isPinConflict
-                ? [cwd, await this.realPathForConflict(cwd)]
+                ? [cwd, await this.realPathOrSelf(cwd)]
                 : [cwd];
             const conflictBackups = isPinConflict
                 ? conflictBackupsOf(result, cwdForms)
@@ -781,10 +784,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     }
 
     /**
-     * {@link PythonSetupSetupDeps.realPath} for the conflict handling. A failure
-     * keeps the folder as given, so the CLI error still reaches the user.
+     * {@link PythonSetupSetupDeps.realPath}, or the folder as given if that
+     * fails: these callers only compare paths, and must not break the run or
+     * hide its CLI error.
      */
-    private async realPathForConflict(cwd: string): Promise<string> {
+    private async realPathOrSelf(cwd: string): Promise<string> {
         try {
             return await this.deps.realPath(cwd);
         } catch {
@@ -832,11 +836,15 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                     if (
                         this.runFolders
                             .slice(runsAtConflict)
-                            .some((folder) => containsPath(scope, folder))
+                            .some((forms) =>
+                                forms.some((folder) =>
+                                    containsPath(scope, folder)
+                                )
+                            )
                     ) {
                         return this.deps.notify(
-                            "Another Python environment setup ran after this " +
-                                "conflict. Run the setup again."
+                            "A later Python environment setup changed these " +
+                                "files after this conflict. Run the setup again."
                         );
                     }
                     return this.runGuarded(async () => {
@@ -980,8 +988,8 @@ function containsPath(parent: string, child: string): boolean {
 
 /**
  * The result's uv workspace root, if it contains the project folder in one of
- * `cwdForms` (as given, symlink-resolved). The restore writes there, so a root
- * from a malformed result must not widen that target.
+ * `cwdForms` (as given, symlink-resolved). The restore writes there, so the
+ * root must at least be a parent of the project.
  */
 function trustedUvWorkspaceRoot(
     result: PythonSetupResult,

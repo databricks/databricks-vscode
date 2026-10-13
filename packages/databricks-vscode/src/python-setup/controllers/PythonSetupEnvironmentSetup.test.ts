@@ -2407,6 +2407,41 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         expect(notified).to.have.length(1);
     });
 
+    it("ignores a stale member retry when the workspace is open through a symlink", async () => {
+        // The CLI reports the real root; later runs keep the opened folder form.
+        let activeRoot = "/link/bundles/a";
+        const restored: string[] = [];
+        const cli = makeScriptedCli([
+            memberConflictResult(),
+            {...SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER, uvWorkspaceRoot: "/mono"},
+        ]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => activeRoot,
+                realPath: async (p) => p.replace(/^\/link/, "/mono"),
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (_root, backupPath) => {
+                    restored.push(backupPath);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        activeRoot = "/link/bundles/b";
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal([]);
+        expect(cli.calls).to.have.length(2);
+    });
+
     it("ignores a stale member retry after a setup of the uv workspace root project", async () => {
         // The root project is not a member, so its result has no
         // uvWorkspaceRoot, but its run still rewrites the shared root file.
