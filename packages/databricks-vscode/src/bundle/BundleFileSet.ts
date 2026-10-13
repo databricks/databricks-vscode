@@ -4,7 +4,7 @@ import {merge} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
 import {BundleSchema} from "./types";
-import {readFile, writeFile} from "fs/promises";
+import {readFile, realpath, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
 import {minimatch} from "minimatch";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
@@ -39,17 +39,34 @@ export async function getSubProjects(root: Uri) {
         "**/.*/**"
     );
     const normalizedRoot = path.normalize(root.fsPath);
-    return subProjectRoots
-        .map((rootFile) => {
-            const dirname = path.dirname(path.normalize(rootFile.fsPath));
-            const absolute = Uri.file(dirname);
-            const relative = path.relative(normalizedRoot, dirname);
-            return {absolute, relative};
-        })
-        .filter(({absolute}) => {
-            return absolute.fsPath !== normalizedRoot;
-        })
-        .sort((a, b) => a.relative.localeCompare(b.relative));
+    // A folder removed since the search keeps the path it was found at.
+    const realPath = (p: string) => realpath(p).catch(() => p);
+    const realRoot = await realPath(normalizedRoot);
+    // findFiles follows symlinks, so a folder linked from elsewhere in the
+    // workspace, as Bazel's bazel-* links do, is found more than once. Each
+    // real folder is listed once, under its shortest path.
+    const subProjects = new Map<string, {absolute: Uri; relative: string}>();
+    for (const rootFile of subProjectRoots) {
+        const dirname = path.dirname(path.normalize(rootFile.fsPath));
+        const realDirname = await realPath(dirname);
+        if (realDirname === realRoot) {
+            continue;
+        }
+        const relative = path.relative(normalizedRoot, dirname);
+        const existing = subProjects.get(realDirname);
+        if (
+            existing === undefined ||
+            relative.length < existing.relative.length
+        ) {
+            subProjects.set(realDirname, {
+                absolute: Uri.file(dirname),
+                relative,
+            });
+        }
+    }
+    return [...subProjects.values()].sort((a, b) =>
+        a.relative.localeCompare(b.relative)
+    );
 }
 
 export function getAbsoluteGlobPath(path: string | Uri, root: Uri): string {

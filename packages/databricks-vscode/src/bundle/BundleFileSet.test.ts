@@ -410,5 +410,32 @@ describe(__filename, async function () {
                 await target.cleanup();
             }
         });
+
+        it("should list a folder reached through symlinks once", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            // Bazel links bazel-<name> to its execroot, which links back to
+            // each top-level folder.
+            await writeFile("jobs", "etl", "databricks.yml");
+            const execroot = await tmp.dir({unsafeCleanup: true});
+            try {
+                await fs.symlink(
+                    path.join(tmpdir.path, "jobs"),
+                    path.join(execroot.path, "jobs")
+                );
+                await fs.symlink(
+                    execroot.path,
+                    path.join(tmpdir.path, "bazel-repo")
+                );
+
+                expect(await getRelativeSubProjects()).to.deep.equal([
+                    path.join("jobs", "etl"),
+                ]);
+            } finally {
+                await execroot.cleanup();
+            }
+        });
     });
 });
