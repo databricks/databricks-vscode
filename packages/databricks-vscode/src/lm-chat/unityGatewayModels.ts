@@ -1,5 +1,6 @@
 import type {CancellationToken, LanguageModelChatInformation} from "vscode";
 import type {AiGatewayClient, ModelService} from "@databricks/sdk-aigateway/v1";
+import {PromiseUtils} from "../utils";
 
 // Unity Gateway doesn't report model limits yet.
 const MAX_INPUT_TOKENS = 128_000;
@@ -28,7 +29,10 @@ export async function listUnityGatewayModels(
     try {
         // The SDK only hands the signal on once it has the auth headers, and
         // a v1 token refresh can hang.
-        return await untilAborted(listModels(client, signal), signal);
+        return await PromiseUtils.untilAborted(
+            listModels(client, signal),
+            signal
+        );
     } finally {
         cancellation.dispose();
     }
@@ -49,19 +53,6 @@ async function listModels(
         }
     }
     return models.sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-    return new Promise((resolve, reject) => {
-        const abort = () => reject(signal.reason);
-        if (signal.aborted) {
-            abort();
-        }
-        signal.addEventListener("abort", abort, {once: true});
-        promise
-            .then(resolve, reject)
-            .finally(() => signal.removeEventListener("abort", abort));
-    });
 }
 
 function toModelInformation(
