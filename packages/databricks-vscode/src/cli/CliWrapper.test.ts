@@ -512,6 +512,65 @@ token = dapitest5678
         }
     });
 
+    it("pins DATABRICKS_BUNDLE_ROOT for bundle commands only when a root is given", async () => {
+        // Remote mode pins the bundle root to the project folder the credential
+        // guard checked, so the CLI can't walk up to a parent databricks.yml.
+        // Normal mode passes no root and keeps the CLI's own resolution.
+        const cli = createCliWrapper(getTempLogFilePath());
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+
+        const pinned = await cli.getBundleCommandEnvVars(
+            authProvider,
+            undefined,
+            "/test/project"
+        );
+        assert.equal(pinned.DATABRICKS_BUNDLE_ROOT, "/test/project");
+
+        const unpinned = await cli.getBundleCommandEnvVars(
+            authProvider,
+            undefined
+        );
+        assert.ok(!("DATABRICKS_BUNDLE_ROOT" in unpinned));
+    });
+
+    it("pins DATABRICKS_BUNDLE_ROOT for a bundle run only when asked", async () => {
+        const cli = createCliWrapper(getTempLogFilePath());
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+        const workspaceFolder = Uri.file("/test/123");
+
+        const pinned = await cli.getBundleRunCommand(
+            "dev",
+            authProvider,
+            "resource-key",
+            workspaceFolder,
+            undefined,
+            [],
+            true
+        );
+        assert.equal(
+            pinned.options.env?.DATABRICKS_BUNDLE_ROOT,
+            workspaceFolder.fsPath
+        );
+
+        const unpinned = await cli.getBundleRunCommand(
+            "dev",
+            authProvider,
+            "resource-key",
+            workspaceFolder
+        );
+        assert.ok(!("DATABRICKS_BUNDLE_ROOT" in (unpinned.options.env ?? {})));
+    });
+
     it("should forward auth to the setup-local env vars", async () => {
         const logFilePath = getTempLogFilePath();
         const cli = createCliWrapper(logFilePath);

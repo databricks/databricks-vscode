@@ -134,6 +134,47 @@ describe("BundlePreValidateModel", async function () {
         ).to.equal(SESSION_HOST);
     });
 
+    it("getTargetWorkspaceFromDisk keeps the global host when the target host is empty", async () => {
+        // A target `workspace.host: ""` must not blank the inherited global
+        // host: the CLI keeps the global host and would send the session token
+        // there, so the guard has to see it (and refuse on a mismatch) rather
+        // than read no host and allow. Confirmed against CLI v1.20.0.
+        await writeRoot([
+            "workspace:",
+            `  host: ${OTHER_HOST}`,
+            "targets:",
+            "  dev:",
+            "    default: true",
+            "    workspace:",
+            '      host: ""',
+        ]);
+
+        expect(
+            asObject(await makeModel().getTargetWorkspaceFromDisk("dev")).host
+        ).to.equal(OTHER_HOST);
+    });
+
+    it("getTargetWorkspaceFromDisk keeps the global profile when the target profile is empty", async () => {
+        // Same hole via profile: a target `profile: ""` must not blank the
+        // inherited global profile, or the guard would read no profile and allow
+        // while the CLI authenticates against the profile's host. Confirmed
+        // against CLI v1.20.0.
+        await writeRoot([
+            "workspace:",
+            "  profile: some-other-workspace",
+            "targets:",
+            "  dev:",
+            "    default: true",
+            "    workspace:",
+            '      profile: ""',
+        ]);
+
+        const ws = asObject(
+            await makeModel().getTargetWorkspaceFromDisk("dev")
+        );
+        expect(ws.profile).to.equal("some-other-workspace");
+    });
+
     it("getTargetWorkspaceFromDisk reports a target's workspace.profile", async () => {
         // A profile picks its own host (overriding DATABRICKS_HOST) and the CLI
         // doesn't report the resolved host, so the guard must see the profile

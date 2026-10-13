@@ -21,6 +21,31 @@ export type BundlePreValidateState = {
     };
 
 /**
+ * Return a copy of a target's `workspace` block with an empty-string (or
+ * whitespace-only) `host`/`profile` removed, so merging it over the global
+ * `workspace` keeps the global value — the way the CLI resolves an empty target
+ * host/profile. Only `host` and `profile` matter here: they are the auth fields
+ * the credential guard reads, and an empty one must not blank (and so hide) the
+ * global value from the guard. A non-object value (e.g. a `${...}` variable that
+ * parsed to a string) is returned unchanged.
+ */
+function dropEmptyAuthFields(workspace: unknown): unknown {
+    if (typeof workspace !== "object" || workspace === null) {
+        return workspace;
+    }
+    const copy: Record<string, unknown> = {
+        ...(workspace as Record<string, unknown>),
+    };
+    for (const key of ["host", "profile"] as const) {
+        const value = copy[key];
+        if (typeof value === "string" && value.trim() === "") {
+            delete copy[key];
+        }
+    }
+    return copy;
+}
+
+/**
  * Reads and writes bundle configs. This class does not notify when the configs change.
  * We use the BundleWatcher to notify when the configs change.
  */
@@ -211,11 +236,19 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
     private getRawTargetData(bundle: BundleSchema, target: string) {
         const targetObject = Object.assign({}, bundle?.targets?.[target]);
         const globalWorkspace = Object.assign({}, bundle?.workspace);
+        // An empty-string `host`/`profile` in the target doesn't override the
+        // global one in the CLI — it resolves to the global value — but
+        // mergeBundleData only keeps the earlier value for `null`, so a later
+        // "" would blank it. Drop empty auth fields (on a copy, so the shared
+        // bundleDataCache isn't mutated) and let the global value survive,
+        // matching the CLI. Otherwise the credential guard reads no host
+        // (→ session, allowed) while the CLI sends the token to the global host.
+        const targetWorkspace = dropEmptyAuthFields(targetObject.workspace);
         // Merge like the CLI (a later null keeps the earlier value), the same as
         // readMergedBundleFromDisk, so a `workspace: ~` can't blank a host.
         targetObject.workspace = mergeBundleData(
             globalWorkspace,
-            targetObject.workspace
+            targetWorkspace
         );
         return targetObject;
     }

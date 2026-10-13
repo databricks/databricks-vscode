@@ -958,7 +958,8 @@ export class CliWrapper {
 
     async getBundleCommandEnvVars(
         authProvider: AuthProvider,
-        configfilePath?: string
+        configfilePath?: string,
+        bundleRoot?: string
     ) {
         // Add python executable to PATH
         const executable = await this.pythonExtension?.getPythonExecutable();
@@ -978,6 +979,13 @@ export class CliWrapper {
             ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
             /* eslint-disable @typescript-eslint/naming-convention */
             DATABRICKS_CLUSTER_ID: this.clusterId,
+            // Pin the bundle root to the project folder the credential guard
+            // checked. Without it the CLI resolves the root by walking up from
+            // the cwd, so a parent `databricks.yml` could override the project
+            // folder and the token would reach a host the guard never saw. Set
+            // only in remote mode (undefined here → removeUndefinedKeys omits
+            // it, so normal mode keeps the CLI's own root resolution).
+            DATABRICKS_BUNDLE_ROOT: bundleRoot,
             PATH: shellPath,
             /* eslint-enable @typescript-eslint/naming-convention */
         });
@@ -988,7 +996,8 @@ export class CliWrapper {
         authProvider: AuthProvider,
         workspaceFolder: Uri,
         configfilePath?: string,
-        logger?: logging.NamedLogger
+        logger?: logging.NamedLogger,
+        pinBundleRoot = false
     ) {
         const bundleOpName = "validate";
         return await runBundleCommand(
@@ -1001,7 +1010,11 @@ export class CliWrapper {
                 end: "Finished reading local bundle configuration.",
                 error: "Failed to read local bundle configuration.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             // Print stdout to the debug log (not visible in the output channel).
             // stderr data will be printed to the output channel with the error level.
@@ -1014,7 +1027,8 @@ export class CliWrapper {
         authProvider: AuthProvider,
         workspaceFolder: Uri,
         configfilePath?: string,
-        logger?: logging.NamedLogger
+        logger?: logging.NamedLogger,
+        pinBundleRoot = false
     ) {
         const bundleOpName = "summarize";
         return await runBundleCommand(
@@ -1036,7 +1050,11 @@ export class CliWrapper {
                 end: "Bundle configuration refreshed.",
                 error: "Failed to refresh bundle configuration.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             // Print stdout to the debug log (not visible in the output channel).
             // stderr data will be printed to the output channel with the error level.
@@ -1147,7 +1165,8 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger,
         force = false,
-        token?: CancellationToken
+        token?: CancellationToken,
+        pinBundleRoot = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
@@ -1171,7 +1190,11 @@ export class CliWrapper {
                 end: "Bundle deployed successfully.",
                 error: "Failed to deploy the bundle.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             {},
             token
@@ -1185,7 +1208,8 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger,
         force = false,
-        token?: CancellationToken
+        token?: CancellationToken,
+        pinBundleRoot = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
@@ -1205,7 +1229,11 @@ export class CliWrapper {
                 end: "Bundle destroyed successfully.",
                 error: "Failed to destroy the bundle.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             {},
             token
@@ -1218,7 +1246,8 @@ export class CliWrapper {
         workspaceFolder: Uri,
         configfilePath?: string,
         logger?: logging.NamedLogger,
-        token?: CancellationToken
+        token?: CancellationToken,
+        pinBundleRoot = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
@@ -1231,7 +1260,11 @@ export class CliWrapper {
                 end: "Bundle assets uploaded successfully.",
                 error: "Failed to upload bundle assets.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             {},
             token
@@ -1244,7 +1277,8 @@ export class CliWrapper {
         resourceKey: string,
         workspaceFolder: Uri,
         configfilePath?: string,
-        additionalArgs: string[] = []
+        additionalArgs: string[] = [],
+        pinBundleRoot = false
     ): Promise<{
         cmd: string;
         args: string[];
@@ -1256,8 +1290,14 @@ export class CliWrapper {
             ...authProvider.toEnv(),
             ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
             ...this.getLogginEnvVars(),
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+            /* eslint-disable @typescript-eslint/naming-convention */
             DATABRICKS_CLUSTER_ID: this.clusterId,
+            // Pin the bundle root to the project folder the guard checked (see
+            // getBundleCommandEnvVars). Remote mode only; undefined otherwise.
+            DATABRICKS_BUNDLE_ROOT: pinBundleRoot
+                ? workspaceFolder.fsPath
+                : undefined,
+            /* eslint-enable @typescript-eslint/naming-convention */
         });
 
         return {

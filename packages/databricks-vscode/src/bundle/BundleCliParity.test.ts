@@ -26,15 +26,19 @@ function cliRunnable(): boolean {
     return !probe.error && probe.status === 0;
 }
 
-// Run the bundled CLI the way the guard reasons about it: resolve the bundle
-// and read the host it would use, without reaching a real workspace. A fake
-// token plus a non-existent HOME/config and non-resolving (.invalid) hosts mean
-// the run resolves the config, prints it as JSON, then fails at the auth step
-// (exit 1). The resolved host is on stdout regardless of that failure.
-function cliResolvedHost(
-    bundleRoot: string,
-    target: string
-): string | undefined {
+// Run the bundled CLI the way the extension does: from the project folder as
+// cwd (like runBundleCommand), so the CLI resolves the bundle root by walking up
+// from there — unless `pinnedRoot` is given, mirroring the DATABRICKS_BUNDLE_ROOT
+// the extension sets in remote mode. We deliberately do *not* hard-code
+// DATABRICKS_BUNDLE_ROOT, so the walk-up case below exercises the CLI's real root
+// resolution. A fake token plus a non-existent HOME and non-resolving (.invalid)
+// hosts mean the run resolves the config, prints it as JSON, then fails at the
+// auth step (exit 1). The resolved workspace is on stdout regardless.
+function cliResolvedWorkspace(
+    cwd: string,
+    target: string,
+    opts: {pinnedRoot?: string; configFile?: string} = {}
+): {host?: string; profile?: string} | undefined {
     const result = spawnSync(
         cliPath,
         ["bundle", "validate", "-t", target, "-o", "json"],
@@ -42,14 +46,18 @@ function cliResolvedHost(
             encoding: "utf-8",
             timeout: 60000,
             maxBuffer: 10 * 1024 * 1024,
+            cwd,
             env: {
                 /* eslint-disable @typescript-eslint/naming-convention */
                 PATH: process.env.PATH,
-                HOME: path.join(bundleRoot, "empty-home"),
-                DATABRICKS_BUNDLE_ROOT: bundleRoot,
+                HOME: path.join(cwd, "empty-home"),
                 DATABRICKS_HOST: "https://session.invalid",
                 DATABRICKS_TOKEN: "dapiTEST",
-                DATABRICKS_CONFIG_FILE: path.join(bundleRoot, "no-such-cfg"),
+                DATABRICKS_CONFIG_FILE:
+                    opts.configFile ?? path.join(cwd, "no-such-cfg"),
+                ...(opts.pinnedRoot
+                    ? {DATABRICKS_BUNDLE_ROOT: opts.pinnedRoot}
+                    : {}),
                 /* eslint-enable @typescript-eslint/naming-convention */
             },
         }
@@ -58,11 +66,18 @@ function cliResolvedHost(
         return undefined;
     }
     try {
-        const parsed = JSON.parse(result.stdout);
-        return parsed?.workspace?.host;
+        return JSON.parse(result.stdout)?.workspace;
     } catch {
         return undefined;
     }
+}
+
+function cliResolvedHost(
+    cwd: string,
+    target: string,
+    opts: {pinnedRoot?: string; configFile?: string} = {}
+): string | undefined {
+    return cliResolvedWorkspace(cwd, target, opts)?.host;
 }
 
 /**
@@ -118,6 +133,12 @@ describe("BundleFileSet vs bundled CLI (glob/merge parity)", async function () {
         ws: {host?: string; profile?: string} | string | undefined
     ): string | undefined {
         return typeof ws === "object" ? ws?.host : undefined;
+    }
+
+    function extensionResolvedProfile(
+        ws: {host?: string; profile?: string} | string | undefined
+    ): string | undefined {
+        return typeof ws === "object" ? ws?.profile : undefined;
     }
 
     it("resolves the host a sorted include decides, same as the CLI (Repro A)", async () => {
@@ -356,5 +377,119 @@ describe("BundleFileSet vs bundled CLI (glob/merge parity)", async function () {
         );
 
         expect(await makeModel().hasUnsupportedIncludeGlob()).to.be.true;
+    });
+
+    it("keeps the global host when the target host is '', same as the CLI", async () => {
+        // mergeBundleData only keeps the earlier value for null, so a target
+        // `host: ""` would blank the global host — the guard would then read no
+        // host (→ session, allowed) while the CLI keeps the global host and sends
+        // the token there. getRawTargetData drops the empty host so the global
+        // one survives, matching the CLI.
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "bundle: {name: p}",
+                "workspace: {host: https://global-host.invalid}",
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "    workspace:",
+                '      host: ""',
+                "",
+            ].join("\n")
+        );
+
+        const cliHost = cliResolvedHost(tmpdir.path, "dev");
+        const extHost = extensionResolvedHost(
+            await makeModel().getTargetWorkspaceFromDisk("dev")
+        );
+
+        expect(cliHost, "CLI should resolve a host").to.be.a("string");
+        expect(extHost).to.equal(cliHost);
+        expect(extHost).to.equal("https://global-host.invalid");
+    });
+
+    it("keeps the global profile when the target profile is '', same as the CLI", async () => {
+        // The same hole via profile: a target `profile: ""` must not blank the
+        // global profile. The CLI keeps the global profile (and takes its host
+        // from there, overriding DATABRICKS_HOST); the extension keeps it too, so
+        // the guard fails closed on the profile instead of reading the session
+        // host and allowing. The CLI leaves workspace.host unset here and resolves
+        // auth from the profile, so this case compares the profile, not the host.
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "bundle: {name: p}",
+                "workspace: {profile: p1}",
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "    workspace:",
+                '      profile: ""',
+                "",
+            ].join("\n")
+        );
+        const configFile = path.join(tmpdir.path, "cfg");
+        await fs.writeFile(
+            configFile,
+            "[p1]\nhost = https://profile-p1.invalid\ntoken = dapiTEST\n"
+        );
+
+        const cliWs = cliResolvedWorkspace(tmpdir.path, "dev", {configFile});
+        const extWs = await makeModel().getTargetWorkspaceFromDisk("dev");
+
+        expect(cliWs?.profile).to.equal("p1");
+        expect(extensionResolvedProfile(extWs)).to.equal("p1");
+        expect(extensionResolvedProfile(extWs)).to.equal(cliWs?.profile);
+    });
+
+    it("resolves the project folder's root, not a parent's, same as the pinned CLI", async () => {
+        // Without DATABRICKS_BUNDLE_ROOT the CLI finds the bundle root by walking
+        // up from the cwd, so a parent `databricks.yml` (host: parent) wins over
+        // the project folder's `databricks.yaml` (no host). The guard reads only
+        // the project folder, so the extension sets DATABRICKS_BUNDLE_ROOT to it
+        // in remote mode. This proves the pin is necessary: the unpinned CLI picks
+        // the parent host, while the pinned CLI and the extension both read the
+        // host-less child (session host).
+        await writeBundleFile(
+            "databricks.yml",
+            [
+                "bundle: {name: parent}",
+                "targets:",
+                "  dev:",
+                "    default: true",
+                "    workspace:",
+                "      host: https://parent.invalid",
+                "",
+            ].join("\n")
+        );
+        await writeBundleFile(
+            path.join("proj", "databricks.yaml"),
+            [
+                "bundle: {name: child}",
+                "targets: {dev: {default: true}}",
+                "",
+            ].join("\n")
+        );
+        const projectRoot = path.join(tmpdir.path, "proj");
+
+        // The extension reads only the project folder: the host-less child.
+        const extHost = extensionResolvedHost(
+            await makeModel(projectRoot).getTargetWorkspaceFromDisk("dev")
+        );
+        expect(extHost).to.be.undefined;
+
+        // Unpinned, the CLI walks up to the parent and would send the token there.
+        expect(cliResolvedHost(projectRoot, "dev")).to.equal(
+            "https://parent.invalid"
+        );
+
+        // Pinned to the project folder (what the extension does in remote mode),
+        // the CLI reads the child and matches the extension — no parent host.
+        const pinnedHost = cliResolvedHost(projectRoot, "dev", {
+            pinnedRoot: projectRoot,
+        });
+        expect(pinnedHost).to.not.equal("https://parent.invalid");
+        expect(pinnedHost).to.equal(extHost);
     });
 });

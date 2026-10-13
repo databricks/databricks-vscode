@@ -77,11 +77,16 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
 
     @Mutex.synchronise("mutex")
     public async deploy(force = false, token?: CancellationToken) {
-        // Snapshot target + auth before the guard's await: a setTarget /
-        // setAuthProvider that lands during the await must not let the CLI run
-        // a target the guard never checked (or with swapped credentials).
+        // Snapshot target + auth + project root before the guard's await: a
+        // setTarget / setAuthProvider that lands during the await must not let
+        // the CLI run a target the guard never checked (or with swapped
+        // credentials), and the CLI must resolve the same bundle root the guard
+        // reasoned about (pinBundleRoot — remote mode only, see
+        // CliWrapper.getBundleCommandEnvVars).
         const target = this.target;
         const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
         if (target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -93,19 +98,23 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         await this.cli.bundleDeploy(
             target,
             authProvider,
-            this.projectRoot,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
             force,
-            token
+            token,
+            pinBundleRoot
         );
     }
 
     @Mutex.synchronise("mutex")
     public async destroy(force = false, token: CancellationToken) {
-        // Snapshot target + auth before the guard await (TOCTOU, see deploy()).
+        // Snapshot target + auth + project root before the guard await (TOCTOU
+        // + bundle-root pin, see deploy()).
         const target = this.target;
         const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
         if (target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -117,19 +126,23 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         await this.cli.bundleDestroy(
             target,
             authProvider,
-            this.projectRoot,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
             force,
-            token
+            token,
+            pinBundleRoot
         );
     }
 
     @Mutex.synchronise("mutex")
     public async sync(token: CancellationToken) {
-        // Snapshot target + auth before the guard await (TOCTOU, see deploy()).
+        // Snapshot target + auth + project root before the guard await (TOCTOU
+        // + bundle-root pin, see deploy()).
         const target = this.target;
         const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
         if (target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -141,10 +154,11 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         await this.cli.bundleSync(
             target,
             authProvider,
-            this.projectRoot,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
-            token
+            token,
+            pinBundleRoot
         );
     }
 
@@ -152,9 +166,12 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         resourceKey: string,
         additionalArgs: string[] = []
     ) {
-        // Snapshot target + auth before the guard await (TOCTOU, see deploy()).
+        // Snapshot target + auth + project root before the guard await (TOCTOU
+        // + bundle-root pin, see deploy()).
         const target = this.target;
         const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
         if (target === undefined) {
             throw new Error("Target is undefined");
         }
@@ -167,9 +184,10 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             target,
             authProvider,
             resourceKey,
-            this.projectRoot,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
-            additionalArgs
+            additionalArgs,
+            pinBundleRoot
         );
     }
 
@@ -218,6 +236,7 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         const target = this.target;
         const authProvider = this.authProvider;
         const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
         if (
             target === undefined ||
             authProvider === undefined ||
@@ -231,7 +250,8 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
             authProvider,
             projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
-            this.logger
+            this.logger,
+            pinBundleRoot
         );
 
         if (stdout === "" || stdout === undefined) {

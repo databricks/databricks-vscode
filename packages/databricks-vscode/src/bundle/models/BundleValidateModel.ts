@@ -78,6 +78,11 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
         const target = this.target;
         const authProvider = this.authProvider;
         const projectRoot = this.workspaceFolderManager.activeProjectUri;
+        // Remote mode pins the bundle root to the project folder the guard
+        // checked, so the CLI can't walk up to a parent databricks.yml with a
+        // different host (CliWrapper.getBundleCommandEnvVars). The guard is set
+        // only in remote mode, so its presence is the remote-mode signal.
+        const pinBundleRoot = this.authGuard !== undefined;
         if (!target || !authProvider || !projectRoot) {
             return {};
         }
@@ -92,7 +97,8 @@ export class BundleValidateModel extends BaseModelWithStateCache<BundleValidateS
                     authProvider,
                     projectRoot,
                     workspaceConfigs.databrickscfgLocation,
-                    this.logger
+                    this.logger,
+                    pinBundleRoot
                 )
             ).stdout
         ) as BundleTarget;
