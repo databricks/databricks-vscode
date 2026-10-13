@@ -46,36 +46,45 @@ export async function getSubProjects(root: Uri) {
     );
     const normalizedRoot = path.normalize(root.fsPath);
     const realRoot = await realPath(normalizedRoot);
+    // A symlinked folder on the way from the root changes a folder's real path.
+    const isReachedDirectly = (realFolder: string, relative: string) =>
+        realFolder === path.join(realRoot, relative);
     const found = await Promise.all(
         subProjectRoots.map(async (rootFile) => {
             const file = path.normalize(rootFile.fsPath);
             const dirname = path.dirname(file);
             const relative = path.relative(normalizedRoot, dirname);
             const realDirname = await realPath(dirname);
+            const direct = isReachedDirectly(realDirname, relative);
             return {
                 absolute: Uri.file(dirname),
                 relative,
                 realDirname,
-                // A symlinked folder between the root and the bundle changes
-                // its real path.
-                throughLink: realDirname !== path.join(realRoot, relative),
+                direct,
+                // The bundle's own folder is a symlink, but none above it is.
+                ownFolderLinked:
+                    !direct &&
+                    isReachedDirectly(
+                        await realPath(path.dirname(dirname)),
+                        path.dirname(relative)
+                    ),
                 realFile: await realPath(file),
             };
         })
     );
-    // findFiles follows symlinked folders, which can lead back to bundles that
-    // are also found directly, as build output and Bazel's bazel-* links do.
-    // A bundle reached through a link is dropped when its real file is one of
-    // those, the root bundle included. Bundles in real folders all count, even
-    // if their files link to one shared file.
+    // findFiles follows symlinked folders all the way down, into build output
+    // and links back to the sources. As with glob, a bundle behind a symlinked
+    // folder only counts when that folder is the bundle's own, and then only
+    // if its real file wasn't found without a link, the root bundle included.
     const directFiles = new Set(
-        found.filter((p) => !p.throughLink).map((p) => p.realFile)
+        found.filter((p) => p.direct).map((p) => p.realFile)
     );
     return found
         .filter(
             (p) =>
                 p.realDirname !== realRoot &&
-                !(p.throughLink && directFiles.has(p.realFile))
+                (p.direct ||
+                    (p.ownFolderLinked && !directFiles.has(p.realFile)))
         )
         .map(({absolute, relative}) => ({absolute, relative}))
         .sort((a, b) => a.relative.localeCompare(b.relative));
