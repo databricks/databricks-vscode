@@ -154,7 +154,7 @@ describe(__filename, () => {
             ]);
         });
 
-        it("sends tool schemas unchanged", () => {
+        it("sends tool schemas unchanged, without strict mode", () => {
             const inputSchema = {
                 $schema: "http://json-schema.org/draft-07/schema#",
                 type: "object",
@@ -179,12 +179,14 @@ describe(__filename, () => {
                     name: "read_file",
                     description: "Reads.",
                     parameters: inputSchema,
+                    strict: false,
                 },
                 {
                     type: "function",
                     name: "list_files",
                     description: "Lists.",
                     parameters: {type: "object", properties: {}},
+                    strict: false,
                 },
             ]);
             assert.strictEqual(request.tools?.[0].parameters, inputSchema);
