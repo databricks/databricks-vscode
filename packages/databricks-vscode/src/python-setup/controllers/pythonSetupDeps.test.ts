@@ -1,5 +1,14 @@
 import {expect} from "chai";
-import {mkdtemp, readdir, readFile, rm, writeFile} from "fs/promises";
+import {
+    mkdir,
+    mkdtemp,
+    readdir,
+    readFile,
+    realpath,
+    rm,
+    symlink,
+    writeFile,
+} from "fs/promises";
 import {tmpdir} from "os";
 import path from "path";
 import {commands, env, QuickPick, QuickPickItem, Uri, window} from "vscode";
@@ -1033,6 +1042,33 @@ describe("makePythonSetupDeps openProjectFile", () => {
     });
 });
 
+describe("makePythonSetupDeps realPath", () => {
+    it("resolves symlinks in the project folder on Unix", async function () {
+        if (process.platform === "win32") {
+            // Windows keeps the path as given, and symlinks need privileges.
+            this.skip();
+        }
+        const root = await realpath(
+            await mkdtemp(path.join(tmpdir(), "vpex-ws-"))
+        );
+        try {
+            await mkdir(path.join(root, "deep", "bundles", "a"), {
+                recursive: true,
+            });
+            await symlink(
+                path.join(root, "deep", "bundles"),
+                path.join(root, "link")
+            );
+            const deps = makePythonSetupDeps(makeWiring());
+            expect(await deps.realPath(path.join(root, "link", "a"))).to.equal(
+                path.join(root, "deep", "bundles", "a")
+            );
+        } finally {
+            await rm(root, {recursive: true, force: true});
+        }
+    });
+});
+
 describe("makePythonSetupDeps restoreProjectFile", () => {
     it("copies the CLI's backup over the project's pyproject.toml", async () => {
         const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
@@ -1192,7 +1228,7 @@ describe("makePythonSetupDeps showSuccess", () => {
             })
         );
 
-        await deps.showSuccess(SUCCESS_DEFAULT, {});
+        await deps.showSuccess(SUCCESS_DEFAULT, {}, "/proj/.venv");
 
         expect(appended.join("")).to.have.length.greaterThan(0);
         // The automatic reveal fires regardless of what the user clicks.
@@ -1205,7 +1241,7 @@ describe("makePythonSetupDeps showSuccess", () => {
     it("raises an info toast (never a warning) when the run had warnings", async () => {
         const deps = makePythonSetupDeps(makeWiring());
 
-        await deps.showSuccess(SUCCESS_WITH_WARNINGS, {});
+        await deps.showSuccess(SUCCESS_WITH_WARNINGS, {}, "/proj/.venv");
 
         // A successful run is informational even when it carried warnings;
         // the warning count is in the message and the details behind it.
@@ -1213,6 +1249,28 @@ describe("makePythonSetupDeps showSuccess", () => {
         expect(infoShownWith[0].message).to.contain("warning");
         expect(infoShownWith[0].actions).to.contain("View Details");
         expect(warnShownWith).to.have.length(0);
+    });
+
+    it("reads the project name from the venv folder it is given", async () => {
+        const appended: string[] = [];
+        const venvDir = await mkdtemp(path.join(tmpdir(), "venv-"));
+        try {
+            await writeFile(
+                path.join(venvDir, "pyvenv.cfg"),
+                "home = /usr/bin\nprompt = sales\n"
+            );
+            const deps = makePythonSetupDeps(
+                makeWiring({
+                    log: {append: (c) => appended.push(c), show: () => {}},
+                })
+            );
+
+            await deps.showSuccess(SUCCESS_DEFAULT, {}, venvDir);
+        } finally {
+            await rm(venvDir, {recursive: true, force: true});
+        }
+
+        expect(appended.join("")).to.contain(".venv (sales)");
     });
 
     it("reveals the channel again when View Details is picked", async () => {
@@ -1229,7 +1287,7 @@ describe("makePythonSetupDeps showSuccess", () => {
         );
         reply = "View Details";
 
-        await deps.showSuccess(SUCCESS_DEFAULT, {});
+        await deps.showSuccess(SUCCESS_DEFAULT, {}, "/proj/.venv");
 
         // Once on the automatic reveal, again when the button is picked.
         expect(shown).to.equal(2);

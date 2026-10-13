@@ -1,3 +1,4 @@
+import path from "node:path";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../../logger";
@@ -142,12 +143,18 @@ export interface PythonSetupSetupDeps {
     ) => Promise<SetupPreset | undefined>;
 
     /**
+     * The folder with symlinks resolved, on Unix; the folder as given on
+     * Windows. The CLI counts a relative venvPath from this form.
+     */
+    realPath: (folder: string) => Promise<string>;
+
+    /**
      * Point the MS Python extension at the provisioned venv interpreter for
      * `projectRoot`. The root is passed in (not re-read) so adoption always
      * targets the project the run provisioned, even if the user switched the
-     * active project during the (multi-second) CLI run.
+     * active project during the (multi-second) CLI run. `venvDir` is absolute.
      */
-    adoptInterpreter: (venvPath: string, projectRoot: string) => Promise<void>;
+    adoptInterpreter: (venvDir: string, projectRoot: string) => Promise<void>;
 
     /**
      * Open the project's pyproject.toml in an editor — the "Open pyproject.toml"
@@ -219,7 +226,8 @@ export interface PythonSetupSetupDeps {
      */
     showSuccess: (
         result: PythonSetupResult,
-        flags: SetupPresetFlags
+        flags: SetupPresetFlags,
+        venvDir: string
     ) => Promise<void>;
 
     /**
@@ -605,11 +613,13 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         // Adoption is the point of the flow: without it the venv exists on disk
         // but is unusable from the editor, so a failure here is a setup failure —
         // surface it and stay not-ready rather than rejecting with no message.
+        let venvDir: string;
         try {
+            venvDir = await this.resolveVenvDir(cwd, result.venvPath);
             // Adopt for the cwd captured at the top of the run, not the live
             // active project: a mid-run project switch must not point another
             // project's interpreter setting at this run's venv.
-            await this.deps.adoptInterpreter(result.venvPath, cwd);
+            await this.deps.adoptInterpreter(venvDir, cwd);
         } catch (e) {
             // The CLI succeeded, so there is no CLI error to report — but the
             // flow failed. `adopt` is the extension's own phase, appended to the
@@ -699,7 +709,27 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             warnings: result.warnings,
         });
 
-        this.present(this.deps.showSuccess(result, flags));
+        this.present(this.deps.showSuccess(result, flags, venvDir));
+    }
+
+    /**
+     * The absolute folder for the CLI's `venvPath`. A value that climbs
+     * (`../../.venv` for a uv workspace member) counts from the real project
+     * folder, as the CLI does; another relative value stays under the folder as
+     * opened.
+     */
+    private async resolveVenvDir(
+        cwd: string,
+        venvPath: string
+    ): Promise<string> {
+        if (path.isAbsolute(venvPath)) {
+            return venvPath;
+        }
+        const climbs = venvPath.split(/[\\/]/)[0] === "..";
+        return path.resolve(
+            climbs ? await this.deps.realPath(cwd) : cwd,
+            venvPath
+        );
     }
 
     /**

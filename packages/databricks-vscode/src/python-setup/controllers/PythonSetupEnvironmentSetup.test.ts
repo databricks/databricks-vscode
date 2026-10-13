@@ -1,4 +1,5 @@
 import {expect} from "chai";
+import path from "node:path";
 import {
     PythonSetupEnvironmentSetup,
     PythonSetupSetupDeps,
@@ -11,6 +12,7 @@ import {
 import {PythonSetupResult} from "../models/PythonSetupResult";
 import {
     SUCCESS_REAL_RUN,
+    SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER,
     SUCCESS_REAL_RUN_WITH_WARNINGS,
     ERROR_NO_TARGET,
     ERROR_USAGE,
@@ -123,6 +125,7 @@ function makeDeps(
             status: "ok",
             compute: {kind: "serverless", version: "5"},
         }),
+        realPath: async (p) => p,
         adoptInterpreter: async () => {},
         openProjectFile: async () => {},
         restoreProjectFile: async () => {},
@@ -187,7 +190,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(cli.options[0].cwd).to.equal("/proj");
         expect(cli.options[0].onLog).to.be.a("function");
         expect(adopted).to.deep.equal([
-            {venvPath: SUCCESS_REAL_RUN.venvPath, root: "/proj"},
+            {venvPath: path.resolve("/proj", ".venv"), root: "/proj"},
         ]);
         expect(saved).to.deep.equal([
             {
@@ -223,8 +226,92 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         // Adoption targets /projA (the run's cwd), never the switched-to /projB:
         // otherwise B's interpreter setting would point at A's venv.
         expect(adopted).to.deep.equal([
-            {venvPath: SUCCESS_REAL_RUN.venvPath, root: "/projA"},
+            {venvPath: path.resolve("/projA", ".venv"), root: "/projA"},
         ]);
+    });
+
+    it("adopts the shared venv at the root for a uv workspace member", async () => {
+        const member = "/mono/bundles/sales";
+        const shared = path.resolve(member, "../../.venv");
+        const adopted: Array<{venvPath: string; root: string}> = [];
+        const venvDirs: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER}),
+                projectRoot: () => member,
+                adoptInterpreter: async (venvPath, root) => {
+                    adopted.push({venvPath, root});
+                },
+                showSuccess: async (_r, _flags, venvDir) => {
+                    venvDirs.push(venvDir);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(setup.ready).to.equal(true);
+        expect(adopted).to.deep.equal([{venvPath: shared, root: member}]);
+        expect(venvDirs).to.deep.equal([shared]);
+    });
+
+    it("counts a climbing venvPath from the real project folder", async () => {
+        // The CLI counts "../../.venv" from the symlink-resolved project folder,
+        // so the controller must not join it to the folder by text.
+        const adopted: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER}),
+                projectRoot: () => "/link/sales",
+                realPath: async () => "/mono/deep/bundles/sales",
+                adoptInterpreter: async (venvDir) => {
+                    adopted.push(venvDir);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(adopted).to.deep.equal([
+            path.resolve("/mono/deep/bundles/sales", "../../.venv"),
+        ]);
+    });
+
+    it("keeps .venv under the project folder as opened", async () => {
+        // The same folder either way, but the opened form keeps the interpreter
+        // inside the workspace folder for the Python extension.
+        const adopted: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                projectRoot: () => "/link/proj",
+                realPath: async () => "/real/proj",
+                adoptInterpreter: async (venvDir) => {
+                    adopted.push(venvDir);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(adopted).to.deep.equal([path.resolve("/link/proj", ".venv")]);
+    });
+
+    it("keeps an absolute venvPath as it is", async () => {
+        const abs = path.resolve("/envs/shared");
+        const adopted: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: {...SUCCESS_REAL_RUN, venvPath: abs}}),
+                realPath: async () => "/real/proj",
+                adoptInterpreter: async (venvDir) => {
+                    adopted.push(venvDir);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(adopted).to.deep.equal([abs]);
     });
 
     it("reports ready only for the project it was set up for, not another active project", async () => {
@@ -1873,7 +1960,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         expect(cli.calls[1].skipConstraints).to.equal(true);
         expect(cli.calls[1].skipDbconnect).to.equal(undefined);
         // The retry succeeded, so the interpreter is adopted and the project is ready.
-        expect(adopted).to.deep.equal([SUCCESS_REAL_RUN.venvPath]);
+        expect(adopted).to.deep.equal([path.resolve("/proj", ".venv")]);
         expect(setup.ready).to.equal(true);
     });
 

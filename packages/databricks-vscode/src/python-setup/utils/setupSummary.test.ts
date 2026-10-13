@@ -6,6 +6,7 @@ import {
     SUCCESS_DEFAULT,
     SUCCESS_CONSTRAINTS_ONLY,
     SUCCESS_REAL_RUN,
+    SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER,
 } from "../models/fixtures/setupLocalResults";
 
 // The three presets the picker resolves to, as the skip flags formatSetupLog
@@ -58,6 +59,20 @@ describe("formatSetupNotification", () => {
             "Python environment ready — Python download failed; used a " +
                 "compatible installed Python instead. .venv created and " +
                 "selected for your Databricks project."
+        );
+    });
+});
+
+describe("formatSetupNotification for a uv workspace member", () => {
+    it("names the shared venv, which another member may have created", () => {
+        expect(
+            formatSetupNotification(
+                SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER,
+                "linux"
+            )
+        ).to.equal(
+            "Python environment ready — the shared uv workspace venv " +
+                "(../../.venv) is selected for your Databricks project."
         );
     });
 });
@@ -173,6 +188,46 @@ describe("formatSetupLog", () => {
         expect(log).to.contain(
             "  • Backed up your previous pyproject.toml (pyproject.toml.bak)"
         );
+    });
+
+    it("names the shared venv and the root pyproject.toml for a uv workspace member", () => {
+        const log = formatSetupLog(
+            SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER,
+            FULL,
+            undefined,
+            "linux"
+        );
+        expect(log).to.contain(
+            "  • Added matching Databricks constraints to the uv workspace root pyproject.toml"
+        );
+        expect(log).to.contain(
+            "  • Synced the shared uv workspace virtual environment ../../.venv with uv sync"
+        );
+        expect(log).to.contain(
+            "  • Selected ../../.venv as the workspace interpreter"
+        );
+        expect(log).to.contain(
+            "  • Backed up your previous uv workspace root pyproject.toml (pyproject.toml.bak)"
+        );
+        expect(log).to.contain("is selected (`../../.venv/bin/python`).");
+    });
+
+    it("shows the member venv folder with Windows separators on Windows", () => {
+        const log = formatSetupLog(
+            SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER,
+            FULL,
+            undefined,
+            "win32"
+        );
+        expect(log).to.contain(
+            "  • Selected ..\\..\\.venv as the workspace interpreter"
+        );
+        expect(
+            formatSetupNotification(
+                SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER,
+                "win32"
+            )
+        ).to.contain("(..\\..\\.venv)");
     });
 
     it("omits the backup line when nothing was backed up", () => {

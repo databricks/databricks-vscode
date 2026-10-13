@@ -120,8 +120,20 @@ export interface PythonSetupResult {
     resolved?: PythonSetupResolvedInfo;
     greenfield: boolean;
     plan?: PythonSetupPlan;
+    /**
+     * The venv folder in slash form: relative to the project folder (`.venv`,
+     * or `../../.venv` for a uv workspace member), or absolute when
+     * `UV_PROJECT_ENVIRONMENT` is absolute.
+     */
     venvPath?: string;
     backupPath?: string;
+    /**
+     * Set only for a uv workspace member: the absolute workspace root, whose
+     * pyproject.toml holds the constraint pins.
+     */
+    uvWorkspaceRoot?: string;
+    /** The backup of the root pyproject.toml, when the run changed that file. */
+    uvWorkspaceBackupPath?: string;
     phases: PythonSetupPhaseEntry[];
     warnings: PythonSetupWarning[];
     error: PythonSetupError | null;
