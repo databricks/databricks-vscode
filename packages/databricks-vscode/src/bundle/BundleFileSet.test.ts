@@ -417,14 +417,17 @@ describe(__filename, async function () {
                 this.skip();
             }
             // Bazel links bazel-<name> to its execroot, which links back to
-            // each top-level folder.
+            // each top-level folder and file.
+            await writeFile("databricks.yml");
             await writeFile("jobs", "etl", "databricks.yml");
             const execroot = await tmp.dir({unsafeCleanup: true});
             try {
-                await fs.symlink(
-                    path.join(tmpdir.path, "jobs"),
-                    path.join(execroot.path, "jobs")
-                );
+                for (const entry of ["databricks.yml", "jobs"]) {
+                    await fs.symlink(
+                        path.join(tmpdir.path, entry),
+                        path.join(execroot.path, entry)
+                    );
+                }
                 await fs.symlink(
                     execroot.path,
                     path.join(tmpdir.path, "bazel-repo")
@@ -435,6 +438,33 @@ describe(__filename, async function () {
                 ]);
             } finally {
                 await execroot.cleanup();
+            }
+        });
+
+        it("should skip copies of a bundle in a symlinked build output", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            // Build tools link an output folder into the workspace that holds
+            // real folders whose files link back to the sources.
+            await writeFile("jobs", "etl", "databricks.yml");
+            const out = await tmp.dir({unsafeCleanup: true});
+            try {
+                await fs.mkdir(path.join(out.path, "app", "jobs", "etl"), {
+                    recursive: true,
+                });
+                await fs.symlink(
+                    path.join(tmpdir.path, "jobs", "etl", "databricks.yml"),
+                    path.join(out.path, "app", "jobs", "etl", "databricks.yml")
+                );
+                await fs.symlink(out.path, path.join(tmpdir.path, "build-out"));
+
+                expect(await getRelativeSubProjects()).to.deep.equal([
+                    path.join("jobs", "etl"),
+                ]);
+            } finally {
+                await out.cleanup();
             }
         });
 

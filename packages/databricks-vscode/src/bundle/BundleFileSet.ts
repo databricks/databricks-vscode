@@ -46,33 +46,39 @@ export async function getSubProjects(root: Uri) {
     );
     const normalizedRoot = path.normalize(root.fsPath);
     const realRoot = await realPath(normalizedRoot);
-    // findFiles follows symlinks, so a folder linked from elsewhere in the
-    // workspace, as Bazel's bazel-* links do, is found more than once. Each
-    // real folder is listed once, under its shortest path. It compares
-    // folders, not bundle files, so folders whose bundle files link to one
-    // shared file are all listed.
-    const subProjects = new Map<string, {absolute: Uri; relative: string}>();
-    for (const rootFile of subProjectRoots) {
-        const dirname = path.dirname(path.normalize(rootFile.fsPath));
-        const realDirname = await realPath(dirname);
-        if (realDirname === realRoot) {
-            continue;
-        }
-        const relative = path.relative(normalizedRoot, dirname);
-        const existing = subProjects.get(realDirname);
-        if (
-            existing === undefined ||
-            relative.length < existing.relative.length
-        ) {
-            subProjects.set(realDirname, {
+    const found = await Promise.all(
+        subProjectRoots.map(async (rootFile) => {
+            const file = path.normalize(rootFile.fsPath);
+            const dirname = path.dirname(file);
+            const relative = path.relative(normalizedRoot, dirname);
+            const realDirname = await realPath(dirname);
+            return {
                 absolute: Uri.file(dirname),
                 relative,
-            });
-        }
-    }
-    return [...subProjects.values()].sort((a, b) =>
-        a.relative.localeCompare(b.relative)
+                realDirname,
+                // A symlinked folder between the root and the bundle changes
+                // its real path.
+                throughLink: realDirname !== path.join(realRoot, relative),
+                realFile: await realPath(file),
+            };
+        })
     );
+    // findFiles follows symlinked folders, which can lead back to bundles that
+    // are also found directly, as build output and Bazel's bazel-* links do.
+    // A bundle reached through a link is dropped when its real file is one of
+    // those, the root bundle included. Bundles in real folders all count, even
+    // if their files link to one shared file.
+    const directFiles = new Set(
+        found.filter((p) => !p.throughLink).map((p) => p.realFile)
+    );
+    return found
+        .filter(
+            (p) =>
+                p.realDirname !== realRoot &&
+                !(p.throughLink && directFiles.has(p.realFile))
+        )
+        .map(({absolute, relative}) => ({absolute, relative}))
+        .sort((a, b) => a.relative.localeCompare(b.relative));
 }
 
 export function getAbsoluteGlobPath(path: string | Uri, root: Uri): string {
