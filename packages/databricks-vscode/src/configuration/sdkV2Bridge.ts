@@ -12,6 +12,9 @@ import {setProduct} from "@databricks/sdk-core/clientinfo";
 import type {HttpClient} from "@databricks/sdk-core/http";
 import type {ClientOptions} from "@databricks/sdk-options/client";
 
+export type BridgedClientOptions = ClientOptions &
+    Required<Pick<ClientOptions, "host" | "credentials" | "httpClient">>;
+
 /**
  * V2 ClientOptions for a connected v1 client. Pass the client's own agent, so
  * both SDKs share one proxy and CA setup. No `logger` yet: V2 logs response
@@ -21,7 +24,7 @@ export function v2ClientOptions(
     apiClient: ApiClient,
     host: URL,
     agent: http.Agent | https.Agent
-): ClientOptions {
+): BridgedClientOptions {
     // Global, and read when a client is built. Repeating it is a no-op.
     setProduct(apiClient.product, apiClient.productVersion);
     const {config} = apiClient;

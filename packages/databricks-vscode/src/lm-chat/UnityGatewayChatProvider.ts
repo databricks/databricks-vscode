@@ -1,11 +1,8 @@
 import {
+    CancellationError,
     Disposable,
     EventEmitter,
-    LanguageModelDataPart,
-    LanguageModelPromptTsxPart,
-    LanguageModelTextPart,
-    LanguageModelToolCallPart,
-    LanguageModelToolResultPart,
+    LanguageModelError,
     lm,
 } from "vscode";
 import type {
@@ -14,13 +11,23 @@ import type {
     LanguageModelChatInformation,
     LanguageModelChatProvider,
     LanguageModelChatRequestMessage,
+    LanguageModelResponsePart,
     PrepareLanguageModelChatModelOptions,
+    Progress,
+    ProvideLanguageModelChatResponseOptions,
 } from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import type {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {Loggers} from "../logger";
 import type {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
 import {listUnityGatewayModels} from "./unityGatewayModels";
+import {
+    gatewayMessage,
+    isRecord,
+    partText,
+    toResponseParts,
+    toResponsesRequest,
+} from "./unityGatewayResponses";
 
 /**
  * Not declared in `contributes.languageModelChatProviders` yet, so VS Code
@@ -32,6 +39,7 @@ export const UNITY_GATEWAY_VENDOR = "databricks";
 /**
  * Offers Unity Gateway models in VS Code Chat. Lists no models while signed
  * out or when listing fails; a failure is logged and retried on the next call.
+ * A failed chat request ends the turn with an error, which Chat shows.
  */
 export class UnityGatewayChatProvider
     implements LanguageModelChatProvider, Disposable
@@ -111,8 +119,43 @@ export class UnityGatewayChatProvider
         }
     }
 
-    async provideLanguageModelChatResponse(): Promise<void> {
-        throw new Error("Chat with Databricks models isn't available yet.");
+    async provideLanguageModelChatResponse(
+        model: LanguageModelChatInformation,
+        messages: readonly LanguageModelChatRequestMessage[],
+        options: ProvideLanguageModelChatResponseOptions,
+        progress: Progress<LanguageModelResponsePart>,
+        token: CancellationToken
+    ): Promise<void> {
+        const client = this.connectionManager.responsesClient;
+        if (client === undefined) {
+            throw LanguageModelError.NoPermissions(
+                "Sign in to Unity Gateway in the Databricks extension to use Databricks models."
+            );
+        }
+        const controller = new AbortController();
+        const cancellation = token.onCancellationRequested(() =>
+            controller.abort()
+        );
+        try {
+            const events = client.createResponse(
+                toResponsesRequest(model, messages, options),
+                controller.signal
+            );
+            for await (const part of toResponseParts(events)) {
+                progress.report(part);
+            }
+        } catch (e) {
+            if (token.isCancellationRequested) {
+                throw new CancellationError();
+            }
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Unity Gateway chat request failed",
+                e
+            );
+            throw chatError(e);
+        } finally {
+            cancellation.dispose();
+        }
     }
 
     /** A local estimate, like Copilot's own providers; it only feeds prompt budgeting. */
@@ -133,26 +176,50 @@ export class UnityGatewayChatProvider
     }
 }
 
-function partText(part: unknown): string {
-    if (part instanceof LanguageModelTextPart) {
-        return part.value;
+/**
+ * What a failure says. Node reports a connection that failed on every address
+ * of a host with an empty message and only a code.
+ */
+function errorText(e: unknown): string {
+    if (isRecord(e) && typeof e.message === "string" && e.message !== "") {
+        return e.message;
     }
-    if (part instanceof LanguageModelToolCallPart) {
-        return part.name + JSON.stringify(part.input);
+    if (isRecord(e) && typeof e.code === "string") {
+        return e.code;
     }
-    if (part instanceof LanguageModelToolResultPart) {
-        return part.content.map(partText).join("");
+    return String(e);
+}
+
+/**
+ * What to end a failed chat turn with. Chat shows the message, so it carries
+ * the gateway's reason but never the error object itself.
+ */
+function chatError(e: unknown): Error {
+    const status =
+        isRecord(e) && typeof e.httpStatusCode === "number"
+            ? e.httpStatusCode
+            : 0;
+    if (status <= 0) {
+        // Shown whole: a sign-in that can't refresh ends with the CLI's advice.
+        return new Error(errorText(e));
     }
-    if (part instanceof LanguageModelPromptTsxPart) {
-        return JSON.stringify(part.value) ?? "";
+    const message = [
+        `Unity Gateway returned HTTP ${status}`,
+        gatewayMessage(isRecord(e) ? e.message : undefined),
+    ]
+        .filter((part) => part !== "")
+        .join(": ");
+    switch (status) {
+        case 401:
+        case 403:
+            return LanguageModelError.NoPermissions(message);
+        case 404:
+            return LanguageModelError.NotFound(message);
+        case 429:
+            return LanguageModelError.Blocked(message);
+        default:
+            return new Error(message);
     }
-    if (
-        part instanceof LanguageModelDataPart &&
-        /^text\/|json/i.test(part.mimeType)
-    ) {
-        return new TextDecoder().decode(part.data);
-    }
-    return "";
 }
 
 /**

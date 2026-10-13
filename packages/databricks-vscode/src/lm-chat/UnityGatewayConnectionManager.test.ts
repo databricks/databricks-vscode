@@ -10,6 +10,7 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionState} from "../configuration/ConnectionManager";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
+import type {UnityGatewayResponsesClient} from "./UnityGatewayResponsesClient";
 
 const PROFILE_KEY = "databricks.unityGateway.savedProfile";
 const WORKSPACE_ID = "1234";
@@ -31,6 +32,7 @@ describe(__filename, () => {
     let agentRequests: string[];
     let aiGatewayClients: {
         client: AiGatewayClient;
+        responses: UnityGatewayResponsesClient;
         host: string;
         apiClient: ApiClient;
     }[];
@@ -113,12 +115,14 @@ describe(__filename, () => {
                     throw new Error("can't load the V2 SDK");
                 }
                 const client = {} as AiGatewayClient;
+                const responses = {} as UnityGatewayResponsesClient;
                 aiGatewayClients.push({
                     client,
+                    responses,
                     host: host.toString(),
                     apiClient,
                 });
-                return client;
+                return {aiGateway: client, responses};
             }
         );
         states = [];
@@ -169,7 +173,7 @@ describe(__filename, () => {
             assert.deepStrictEqual(states, ["CONNECTING", "CONNECTED"]);
         });
 
-        it("builds a Unity Gateway client from the workspace's v1 client", async () => {
+        it("builds Unity Gateway clients from the workspace's v1 client", async () => {
             await manager.signIn(profile("a"));
 
             assert.equal(aiGatewayClients.length, 1);
@@ -179,6 +183,10 @@ describe(__filename, () => {
             );
             assert.equal(aiGatewayClients[0].apiClient, apiClients.get("a"));
             assert.equal(manager.aiGatewayClient, aiGatewayClients[0].client);
+            assert.equal(
+                manager.responsesClient,
+                aiGatewayClients[0].responses
+            );
         });
 
         it("disconnects, keeping the saved profile, when switching fails", async () => {
@@ -194,6 +202,7 @@ describe(__filename, () => {
             assert.equal(manager.state, "DISCONNECTED");
             assert.equal(manager.databricksWorkspace, undefined);
             assert.equal(manager.aiGatewayClient, undefined);
+            assert.equal(manager.responsesClient, undefined);
             verify(
                 mockStateStorage.set(PROFILE_KEY, deepEqual(saved("b")))
             ).never();
@@ -247,7 +256,7 @@ describe(__filename, () => {
             ).never();
         });
 
-        it("builds the Unity Gateway client on v1's proxy agent", async () => {
+        it("builds the Unity Gateway clients on v1's proxy agent", async () => {
             const defaultManager = new UnityGatewayConnectionManager(
                 instance(mock(CliWrapper)),
                 instance(mockStateStorage)
@@ -256,6 +265,7 @@ describe(__filename, () => {
                 await defaultManager.signIn(profile("a"));
 
                 assert.ok(defaultManager.aiGatewayClient);
+                assert.ok(defaultManager.responsesClient);
                 assert.deepStrictEqual(agentRequests, ["a"]);
             } finally {
                 defaultManager.dispose();
@@ -383,6 +393,7 @@ describe(__filename, () => {
             assert.equal(manager.state, "DISCONNECTED");
             assert.equal(manager.apiClient, undefined);
             assert.equal(manager.aiGatewayClient, undefined);
+            assert.equal(manager.responsesClient, undefined);
             verify(mockStateStorage.set(PROFILE_KEY, undefined)).never();
             assert.deepStrictEqual(states, ["DISCONNECTED"]);
 
