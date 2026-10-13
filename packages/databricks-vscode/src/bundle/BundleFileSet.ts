@@ -11,7 +11,13 @@ import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
 // Glob patterns in a RelativePattern always use "/", on every platform.
-const subProjectFilePattern: string = `**/${rootFilePattern}`;
+// findFiles matches case-sensitively, but Windows file names aren't, so there
+// each letter matches either case, as the previous glob did.
+const subProjectFilePattern: string = `**/${
+    process.platform === "win32"
+        ? rootFilePattern.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`)
+        : rootFilePattern
+}`;
 
 export async function parseBundleYaml(file: Uri) {
     const data = yaml.parse(await readFile(file.fsPath, "utf-8"), {
