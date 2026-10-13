@@ -380,8 +380,8 @@ describe(__filename, async function () {
             }
         });
 
-        it("should match bundle file names in any case on Windows", async function () {
-            if (process.platform !== "win32") {
+        it("should match bundle file names in any case on Windows and macOS", async function () {
+            if (process.platform !== "win32" && process.platform !== "darwin") {
                 this.skip();
             }
             await writeFile("proj", "Databricks.yml");
@@ -436,6 +436,27 @@ describe(__filename, async function () {
             } finally {
                 await execroot.cleanup();
             }
+        });
+
+        it("should list each folder whose bundle file links to a shared one", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            await writeFile("shared", "databricks.yml");
+            for (const bundle of ["bundle1", "bundle2"]) {
+                await fs.mkdir(path.join(tmpdir.path, bundle));
+                await fs.symlink(
+                    path.join("..", "shared", "databricks.yml"),
+                    path.join(tmpdir.path, bundle, "databricks.yml")
+                );
+            }
+
+            expect(await getRelativeSubProjects()).to.deep.equal([
+                "bundle1",
+                "bundle2",
+                "shared",
+            ]);
         });
     });
 });

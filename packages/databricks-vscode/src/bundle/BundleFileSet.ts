@@ -11,10 +11,10 @@ import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
 // Glob patterns in a RelativePattern always use "/", on every platform.
-// findFiles matches case-sensitively, but Windows file names aren't, so there
-// each letter matches either case, as the previous glob did.
+// findFiles matches case-sensitively, but Windows and macOS file systems
+// usually don't, so there each letter matches either case.
 const subProjectFilePattern: string = `**/${
-    process.platform === "win32"
+    process.platform === "win32" || process.platform === "darwin"
         ? rootFilePattern.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`)
         : rootFilePattern
 }`;
@@ -31,20 +31,26 @@ export async function writeBundleYaml(file: Uri, data: BundleSchema) {
     await writeFile(file.fsPath, yaml.stringify(data));
 }
 
+// Resolves symlinks in a path. A path that no longer exists, such as a folder
+// removed since it was found, is returned as it is.
+function realPath(p: string) {
+    return realpath(p).catch(() => p);
+}
+
 export async function getSubProjects(root: Uri) {
     // VS Code searches outside the extension host, so large folders don't
-    // block it. Dot-folders are skipped, as the previous glob did.
+    // block it. Dot-folders are skipped.
     const subProjectRoots = await workspace.findFiles(
         new RelativePattern(root, subProjectFilePattern),
         "**/.*/**"
     );
     const normalizedRoot = path.normalize(root.fsPath);
-    // A folder removed since the search keeps the path it was found at.
-    const realPath = (p: string) => realpath(p).catch(() => p);
     const realRoot = await realPath(normalizedRoot);
     // findFiles follows symlinks, so a folder linked from elsewhere in the
     // workspace, as Bazel's bazel-* links do, is found more than once. Each
-    // real folder is listed once, under its shortest path.
+    // real folder is listed once, under its shortest path. It compares
+    // folders, not bundle files, so folders whose bundle files link to one
+    // shared file are all listed.
     const subProjects = new Map<string, {absolute: Uri; relative: string}>();
     for (const rootFile of subProjectRoots) {
         const dirname = path.dirname(path.normalize(rootFile.fsPath));
