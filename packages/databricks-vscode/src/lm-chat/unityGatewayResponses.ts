@@ -33,6 +33,7 @@ interface ResponsesFunctionTool {
     name: string;
     description: string;
     parameters: object;
+    strict: false;
 }
 
 /**
@@ -52,6 +53,9 @@ export function toResponsesRequest(
             name: tool.name,
             description: tool.description,
             parameters: tool.inputSchema ?? {type: "object", properties: {}},
+            // Otherwise OpenAI makes the schema strict where it can, which
+            // requires a value for every optional parameter.
+            strict: false,
         })
     );
     return {
