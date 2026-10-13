@@ -37,6 +37,16 @@ function realPath(p: string) {
     return realpath(p).catch(() => p);
 }
 
+// Whether no folder on the way from the root is a symlink, which would change
+// the folder's real path.
+function isReachedDirectly(
+    realFolder: string,
+    realRoot: string,
+    relative: string
+) {
+    return realFolder === path.join(realRoot, relative);
+}
+
 export async function getSubProjects(root: Uri) {
     // VS Code searches outside the extension host, so large folders don't
     // block it. Dot-folders are skipped.
@@ -46,16 +56,13 @@ export async function getSubProjects(root: Uri) {
     );
     const normalizedRoot = path.normalize(root.fsPath);
     const realRoot = await realPath(normalizedRoot);
-    // A symlinked folder on the way from the root changes a folder's real path.
-    const isReachedDirectly = (realFolder: string, relative: string) =>
-        realFolder === path.join(realRoot, relative);
     const found = await Promise.all(
         subProjectRoots.map(async (rootFile) => {
             const file = path.normalize(rootFile.fsPath);
             const dirname = path.dirname(file);
             const relative = path.relative(normalizedRoot, dirname);
             const realDirname = await realPath(dirname);
-            const direct = isReachedDirectly(realDirname, relative);
+            const direct = isReachedDirectly(realDirname, realRoot, relative);
             return {
                 absolute: Uri.file(dirname),
                 relative,
@@ -66,6 +73,7 @@ export async function getSubProjects(root: Uri) {
                     !direct &&
                     isReachedDirectly(
                         await realPath(path.dirname(dirname)),
+                        realRoot,
                         path.dirname(relative)
                     ),
                 realFile: await realPath(file),
@@ -73,9 +81,9 @@ export async function getSubProjects(root: Uri) {
         })
     );
     // findFiles follows symlinked folders all the way down, into build output
-    // and links back to the sources. As with glob, a bundle behind a symlinked
-    // folder only counts when that folder is the bundle's own, and then only
-    // if its real file wasn't found without a link, the root bundle included.
+    // and links back to the sources. So a bundle behind a symlinked folder
+    // only counts when that folder is the bundle's own, and then only if its
+    // real file wasn't found without a link, the root bundle included.
     const directFiles = new Set(
         found.filter((p) => p.direct).map((p) => p.realFile)
     );
