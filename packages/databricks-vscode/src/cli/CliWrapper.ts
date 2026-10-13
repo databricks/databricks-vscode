@@ -31,6 +31,15 @@ import {
 
 const withLogContext = logging.withLogContext;
 
+/**
+ * A file name that must not exist inside a bundle root. In remote mode the
+ * extension points the CLI's `DATABRICKS_CONFIG_FILE` at this path (joined onto
+ * the pinned bundle root) so the CLI can't read the user's `.databrickscfg` —
+ * see {@link CliWrapper.getBundleCommandEnvVars}.
+ */
+export const REMOTE_MODE_NONEXISTENT_CONFIG_FILE =
+    ".databricks-vscode-nonexistent-databrickscfg";
+
 export interface ExecFileOptions {
     /**
      * Close the child's stdin immediately after spawning. Node gives the child
@@ -977,6 +986,30 @@ export class CliWrapper {
             ...authProvider.toEnv(),
             ...this.getLogginEnvVars(),
             ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
+            // In remote mode point the config file at a path that does not
+            // exist, so the CLI can't read the user's `.databrickscfg`. Its
+            // `configureProfile` (cmd/root/bundle.go) otherwise reads
+            // `[__settings__].default_profile` and sets it as `workspace.profile`
+            // even when `DATABRICKS_HOST` is set, authenticating against that
+            // profile's host with the session token. The credential guard treats
+            // a host-less, profile-less target as the session host and allows it,
+            // so the token would leak to the default profile's host — at startup,
+            // with no user action. Forcing a missing config file makes the CLI
+            // fall back to `DATABRICKS_HOST` (the session host), matching the
+            // guard. Remote mode already refuses every target with a profile, so
+            // this removes nothing that works today. A conditional spread (not a
+            // plain key) keeps normal mode untouched: a `DATABRICKS_CONFIG_FILE:
+            // undefined` would make removeUndefinedKeys drop the value cliEnvVars
+            // set. Gated on `bundleRoot`, the same remote-mode signal as the pin.
+            ...(bundleRoot !== undefined
+                ? {
+                      // eslint-disable-next-line @typescript-eslint/naming-convention
+                      DATABRICKS_CONFIG_FILE: path.join(
+                          bundleRoot,
+                          REMOTE_MODE_NONEXISTENT_CONFIG_FILE
+                      ),
+                  }
+                : {}),
             /* eslint-disable @typescript-eslint/naming-convention */
             DATABRICKS_CLUSTER_ID: this.clusterId,
             // Pin the bundle root to the project folder the credential guard
@@ -1290,6 +1323,19 @@ export class CliWrapper {
             ...authProvider.toEnv(),
             ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
             ...this.getLogginEnvVars(),
+            // Remote mode: force a missing config file so the CLI can't read
+            // `.databrickscfg`'s default_profile and send the session token to
+            // that profile's host (see getBundleCommandEnvVars). Same root value
+            // the pin uses, so both produce the identical path.
+            ...(pinBundleRoot
+                ? {
+                      // eslint-disable-next-line @typescript-eslint/naming-convention
+                      DATABRICKS_CONFIG_FILE: path.join(
+                          workspaceFolder.fsPath,
+                          REMOTE_MODE_NONEXISTENT_CONFIG_FILE
+                      ),
+                  }
+                : {}),
             /* eslint-disable @typescript-eslint/naming-convention */
             DATABRICKS_CLUSTER_ID: this.clusterId,
             // Pin the bundle root to the project folder the guard checked (see

@@ -443,6 +443,57 @@ describe("BundleFileSet vs bundled CLI (glob/merge parity)", async function () {
         expect(extensionResolvedProfile(extWs)).to.equal(cliWs?.profile);
     });
 
+    it("forces a missing config file so default_profile can't redirect the session token, same as the CLI", async () => {
+        // The CLI's configureProfile (cmd/root/bundle.go) reads
+        // [__settings__].default_profile and sets it as workspace.profile even
+        // when DATABRICKS_HOST is set, so a host-less, profile-less target
+        // authenticates against the default profile's host with the session
+        // token. The extension reads no host/profile from the YAML here (→
+        // session, which the guard allows), so remote mode must stop the CLI
+        // reading .databrickscfg at all: it points DATABRICKS_CONFIG_FILE at a
+        // path that does not exist. This proves that is both necessary (the leak
+        // is real) and sufficient (it closes it).
+        await writeBundleFile(
+            "databricks.yml",
+            ["bundle: {name: p}", "targets: {dev: {default: true}}", ""].join(
+                "\n"
+            )
+        );
+        const configFile = path.join(tmpdir.path, "cfg");
+        await fs.writeFile(
+            configFile,
+            [
+                "[__settings__]",
+                "default_profile = p",
+                "",
+                "[p]",
+                "host = https://other.invalid",
+                "token = dapiTEST",
+                "",
+            ].join("\n")
+        );
+
+        // The leak: with a readable config file the CLI injects the default
+        // profile and would send the session token to its host. The CLI resolves
+        // auth from the profile and leaves workspace.host unset, so compare the
+        // profile (see the empty-profile case above).
+        const leaked = cliResolvedWorkspace(tmpdir.path, "dev", {configFile});
+        expect(leaked?.profile).to.equal("p");
+
+        // The fix: with a non-existent config file (the default here, exactly
+        // what the extension forces in remote mode) the CLI reads no profile and
+        // falls back to DATABRICKS_HOST — the session host.
+        const fixed = cliResolvedWorkspace(tmpdir.path, "dev");
+        expect(fixed?.profile).to.not.equal("p");
+        expect(fixed?.host).to.not.equal("https://other.invalid");
+
+        // The extension reads no host and no profile from the YAML — the session
+        // case the guard allows, now correct because the CLI ignores .databrickscfg.
+        const extWs = await makeModel().getTargetWorkspaceFromDisk("dev");
+        expect(extensionResolvedHost(extWs)).to.be.undefined;
+        expect(extensionResolvedProfile(extWs)).to.be.undefined;
+    });
+
     it("resolves the project folder's root, not a parent's, same as the pinned CLI", async () => {
         // Without DATABRICKS_BUNDLE_ROOT the CLI finds the bundle root by walking
         // up from the cwd, so a parent `databricks.yml` (host: parent) wins over
