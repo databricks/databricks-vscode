@@ -1,3 +1,4 @@
+import path from "node:path";
 import {TargetCompute} from "../../telemetry/constants";
 import {PythonSetupAdoption} from "../../telemetry/pythonSetupExtensions";
 
@@ -8,7 +9,7 @@ export interface PythonSetupAdoptionDeps {
      * Whether the persisted setup state can be attributed to the active project.
      * `setupState` is a single workspace-scoped key with no per-project
      * namespacing, so in a multi-root workspace it may belong to a sibling root:
-     * checking a different root's `.venv` against it would emit a spurious
+     * checking a different root's venv against it would emit a spurious
      * `venvPresent: false` and inflate the denominator. False there suppresses the
      * reading rather than emit an untrustworthy one.
      */
@@ -21,15 +22,20 @@ export interface PythonSetupAdoptionDeps {
     isVpexActive: () => boolean;
     /** The compute kind attached right now (cluster / serverless / none). */
     getTargetType: () => TargetCompute;
-    /** Whether the project's managed `.venv` interpreter exists on disk. */
-    venvExists: (root: string) => boolean;
+    /**
+     * The project and venv folders in the persisted setup state; each is
+     * undefined in state saved by older versions.
+     */
+    savedSetup: () => {projectRoot?: string; venvPath?: string} | undefined;
+    /** Whether the managed venv interpreter in `venvDir` exists on disk. */
+    venvExists: (venvDir: string) => boolean;
     /** Emit the gauge. Wraps telemetry; must be best-effort (never throw). */
     record: (report: PythonSetupAdoption) => void;
 }
 
 /**
  * Emits the once-per-session {@link PythonSetupAdoption} gauge: for a project
- * that has a uv-native Python setup on record, whether its managed `.venv` is
+ * that has a uv-native Python setup on record, whether its managed venv is
  * still present and what compute is attached. Purely a measurement — it reads
  * state and records, never changing the flow it observes.
  *
@@ -69,8 +75,19 @@ export class PythonSetupAdoptionManager {
             if (!this.deps.isVpexActive()) {
                 return;
             }
+            // The single setupState key can hold the setup of another bundle in
+            // this workspace folder. Do NOT latch: switching to it still reports.
+            const saved = this.deps.savedSetup();
+            if (
+                saved?.projectRoot !== undefined &&
+                saved.projectRoot !== root
+            ) {
+                return;
+            }
             this.deps.record({
-                venvPresent: this.deps.venvExists(root),
+                venvPresent: this.deps.venvExists(
+                    saved?.venvPath ?? path.join(root, ".venv")
+                ),
                 currentTargetType: this.deps.getTargetType(),
             });
             this.reported.add(root);

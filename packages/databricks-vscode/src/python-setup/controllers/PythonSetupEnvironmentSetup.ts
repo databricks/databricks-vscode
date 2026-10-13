@@ -74,6 +74,16 @@ export type ResolvedCompute =
 export interface PythonSetupPersistedState {
     envKey: string;
     pythonVersion: string;
+    /** The absolute venv folder the run provisioned. */
+    venvPath: string;
+    /** The project folder of the run. */
+    projectRoot: string;
+}
+
+/** A pyproject.toml to restore: `<folder>/pyproject.toml` from `backupPath`. */
+interface ProjectFileBackup {
+    folder: string;
+    backupPath: string;
 }
 
 type ReadyLocalEnvironmentResult = PythonSetupResult &
@@ -160,19 +170,27 @@ export interface PythonSetupSetupDeps {
      * Open the project's pyproject.toml in an editor — the "Open pyproject.toml"
      * button on a constraint-conflict failure, so the user can inspect and
      * adjust the dependencies that clashed. Takes the run's captured root so it
-     * targets the project the failing run mutated, even after a mid-run switch.
+     * targets the project the failing run mutated, even after a mid-run switch;
+     * for a uv workspace member it is the workspace root, which holds the pins.
      */
-    openProjectFile: (projectRoot: string) => Promise<void>;
+    openProjectFile: (folder: string) => Promise<void>;
 
     /**
-     * Restore `<projectRoot>/pyproject.toml` from the CLI's pre-merge
-     * `backupPath` (see {@link PythonSetupResult.backupPath}) by copying it over
-     * the file. First step of the "Retry DB Connect setup" recovery, whose
+     * Restore `<folder>/pyproject.toml` from a CLI pre-merge backup inside
+     * `folder` (the project, or the uv workspace root for a member) by copying it
+     * over the file. First step of the "Retry DB Connect setup" recovery, whose
      * rationale lives on {@link buildConflictRecoveryActions}; a rejection there
      * aborts the retry before any CLI run.
      */
-    restoreProjectFile: (
-        projectRoot: string,
+    restoreProjectFile: (folder: string, backupPath: string) => Promise<void>;
+
+    /**
+     * Reject a backup that {@link restoreProjectFile} would refuse or cannot
+     * read. The retry checks every backup first, so a bad second backup does not
+     * leave the first file restored alone.
+     */
+    checkProjectFileBackup: (
+        folder: string,
         backupPath: string
     ) => Promise<void>;
 
@@ -322,6 +340,11 @@ export class PythonSetupEnvironmentSetup implements Disposable {
      */
     private readonly readyRoots = new Set<string>();
     /**
+     * Setup runs started this session. Any later run can rewrite a shared uv
+     * workspace root pyproject.toml, so it makes an older member retry stale.
+     */
+    private runCount = 0;
+    /**
      * True when the currently active project has been set up successfully this
      * session. Reads the live `projectRoot` so it tracks the active project the
      * config view renders for.
@@ -468,6 +491,7 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         trigger?: PythonSetupRunTrigger
     ): Promise<void> {
         const {cli, withProgress} = this.deps;
+        this.runCount++;
 
         const flags = presetToFlags(preset);
         const invocation: SetupLocalInvocation = {
@@ -556,21 +580,21 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             // back to. Without either, fall through to the ordinary doc-link
             // handling rather than offer a "retry as DB Connect" that can't work
             // (nothing to restore) or would loop (a run that already skipped pins).
-            const conflictBackupPath =
+            const cwdForms = result.uvWorkspaceRoot
+                ? [cwd, await this.realPathForConflict(cwd)]
+                : [cwd];
+            const conflictBackups =
                 result.error?.code === "E_PROVISION_CONFLICT" &&
-                !invocation.skipConstraints &&
-                // Truthiness, not just `!== undefined`: a (contract-forbidden)
-                // empty backupPath has nothing to restore, so it must fall
-                // through rather than offer a Retry that could only throw.
-                result.backupPath
-                    ? result.backupPath
-                    : undefined;
-            const recoverableConflict = conflictBackupPath !== undefined;
+                !invocation.skipConstraints
+                    ? conflictBackupsOf(result, cwdForms)
+                    : [];
+            const recoverableConflict = conflictBackups.length > 0;
             const actions = recoverableConflict
                 ? this.buildConflictRecoveryActions(
                       compute,
                       cwd,
-                      conflictBackupPath
+                      trustedUvWorkspaceRoot(result, cwdForms),
+                      conflictBackups
                   )
                 : remediationActions.some(
                         (candidate) =>
@@ -683,6 +707,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             this.deps.saveState({
                 envKey: result.compute.envKey,
                 pythonVersion: result.resolved.pythonVersion,
+                venvPath: venvDir,
+                projectRoot: cwd,
             });
             // Record readiness for the project this run provisioned (the
             // captured cwd), not the live active project — a mid-run switch must
@@ -757,17 +783,31 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     }
 
     /**
+     * {@link PythonSetupSetupDeps.realPath} for the conflict handling. A failure
+     * keeps the folder as given, so the CLI error still reaches the user.
+     */
+    private async realPathForConflict(cwd: string): Promise<string> {
+        try {
+            return await this.deps.realPath(cwd);
+        } catch {
+            return cwd;
+        }
+    }
+
+    /**
      * The two recovery buttons for a Full-preset constraint conflict, both
      * run-actions (their behavior needs the run's live compute/cwd):
      *
      * - "Retry DB Connect setup" restores pyproject.toml from the CLI's pre-merge
-     *   `backupPath`, then re-runs as DB Connect (`--no-constraints`). The restore
-     *   is load-bearing: the conflict fails *after* the pins were merged to disk,
-     *   so `--no-constraints` alone would leave the conflicting pins in place and
-     *   only skip re-adding them. It runs through {@link runGuarded} — so a click
-     *   can't race an in-flight run, and the restore only fires when the retry
-     *   actually runs — and no-ops once the project is ready, so a stale toast's
-     *   Retry can't downgrade an environment a later run provisioned. A failed
+     *   `backupPath` (for a uv workspace member, also the root pyproject.toml
+     *   from `uvWorkspaceBackupPath`), then re-runs as DB Connect
+     *   (`--no-constraints`). The restore is load-bearing: the conflict fails
+     *   *after* the pins were merged to disk, so `--no-constraints` alone would
+     *   leave the conflicting pins in place and only skip re-adding them. It runs
+     *   through {@link runGuarded} — so a click can't race an in-flight run, and
+     *   the restore only fires when the retry actually runs — and no-ops once the
+     *   project is ready, or once another member synced the same uv workspace, so
+     *   a stale toast's Retry can't undo what a later run provisioned. A failed
      *   restore throws before the CLI spawns, leaving showError to log it.
      * - "Open pyproject.toml" opens the merged file so the user can adjust the
      *   dependencies that clashed.
@@ -775,8 +815,10 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     private buildConflictRecoveryActions(
         compute: SetupCompute,
         cwd: string,
-        backupPath: string
+        uvWorkspaceRoot: string | undefined,
+        backups: ProjectFileBackup[]
     ): PythonSetupErrorAction[] {
+        const runsAtConflict = this.runCount;
         return [
             {
                 label: "Retry DB Connect setup",
@@ -786,10 +828,29 @@ export class PythonSetupEnvironmentSetup implements Disposable {
                     if (this.readyRoots.has(cwd)) {
                         return;
                     }
+                    // Any later run can rewrite a shared uv workspace root file,
+                    // also for the root project, whose result names no root.
+                    if (this.runCount !== runsAtConflict) {
+                        return this.deps.notify(
+                            "Another Python environment setup ran after this " +
+                                "conflict. Run the setup again."
+                        );
+                    }
                     return this.runGuarded(async () => {
                         // Restore before re-running; a failure throws here, before
                         // any attempt is recorded or the CLI spawns.
-                        await this.deps.restoreProjectFile(cwd, backupPath);
+                        for (const {folder, backupPath} of backups) {
+                            await this.deps.checkProjectFileBackup(
+                                folder,
+                                backupPath
+                            );
+                        }
+                        for (const {folder, backupPath} of backups) {
+                            await this.deps.restoreProjectFile(
+                                folder,
+                                backupPath
+                            );
+                        }
                         await this.runResolved(
                             compute,
                             cwd,
@@ -801,7 +862,8 @@ export class PythonSetupEnvironmentSetup implements Disposable {
             },
             {
                 label: "Open pyproject.toml",
-                run: () => this.deps.openProjectFile(cwd),
+                // A uv workspace member keeps its pins in the root file.
+                run: () => this.deps.openProjectFile(uvWorkspaceRoot ?? cwd),
             },
         ];
     }
@@ -901,4 +963,62 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     dispose(): void {
         this.stateEmitter.dispose();
     }
+}
+
+/** Whether `child` is `parent` or a path inside it, compared by text. */
+function containsPath(parent: string, child: string): boolean {
+    const rel = path.relative(parent, child);
+    return (
+        rel !== ".." &&
+        !rel.startsWith(".." + path.sep) &&
+        !path.isAbsolute(rel)
+    );
+}
+
+/**
+ * The result's uv workspace root, if it contains the project folder in one of
+ * `cwdForms` (as given, symlink-resolved). The restore writes there, so a root
+ * from a malformed result must not widen that target.
+ */
+function trustedUvWorkspaceRoot(
+    result: PythonSetupResult,
+    cwdForms: string[]
+): string | undefined {
+    const root = result.uvWorkspaceRoot;
+    return root && cwdForms.some((cwd) => containsPath(root, cwd))
+        ? root
+        : undefined;
+}
+
+/**
+ * The pre-merge backups a conflict retry restores. Truthiness, not just
+ * `!== undefined`: a (contract-forbidden) empty path has nothing to restore.
+ */
+function conflictBackupsOf(
+    result: PythonSetupResult,
+    cwdForms: string[]
+): ProjectFileBackup[] {
+    const cwd = cwdForms[0];
+    if (result.uvWorkspaceRoot) {
+        // A member's pins live in the root file, and --no-constraints leaves
+        // them. Without a root backup, a retry would conflict again.
+        const root = trustedUvWorkspaceRoot(result, cwdForms);
+        if (root === undefined || !result.uvWorkspaceBackupPath) {
+            return [];
+        }
+        const backups: ProjectFileBackup[] = [
+            {folder: root, backupPath: result.uvWorkspaceBackupPath},
+        ];
+        const {backupPath} = result;
+        if (backupPath) {
+            // The CLI names the backup from its form of the project folder.
+            const folder =
+                cwdForms.find((form) => containsPath(form, backupPath)) ?? cwd;
+            backups.unshift({folder, backupPath});
+        }
+        return backups;
+    }
+    return result.backupPath
+        ? [{folder: cwd, backupPath: result.backupPath}]
+        : [];
 }

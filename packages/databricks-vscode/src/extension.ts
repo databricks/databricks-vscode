@@ -1559,7 +1559,7 @@ export async function activate(
     context.subscriptions.push(pythonSetupEntry);
 
     // Once-per-session adoption gauge: for a project with a uv-native setup on
-    // record, whether its managed .venv still exists. Distinct from drift above
+    // record, whether its managed venv still exists. Distinct from drift above
     // (which compares compute env keys) — drift never checks that the venv is
     // actually present. Measurement only, best-effort, and it derives no env key
     // of its own: drift already reports env-key mismatch via python_env.drift.
@@ -1585,8 +1585,8 @@ export async function activate(
                 : connectionManager.cluster
                   ? "cluster"
                   : "none",
-        venvExists: (root) =>
-            existsSync(venvInterpreterPath(path.join(root, ".venv"))),
+        savedSetup: () => stateStorage.get("databricks.pythonSetup.setupState"),
+        venvExists: (venvDir) => existsSync(venvInterpreterPath(venvDir)),
         record: (report) => telemetry.recordPythonSetupAdoption(report),
     });
     // A connect-time reading: report once the connection is CONNECTED (so the

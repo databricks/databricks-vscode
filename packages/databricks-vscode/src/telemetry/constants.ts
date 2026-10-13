@@ -731,7 +731,8 @@ export class EventTypes {
             "still physically exists, which drift never checks. Categorical/boolean data only.",
         venvPresent: {
             comment:
-                "Whether the project's managed .venv interpreter still exists on disk. False means " +
+                "Whether the project's managed venv interpreter (for a uv workspace member, the " +
+                "shared venv at the root) still exists on disk. False means " +
                 "the environment was provisioned once but is now gone (deleted or never restored)",
         },
         currentTargetType: {

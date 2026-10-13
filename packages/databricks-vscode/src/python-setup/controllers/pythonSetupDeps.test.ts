@@ -492,11 +492,14 @@ describe("makePythonSetupDeps saveState", () => {
         deps.saveState({
             envKey: "serverless/serverless-v5",
             pythonVersion: "3.12",
+            venvPath: "/proj/.venv",
+            projectRoot: "/proj",
         });
 
         expect(persisted).to.have.length(1);
         expect(persisted[0].envKey).to.equal("serverless/serverless-v5");
         expect(persisted[0].pythonVersion).to.equal("3.12");
+        expect(persisted[0].venvPath).to.equal("/proj/.venv");
         // A wiring-supplied ISO-8601 timestamp is added.
         expect(persisted[0].timestamp).to.be.a("string");
         expect(Number.isNaN(Date.parse(persisted[0].timestamp))).to.equal(
@@ -1165,6 +1168,42 @@ describe("makePythonSetupDeps restoreProjectFile", () => {
             expect(entries).to.deep.equal(["pyproject.toml"]);
         } finally {
             await rm(dir, {recursive: true, force: true});
+        }
+    });
+});
+
+describe("makePythonSetupDeps checkProjectFileBackup", () => {
+    it("accepts a backup that exists inside the folder", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-check-"));
+        try {
+            const backup = path.join(dir, "pyproject.toml.bak");
+            await writeFile(backup, "original\n");
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.checkProjectFileBackup(dir, backup);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("rejects a missing backup or one outside the folder", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-check-"));
+        const outside = await mkdtemp(path.join(tmpdir(), "vpex-out-"));
+        try {
+            const foreign = path.join(outside, "x.bak");
+            await writeFile(foreign, "x\n");
+            const deps = makePythonSetupDeps(makeWiring());
+            for (const backup of [path.join(dir, "missing.bak"), foreign]) {
+                let threw = false;
+                try {
+                    await deps.checkProjectFileBackup(dir, backup);
+                } catch {
+                    threw = true;
+                }
+                expect(threw, backup).to.equal(true);
+            }
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+            await rm(outside, {recursive: true, force: true});
         }
     });
 });
