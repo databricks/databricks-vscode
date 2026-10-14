@@ -14,6 +14,7 @@ import {
     getCliVersion,
     parseAiToolsInstallOutput,
     parseCliVersion,
+    REMOTE_MODE_NONEXISTENT_CONFIG_FILE,
 } from "./CliWrapper";
 import {EXTENSION_DEVELOPMENT} from "../utils/developmentUtils";
 import path from "node:path";
@@ -510,6 +511,138 @@ token = dapitest5678
             assert.deepStrictEqual(runCmd, expected);
             throw e;
         }
+    });
+
+    it("pins DATABRICKS_BUNDLE_ROOT for bundle commands only when a root is given", async () => {
+        // Remote mode pins the bundle root to the project folder the credential
+        // guard checked, so the CLI can't walk up to a parent databricks.yml.
+        // Normal mode passes no root and keeps the CLI's own resolution.
+        const cli = createCliWrapper(getTempLogFilePath());
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+
+        const pinned = await cli.getBundleCommandEnvVars(
+            authProvider,
+            undefined,
+            "/test/project"
+        );
+        assert.equal(pinned.DATABRICKS_BUNDLE_ROOT, "/test/project");
+
+        const unpinned = await cli.getBundleCommandEnvVars(
+            authProvider,
+            undefined
+        );
+        assert.ok(!("DATABRICKS_BUNDLE_ROOT" in unpinned));
+    });
+
+    it("pins DATABRICKS_BUNDLE_ROOT for a bundle run only when asked", async () => {
+        const cli = createCliWrapper(getTempLogFilePath());
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+        const workspaceFolder = Uri.file("/test/123");
+
+        const pinned = await cli.getBundleRunCommand(
+            "dev",
+            authProvider,
+            "resource-key",
+            workspaceFolder,
+            undefined,
+            [],
+            true
+        );
+        assert.equal(
+            pinned.options.env?.DATABRICKS_BUNDLE_ROOT,
+            workspaceFolder.fsPath
+        );
+
+        const unpinned = await cli.getBundleRunCommand(
+            "dev",
+            authProvider,
+            "resource-key",
+            workspaceFolder
+        );
+        assert.ok(!("DATABRICKS_BUNDLE_ROOT" in (unpinned.options.env ?? {})));
+    });
+
+    it("forces a non-existent config file for bundle commands only in remote mode", async () => {
+        // Remote mode (a bundle root is given) points DATABRICKS_CONFIG_FILE at a
+        // path that does not exist, so the CLI can't read .databrickscfg's
+        // default_profile and send the session token to that profile's host.
+        // Normal mode keeps the caller's config file.
+        const cli = createCliWrapper(getTempLogFilePath());
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+
+        const remote = await cli.getBundleCommandEnvVars(
+            authProvider,
+            "/home/user/.databrickscfg",
+            "/test/project"
+        );
+        assert.equal(
+            remote.DATABRICKS_CONFIG_FILE,
+            path.join("/test/project", REMOTE_MODE_NONEXISTENT_CONFIG_FILE)
+        );
+
+        const normal = await cli.getBundleCommandEnvVars(
+            authProvider,
+            "/home/user/.databrickscfg"
+        );
+        assert.equal(
+            normal.DATABRICKS_CONFIG_FILE,
+            "/home/user/.databrickscfg"
+        );
+    });
+
+    it("forces a non-existent config file for a bundle run only in remote mode", async () => {
+        const cli = createCliWrapper(getTempLogFilePath());
+        const authProvider = new ProfileAuthProvider(
+            new URL("https://test.com"),
+            "PROFILE",
+            cli,
+            true
+        );
+        const workspaceFolder = Uri.file("/test/123");
+
+        const pinned = await cli.getBundleRunCommand(
+            "dev",
+            authProvider,
+            "resource-key",
+            workspaceFolder,
+            "/home/user/.databrickscfg",
+            [],
+            true
+        );
+        assert.equal(
+            pinned.options.env?.DATABRICKS_CONFIG_FILE,
+            path.join(
+                workspaceFolder.fsPath,
+                REMOTE_MODE_NONEXISTENT_CONFIG_FILE
+            )
+        );
+
+        const unpinned = await cli.getBundleRunCommand(
+            "dev",
+            authProvider,
+            "resource-key",
+            workspaceFolder,
+            "/home/user/.databrickscfg"
+        );
+        assert.equal(
+            unpinned.options.env?.DATABRICKS_CONFIG_FILE,
+            "/home/user/.databrickscfg"
+        );
     });
 
     it("should forward auth to the setup-local env vars", async () => {
