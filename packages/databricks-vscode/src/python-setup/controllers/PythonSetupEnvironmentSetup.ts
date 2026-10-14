@@ -616,6 +616,30 @@ export class PythonSetupEnvironmentSetup implements Disposable {
         let venvDir: string;
         try {
             venvDir = await this.resolveVenvDir(cwd, result.venvPath);
+        } catch (e) {
+            // The project folder moved or was deleted during the run: a
+            // filesystem state, not an extension defect, so offer no report.
+            const message = e instanceof Error ? e.message : String(e);
+            reportResult({
+                outcome: "failed",
+                ...(result.pythonResolution !== undefined
+                    ? {pythonSetupFlow: result.pythonResolution}
+                    : {}),
+                failurePhase: "adopt",
+                envKey: result.compute.envKey,
+                reportOffered: false,
+                warnings: result.warnings,
+            });
+            this.present(
+                this.deps.showError(
+                    `Cannot find the project folder ${cwd}. Open the project again and run the setup again.`,
+                    message,
+                    []
+                )
+            );
+            return;
+        }
+        try {
             // Adopt for the cwd captured at the top of the run, not the live
             // active project: a mid-run project switch must not point another
             // project's interpreter setting at this run's venv.

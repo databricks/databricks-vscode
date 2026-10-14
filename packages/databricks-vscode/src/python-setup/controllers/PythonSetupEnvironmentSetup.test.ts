@@ -1407,6 +1407,46 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         ]);
     });
 
+    it("offers no report when the project folder is gone before adoption", async () => {
+        // A folder renamed or deleted during the CLI run is not an extension
+        // defect: no "Report this problem", and adoption never runs.
+        const telemetry = makeTelemetryRecorder();
+        const errors: Array<{message: string; actions?: unknown[]}> = [];
+        let adopted = false;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                cli: makeCli({resolve: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER}),
+                realPath: async () => {
+                    throw new Error("ENOENT: no such file or directory");
+                },
+                adoptInterpreter: async () => {
+                    adopted = true;
+                },
+                showError: async (message, _detail, actions) => {
+                    errors.push({message, actions});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(adopted).to.equal(false);
+        expect(setup.ready).to.equal(false);
+        expect(errors).to.have.length(1);
+        expect(errors[0].message).to.contain("/proj");
+        expect(errors[0].actions ?? []).to.deep.equal([]);
+        expect(telemetry.results).to.deep.equal([
+            {
+                outcome: "failed",
+                failurePhase: "adopt",
+                envKey: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER.compute!.envKey,
+                reportOffered: false,
+                warnings: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER.warnings,
+            },
+        ]);
+    });
+
     it("reports cancelled when the user aborts the run", async () => {
         const telemetry = makeTelemetryRecorder();
         const setup = new PythonSetupEnvironmentSetup(
