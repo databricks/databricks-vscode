@@ -1,4 +1,4 @@
-import {window} from "vscode";
+import {commands, window} from "vscode";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {LoginWizard} from "../configuration/LoginWizard";
@@ -14,8 +14,32 @@ export class UnityGatewayCommands {
         private readonly connectionManager: UnityGatewayConnectionManager,
         private readonly isEnabled: () => boolean,
         private readonly runLoginWizard = (cli: CliWrapper) =>
-            LoginWizard.run(cli)
+            LoginWizard.run(cli),
+        private readonly showWarning = (message: string, ...items: string[]) =>
+            window.showWarningMessage(message, ...items),
+        private readonly executeCommand = (command: string) =>
+            commands.executeCommand(command)
     ) {}
+
+    /**
+     * Offers to sign in again after a chat request fails for want of a
+     * sign-in. VS Code replaces an identical notification, so failures in a
+     * row leave one prompt.
+     */
+    async promptSignIn(message: string) {
+        // The experiment can be turned off while a request is in flight, or
+        // while the prompt is open.
+        if (!this.isEnabled()) {
+            return;
+        }
+        const signIn = "Sign in to Unity Gateway";
+        if (
+            (await this.showWarning(message, signIn)) === signIn &&
+            this.isEnabled()
+        ) {
+            await this.executeCommand("databricks.unityGateway.signIn");
+        }
+    }
 
     /** Also switches the workspace when already signed in. */
     @onError({popup: {prefix: "Error signing in to Unity Gateway."}})

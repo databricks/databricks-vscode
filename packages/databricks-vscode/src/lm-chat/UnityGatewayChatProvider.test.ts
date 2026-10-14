@@ -24,7 +24,12 @@ import type {
     LanguageModelChatRequestMessage,
     LanguageModelResponsePart,
 } from "vscode";
-import {ApiClient, Config, logging} from "@databricks/sdk-experimental";
+import {
+    ApiClient,
+    Config,
+    ConfigError,
+    logging,
+} from "@databricks/sdk-experimental";
 import {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import type {HttpRequest, HttpResponse} from "@databricks/sdk-core/http";
 import {anything, instance, mock, when} from "ts-mockito";
@@ -187,6 +192,7 @@ describe(__filename, () => {
     describe("UnityGatewayChatProvider", () => {
         let provider: UnityGatewayChatProvider;
         let relists: number;
+        let signInPrompts: string[];
 
         function listModels() {
             return provider.provideLanguageModelChatInformation(
@@ -197,8 +203,10 @@ describe(__filename, () => {
 
         beforeEach(() => {
             relists = 0;
+            signInPrompts = [];
             provider = new UnityGatewayChatProvider(
                 instance(mockConnectionManager),
+                (message) => signInPrompts.push(message),
                 async () => {
                     relists++;
                     return [];
@@ -367,11 +375,15 @@ describe(__filename, () => {
                 return JSON.parse(chatRequests[index].body as string);
             }
 
-            function isError(code: string, message: RegExp) {
+            /** A failure as Chat should show it: a plain error, no stack. */
+            function isChatFailure(message: string | RegExp) {
                 return (e: unknown) =>
-                    e instanceof LanguageModelError &&
-                    e.code === code &&
-                    message.test(e.message);
+                    e instanceof Error &&
+                    !(e instanceof LanguageModelError) &&
+                    e.stack === undefined &&
+                    (typeof message === "string"
+                        ? e.message === message
+                        : message.test(e.message));
             }
 
             beforeEach(() => {
@@ -440,60 +452,88 @@ describe(__filename, () => {
                 when(mockConnectionManager.responsesClient).thenReturn(
                     undefined
                 );
+                when(mockConnectionManager.state).thenReturn("DISCONNECTED");
 
                 await assert.rejects(
                     chat(),
-                    isError(
-                        LanguageModelError.NoPermissions().code,
-                        /Sign in to Unity Gateway/
+                    isChatFailure(
+                        "Sign in to Unity Gateway in the Databricks extension to use Databricks models."
                     )
                 );
                 assert.equal(chatRequests.length, 0);
+                assert.deepStrictEqual(signInPrompts, [
+                    "Unity Gateway isn't connected.",
+                ]);
             });
 
-            it("ends the turn with the gateway's reason when it refuses", async () => {
-                const refused =
-                    (statusCode: number, message: string) =>
+            it("doesn't offer to sign in while switching workspace", async () => {
+                when(mockConnectionManager.responsesClient).thenReturn(
+                    undefined
+                );
+                when(mockConnectionManager.state).thenReturn("CONNECTING");
+
+                await assert.rejects(chat(), isChatFailure(/Sign in/));
+                assert.deepStrictEqual(signInPrompts, []);
+            });
+
+            it("ends the turn with the gateway's reason and what to do next when it refuses", async () => {
+                const answered =
+                    (statusCode: number, contentType: string, body?: string) =>
                     async (): Promise<HttpResponse> => ({
                         statusCode,
-                        headers: new Headers({
-                            "content-type": "application/json",
-                        }),
-                        body: new Response(
-                            JSON.stringify({error_code: "ERROR", message})
-                        ).body,
+                        headers: new Headers({"content-type": contentType}),
+                        body:
+                            body === undefined ? null : new Response(body).body,
                     });
+                const refused = (statusCode: number, message: string) =>
+                    answered(
+                        statusCode,
+                        "application/json",
+                        JSON.stringify({error_code: "ERROR", message})
+                    );
                 const cases: [
                     HttpResponse | (() => Promise<HttpResponse>),
-                    (e: unknown) => boolean,
+                    string | RegExp,
                 ][] = [
                     [
                         refused(401, "Invalid token"),
-                        isError(
-                            LanguageModelError.NoPermissions().code,
-                            /^Unity Gateway returned HTTP 401: Invalid token$/
-                        ),
+                        "Unity Gateway returned HTTP 401: Invalid token. Sign in to Unity Gateway again.",
                     ],
                     [
-                        refused(403, "No access"),
-                        isError(
-                            LanguageModelError.NoPermissions().code,
-                            /HTTP 403: No access/
-                        ),
+                        refused(403, "This user's rate limit is set to 0."),
+                        "Unity Gateway returned HTTP 403: This user's rate limit is set to 0. Ask a workspace admin for access, or choose another model.",
                     ],
                     [
                         refused(404, "No such model"),
-                        isError(
-                            LanguageModelError.NotFound().code,
-                            /HTTP 404: No such model/
+                        "Unity Gateway returned HTTP 404: No such model. Choose another model.",
+                    ],
+                    [
+                        refused(
+                            400,
+                            "Invalid JSON schema - object types do not support propertyNames\n"
+                        ),
+                        "Unity Gateway returned HTTP 400: Invalid JSON schema - object types do not support propertyNames. If this keeps happening with this model, choose another model.",
+                    ],
+                    [
+                        refused(429, "Slow down!"),
+                        "Unity Gateway returned HTTP 429: Slow down! Try again later.",
+                    ],
+                    [
+                        refused(404, "Was it renamed?"),
+                        "Unity Gateway returned HTTP 404: Was it renamed? Choose another model.",
+                    ],
+                    [
+                        refused(429, "x".repeat(1000)),
+                        new RegExp(
+                            `: ${"x".repeat(300)} … Try again later\\.$`
                         ),
                     ],
                     [
-                        refused(429, "Slow down"),
-                        isError(
-                            LanguageModelError.Blocked().code,
-                            /HTTP 429: Slow down/
+                        refused(
+                            500,
+                            "INTERNAL_ERROR: Could not route request."
                         ),
+                        "Unity Gateway returned HTTP 500: INTERNAL_ERROR: Could not route request.",
                     ],
                     [
                         refused(
@@ -504,34 +544,185 @@ describe(__filename, () => {
                                 },
                             })
                         ),
-                        (e) =>
-                            !(e instanceof LanguageModelError) &&
-                            e instanceof Error &&
-                            e.message ===
-                                "Unity Gateway returned HTTP 400: Unknown name exclusiveMinimum",
+                        "Unity Gateway returned HTTP 400: Unknown name exclusiveMinimum. If this keeps happening with this model, choose another model.",
                     ],
                     [
-                        refused(400, "x".repeat(1000)),
-                        (e) =>
-                            e instanceof Error &&
-                            e.message.endsWith("x".repeat(300) + "…") &&
-                            !e.message.includes("x".repeat(301)),
+                        refused(
+                            500,
+                            JSON.stringify({
+                                error: {message: "Backend overloaded"},
+                            })
+                        ),
+                        "Unity Gateway returned HTTP 500: Backend overloaded",
                     ],
                     [
-                        htmlResponse(502),
-                        (e) =>
-                            e instanceof Error &&
-                            e.message === "Unity Gateway returned HTTP 502",
+                        refused(
+                            500,
+                            JSON.stringify({message: "Backend unreachable"})
+                        ),
+                        "Unity Gateway returned HTTP 500: Backend unreachable",
+                    ],
+                    [
+                        refused(500, "x".repeat(1000)),
+                        new RegExp(`: ${"x".repeat(300)} …$`),
+                    ],
+                    // Bodies that aren't Databricks errors.
+                    [
+                        answered(
+                            500,
+                            "application/json",
+                            JSON.stringify({error: {message: "Overloaded"}})
+                        ),
+                        "Unity Gateway returned HTTP 500: Overloaded",
+                    ],
+                    [
+                        answered(
+                            503,
+                            "text/plain",
+                            " upstream connect error\n"
+                        ),
+                        "Unity Gateway returned HTTP 503: upstream connect error",
+                    ],
+                    [htmlResponse(502), "Unity Gateway returned HTTP 502"],
+                    [
+                        answered(
+                            400,
+                            "application/json",
+                            JSON.stringify({
+                                detail: {
+                                    error_code: "INVALID_PARAMETER_VALUE",
+                                    message:
+                                        "Guardrail 'pii-detection' blocked: input contains an email address.",
+                                },
+                            })
+                        ),
+                        "Unity Gateway returned HTTP 400: Guardrail 'pii-detection' blocked: input contains an email address. If this keeps happening with this model, choose another model.",
+                    ],
+                    // The SDK's own reading comes first.
+                    [
+                        answered(
+                            502,
+                            "application/json",
+                            JSON.stringify({error: "Bad gateway"})
+                        ),
+                        "Unity Gateway returned HTTP 502: Bad gateway",
+                    ],
+                    // JSON without a message says no more than the status.
+                    [
+                        answered(
+                            429,
+                            "application/json",
+                            JSON.stringify({error_code: "RESOURCE_EXHAUSTED"})
+                        ),
+                        "Unity Gateway returned HTTP 429. Try again later.",
+                    ],
+                    [
+                        answered(
+                            502,
+                            "text/plain",
+                            "\n<html>Bad Gateway</html>"
+                        ),
+                        "Unity Gateway returned HTTP 502",
+                    ],
+                    [
+                        answered(404, "application/json"),
+                        "Unity Gateway returned HTTP 404. Choose another model.",
                     ],
                 ];
-                for (const [response, check] of cases) {
+                for (const [response, message] of cases) {
                     respondToChat =
                         typeof response === "function"
                             ? response
                             : async () => response;
 
-                    await assert.rejects(chat(), check);
+                    await assert.rejects(chat(), isChatFailure(message));
                 }
+            });
+
+            it("offers to sign in again when the sign-in stops working", async () => {
+                respondToChat = async () => ({
+                    statusCode: 401,
+                    headers: new Headers({"content-type": "application/json"}),
+                    body: new Response(
+                        JSON.stringify({
+                            error_code: "UNAUTHENTICATED",
+                            message: "Invalid token",
+                        })
+                    ).body,
+                });
+                await assert.rejects(chat());
+
+                // As v1 reports the CLI failing to refresh an OAuth token.
+                const config = mock(Config);
+                when(config.authenticate(anything())).thenReject(
+                    new Error(
+                        "databricks-cli: cannot get access token: Error: A new access token could not be retrieved because the refresh token is invalid. To reauthenticate, run the following command:\n  $ databricks auth login --profile p"
+                    )
+                );
+                when(mockConnectionManager.responsesClient).thenReturn(
+                    newResponsesClient(instance(config))
+                );
+                await assert.rejects(chat());
+
+                assert.deepStrictEqual(signInPrompts, [
+                    "Your Unity Gateway sign-in no longer works.",
+                    "Your Unity Gateway sign-in no longer works.",
+                ]);
+            });
+
+            it("doesn't offer to sign in for a request on an old connection", async () => {
+                respondToChat = async () => {
+                    // A new sign-in while the request was in flight.
+                    when(mockConnectionManager.responsesClient).thenReturn(
+                        newResponsesClient()
+                    );
+                    return {
+                        statusCode: 401,
+                        headers: new Headers({
+                            "content-type": "application/json",
+                        }),
+                        body: new Response(
+                            JSON.stringify({
+                                error_code: "UNAUTHENTICATED",
+                                message: "Invalid token",
+                            })
+                        ).body,
+                    };
+                };
+
+                await assert.rejects(chat(), isChatFailure(/HTTP 401/));
+                assert.deepStrictEqual(signInPrompts, []);
+            });
+
+            it("doesn't offer to sign in when that wouldn't help", async () => {
+                for (const statusCode of [400, 403, 404, 429, 500]) {
+                    respondToChat = async () => ({
+                        statusCode,
+                        headers: new Headers({
+                            "content-type": "application/json",
+                        }),
+                        body: new Response(
+                            JSON.stringify({error_code: "ERROR", message: "No"})
+                        ).body,
+                    });
+                    await assert.rejects(chat());
+                }
+                respondToChat = () =>
+                    Promise.reject(new Error("connect ECONNREFUSED"));
+                await assert.rejects(chat());
+                // The CLI's advice alone isn't enough: it must say why.
+                const config = mock(Config);
+                when(config.authenticate(anything())).thenReject(
+                    new Error(
+                        "databricks-cli: cannot get access token: unexpected failure. Run databricks auth login --profile p for help"
+                    )
+                );
+                when(mockConnectionManager.responsesClient).thenReturn(
+                    newResponsesClient(instance(config))
+                );
+                await assert.rejects(chat());
+
+                assert.deepStrictEqual(signInPrompts, []);
             });
 
             it("ends the turn when the reply fails partway", async () => {
@@ -553,7 +744,7 @@ describe(__filename, () => {
                         {report: (part) => parts.push(part)},
                         new CancellationTokenSource().token
                     ),
-                    /backend exploded/
+                    isChatFailure(/backend exploded/)
                 );
                 assert.deepStrictEqual(parts, [
                     new LanguageModelTextPart("Hel"),
@@ -573,19 +764,34 @@ describe(__filename, () => {
                     newResponsesClient(instance(config))
                 );
 
-                await assert.rejects(
-                    chat(),
-                    (e) => e instanceof Error && e.message === failure.message
+                await assert.rejects(chat(), isChatFailure(failure.message));
+            });
+
+            it("shows the CLI's message without the SDK's config", async () => {
+                const config = mock(Config);
+                const cliMessage =
+                    "databricks-cli: cannot get access token: unexpected failure. Run databricks auth login --profile p";
+                when(config.authenticate(anything())).thenReject(
+                    new ConfigError(
+                        cliMessage,
+                        new Config({
+                            host: "https://ws.cloud.databricks.com",
+                            profile: "p",
+                            env: {},
+                        })
+                    )
                 );
+                when(mockConnectionManager.responsesClient).thenReturn(
+                    newResponsesClient(instance(config))
+                );
+
+                await assert.rejects(chat(), isChatFailure(cliMessage));
             });
 
             it("ends the turn with what was thrown when it isn't an Error", async () => {
                 respondToChat = () => Promise.reject("socket hang up");
 
-                await assert.rejects(
-                    chat(),
-                    (e) => e instanceof Error && e.message === "socket hang up"
-                );
+                await assert.rejects(chat(), isChatFailure("socket hang up"));
             });
 
             it("shows the code of a connection that failed on every address", async () => {
@@ -602,10 +808,7 @@ describe(__filename, () => {
                 );
                 respondToChat = () => Promise.reject(failure);
 
-                await assert.rejects(
-                    chat(),
-                    (e) => e instanceof Error && e.message === "ECONNREFUSED"
-                );
+                await assert.rejects(chat(), isChatFailure("ECONNREFUSED"));
             });
 
             it("stops the request when the chat is cancelled", async () => {
@@ -654,6 +857,45 @@ describe(__filename, () => {
                 assert.equal(thrown.message, "connect ECONNREFUSED");
                 assert.notStrictEqual(thrown, failure);
                 assert.strictEqual(thrown.cause, undefined);
+            });
+
+            it("logs at most 4,096 characters of a refused request's body", async () => {
+                respondToChat = async () => ({
+                    statusCode: 502,
+                    headers: new Headers({"content-type": "text/html"}),
+                    body: new Response(`<html>${"x".repeat(10_000)}</html>`)
+                        .body,
+                });
+
+                const errors = await loggedErrors(() => chat().catch(() => {}));
+
+                assert.equal(
+                    errors[0][0],
+                    `Unity Gateway chat request failed: <html>${"x".repeat(
+                        4_090
+                    )}…`
+                );
+            });
+
+            it("logs a refused request's body as text", async () => {
+                const body = JSON.stringify({error: {message: "Unknown name"}});
+                respondToChat = async () => ({
+                    statusCode: 400,
+                    headers: new Headers({"content-type": "application/json"}),
+                    body: new Response(body).body,
+                });
+
+                const errors = await loggedErrors(() => chat().catch(() => {}));
+
+                assert.equal(errors.length, 1);
+                assert.equal(
+                    errors[0][0],
+                    `Unity Gateway chat request failed: ${body}`
+                );
+                assert.equal(
+                    (errors[0][1] as {httpStatusCode: number}).httpStatusCode,
+                    400
+                );
             });
         });
 
@@ -725,6 +967,7 @@ describe(__filename, () => {
         let registered: LanguageModelChatProvider[];
         let unregistered: number;
         let registration: Disposable | undefined;
+        let signInPrompts: string[];
 
         function setEnabled(value: boolean) {
             enabled = value;
@@ -734,6 +977,7 @@ describe(__filename, () => {
         function register() {
             registration = registerUnityGatewayChatProvider(
                 instance(mockConnectionManager),
+                (message) => signInPrompts.push(message),
                 () => enabled,
                 onDidChangeEnabled.event,
                 (provider) => {
@@ -749,11 +993,33 @@ describe(__filename, () => {
             registered = [];
             unregistered = 0;
             registration = undefined;
+            signInPrompts = [];
         });
 
         afterEach(() => {
             registration?.dispose();
             onDidChangeEnabled.dispose();
+        });
+
+        it("gives the provider the sign-in prompt", async () => {
+            enabled = true;
+            when(mockConnectionManager.responsesClient).thenReturn(undefined);
+            when(mockConnectionManager.state).thenReturn("DISCONNECTED");
+            register();
+
+            await assert.rejects(async () =>
+                registered[0].provideLanguageModelChatResponse(
+                    {} as LanguageModelChatInformation,
+                    [],
+                    {toolMode: LanguageModelChatToolMode.Auto},
+                    {report: () => {}},
+                    new CancellationTokenSource().token
+                )
+            );
+
+            assert.deepStrictEqual(signInPrompts, [
+                "Unity Gateway isn't connected.",
+            ]);
         });
 
         it("registers the provider at once when already opted in", () => {
@@ -801,6 +1067,7 @@ describe(__filename, () => {
             const errors = await loggedErrors(async () => {
                 registration = registerUnityGatewayChatProvider(
                     instance(mockConnectionManager),
+                    () => {},
                     () => enabled,
                     onDidChangeEnabled.event,
                     () => {

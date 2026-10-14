@@ -1,10 +1,4 @@
-import {
-    CancellationError,
-    Disposable,
-    EventEmitter,
-    LanguageModelError,
-    lm,
-} from "vscode";
+import {CancellationError, Disposable, EventEmitter, lm} from "vscode";
 import type {
     CancellationToken,
     Event,
@@ -16,9 +10,10 @@ import type {
     Progress,
     ProvideLanguageModelChatResponseOptions,
 } from "vscode";
-import {logging} from "@databricks/sdk-experimental";
+import {ConfigError, logging} from "@databricks/sdk-experimental";
 import type {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {Loggers} from "../logger";
+import {isReauthRequiredError} from "../configuration/auth/authErrors";
 import type {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
 import {listUnityGatewayModels} from "./unityGatewayModels";
 import {
@@ -27,6 +22,7 @@ import {
     partText,
     toResponseParts,
     toResponsesRequest,
+    unwrapMessage,
 } from "./unityGatewayResponses";
 
 /**
@@ -36,10 +32,14 @@ import {
  */
 export const UNITY_GATEWAY_VENDOR = "databricks";
 
+// A proxy's error page can be long.
+const MAX_LOGGED_BODY_LENGTH = 4_096;
+
 /**
  * Offers Unity Gateway models in VS Code Chat. Lists no models while signed
  * out or when listing fails; a failure is logged and retried on the next call.
- * A failed chat request ends the turn with an error, which Chat shows.
+ * A failed chat request ends the turn with an error, which Chat shows, and
+ * offers to sign in again when that could fix it.
  */
 export class UnityGatewayChatProvider
     implements LanguageModelChatProvider, Disposable
@@ -59,6 +59,7 @@ export class UnityGatewayChatProvider
 
     constructor(
         private readonly connectionManager: UnityGatewayConnectionManager,
+        private readonly promptSignIn: (message: string) => void,
         // VS Code 1.104 ignores the change event, but selecting models makes
         // every version list them again.
         private readonly relistModels = () =>
@@ -128,7 +129,11 @@ export class UnityGatewayChatProvider
     ): Promise<void> {
         const client = this.connectionManager.responsesClient;
         if (client === undefined) {
-            throw LanguageModelError.NoPermissions(
+            // Switching workspace drops the clients until it connects.
+            if (this.connectionManager.state === "DISCONNECTED") {
+                this.promptSignIn("Unity Gateway isn't connected.");
+            }
+            throw chatFailure(
                 "Sign in to Unity Gateway in the Databricks extension to use Databricks models."
             );
         }
@@ -148,10 +153,29 @@ export class UnityGatewayChatProvider
             if (token.isCancellationRequested) {
                 throw new CancellationError();
             }
+            // So the log has the gateway's reason even when the SDK couldn't
+            // read it.
+            const body = responseBody(e);
+            const logged =
+                body.length > MAX_LOGGED_BODY_LENGTH
+                    ? `${body.slice(0, MAX_LOGGED_BODY_LENGTH)}…`
+                    : body;
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                "Unity Gateway chat request failed",
+                logged === ""
+                    ? "Unity Gateway chat request failed"
+                    : `Unity Gateway chat request failed: ${logged}`,
                 e
             );
+            // A request left over from an old connection says nothing about
+            // the current one.
+            if (
+                needsSignIn(e) &&
+                client === this.connectionManager.responsesClient
+            ) {
+                this.promptSignIn(
+                    "Your Unity Gateway sign-in no longer works."
+                );
+            }
             throw chatError(e);
         } finally {
             cancellation.dispose();
@@ -181,6 +205,10 @@ export class UnityGatewayChatProvider
  * of a host with an empty message and only a code.
  */
 function errorText(e: unknown): string {
+    // The SDK adds its config to the CLI's own message and advice.
+    if (e instanceof ConfigError) {
+        return e.baseMessage;
+    }
     if (isRecord(e) && typeof e.message === "string" && e.message !== "") {
         return e.message;
     }
@@ -190,36 +218,78 @@ function errorText(e: unknown): string {
     return String(e);
 }
 
+const NEXT_STEPS = new Map([
+    // Usually the model rejecting something Chat sends, but not always.
+    [400, "If this keeps happening with this model, choose another model."],
+    [401, "Sign in to Unity Gateway again."],
+    [403, "Ask a workspace admin for access, or choose another model."],
+    [404, "Choose another model."],
+    [429, "Try again later."],
+]);
+
 /**
  * What to end a failed chat turn with. Chat shows the message, so it carries
  * the gateway's reason but never the error object itself.
  */
 function chatError(e: unknown): Error {
-    const status =
-        isRecord(e) && typeof e.httpStatusCode === "number"
-            ? e.httpStatusCode
-            : 0;
+    const status = httpStatus(e);
     if (status <= 0) {
         // Shown whole: a sign-in that can't refresh ends with the CLI's advice.
-        return new Error(errorText(e));
+        return chatFailure(errorText(e));
     }
-    const message = [
-        `Unity Gateway returned HTTP ${status}`,
-        gatewayMessage(isRecord(e) ? e.message : undefined),
-    ]
+    let message = [`Unity Gateway returned HTTP ${status}`, refusalReason(e)]
         .filter((part) => part !== "")
         .join(": ");
-    switch (status) {
-        case 401:
-        case 403:
-            return LanguageModelError.NoPermissions(message);
-        case 404:
-            return LanguageModelError.NotFound(message);
-        case 429:
-            return LanguageModelError.Blocked(message);
-        default:
-            return new Error(message);
+    const nextStep = NEXT_STEPS.get(status);
+    if (nextStep !== undefined) {
+        message += /[.!?…]$/.test(message) ? ` ${nextStep}` : `. ${nextStep}`;
     }
+    return chatFailure(message);
+}
+
+/** 0 when the failure isn't the gateway refusing the request. */
+function httpStatus(e: unknown): number {
+    return isRecord(e) && typeof e.httpStatusCode === "number"
+        ? e.httpStatusCode
+        : 0;
+}
+
+/**
+ * Whether signing in again could fix a failure: the gateway rejected the
+ * token, or the CLI couldn't refresh it.
+ */
+function needsSignIn(e: unknown): boolean {
+    return httpStatus(e) === 401 || isReauthRequiredError(errorText(e));
+}
+
+/**
+ * The gateway's reason for refusing a request. The SDK finds no message in a
+ * body that isn't a Databricks error, so fall back to the body itself, unless
+ * it's markup such as a proxy's error page, or JSON without a message.
+ */
+function refusalReason(e: unknown): string {
+    const reason = gatewayMessage(isRecord(e) ? e.message : undefined);
+    const body = responseBody(e);
+    return reason !== "" || body.startsWith("<")
+        ? reason
+        : gatewayMessage(unwrapMessage(body) ?? "");
+}
+
+/** A refused request's body as text. */
+function responseBody(e: unknown): string {
+    return isRecord(e) && e.httpBody instanceof Uint8Array
+        ? new TextDecoder().decode(e.httpBody).trim()
+        : "";
+}
+
+/**
+ * Copilot shows a thrown error's stack in Chat, and VS Code gives every
+ * `LanguageModelError` a new one, so a failure is a plain error with none.
+ */
+function chatFailure(message: string): Error {
+    const error = new Error(message);
+    delete error.stack;
+    return error;
 }
 
 /**
@@ -228,6 +298,7 @@ function chatError(e: unknown): Error {
  */
 export function registerUnityGatewayChatProvider(
     connectionManager: UnityGatewayConnectionManager,
+    promptSignIn: (message: string) => void,
     isEnabled: () => boolean,
     onDidChangeEnabled: Event<void>,
     register = (provider: LanguageModelChatProvider) =>
@@ -239,7 +310,10 @@ export function registerUnityGatewayChatProvider(
             registration?.dispose();
             registration = undefined;
         } else if (registration === undefined) {
-            const provider = new UnityGatewayChatProvider(connectionManager);
+            const provider = new UnityGatewayChatProvider(
+                connectionManager,
+                promptSignIn
+            );
             // Runs during activation, so a failure mustn't stop the rest.
             try {
                 registration = Disposable.from(register(provider), provider);
