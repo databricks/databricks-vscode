@@ -98,4 +98,97 @@ describe(__filename, () => {
 
         verify(connectionManager.signOut()).once();
     });
+
+    describe("promptSignIn", () => {
+        let executed: string[];
+
+        beforeEach(() => {
+            executed = [];
+        });
+
+        function createPromptingCommands(
+            showWarning: (
+                message: string,
+                ...items: string[]
+            ) => Thenable<string | undefined>,
+            isEnabled = () => true
+        ) {
+            return new UnityGatewayCommands(
+                instance(mock(CliWrapper)),
+                instance(connectionManager),
+                isEnabled,
+                async () => undefined,
+                showWarning,
+                async (command) => executed.push(command)
+            );
+        }
+
+        it("runs the sign-in command when the user picks the prompt's button", async () => {
+            const shown: unknown[][] = [];
+            const commands = createPromptingCommands(async (...args) => {
+                shown.push(args);
+                return "Sign in to Unity Gateway";
+            });
+
+            await commands.promptSignIn("Unity Gateway isn't connected.");
+
+            assert.deepStrictEqual(shown, [
+                ["Unity Gateway isn't connected.", "Sign in to Unity Gateway"],
+            ]);
+            assert.deepStrictEqual(executed, [
+                "databricks.unityGateway.signIn",
+            ]);
+        });
+
+        it("doesn't sign in when the prompt is dismissed", async () => {
+            await createPromptingCommands(async () => undefined).promptSignIn(
+                "Unity Gateway isn't connected."
+            );
+
+            assert.deepStrictEqual(executed, []);
+        });
+
+        it("doesn't prompt once the experiment is turned off", async () => {
+            let prompts = 0;
+
+            await createPromptingCommands(
+                async () => {
+                    prompts++;
+                    return "Sign in to Unity Gateway";
+                },
+                () => false
+            ).promptSignIn("Unity Gateway isn't connected.");
+
+            assert.strictEqual(prompts, 0);
+        });
+
+        it("doesn't sign in if the experiment is turned off while the prompt is open", async () => {
+            let enabled = true;
+
+            await createPromptingCommands(
+                async () => {
+                    enabled = false;
+                    return "Sign in to Unity Gateway";
+                },
+                () => enabled
+            ).promptSignIn("Unity Gateway isn't connected.");
+
+            assert.deepStrictEqual(executed, []);
+        });
+
+        it("shows a prompt while another is open", async () => {
+            // VS Code replaces the open one, which can be hidden away in the
+            // notification center, unsettled.
+            let prompts = 0;
+            const commands = createPromptingCommands(() => {
+                prompts++;
+                return new Promise(() => {});
+            });
+
+            void commands.promptSignIn("a");
+            void commands.promptSignIn("a");
+
+            assert.strictEqual(prompts, 2);
+        });
+    });
 });

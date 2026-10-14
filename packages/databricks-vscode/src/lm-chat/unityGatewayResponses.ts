@@ -123,38 +123,43 @@ function toRole(
 
 /**
  * Turns a Responses event stream into chat response parts: text as it
- * streams, and each tool call once it's complete. Throws if the stream fails
- * or ends early.
+ * streams, and each tool call once it's complete. Throws if the stream fails,
+ * ends early or completes with nothing to show.
  */
 export async function* toResponseParts(
     events: AsyncIterable<unknown>
 ): AsyncGenerator<LanguageModelResponsePart> {
     let textStreamed = false;
+    let replied = false;
     for await (const event of events) {
         if (!isRecord(event)) {
             continue;
         }
         // Databricks-style errors sent mid-stream have no type.
-        const type =
+        const failed =
             event.type === undefined &&
-            ("error_code" in event || "error" in event)
-                ? "error"
-                : event.type;
-        switch (type) {
+            (event.error_code ?? event.error ?? null) !== null;
+        switch (failed ? "error" : event.type) {
             case "response.output_text.delta":
                 if (typeof event.delta === "string" && event.delta !== "") {
                     textStreamed = true;
+                    replied = true;
                     yield new LanguageModelTextPart(event.delta);
                 }
                 break;
             case "response.output_item.done": {
                 const part = outputItemPart(event.item, textStreamed);
                 if (part !== undefined) {
+                    replied = true;
                     yield part;
                 }
                 break;
             }
             case "response.completed":
+                // The gateway reports some content-filter stops this way.
+                if (!replied) {
+                    throw new Error(emptyReplyMessage(event.response));
+                }
                 return;
             case "response.incomplete": {
                 // Chat keeps what has streamed, and shows why it stopped.
@@ -234,6 +239,14 @@ function parseArguments(value: unknown): object {
     }
 }
 
+function emptyReplyMessage(response: unknown): string {
+    const id =
+        isRecord(response) && typeof response.id === "string"
+            ? ` (response ${response.id})`
+            : "";
+    return `Unity Gateway sent an empty reply${id}.`;
+}
+
 function incompleteReason(response: unknown): string {
     const details = isRecord(response) ? response.incomplete_details : {};
     return isRecord(details) && typeof details.reason === "string"
@@ -261,20 +274,39 @@ export function gatewayMessage(message: unknown): string {
     if (typeof message !== "string") {
         return "";
     }
-    let text = message;
+    const text = unwrapMessage(message) ?? message;
+    if (text.length <= MAX_ERROR_LENGTH) {
+        return text;
+    }
+    // Cut at the last sentence end, or else word break, that keeps at least
+    // half, rather than mid-word. One extra character lets a break just past
+    // the limit count.
+    const head = text.slice(0, MAX_ERROR_LENGTH + 1);
+    const kept =
+        [/^[\s\S]*[.!?](?=\s)/, /^[\s\S]*\S(?=\s)/]
+            .map((pattern) => pattern.exec(head)?.[0])
+            .find(
+                (cut) => cut !== undefined && cut.length >= MAX_ERROR_LENGTH / 2
+            ) ?? text.slice(0, MAX_ERROR_LENGTH);
+    return `${kept} …`;
+}
+
+/**
+ * The message in a JSON error, `{"message"}` or `{"error": {"message"}}`.
+ * Undefined for JSON without one, and the text itself when it isn't JSON.
+ */
+export function unwrapMessage(text: string): string | undefined {
+    let parsed: unknown;
     try {
-        const parsed: unknown = JSON.parse(message);
-        if (
-            isRecord(parsed) &&
-            isRecord(parsed.error) &&
-            typeof parsed.error.message === "string"
-        ) {
-            text = parsed.error.message;
-        }
-    } catch {}
-    return text.length > MAX_ERROR_LENGTH
-        ? `${text.slice(0, MAX_ERROR_LENGTH)}…`
-        : text;
+        parsed = JSON.parse(text);
+    } catch {
+        return text;
+    }
+    const error =
+        isRecord(parsed) && isRecord(parsed.error) ? parsed.error : parsed;
+    return isRecord(error) && typeof error.message === "string"
+        ? error.message
+        : undefined;
 }
 
 /** The text a message part carries, for tool results and token counting. */

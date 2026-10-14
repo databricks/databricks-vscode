@@ -461,6 +461,7 @@ export async function activate(
         unityGatewayConnectionManager,
         registerUnityGatewayChatProvider(
             unityGatewayConnectionManager,
+            (message) => void unityGatewayCommands.promptSignIn(message),
             isLanguageModelChatEnabled,
             workspaceConfigs.onDidChangeExperimentsOptInto
         ),

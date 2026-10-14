@@ -17,7 +17,11 @@ import type {
     LanguageModelResponsePart,
     ProvideLanguageModelChatResponseOptions,
 } from "vscode";
-import {toResponseParts, toResponsesRequest} from "./unityGatewayResponses";
+import {
+    gatewayMessage,
+    toResponseParts,
+    toResponsesRequest,
+} from "./unityGatewayResponses";
 
 describe(__filename, () => {
     const model: LanguageModelChatInformation = {
@@ -212,6 +216,32 @@ describe(__filename, () => {
         });
     });
 
+    describe("gatewayMessage", () => {
+        it("cuts a long message at a sentence end, else a word break", () => {
+            const sentence = "a".repeat(200) + ".";
+            assert.equal(
+                gatewayMessage(
+                    `${sentence} ${"b".repeat(50)} ${"c".repeat(100)}`
+                ),
+                `${sentence} …`
+            );
+            // Including one that ends right at the limit.
+            const sentences = `${"a".repeat(200)}. ${"b".repeat(97)}.`;
+            assert.equal(gatewayMessage(`${sentences} more`), `${sentences} …`);
+            // A sentence end that would drop most of it doesn't count.
+            const words = `Failed. ${"y".repeat(250)}`;
+            assert.equal(
+                gatewayMessage(`${words} ${"z".repeat(100)}`),
+                `${words} …`
+            );
+            assert.equal(
+                gatewayMessage("x".repeat(1000)),
+                "x".repeat(300) + " …"
+            );
+            assert.equal(gatewayMessage("x".repeat(300)), "x".repeat(300));
+        });
+    });
+
     describe("toResponseParts", () => {
         /** The parts reported, collected into `reported` so they survive a failure. */
         async function parts(
@@ -350,7 +380,7 @@ describe(__filename, () => {
             const message = JSON.stringify({
                 error: {message: "x".repeat(1000)},
             });
-            const shown = "x".repeat(300) + "…";
+            const shown = "x".repeat(300) + " …";
 
             await assert.rejects(
                 parts([
@@ -375,7 +405,40 @@ describe(__filename, () => {
                 parts([{error: {message: "upstream died"}}]),
                 /upstream died/
             );
-            assert.deepStrictEqual(await parts([{id: 1}, completed]), []);
+        });
+
+        it("ignores an event without a type that carries no error", async () => {
+            assert.deepStrictEqual(
+                await parts([
+                    {id: 1},
+                    {error: null, error_code: null},
+                    {type: "response.output_text.delta", delta: "Hi"},
+                    completed,
+                ]),
+                [new LanguageModelTextPart("Hi")]
+            );
+        });
+
+        it("fails a reply that completes with nothing to show", async () => {
+            await assert.rejects(
+                parts([
+                    {
+                        type: "response.output_item.done",
+                        item: {type: "reasoning", summary: []},
+                    },
+                    {type: "response.completed", response: {id: "resp_1"}},
+                ]),
+                (e) =>
+                    e instanceof Error &&
+                    e.message ===
+                        "Unity Gateway sent an empty reply (response resp_1)."
+            );
+            await assert.rejects(
+                parts([completed]),
+                (e) =>
+                    e instanceof Error &&
+                    e.message === "Unity Gateway sent an empty reply."
+            );
         });
 
         it("fails a reply that stops early, after what has streamed", async () => {
