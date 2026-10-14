@@ -27,7 +27,7 @@ import {
     reportRepoForResult,
     ReportEnvironment,
 } from "../utils/reportSetupIssue";
-import {isReauthRequiredError} from "../utils/authErrors";
+import {isReauthRequiredError} from "../../configuration/auth/authErrors";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     presetToFlags,

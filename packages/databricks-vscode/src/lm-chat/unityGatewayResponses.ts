@@ -274,7 +274,7 @@ export function gatewayMessage(message: unknown): string {
     if (typeof message !== "string") {
         return "";
     }
-    const text = unwrapMessage(message) ?? message;
+    const text = (unwrapMessage(message) ?? message).trim();
     if (text.length <= MAX_ERROR_LENGTH) {
         return text;
     }

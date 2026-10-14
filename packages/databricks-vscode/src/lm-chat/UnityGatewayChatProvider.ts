@@ -13,7 +13,7 @@ import type {
 import {ConfigError, logging} from "@databricks/sdk-experimental";
 import type {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {Loggers} from "../logger";
-import {isReauthRequiredError} from "../python-setup/utils/authErrors";
+import {isReauthRequiredError} from "../configuration/auth/authErrors";
 import type {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
 import {listUnityGatewayModels} from "./unityGatewayModels";
 import {
@@ -31,6 +31,9 @@ import {
  * anything lists every vendor's models.
  */
 export const UNITY_GATEWAY_VENDOR = "databricks";
+
+// A proxy's error page can be long.
+const MAX_LOGGED_BODY_LENGTH = 4_096;
 
 /**
  * Offers Unity Gateway models in VS Code Chat. Lists no models while signed
@@ -153,14 +156,25 @@ export class UnityGatewayChatProvider
             // So the log has the gateway's reason even when the SDK couldn't
             // read it.
             const body = responseBody(e);
+            const logged =
+                body.length > MAX_LOGGED_BODY_LENGTH
+                    ? `${body.slice(0, MAX_LOGGED_BODY_LENGTH)}…`
+                    : body;
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
-                body === ""
+                logged === ""
                     ? "Unity Gateway chat request failed"
-                    : `Unity Gateway chat request failed: ${body}`,
+                    : `Unity Gateway chat request failed: ${logged}`,
                 e
             );
-            if (needsSignIn(e)) {
-                this.promptSignIn("Your Unity Gateway sign-in has expired.");
+            // A request left over from an old connection says nothing about
+            // the current one.
+            if (
+                needsSignIn(e) &&
+                client === this.connectionManager.responsesClient
+            ) {
+                this.promptSignIn(
+                    "Your Unity Gateway sign-in no longer works."
+                );
             }
             throw chatError(e);
         } finally {

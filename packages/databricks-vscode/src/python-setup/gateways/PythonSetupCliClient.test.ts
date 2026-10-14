@@ -9,7 +9,7 @@ import {
     SUCCESS_DEFAULT,
     ERROR_NO_TARGET,
 } from "../models/fixtures/setupLocalResults";
-import {isReauthRequiredError} from "../utils/authErrors";
+import {isReauthRequiredError} from "../../configuration/auth/authErrors";
 
 /**
  * A fake child process that emits scripted stdout/stderr then closes. Lets us

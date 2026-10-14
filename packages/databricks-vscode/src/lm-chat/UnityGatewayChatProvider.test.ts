@@ -508,6 +508,13 @@ describe(__filename, () => {
                         "Unity Gateway returned HTTP 404: No such model. Choose another model.",
                     ],
                     [
+                        refused(
+                            400,
+                            "Invalid JSON schema - object types do not support propertyNames\n"
+                        ),
+                        "Unity Gateway returned HTTP 400: Invalid JSON schema - object types do not support propertyNames. If this keeps happening with this model, choose another model.",
+                    ],
+                    [
                         refused(429, "Slow down!"),
                         "Unity Gateway returned HTTP 429: Slow down! Try again later.",
                     ],
@@ -610,7 +617,11 @@ describe(__filename, () => {
                         "Unity Gateway returned HTTP 429. Try again later.",
                     ],
                     [
-                        answered(502, "text/plain", "<html>Bad Gateway</html>"),
+                        answered(
+                            502,
+                            "text/plain",
+                            "\n<html>Bad Gateway</html>"
+                        ),
                         "Unity Gateway returned HTTP 502",
                     ],
                     [
@@ -654,9 +665,33 @@ describe(__filename, () => {
                 await assert.rejects(chat());
 
                 assert.deepStrictEqual(signInPrompts, [
-                    "Your Unity Gateway sign-in has expired.",
-                    "Your Unity Gateway sign-in has expired.",
+                    "Your Unity Gateway sign-in no longer works.",
+                    "Your Unity Gateway sign-in no longer works.",
                 ]);
+            });
+
+            it("doesn't offer to sign in for a request on an old connection", async () => {
+                respondToChat = async () => {
+                    // A new sign-in while the request was in flight.
+                    when(mockConnectionManager.responsesClient).thenReturn(
+                        newResponsesClient()
+                    );
+                    return {
+                        statusCode: 401,
+                        headers: new Headers({
+                            "content-type": "application/json",
+                        }),
+                        body: new Response(
+                            JSON.stringify({
+                                error_code: "UNAUTHENTICATED",
+                                message: "Invalid token",
+                            })
+                        ).body,
+                    };
+                };
+
+                await assert.rejects(chat(), isChatFailure(/HTTP 401/));
+                assert.deepStrictEqual(signInPrompts, []);
             });
 
             it("doesn't offer to sign in when that wouldn't help", async () => {
@@ -822,6 +857,24 @@ describe(__filename, () => {
                 assert.equal(thrown.message, "connect ECONNREFUSED");
                 assert.notStrictEqual(thrown, failure);
                 assert.strictEqual(thrown.cause, undefined);
+            });
+
+            it("logs at most 4,096 characters of a refused request's body", async () => {
+                respondToChat = async () => ({
+                    statusCode: 502,
+                    headers: new Headers({"content-type": "text/html"}),
+                    body: new Response(`<html>${"x".repeat(10_000)}</html>`)
+                        .body,
+                });
+
+                const errors = await loggedErrors(() => chat().catch(() => {}));
+
+                assert.equal(
+                    errors[0][0],
+                    `Unity Gateway chat request failed: <html>${"x".repeat(
+                        4_090
+                    )}…`
+                );
             });
 
             it("logs a refused request's body as text", async () => {
