@@ -1,7 +1,8 @@
-import {Uri, WorkspaceFolder} from "vscode";
+import {ConfigurationTarget, Uri, WorkspaceFolder, workspace} from "vscode";
 import {
     BundleFileSet,
     getAbsoluteGlobPath,
+    getSubProjects,
     parseBundleYaml,
 } from "./BundleFileSet";
 import {expect} from "chai";
@@ -656,6 +657,235 @@ describe(__filename, async function () {
                     Uri.file(path.join(tmpdirUri.fsPath, "notIncluded.yaml"))
                 )
             ).to.be.false;
+        });
+    });
+
+    describe("getSubProjects", async () => {
+        async function writeFile(...segments: string[]) {
+            const file = path.join(tmpdir.path, ...segments);
+            await fs.mkdir(path.dirname(file), {recursive: true});
+            await fs.writeFile(file, "");
+        }
+
+        async function getRelativeSubProjects() {
+            return (await getSubProjects(Uri.file(tmpdir.path))).map(
+                (p) => p.relative
+            );
+        }
+
+        it("should find nested bundles in order, without the root bundle", async () => {
+            await writeFile("databricks.yml");
+            await writeFile("b", "bundle.yaml");
+            await writeFile("a", "nested", "databricks.yaml");
+            await writeFile("node_modules", "pkg", "bundle.yml");
+
+            const subProjects = await getSubProjects(Uri.file(tmpdir.path));
+
+            expect(subProjects.map((p) => p.relative)).to.deep.equal([
+                path.join("a", "nested"),
+                "b",
+                path.join("node_modules", "pkg"),
+            ]);
+            expect(subProjects[1].absolute.fsPath).to.equal(
+                Uri.file(path.join(tmpdir.path, "b")).fsPath
+            );
+        });
+
+        it("should skip dot-folders", async () => {
+            await writeFile(".hidden", "databricks.yml");
+            await writeFile("visible", "databricks.yml");
+
+            expect(await getRelativeSubProjects()).to.deep.equal(["visible"]);
+        });
+
+        it("should ignore a folder named like a bundle file", async () => {
+            await fs.mkdir(path.join(tmpdir.path, "dir", "databricks.yml"), {
+                recursive: true,
+            });
+
+            expect(await getRelativeSubProjects()).to.deep.equal([]);
+        });
+
+        it("should skip folders in files.exclude", async () => {
+            await writeFile("excluded", "databricks.yml");
+            await writeFile("kept", "databricks.yml");
+            const config = workspace.getConfiguration("files");
+            const previous = config.inspect("exclude")?.globalValue;
+            await config.update(
+                "exclude",
+                // eslint-disable-next-line @typescript-eslint/naming-convention
+                {"**/excluded": true},
+                ConfigurationTarget.Global
+            );
+            try {
+                expect(await getRelativeSubProjects()).to.deep.equal(["kept"]);
+            } finally {
+                await config.update(
+                    "exclude",
+                    previous,
+                    ConfigurationTarget.Global
+                );
+            }
+        });
+
+        it("should match bundle file names in any case on Windows and macOS", async function () {
+            if (process.platform !== "win32" && process.platform !== "darwin") {
+                this.skip();
+            }
+            await writeFile("proj", "Databricks.yml");
+
+            expect(await getRelativeSubProjects()).to.deep.equal(["proj"]);
+        });
+
+        it("should list a symlinked folder that is a bundle, but no bundles inside it", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            const target = await tmp.dir({unsafeCleanup: true});
+            try {
+                await fs.writeFile(
+                    path.join(target.path, "databricks.yml"),
+                    ""
+                );
+                await fs.mkdir(path.join(target.path, "proj"));
+                await fs.writeFile(
+                    path.join(target.path, "proj", "databricks.yml"),
+                    ""
+                );
+                await fs.symlink(target.path, path.join(tmpdir.path, "linked"));
+
+                expect(await getRelativeSubProjects()).to.deep.equal([
+                    "linked",
+                ]);
+            } finally {
+                await target.cleanup();
+            }
+        });
+
+        it("should skip a symlinked bundle folder that links to one found directly", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            // Yarn and npm workspaces link each package into node_modules.
+            await writeFile("packages", "app", "databricks.yml");
+            await fs.mkdir(path.join(tmpdir.path, "node_modules"));
+            await fs.symlink(
+                path.join(tmpdir.path, "packages", "app"),
+                path.join(tmpdir.path, "node_modules", "app")
+            );
+
+            expect(await getRelativeSubProjects()).to.deep.equal([
+                path.join("packages", "app"),
+            ]);
+        });
+
+        it("should list a folder reached through symlinks once", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            // Bazel links bazel-<name> to its execroot, which links back to
+            // each top-level folder and file.
+            await writeFile("databricks.yml");
+            await writeFile("jobs", "etl", "databricks.yml");
+            const execroot = await tmp.dir({unsafeCleanup: true});
+            try {
+                for (const entry of ["databricks.yml", "jobs"]) {
+                    await fs.symlink(
+                        path.join(tmpdir.path, entry),
+                        path.join(execroot.path, entry)
+                    );
+                }
+                await fs.symlink(
+                    execroot.path,
+                    path.join(tmpdir.path, "bazel-repo")
+                );
+
+                expect(await getRelativeSubProjects()).to.deep.equal([
+                    path.join("jobs", "etl"),
+                ]);
+            } finally {
+                await execroot.cleanup();
+            }
+        });
+
+        it("should skip copies of a bundle in a symlinked build output", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            // Build tools link an output folder into the workspace that holds
+            // real folders whose files link back to the sources.
+            await writeFile("jobs", "etl", "databricks.yml");
+            const out = await tmp.dir({unsafeCleanup: true});
+            try {
+                await fs.mkdir(path.join(out.path, "app", "jobs", "etl"), {
+                    recursive: true,
+                });
+                await fs.symlink(
+                    path.join(tmpdir.path, "jobs", "etl", "databricks.yml"),
+                    path.join(out.path, "app", "jobs", "etl", "databricks.yml")
+                );
+                await fs.symlink(out.path, path.join(tmpdir.path, "build-out"));
+
+                expect(await getRelativeSubProjects()).to.deep.equal([
+                    path.join("jobs", "etl"),
+                ]);
+            } finally {
+                await out.cleanup();
+            }
+        });
+
+        it("should skip real copies of a bundle in symlinked build output", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            // Bazel links bazel-bin and bazel-out into the same output, where
+            // a build step can copy a bundle file rather than link it.
+            await writeFile("jobs", "etl", "databricks.yml");
+            const out = await tmp.dir({unsafeCleanup: true});
+            try {
+                const bin = path.join(out.path, "k8-fastbuild", "bin");
+                await fs.mkdir(path.join(bin, "jobs", "etl"), {
+                    recursive: true,
+                });
+                await fs.writeFile(
+                    path.join(bin, "jobs", "etl", "databricks.yml"),
+                    ""
+                );
+                await fs.symlink(out.path, path.join(tmpdir.path, "bazel-out"));
+                await fs.symlink(bin, path.join(tmpdir.path, "bazel-bin"));
+
+                expect(await getRelativeSubProjects()).to.deep.equal([
+                    path.join("jobs", "etl"),
+                ]);
+            } finally {
+                await out.cleanup();
+            }
+        });
+
+        it("should list each folder whose bundle file links to a shared one", async function () {
+            if (process.platform === "win32") {
+                // Creating symlinks needs extra privileges on Windows.
+                this.skip();
+            }
+            await writeFile("shared", "databricks.yml");
+            for (const bundle of ["bundle1", "bundle2"]) {
+                await fs.mkdir(path.join(tmpdir.path, bundle));
+                await fs.symlink(
+                    path.join("..", "shared", "databricks.yml"),
+                    path.join(tmpdir.path, bundle, "databricks.yml")
+                );
+            }
+
+            expect(await getRelativeSubProjects()).to.deep.equal([
+                "bundle1",
+                "bundle2",
+                "shared",
+            ]);
         });
     });
 });

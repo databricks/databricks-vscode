@@ -1,16 +1,23 @@
-import {Uri} from "vscode";
+import {RelativePattern, Uri, workspace} from "vscode";
 import * as glob from "glob";
 import {mergeWith} from "lodash";
 import * as yaml from "yaml";
 import path from "path";
 import {BundleSchema} from "./types";
-import {readFile, writeFile} from "fs/promises";
+import {readFile, realpath, writeFile} from "fs/promises";
 import {CachedValue} from "../locking/CachedValue";
 import {minimatch} from "minimatch";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
 
 const rootFilePattern: string = "{bundle,databricks}.{yaml,yml}";
-const subProjectFilePattern: string = path.join("**", rootFilePattern);
+// Glob patterns in a RelativePattern always use "/", on every platform.
+// findFiles matches case-sensitively, but Windows and macOS file systems
+// usually don't, so there each letter matches either case.
+const subProjectFilePattern: string = `**/${
+    process.platform === "win32" || process.platform === "darwin"
+        ? rootFilePattern.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`)
+        : rootFilePattern
+}`;
 
 /** The root bundle file names (the expansion of {@link rootFilePattern}). */
 const rootFileNames = [
@@ -115,22 +122,71 @@ export async function writeBundleYaml(file: Uri, data: BundleSchema) {
     await writeFile(file.fsPath, yaml.stringify(data));
 }
 
+// Resolves symlinks in a path. A path that no longer exists, such as a folder
+// removed since it was found, is returned as it is.
+function realPath(p: string) {
+    return realpath(p).catch(() => p);
+}
+
+// Whether no folder on the way from the root is a symlink, which would change
+// the folder's real path.
+function isReachedDirectly(
+    realFolder: string,
+    realRoot: string,
+    relative: string
+) {
+    return realFolder === path.join(realRoot, relative);
+}
+
 export async function getSubProjects(root: Uri) {
-    const subProjectRoots = await glob.glob(
-        getAbsoluteGlobPath(subProjectFilePattern, root),
-        {nocase: process.platform === "win32"}
+    // VS Code searches outside the extension host, so large folders don't
+    // block it. Dot-folders are skipped.
+    const subProjectRoots = await workspace.findFiles(
+        new RelativePattern(root, subProjectFilePattern),
+        "**/.*/**"
     );
     const normalizedRoot = path.normalize(root.fsPath);
-    return subProjectRoots
-        .map((rootFile) => {
-            const dirname = path.dirname(path.normalize(rootFile));
-            const absolute = Uri.file(dirname);
+    const realRoot = await realPath(normalizedRoot);
+    const found = await Promise.all(
+        subProjectRoots.map(async (rootFile) => {
+            const file = path.normalize(rootFile.fsPath);
+            const dirname = path.dirname(file);
             const relative = path.relative(normalizedRoot, dirname);
-            return {absolute, relative};
+            const realDirname = await realPath(dirname);
+            const direct = isReachedDirectly(realDirname, realRoot, relative);
+            return {
+                absolute: Uri.file(dirname),
+                relative,
+                realDirname,
+                direct,
+                // The bundle's own folder is a symlink, but none above it is.
+                ownFolderLinked:
+                    !direct &&
+                    isReachedDirectly(
+                        await realPath(path.dirname(dirname)),
+                        realRoot,
+                        path.dirname(relative)
+                    ),
+                realFile: await realPath(file),
+            };
         })
-        .filter(({absolute}) => {
-            return absolute.fsPath !== normalizedRoot;
-        });
+    );
+    // findFiles follows symlinked folders all the way down, into build output
+    // and links back to the sources. So a bundle behind a symlinked folder
+    // only counts when that folder is the bundle's own, and then only if its
+    // real file wasn't found without a link, the root bundle included.
+    const directFiles = new Set(
+        found.filter((p) => p.direct).map((p) => p.realFile)
+    );
+    return found
+        .filter(
+            (p) =>
+                p.realDirname !== realRoot &&
+                (p.direct ||
+                    (p.ownFolderLinked && !directFiles.has(p.realFile)))
+        )
+        .map(({absolute, relative}) => ({absolute, relative}))
+        .sort((a, b) => a.relative.localeCompare(b.relative));
 }
 
 export function getAbsoluteGlobPath(path: string | Uri, root: Uri): string {
