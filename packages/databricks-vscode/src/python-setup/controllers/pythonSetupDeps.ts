@@ -1,6 +1,6 @@
 import {randomBytes} from "crypto";
 import {existsSync} from "fs";
-import {copyFile, rename, rm} from "fs/promises";
+import {copyFile, realpath, rename, rm} from "fs/promises";
 import path from "path";
 import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
@@ -272,9 +272,12 @@ export function makePythonSetupDeps(
                 wiring.createQuickPick
             );
         },
-        adoptInterpreter: async (venvPath: string, projectRoot: string) => {
+        // Windows keeps the path as given.
+        realPath: async (folder: string) =>
+            process.platform === "win32" ? folder : realpath(folder),
+        adoptInterpreter: async (venvDir: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
-                venvInterpreterPath(venvPath),
+                venvInterpreterPath(venvDir),
                 Uri.file(projectRoot)
             );
         },
@@ -434,16 +437,14 @@ export function makePythonSetupDeps(
                 );
             }
         },
-        showSuccess: async (result, flags) => {
+        showSuccess: async (result, flags, venvDir) => {
             // Write the full breakdown to the log channel: in --output json
             // mode the CLI streams little or nothing to stderr on success, so
             // the channel would otherwise be empty. This is where the details
             // the one-line message omits (versions, compute, backup, how to run
             // notebooks, full warnings) live. Enrich the venv lines with the
             // project name uv recorded in pyvenv.cfg when it can be read.
-            const projectName = result.venvPath
-                ? await readVenvProjectName(result.venvPath)
-                : undefined;
+            const projectName = await readVenvProjectName(venvDir);
             wiring.log.append(formatSetupLog(result, flags, projectName));
             // Reveal the output channel automatically so those details are in
             // front of the user, then still raise the notification (with its

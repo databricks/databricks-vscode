@@ -166,6 +166,8 @@ function categoricalEnvKey(envKey: string | undefined): string | undefined {
  *   another dependency group) was removed so a single managed pin survives.
  * - `W_USER_CONSTRAINT_CONFLICT` — a user dependency is provably disjoint from an
  *   env constraint.
+ * - `W_UV_WORKSPACE_CONSTRAINTS_REPLACED` — for a uv workspace member, the pins
+ *   in the root pyproject.toml, which every member shares, are replaced.
  *
  * Held as a set so an unknown code (schema drift, or a code added CLI-side before
  * this list is updated) collapses to {@link UNRECOGNISED_WARNING_CODE} rather than
@@ -178,6 +180,7 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
     "W_DBCONNECT_PIN_DUPLICATED",
     "W_DBCONNECT_CONSOLIDATED",
     "W_USER_CONSTRAINT_CONFLICT",
+    "W_UV_WORKSPACE_CONSTRAINTS_REPLACED",
 ]);
 
 /** Bucket for a warning code outside {@link KNOWN_WARNING_CODES}. */
