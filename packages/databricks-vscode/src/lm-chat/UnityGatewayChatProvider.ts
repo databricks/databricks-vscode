@@ -205,6 +205,8 @@ function errorText(e: unknown): string {
 }
 
 const NEXT_STEPS = new Map([
+    // Usually the model rejecting something Chat sends, but not always.
+    [400, "If this keeps happening with this model, choose another model."],
     [401, "Sign in to Unity Gateway again."],
     [403, "Ask a workspace admin for access, or choose another model."],
     [404, "Choose another model."],
@@ -220,13 +222,6 @@ function chatError(e: unknown): Error {
     if (status <= 0) {
         // Shown whole: a sign-in that can't refresh ends with the CLI's advice.
         return chatFailure(errorText(e));
-    }
-    if (status === 400) {
-        // The model's own complaint about the request doesn't help the user.
-        // It's in the log.
-        return chatFailure(
-            "Unity Gateway returned HTTP 400. This model can't handle requests from VS Code Chat. Choose another model."
-        );
     }
     let message = [`Unity Gateway returned HTTP ${status}`, refusalReason(e)]
         .filter((part) => part !== "")

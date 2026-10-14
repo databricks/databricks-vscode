@@ -528,7 +528,6 @@ describe(__filename, () => {
                         ),
                         "Unity Gateway returned HTTP 500: INTERNAL_ERROR: Could not route request.",
                     ],
-                    // The model's own complaint isn't shown.
                     [
                         refused(
                             400,
@@ -538,7 +537,7 @@ describe(__filename, () => {
                                 },
                             })
                         ),
-                        "Unity Gateway returned HTTP 400. This model can't handle requests from VS Code Chat. Choose another model.",
+                        "Unity Gateway returned HTTP 400: Unknown name exclusiveMinimum. If this keeps happening with this model, choose another model.",
                     ],
                     [
                         refused(
@@ -578,6 +577,20 @@ describe(__filename, () => {
                         "Unity Gateway returned HTTP 503: upstream connect error",
                     ],
                     [htmlResponse(502), "Unity Gateway returned HTTP 502"],
+                    [
+                        answered(
+                            400,
+                            "application/json",
+                            JSON.stringify({
+                                detail: {
+                                    error_code: "INVALID_PARAMETER_VALUE",
+                                    message:
+                                        "Guardrail 'pii-detection' blocked: input contains an email address.",
+                                },
+                            })
+                        ),
+                        "Unity Gateway returned HTTP 400: Guardrail 'pii-detection' blocked: input contains an email address. If this keeps happening with this model, choose another model.",
+                    ],
                     // The SDK's own reading comes first.
                     [
                         answered(

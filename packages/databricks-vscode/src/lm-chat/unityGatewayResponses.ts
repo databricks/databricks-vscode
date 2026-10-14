@@ -292,8 +292,9 @@ export function gatewayMessage(message: unknown): string {
 }
 
 /**
- * The message in a JSON error, `{"message"}` or `{"error": {"message"}}`.
- * Undefined for JSON without one, and the text itself when it isn't JSON.
+ * The message in a JSON error: `{"message"}`, `{"error": {"message"}}` or
+ * `{"detail": {"message"}}`. Undefined for JSON without one, and the text
+ * itself when it isn't JSON.
  */
 export function unwrapMessage(text: string): string | undefined {
     let parsed: unknown;
@@ -302,8 +303,10 @@ export function unwrapMessage(text: string): string | undefined {
     } catch {
         return text;
     }
-    const error =
-        isRecord(parsed) && isRecord(parsed.error) ? parsed.error : parsed;
+    const wrapped = isRecord(parsed)
+        ? [parsed.error, parsed.detail].find(isRecord)
+        : undefined;
+    const error = wrapped ?? parsed;
     return isRecord(error) && typeof error.message === "string"
         ? error.message
         : undefined;
