@@ -2,6 +2,7 @@ import {randomBytes} from "crypto";
 import {existsSync} from "fs";
 import {access, constants, copyFile, realpath, rename, rm} from "fs/promises";
 import path from "path";
+import {containsPath} from "../utils/containsPath";
 import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
 import {Telemetry} from "../../telemetry";
@@ -510,8 +511,8 @@ export function makePythonSetupDeps(
  */
 function assertBackupInside(folder: string, backupPath: string): string {
     const root = path.resolve(folder);
-    const rel = path.relative(root, path.resolve(backupPath));
-    if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+    const backup = path.resolve(backupPath);
+    if (backup === root || !containsPath(root, backup)) {
         throw new Error(
             `Refusing to restore pyproject.toml from a backup outside ${root}: ${backupPath}`
         );

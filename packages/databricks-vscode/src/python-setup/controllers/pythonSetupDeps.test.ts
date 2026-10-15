@@ -1186,6 +1186,18 @@ describe("makePythonSetupDeps checkProjectFileBackup", () => {
         }
     });
 
+    it("accepts a backup whose name starts with two dots", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-check-"));
+        try {
+            const backup = path.join(dir, "..cache.bak");
+            await writeFile(backup, "original\n");
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.checkProjectFileBackup(dir, backup);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
     it("rejects a backup that cannot be read", async function () {
         if (process.platform === "win32" || process.getuid?.() === 0) {
             // chmod does not remove read access there.

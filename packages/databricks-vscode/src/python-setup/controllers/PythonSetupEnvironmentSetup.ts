@@ -29,6 +29,7 @@ import {
     ReportEnvironment,
 } from "../utils/reportSetupIssue";
 import {isReauthRequiredError} from "../utils/authErrors";
+import {containsPath} from "../utils/containsPath";
 import {SetupLocalInvocation} from "../utils/setupLocalArgs";
 import {
     presetToFlags,
@@ -974,16 +975,6 @@ export class PythonSetupEnvironmentSetup implements Disposable {
     dispose(): void {
         this.stateEmitter.dispose();
     }
-}
-
-/** Whether `child` is `parent` or a path inside it, compared by text. */
-function containsPath(parent: string, child: string): boolean {
-    const rel = path.relative(parent, child);
-    return (
-        rel !== ".." &&
-        !rel.startsWith(".." + path.sep) &&
-        !path.isAbsolute(rel)
-    );
 }
 
 /**
