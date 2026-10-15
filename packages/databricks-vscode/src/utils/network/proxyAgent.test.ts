@@ -14,6 +14,7 @@ import {
     applyProxyStrictSSLEnv,
     createWorkspaceClient,
     getDatabricksHttpAgent,
+    getTrustedCaBundle,
     resetProxyAgentCaches,
     setSystemCertificatesLoaderForTests,
     strictSSL,
@@ -185,33 +186,67 @@ describe(__filename, () => {
         it("merges the system trust store with Node's bundled roots (never replaces them)", async () => {
             // Inject the system store instead of reading the host's: CI runners
             // (notably headless Windows) can return an empty OS store, which
-            // would legitimately omit `ca` and make this merge assertion flaky.
+            // would legitimately omit the bundle and make this assertion flaky.
             // Re-listing a bundled root also exercises the dedupe path below.
             setSystemCertificatesLoaderForTests(async () => [
                 FAKE_CA_PEM,
                 tls.rootCertificates[0],
             ]);
-            const agent = (await getDatabricksHttpAgent(
-                new URL("https://example.com")
-            )) as https.Agent;
-            const ca = (agent.options as https.AgentOptions).ca;
+            const ca = await getTrustedCaBundle(new URL("https://example.com"));
             assert.ok(Array.isArray(ca));
-            // tls.getCACertificates('system') returns only the OS store; setting
-            // `ca` to that alone would drop Node's bundled public roots. The
-            // agent must carry at least all of the bundled roots.
+            // tls.getCACertificates('system') returns only the OS store; using
+            // that alone would drop Node's bundled public roots. The bundle must
+            // carry at least all of the bundled roots.
             assert.ok(
-                (ca as unknown[]).length >= tls.rootCertificates.length,
+                ca!.length >= tls.rootCertificates.length,
                 `expected >= ${tls.rootCertificates.length} CAs, got ${
-                    (ca as unknown[]).length
+                    ca!.length
                 }`
             );
             // A known bundled root is still present.
-            assert.ok((ca as string[]).includes(tls.rootCertificates[0]));
+            assert.ok(ca!.includes(tls.rootCertificates[0]));
             // Deduped: the OS store often re-lists the bundled roots, but each
             // cert appears at most once in the handed-off list.
+            assert.strictEqual(new Set(ca).size, ca!.length);
+        });
+
+        it("carries the trust bundle as a secureContext, not a `ca` array (keeps the agent key small — issue #2234)", async () => {
+            // A `ca` array lands in `Agent.getName()`, blowing the per-socket
+            // socket-pool key up to ~210KB (138+ full PEMs) and OOM-ing the
+            // extension host. A pre-built secureContext is opaque to getName().
+            setSystemCertificatesLoaderForTests(async () => [
+                ...tls.rootCertificates,
+            ]);
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            const options = agent.options as https.AgentOptions;
+            assert.ok(options.secureContext, "expected a secureContext");
+            assert.strictEqual(options.ca, undefined, "ca must not be set");
+            // getName must not serialise the whole trust store into the key.
+            const name = agent.getName({
+                ...options,
+                host: "example.com",
+                port: 443,
+                servername: "example.com",
+            });
+            assert.ok(
+                name.length < 2000,
+                `agent key must stay small, was ${name.length} chars`
+            );
+        });
+
+        it("reuses one secureContext across agents built from the same bundle", async () => {
+            setSystemCertificatesLoaderForTests(async () => [FAKE_CA_PEM]);
+            const first = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            const second = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
             assert.strictEqual(
-                new Set(ca as string[]).size,
-                (ca as string[]).length
+                (first.options as https.AgentOptions).secureContext,
+                (second.options as https.AgentOptions).secureContext
             );
         });
 
@@ -258,7 +293,7 @@ describe(__filename, () => {
             return capturedOpts;
         }
 
-        it("applies the CA to the endpoint TLS handshake through a proxy", async () => {
+        it("applies the trust context to the endpoint TLS handshake through a proxy", async () => {
             when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
             setSystemCertificatesLoaderForTests(async () => [FAKE_CA_PEM]);
 
@@ -268,9 +303,10 @@ describe(__filename, () => {
             assert.ok(agent instanceof HttpsProxyAgent);
 
             const opts = await captureEndpointConnectOpts(agent);
-            const ca = opts?.ca as string[];
-            assert.ok(Array.isArray(ca));
-            assert.ok(ca.includes(FAKE_CA_PEM));
+            // Trust reaches the endpoint via a secureContext, never a `ca` array
+            // (which would re-bloat the per-socket key — issue #2234).
+            assert.ok(opts?.secureContext, "expected a secureContext");
+            assert.strictEqual(opts?.ca, undefined, "ca must not be set");
             assert.strictEqual(opts?.rejectUnauthorized, true);
         });
 
@@ -295,9 +331,11 @@ describe(__filename, () => {
             const agent = (await getDatabricksHttpAgent(
                 new URL("https://example.com")
             )) as https.Agent;
-            // `ca` must be omitted (not [] / undefined) so Node keeps its
-            // bundled roots instead of trusting nothing.
-            assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+            // No trust material to add, so `secureContext` is omitted and Node
+            // keeps its bundled roots instead of trusting nothing.
+            assert.ok(
+                !("secureContext" in (agent.options as https.AgentOptions))
+            );
             assert.strictEqual(
                 (agent.options as https.AgentOptions).rejectUnauthorized,
                 true
@@ -315,8 +353,11 @@ describe(__filename, () => {
                 new URL("https://example.com")
             )) as https.Agent;
             assert.strictEqual(loaderCalled, false);
-            // Nothing to add, so `ca` is omitted and Node keeps its defaults.
-            assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+            // Nothing to add, so `secureContext` is omitted and Node keeps its
+            // defaults.
+            assert.ok(
+                !("secureContext" in (agent.options as https.AgentOptions))
+            );
         });
 
         it("leaves NODE_EXTRA_CA_CERTS to Node's default store when the system store is empty", async () => {
@@ -331,13 +372,15 @@ describe(__filename, () => {
                 const agent = (await getDatabricksHttpAgent(
                     new URL("https://example.com")
                 )) as https.Agent;
-                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+                assert.ok(
+                    !("secureContext" in (agent.options as https.AgentOptions))
+                );
             } finally {
                 fs.rmSync(dir, {recursive: true, force: true});
             }
         });
 
-        it("leaves the endpoint CA unset through a proxy when http.systemCertificates is off", async () => {
+        it("leaves the endpoint trust context unset through a proxy when http.systemCertificates is off", async () => {
             when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
             when(configsSpy.httpSystemCertificates).thenReturn(false);
             setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
@@ -348,6 +391,7 @@ describe(__filename, () => {
             assert.ok(agent instanceof HttpsProxyAgent);
 
             const opts = await captureEndpointConnectOpts(agent);
+            assert.strictEqual(opts?.secureContext, undefined);
             assert.strictEqual(opts?.ca, undefined);
         });
 
@@ -365,7 +409,9 @@ describe(__filename, () => {
                 const agent = (await getDatabricksHttpAgent(
                     new URL("https://example.com")
                 )) as https.Agent;
-                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+                assert.ok(
+                    !("secureContext" in (agent.options as https.AgentOptions))
+                );
             } finally {
                 fs.rmSync(dir, {recursive: true, force: true});
             }
@@ -379,13 +425,12 @@ describe(__filename, () => {
             when(configsSpy.httpSystemCertificates).thenReturn(false);
             setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
             try {
-                const agent = (await getDatabricksHttpAgent(
+                const ca = await getTrustedCaBundle(
                     new URL("https://example.com")
-                )) as https.Agent;
-                const ca = (agent.options as https.AgentOptions).ca as string[];
-                assert.ok(ca.includes(FAKE_CA_PEM));
-                assert.ok(ca.includes(tls.rootCertificates[0]));
-                assert.ok(!ca.includes(SYSTEM_CA_PEM));
+                );
+                assert.ok(ca!.includes(FAKE_CA_PEM));
+                assert.ok(ca!.includes(tls.rootCertificates[0]));
+                assert.ok(!ca!.includes(SYSTEM_CA_PEM));
             } finally {
                 fs.rmSync(dir, {recursive: true, force: true});
             }
@@ -397,14 +442,13 @@ describe(__filename, () => {
             fs.writeFileSync(pemPath, FAKE_CA_PEM);
             when(configsSpy.proxyCaCert).thenReturn(pemPath);
             try {
-                const agent = (await getDatabricksHttpAgent(
+                const ca = await getTrustedCaBundle(
                     new URL("https://example.com")
-                )) as https.Agent;
-                const ca = (agent.options as https.AgentOptions).ca as string[];
+                );
                 assert.ok(Array.isArray(ca));
-                assert.ok(ca.includes(FAKE_CA_PEM));
+                assert.ok(ca!.includes(FAKE_CA_PEM));
                 // Still anchored on the bundled roots.
-                assert.ok(ca.includes(tls.rootCertificates[0]));
+                assert.ok(ca!.includes(tls.rootCertificates[0]));
             } finally {
                 fs.rmSync(dir, {recursive: true, force: true});
             }
@@ -419,13 +463,12 @@ describe(__filename, () => {
                 throw new Error("system store unavailable");
             });
             try {
-                const agent = (await getDatabricksHttpAgent(
+                const ca = await getTrustedCaBundle(
                     new URL("https://example.com")
-                )) as https.Agent;
-                const ca = (agent.options as https.AgentOptions).ca as string[];
+                );
                 assert.ok(Array.isArray(ca));
-                assert.ok(ca.includes(FAKE_CA_PEM));
-                assert.ok(ca.includes(tls.rootCertificates[0]));
+                assert.ok(ca!.includes(FAKE_CA_PEM));
+                assert.ok(ca!.includes(tls.rootCertificates[0]));
             } finally {
                 fs.rmSync(dir, {recursive: true, force: true});
             }
@@ -436,10 +479,7 @@ describe(__filename, () => {
                 path.join(os.tmpdir(), "does-not-exist-xyz.pem")
             );
             // Must not throw; falls back to the rest of the trust store.
-            const agent = (await getDatabricksHttpAgent(
-                new URL("https://example.com")
-            )) as https.Agent;
-            const ca = (agent.options as https.AgentOptions).ca as string[];
+            const ca = await getTrustedCaBundle(new URL("https://example.com"));
             assert.ok(!ca || !ca.includes(FAKE_CA_PEM));
         });
 
@@ -448,18 +488,17 @@ describe(__filename, () => {
             const pemPath = path.join(dir, "extra-ca.pem");
             fs.writeFileSync(pemPath, FAKE_CA_PEM);
             process.env.NODE_EXTRA_CA_CERTS = pemPath;
-            // A non-empty OS store forces an explicit `ca`, which replaces
-            // Node's default store, so the bundle must carry this file too.
+            // A non-empty OS store forces an explicit bundle, which replaces
+            // Node's default store, so it must carry this file too.
             setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
             try {
-                const agent = (await getDatabricksHttpAgent(
+                const ca = await getTrustedCaBundle(
                     new URL("https://example.com")
-                )) as https.Agent;
-                const ca = (agent.options as https.AgentOptions).ca as string[];
+                );
                 assert.ok(Array.isArray(ca));
-                assert.ok(ca.includes(FAKE_CA_PEM));
+                assert.ok(ca!.includes(FAKE_CA_PEM));
                 // Still anchored on the bundled roots.
-                assert.ok(ca.includes(tls.rootCertificates[0]));
+                assert.ok(ca!.includes(tls.rootCertificates[0]));
             } finally {
                 fs.rmSync(dir, {recursive: true, force: true});
             }
@@ -471,10 +510,7 @@ describe(__filename, () => {
                 "does-not-exist-extra-xyz.pem"
             );
             // Must not throw; falls back to the rest of the trust store.
-            const agent = (await getDatabricksHttpAgent(
-                new URL("https://example.com")
-            )) as https.Agent;
-            const ca = (agent.options as https.AgentOptions).ca as string[];
+            const ca = await getTrustedCaBundle(new URL("https://example.com"));
             assert.ok(!ca || !ca.includes(FAKE_CA_PEM));
         });
     });

@@ -148,9 +148,10 @@ async function getSystemCertificates(
     return systemCertificatesPromise;
 }
 
-/** Reset the cached system certificates. Test-only. */
+/** Reset the cached system certificates and secure context. Test-only. */
 export function resetProxyAgentCaches() {
     systemCertificatesPromise = undefined;
+    cachedSecureContext = undefined;
 }
 
 /**
@@ -272,28 +273,103 @@ function buildCaBundle(
     ];
 }
 
+/**
+ * Resolve the full CA trust list for `host`: the OS store (unless
+ * `http.systemCertificates` is off), the configured PEM, and the
+ * `NODE_EXTRA_CA_CERTS` bundle, merged onto Node's bundled roots by
+ * {@link buildCaBundle}. Exported for tests — the agent carries this as a
+ * pre-built {@link tls.SecureContext}, not as a `ca` array (see
+ * {@link getSecureContext}).
+ */
+export async function getTrustedCaBundle(
+    host: URL
+): Promise<string[] | undefined> {
+    return resolveCaBundle(getProxyAgentParams(host));
+}
+
+async function resolveCaBundle(
+    params: ProxyAgentParams
+): Promise<string[] | undefined> {
+    // Independent reads (OS trust store, the configured PEM, the
+    // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
+    const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
+        [
+            workspaceConfigs.httpSystemCertificates
+                ? getSystemCertificates(params)
+                : undefined,
+            loadConfiguredCaCert(),
+            loadNodeExtraCaCerts(),
+        ]
+    );
+    return buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts);
+}
+
+let cachedSecureContext:
+    | {ca: readonly string[]; context: tls.SecureContext}
+    | undefined;
+
+/**
+ * Turn a CA bundle into a {@link tls.SecureContext}, reused across every socket of
+ * an agent (and across agents built from the same bundle).
+ *
+ * The agent must trust the bundle via a pre-built `secureContext`, never a raw
+ * `ca` array. `https.Agent` folds its options into every socket's connect options,
+ * and `Agent.getName()` serialises the whole `ca` array into the socket-pool key —
+ * a ~140-cert bundle makes a ~210KB key *per socket*, and each socket re-parses
+ * every cert into its own context. Under load (concurrent cluster-permission
+ * fetches, retries, short-timeout reconnects) that balloons the extension-host
+ * heap until V8 OOMs (issue #2234). A `secureContext` is opaque to `getName()`
+ * (tiny key) and parses the certs once. Parsing is also the one costly step here,
+ * so we cache the last context and reuse it whenever the bundle is unchanged —
+ * `getDatabricksHttpAgent` runs per client build, and the per-run poll paths
+ * rebuild clients with the same bundle. {@link sameCertList} compares by value,
+ * so a re-read `caCert`/`NODE_EXTRA_CA_CERTS` with identical contents still hits;
+ * in the common no-custom-cert case the elements are the same cert references,
+ * which just makes that comparison a cheap pointer check.
+ */
+function getSecureContext(
+    ca: string[] | undefined
+): tls.SecureContext | undefined {
+    if (!ca) {
+        return undefined;
+    }
+    if (cachedSecureContext && sameCertList(cachedSecureContext.ca, ca)) {
+        return cachedSecureContext.context;
+    }
+    const context = tls.createSecureContext({ca});
+    cachedSecureContext = {ca, context};
+    return context;
+}
+
+// Value equality (not identity): a freshly read PEM with the same contents must
+// still hit the cache. `===` short-circuits on identical references first, so the
+// common bundle (shared cert refs) compares cheaply.
+function sameCertList(a: readonly string[], b: readonly string[]): boolean {
+    return a.length === b.length && a.every((cert, i) => cert === b[i]);
+}
+
 // The per-request options `agent-base` hands to `connect`. Derived from the
 // agent's own `connect` signature so we don't take a direct dependency on
 // `agent-base` (it resolves only transitively via the proxy agents).
 type ProxyConnectOpts = Parameters<HttpsProxyAgent<string>["connect"]>[1];
 
 /**
- * `HttpsProxyAgent`, but with the CA bundle / strict-SSL setting applied to the
+ * `HttpsProxyAgent`, but with the CA trust / strict-SSL setting applied to the
  * *endpoint* TLS handshake, not just the connection to the proxy.
  *
  * `https-proxy-agent`'s constructor options only govern the TLS socket to the
  * proxy (`this.connectOpts`). The final handshake to the Databricks host is
  * `tls.connect({...opts, socket})`, where `opts` is the SDK's per-request object
- * — which carries no `ca`. So a merged `ca` passed to the constructor never
- * reaches the endpoint, and an internal CA is silently ignored whenever a proxy
- * is set. We fold the trust material into `opts` here (which *does* flow to the
- * endpoint `tls.connect`) before delegating to the base implementation.
+ * — which carries no trust material. So a `secureContext` passed to the
+ * constructor never reaches the endpoint, and an internal CA is silently ignored
+ * whenever a proxy is set. We fold the context into `opts` here (which *does* flow
+ * to the endpoint `tls.connect`) before delegating to the base implementation.
  */
 class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
     constructor(
         proxy: string,
         opts: https.AgentOptions,
-        private readonly endpointCa: string[] | undefined,
+        private readonly endpointSecureContext: tls.SecureContext | undefined,
         private readonly endpointRejectUnauthorized: boolean
     ) {
         super(proxy, opts);
@@ -307,8 +383,8 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
         // socket already trusts the same bundle via the constructor options.
         if (opts.secureEndpoint) {
             opts.rejectUnauthorized = this.endpointRejectUnauthorized;
-            if (this.endpointCa) {
-                opts.ca = this.endpointCa;
+            if (this.endpointSecureContext) {
+                opts.secureContext = this.endpointSecureContext;
             }
         }
         return super.connect(req, opts);
@@ -330,18 +406,7 @@ export async function getDatabricksHttpAgent(
     const params = getProxyAgentParams(host);
     const isHttps = host.protocol === "https:";
 
-    // Independent reads (OS trust store, the configured PEM, the
-    // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
-    const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
-        [
-            workspaceConfigs.httpSystemCertificates
-                ? getSystemCertificates(params)
-                : undefined,
-            loadConfiguredCaCert(),
-            loadNodeExtraCaCerts(),
-        ]
-    );
-    const ca = buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts);
+    const ca = await resolveCaBundle(params);
     const rejectUnauthorized = strictSSL();
 
     const resolver = createProxyResolver(params);
@@ -350,26 +415,36 @@ export async function getDatabricksHttpAgent(
         isHttps ||
         (proxyUrl !== undefined && new URL(proxyUrl).protocol === "https:");
 
-    // Only set `ca` when `buildCaBundle` built an explicit list (it already
-    // folds in Node's bundled roots). Otherwise omit it entirely so Node keeps
-    // its default store — passing `undefined`/`[]` would instead trust nothing.
+    // Build the context only when a TLS handshake actually happens (https
+    // endpoint, or an http endpoint through an https proxy) — otherwise it would
+    // parse the whole bundle for an agent that never uses it.
+    const secureContext = usesTls ? getSecureContext(ca) : undefined;
+
+    // Trust the merged bundle via a pre-built `secureContext`, never a raw `ca`
+    // array — a `ca` array bloats the per-socket agent key and re-parses certs
+    // per socket, OOM-ing the host (see getSecureContext). Omit it when there's
+    // nothing to add so Node keeps its default store; `undefined`/`[]` would
+    // instead trust nothing.
     const agentOptions: https.AgentOptions = {
         keepAlive: true,
         keepAliveMsecs: KEEP_ALIVE_MSECS,
         timeout: (httpTimeoutSeconds || DEFAULT_HTTP_TIMEOUT_SECONDS) * 1000,
-        ...(usesTls ? {rejectUnauthorized, ...(ca ? {ca} : {})} : {}),
+        ...(usesTls
+            ? {rejectUnauthorized, ...(secureContext ? {secureContext} : {})}
+            : {}),
     };
 
     if (proxyUrl) {
-        // For an https endpoint the CA/strict-SSL must also land on the endpoint
-        // handshake, not just the proxy socket — the base agent only applies the
-        // constructor options to the proxy connection. An http endpoint through a
-        // proxy never does an endpoint TLS handshake, so the plain agent is fine.
+        // For an https endpoint the trust/strict-SSL must also land on the
+        // endpoint handshake, not just the proxy socket — the base agent only
+        // applies the constructor options to the proxy connection. An http
+        // endpoint through a proxy never does an endpoint TLS handshake, so the
+        // plain agent is fine.
         return isHttps
             ? new CaAwareHttpsProxyAgent(
                   proxyUrl,
                   agentOptions,
-                  ca,
+                  secureContext,
                   rejectUnauthorized
               )
             : new HttpProxyAgent(proxyUrl, agentOptions);
