@@ -65,7 +65,10 @@ export interface PythonSetupDrift {
  * kind attached when the reading was taken. Both categorical/boolean.
  */
 export interface PythonSetupAdoption {
-    /** Whether the project's managed `.venv` interpreter still exists on disk. */
+    /**
+     * Whether the project's managed venv interpreter still exists on disk (for a
+     * uv workspace member, the shared venv at the root).
+     */
     venvPresent: boolean;
     /** The compute kind attached at the time of the reading. */
     currentTargetType: TargetCompute;
