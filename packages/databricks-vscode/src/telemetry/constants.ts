@@ -35,6 +35,8 @@ export enum Events {
     AITOOLS_UPDATE = "aitoolsUpdate",
     AITOOLS_UNINSTALL = "aitoolsUninstall",
     AITOOLS_CURSOR_PLUGIN_PROMPT = "aitoolsCursorPluginPrompt",
+    UNITY_GATEWAY_CHAT = "unity_gateway.chat",
+    UNITY_GATEWAY_MODEL_LISTING = "unity_gateway.model_listing",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -203,6 +205,16 @@ export type PythonSetupDriftTrigger =
     | "workspaceOpen"
     | "setupCompleted";
 
+export type UnityGatewayListingOutcome = "ok" | "failed" | "cancelled";
+
+export type UnityGatewayChatOutcome = "ok" | "empty" | "failed" | "cancelled";
+
+export type UnityGatewayTerminalEvent =
+    | "response.completed"
+    | "response.incomplete"
+    | "response.failed"
+    | "error";
+
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
 
@@ -230,6 +242,52 @@ function getDurationProperty(): EventDescription<DurationMeasurement> {
     return {
         duration: {
             comment: "The duration of the event, in milliseconds",
+        },
+    };
+}
+
+type UnityGatewayFailure = {
+    httpStatus?: number;
+    errorCode?: string;
+    nodeCode?: string;
+    errorName?: string;
+};
+
+function getUnityGatewayFailureProperties(): EventDescription<UnityGatewayFailure> {
+    return {
+        httpStatus: {
+            comment:
+                "The HTTP status of a refused request. Omitted unless the gateway refused the request",
+        },
+        errorCode: {
+            comment:
+                "The gateway's error_code for a refused request, e.g. REQUEST_LIMIT_EXCEEDED, or UNKNOWN if it sent none. Omitted unless the gateway refused the request",
+        },
+        nodeCode: {
+            comment:
+                "The error code of a request that got no HTTP reply, e.g. ECONNREFUSED. Omitted when the gateway replied, or the error has no code",
+        },
+        errorName: {
+            comment:
+                "The error's class: ConfigError when the sign-in couldn't produce a token, else its name, e.g. TimeoutError. Omitted unless the outcome is failed",
+        },
+    };
+}
+
+type UnityGatewayConnection = {
+    workspaceId?: string;
+    authType?: AuthType;
+};
+
+function getUnityGatewayConnectionProperties(): EventDescription<UnityGatewayConnection> {
+    return {
+        workspaceId: {
+            comment:
+                "The workspace id of the Unity Gateway connection. Omitted when unknown",
+        },
+        authType: {
+            comment:
+                "The auth type of the Unity Gateway connection. Omitted when unknown",
         },
     };
 }
@@ -757,6 +815,84 @@ export class EventTypes {
         // Measured by the extension around the install itself, so it is the pip
         // work only — it excludes the prompts (interpreter/version) the user
         // answers before install() runs.
+        ...getDurationProperty(),
+    };
+    [Events.UNITY_GATEWAY_CHAT]: EventType<
+        {
+            outcome: UnityGatewayChatOutcome;
+            model: string;
+            messagesCount: number;
+            toolsCount: number;
+            replyStarted: boolean;
+            textReported: boolean;
+            toolCallsCount: number;
+            firstPartMs?: number;
+            terminalEvent?: UnityGatewayTerminalEvent;
+            stopReason?: string;
+        } & UnityGatewayFailure &
+            UnityGatewayConnection &
+            DurationMeasurement
+    > = {
+        comment:
+            "A chat request to a Unity Gateway model, made while signed in. Agent mode makes several per turn.",
+        outcome: {
+            comment:
+                "ok | empty (the reply completed with no text and no tool call) | failed | cancelled",
+        },
+        model: {
+            comment: "The model id, e.g. system.ai.claude-sonnet-4-6",
+        },
+        messagesCount: {
+            comment:
+                "The number of messages in the request, which holds the whole conversation",
+        },
+        toolsCount: {
+            comment: "The number of tools offered to the model",
+        },
+        replyStarted: {
+            comment: "Whether the reply's stream sent any event",
+        },
+        textReported: {
+            comment: "Whether any text reached Chat",
+        },
+        toolCallsCount: {
+            comment: "The number of tool calls that reached Chat",
+        },
+        firstPartMs: {
+            comment:
+                "Milliseconds until the first text or tool call reached Chat. Omitted when none did",
+        },
+        terminalEvent: {
+            comment:
+                "The stream event that ended the reply. Omitted when none did",
+        },
+        stopReason: {
+            comment:
+                "Why the reply stopped early, e.g. max_output_tokens. Omitted unless the gateway gave a reason",
+        },
+        ...getUnityGatewayFailureProperties(),
+        ...getUnityGatewayConnectionProperties(),
+        ...getDurationProperty(),
+    };
+    [Events.UNITY_GATEWAY_MODEL_LISTING]: EventType<
+        {
+            outcome: UnityGatewayListingOutcome;
+            modelsCount?: number;
+        } & UnityGatewayFailure &
+            UnityGatewayConnection &
+            DurationMeasurement
+    > = {
+        comment:
+            "A listing of Unity Gateway models. Lookups made while one is running share it.",
+        outcome: {
+            comment: "ok | failed | cancelled",
+        },
+        modelsCount: {
+            comment:
+                "The number of models listed. Omitted unless the outcome is ok",
+        },
+        ...getUnityGatewayFailureProperties(),
+        ...getUnityGatewayConnectionProperties(),
         ...getDurationProperty(),
     };
 }
