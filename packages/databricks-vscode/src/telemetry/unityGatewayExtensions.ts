@@ -1,7 +1,7 @@
-import {ConfigError} from "@databricks/sdk-experimental";
+import {ConfigError, logging} from "@databricks/sdk-experimental";
 import {Events, Telemetry} from ".";
 import type {UnityGatewayConnection, UnityGatewayFailure} from "./constants";
-import {isRecord} from "../lm-chat/unityGatewayResponses";
+import {Loggers} from "../logger";
 
 export type UnityGatewayListingReport =
     | {outcome: "ok"; modelsCount: number}
@@ -28,24 +28,33 @@ Telemetry.prototype.startUnityGatewayModelListing = function (
     connection: UnityGatewayConnection
 ): UnityGatewayListingReporter {
     const report = this.start(Events.UNITY_GATEWAY_MODEL_LISTING);
-    return (listing) =>
-        report({
-            outcome: listing.outcome,
-            ...(listing.outcome === "ok"
-                ? {modelsCount: listing.modelsCount}
-                : {}),
-            ...(listing.outcome === "failed"
-                ? failureFields(listing.error)
-                : {}),
-            ...connectionFields(connection),
-        });
+    return (listing) => {
+        // So telemetry can't change what the provider returns or caches.
+        try {
+            report({
+                outcome: listing.outcome,
+                ...(listing.outcome === "ok"
+                    ? {modelsCount: listing.modelsCount}
+                    : {}),
+                ...(listing.outcome === "failed"
+                    ? failureFields(listing.error)
+                    : {}),
+                ...connectionFields(connection),
+            });
+        } catch (e) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Can't record a Unity Gateway model listing",
+                e
+            );
+        }
+    };
 };
 
 function failureFields(e: unknown): UnityGatewayFailure {
-    if (!isRecord(e)) {
+    if (typeof e !== "object" || e === null) {
         return {};
     }
-    const {httpStatusCode, code, name} = e;
+    const {httpStatusCode, code, name} = e as Record<string, unknown>;
     return {
         // Not `instanceof ApiError`, which would load the V2 SDK at
         // activation. ApiError reports -1 when it isn't an HTTP error.

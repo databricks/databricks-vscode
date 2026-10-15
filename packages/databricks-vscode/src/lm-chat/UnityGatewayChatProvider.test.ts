@@ -380,6 +380,15 @@ describe(__filename, () => {
             assert.equal(props?.["event.outcome"], "cancelled");
         });
 
+        it("lists models even when telemetry fails", async () => {
+            connect();
+            when(
+                reporter.sendTelemetryEvent(anything(), anything(), anything())
+            ).thenThrow(new Error("reporter disposed"));
+
+            assert.equal((await listModels()).length, 1);
+        });
+
         it("asks VS Code to list again when the connection changes", () => {
             let changes = 0;
             provider.onDidChangeLanguageModelChatInformation(() => changes++);

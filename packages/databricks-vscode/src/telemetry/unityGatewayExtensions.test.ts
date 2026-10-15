@@ -2,9 +2,9 @@
 
 import assert from "assert";
 import {TelemetryReporter} from "@vscode/extension-telemetry";
-import {Config, ConfigError} from "@databricks/sdk-experimental";
+import {Config, ConfigError, logging} from "@databricks/sdk-experimental";
 import {ApiError} from "@databricks/sdk-core/apierror";
-import {anything, capture, instance, mock, verify} from "ts-mockito";
+import {anything, capture, instance, mock, verify, when} from "ts-mockito";
 import {Telemetry} from ".";
 import type {UnityGatewayConnection} from "./constants";
 import "./unityGatewayExtensions";
@@ -182,6 +182,27 @@ describe(__filename, () => {
             const {props} = sentEvent();
             assert.equal(props?.["event.workspaceId"], undefined);
             assert.equal(props?.["event.authType"], undefined);
+        });
+
+        it("logs, rather than throws, an event it can't send", () => {
+            const failure = new Error("reporter disposed");
+            when(
+                reporter.sendTelemetryEvent(anything(), anything(), anything())
+            ).thenThrow(failure);
+            const logged: unknown[][] = [];
+            const {error} = logging.NamedLogger.prototype;
+            logging.NamedLogger.prototype.error = (...args: unknown[]) => {
+                logged.push(args);
+            };
+            try {
+                startListing()({outcome: "ok", modelsCount: 1});
+            } finally {
+                logging.NamedLogger.prototype.error = error;
+            }
+
+            assert.deepStrictEqual(logged, [
+                ["Can't record a Unity Gateway model listing", failure],
+            ]);
         });
     });
 });
