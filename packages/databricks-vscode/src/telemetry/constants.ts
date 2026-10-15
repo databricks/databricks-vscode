@@ -240,7 +240,7 @@ function getDurationProperty(): EventDescription<DurationMeasurement> {
     };
 }
 
-type UnityGatewayFailure = {
+export type UnityGatewayFailure = {
     httpStatus?: number;
     errorCode?: string;
     errorName?: string;
@@ -263,7 +263,7 @@ function getUnityGatewayFailureProperties(): EventDescription<UnityGatewayFailur
     };
 }
 
-type UnityGatewayConnection = {
+export type UnityGatewayConnection = {
     workspaceId?: string;
     authType?: AuthType;
 };

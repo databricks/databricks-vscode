@@ -646,6 +646,7 @@ export async function activate(
     context.subscriptions.push(
         unityGatewayConnectionManager,
         registerUnityGatewayChatProvider(
+            telemetry,
             unityGatewayConnectionManager,
             isLanguageModelChatEnabled,
             workspaceConfigs.onDidChangeExperimentsOptInto
