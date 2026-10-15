@@ -27,8 +27,11 @@ import type {
 import {ApiClient, Config, logging} from "@databricks/sdk-experimental";
 import {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import type {HttpRequest, HttpResponse} from "@databricks/sdk-core/http";
-import {anything, instance, mock, when} from "ts-mockito";
+import {TelemetryReporter} from "@vscode/extension-telemetry";
+import {anything, capture, instance, mock, verify, when} from "ts-mockito";
+import type {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {v2ClientOptions} from "../configuration/sdkV2Bridge";
+import {Telemetry} from "../telemetry";
 import {
     UnityGatewayChatProvider,
     registerUnityGatewayChatProvider,
@@ -187,6 +190,7 @@ describe(__filename, () => {
     describe("UnityGatewayChatProvider", () => {
         let provider: UnityGatewayChatProvider;
         let relists: number;
+        let reporter: TelemetryReporter;
 
         function listModels() {
             return provider.provideLanguageModelChatInformation(
@@ -197,7 +201,9 @@ describe(__filename, () => {
 
         beforeEach(() => {
             relists = 0;
+            reporter = mock(TelemetryReporter);
             provider = new UnityGatewayChatProvider(
+                new Telemetry(instance(reporter)),
                 instance(mockConnectionManager),
                 async () => {
                     relists++;
@@ -313,6 +319,65 @@ describe(__filename, () => {
             assert.deepStrictEqual(errors, [
                 ["Can't list Unity Gateway models", failure],
             ]);
+        });
+
+        it("records one telemetry event per listing", async () => {
+            connect();
+            when(mockConnectionManager.databricksWorkspace).thenReturn({
+                id: "1234",
+            } as DatabricksWorkspace);
+            when(mockConnectionManager.apiClient).thenReturn({
+                config: {authType: "databricks-cli"},
+            } as ApiClient);
+            const held = holdResponses();
+
+            const lookups = Promise.all([listModels(), listModels()]);
+            await held.sent;
+            held.release();
+            await lookups;
+
+            verify(
+                reporter.sendTelemetryEvent(anything(), anything(), anything())
+            ).once();
+            const [name, props, metrics] = capture(
+                reporter.sendTelemetryEvent
+            ).last();
+            assert.equal(name, "unity_gateway.model_listing");
+            assert.equal(props?.["event.outcome"], "ok");
+            assert.equal(props?.["event.workspaceId"], "1234");
+            assert.equal(props?.["event.authType"], "databricks-cli");
+            assert.equal(metrics?.["event.modelsCount"], 1);
+        });
+
+        it("records a failed listing in telemetry", async () => {
+            connect();
+            statusCode = 500;
+
+            await listModels();
+
+            const [, props, metrics] = capture(
+                reporter.sendTelemetryEvent
+            ).last();
+            assert.equal(props?.["event.outcome"], "failed");
+            assert.equal(metrics?.["event.httpStatus"], 500);
+        });
+
+        it("records a cancelled listing in telemetry", async () => {
+            connect();
+            const held = holdResponses();
+            const cancellation = new CancellationTokenSource();
+
+            const lookup = provider.provideLanguageModelChatInformation(
+                {silent: true},
+                cancellation.token
+            );
+            await held.sent;
+            cancellation.cancel();
+            held.release();
+            await lookup;
+
+            const [, props] = capture(reporter.sendTelemetryEvent).last();
+            assert.equal(props?.["event.outcome"], "cancelled");
         });
 
         it("asks VS Code to list again when the connection changes", () => {
@@ -733,6 +798,7 @@ describe(__filename, () => {
 
         function register() {
             registration = registerUnityGatewayChatProvider(
+                new Telemetry(),
                 instance(mockConnectionManager),
                 () => enabled,
                 onDidChangeEnabled.event,
@@ -800,6 +866,7 @@ describe(__filename, () => {
 
             const errors = await loggedErrors(async () => {
                 registration = registerUnityGatewayChatProvider(
+                    new Telemetry(),
                     instance(mockConnectionManager),
                     () => enabled,
                     onDidChangeEnabled.event,

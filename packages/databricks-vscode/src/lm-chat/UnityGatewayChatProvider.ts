@@ -19,6 +19,8 @@ import type {
 import {logging} from "@databricks/sdk-experimental";
 import type {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {Loggers} from "../logger";
+import type {Telemetry} from "../telemetry";
+import "../telemetry/unityGatewayExtensions";
 import type {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
 import {listUnityGatewayModels} from "./unityGatewayModels";
 import {
@@ -58,6 +60,7 @@ export class UnityGatewayChatProvider
     };
 
     constructor(
+        private readonly telemetry: Telemetry,
         private readonly connectionManager: UnityGatewayConnectionManager,
         // VS Code 1.104 ignores the change event, but selecting models makes
         // every version list them again.
@@ -103,9 +106,20 @@ export class UnityGatewayChatProvider
         client: AiGatewayClient,
         token: CancellationToken
     ): Promise<LanguageModelChatInformation[]> {
+        const report = this.telemetry.startUnityGatewayModelListing({
+            workspaceId: this.connectionManager.databricksWorkspace?.id,
+            authType: this.connectionManager.apiClient?.config.authType,
+        });
         try {
-            return await listUnityGatewayModels(client, token);
+            const models = await listUnityGatewayModels(client, token);
+            report({outcome: "ok", modelsCount: models.length});
+            return models;
         } catch (e) {
+            report(
+                token.isCancellationRequested
+                    ? {outcome: "cancelled"}
+                    : {outcome: "failed", error: e}
+            );
             if (this.listing?.client === client) {
                 this.listing = undefined;
             }
@@ -227,6 +241,7 @@ function chatError(e: unknown): Error {
  * `onDidChangeEnabled`.
  */
 export function registerUnityGatewayChatProvider(
+    telemetry: Telemetry,
     connectionManager: UnityGatewayConnectionManager,
     isEnabled: () => boolean,
     onDidChangeEnabled: Event<void>,
@@ -239,7 +254,10 @@ export function registerUnityGatewayChatProvider(
             registration?.dispose();
             registration = undefined;
         } else if (registration === undefined) {
-            const provider = new UnityGatewayChatProvider(connectionManager);
+            const provider = new UnityGatewayChatProvider(
+                telemetry,
+                connectionManager
+            );
             // Runs during activation, so a failure mustn't stop the rest.
             try {
                 registration = Disposable.from(register(provider), provider);
