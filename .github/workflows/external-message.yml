@@ -14,8 +14,8 @@ on:
 jobs:
   comment-on-pr:
     runs-on:
-      group: databricks-protected-runner-group
-      labels: linux-ubuntu-latest
+      group: databricks-ghec-public-repos-runner-group-small
+      labels: linux-ubuntu-latest-public-2core-8gb
 
     permissions:
       pull-requests: write
