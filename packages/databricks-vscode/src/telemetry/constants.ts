@@ -209,12 +209,6 @@ export type UnityGatewayListingOutcome = "ok" | "failed" | "cancelled";
 
 export type UnityGatewayChatOutcome = "ok" | "empty" | "failed" | "cancelled";
 
-export type UnityGatewayTerminalEvent =
-    | "response.completed"
-    | "response.incomplete"
-    | "response.failed"
-    | "error";
-
 /** Documentation about all of the properties and metrics of the event. */
 type EventDescription<T> = {[K in keyof T]?: {comment?: string}};
 
@@ -249,7 +243,6 @@ function getDurationProperty(): EventDescription<DurationMeasurement> {
 type UnityGatewayFailure = {
     httpStatus?: number;
     errorCode?: string;
-    nodeCode?: string;
     errorName?: string;
 };
 
@@ -261,11 +254,7 @@ function getUnityGatewayFailureProperties(): EventDescription<UnityGatewayFailur
         },
         errorCode: {
             comment:
-                "The gateway's error_code for a refused request, e.g. REQUEST_LIMIT_EXCEEDED, or UNKNOWN if it sent none. Omitted unless the gateway refused the request",
-        },
-        nodeCode: {
-            comment:
-                "The error code of a request that got no HTTP reply, e.g. ECONNREFUSED. Omitted when the gateway replied, or the error has no code",
+                "The code the failure reported: the gateway's error_code for a refused request (e.g. REQUEST_LIMIT_EXCEEDED), the code of an error in the reply's stream (e.g. server_error), or Node's code for a network failure (e.g. ECONNREFUSED). Omitted when there was none",
         },
         errorName: {
             comment:
@@ -824,10 +813,7 @@ export class EventTypes {
             messagesCount: number;
             toolsCount: number;
             replyStarted: boolean;
-            textReported: boolean;
-            toolCallsCount: number;
             firstPartMs?: number;
-            terminalEvent?: UnityGatewayTerminalEvent;
             stopReason?: string;
         } & UnityGatewayFailure &
             UnityGatewayConnection &
@@ -852,19 +838,9 @@ export class EventTypes {
         replyStarted: {
             comment: "Whether the reply's stream sent any event",
         },
-        textReported: {
-            comment: "Whether any text reached Chat",
-        },
-        toolCallsCount: {
-            comment: "The number of tool calls that reached Chat",
-        },
         firstPartMs: {
             comment:
                 "Milliseconds until the first text or tool call reached Chat. Omitted when none did",
-        },
-        terminalEvent: {
-            comment:
-                "The stream event that ended the reply. Omitted when none did",
         },
         stopReason: {
             comment:
