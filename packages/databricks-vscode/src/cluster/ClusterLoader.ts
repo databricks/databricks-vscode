@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {Time, TimeUnits, logging} from "@databricks/sdk-experimental";
+import {
+    ApiError,
+    Time,
+    TimeUnits,
+    iam,
+    logging,
+} from "@databricks/sdk-experimental";
 import {Cluster} from "../sdk-extensions";
 import {Disposable, Event, EventEmitter} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -12,6 +18,10 @@ export class ClusterLoader implements Disposable {
     public get clusters() {
         return this._clusters;
     }
+
+    // Execute-permission results by cluster ID, kept across refresh passes so
+    // `onlyShowAccessibleClusters` doesn't re-read every ACL each time.
+    private readonly executePerms: Map<string, boolean> = new Map();
 
     /*
      * We have 2 flags. Stopped and Running.
@@ -105,62 +115,90 @@ export class ClusterLoader implements Disposable {
         const allClusters = sortClusters(clusters);
 
         if (workspaceConfigs.onlyShowAccessibleClusters) {
-            // TODO: Find exact rate limit and update this.
-            //       Rate limit is 100 on dogfood.
-            const maxConcurrent = 50;
-            const wip: Promise<void>[] = [];
+            const user = this.connectionManager.databricksWorkspace?.user;
+            const maxConcurrent = 8;
+            const wip = new Set<Promise<void>>();
+            let unreadable = 0;
 
             for (const c of allClusters) {
                 if (!this.running) {
                     break;
                 }
-                while (wip.length === maxConcurrent) {
+                const cached = this.executePerms.get(c.id);
+                if (cached !== undefined) {
+                    this.setAccessible(c, cached);
+                    continue;
+                }
+                while (wip.size >= maxConcurrent) {
                     await Promise.race(wip);
                 }
 
-                const task = new Promise<void>((resolve) => {
-                    c.hasExecutePerms(
-                        this.connectionManager.databricksWorkspace?.user
-                    )
-                        .then((keepCluster) => {
-                            if (!this.running) {
-                                return resolve();
-                            }
-
-                            if (this._clusters.has(c.id) && !keepCluster) {
-                                this._clusters.delete(c.id);
-                                this._onDidChange.fire();
-                            }
-                            if (keepCluster) {
-                                this._clusters.set(c.id, c);
-                                this._onDidChange.fire();
-                            }
-                            resolve();
-                        })
-                        .catch((e) => {
-                            logging.NamedLogger.getOrCreate(
-                                Loggers.Extension
-                            ).error(
-                                `Error fetching permission for cluster ${c.name}`,
-                                e
-                            );
-                            resolve();
-                        });
-                });
-
-                wip.push(task);
-                task.then(() => {
-                    wip.splice(wip.indexOf(task), 1);
-                });
+                const task = this.checkExecutePerms(c, user)
+                    .then((keepCluster) => {
+                        if (keepCluster === undefined) {
+                            unreadable++;
+                        }
+                        if (this.running) {
+                            this.setAccessible(c, keepCluster ?? false);
+                        }
+                    })
+                    .catch((e) => {
+                        logging.NamedLogger.getOrCreate(
+                            Loggers.Extension
+                        ).error(
+                            `Error fetching permission for cluster ${c.name}`,
+                            e
+                        );
+                    })
+                    .finally(() => wip.delete(task));
+                wip.add(task);
             }
 
             await Promise.allSettled(wip);
+            if (unreadable > 0) {
+                logging.NamedLogger.getOrCreate(Loggers.Extension).debug(
+                    `${unreadable} clusters hidden: permissions not readable`
+                );
+            }
         } else {
             this._clusters = new Map(allClusters.map((c) => [c.id, c]));
             this._onDidChange.fire();
         }
 
         this.cleanupClustersMap(allClusters);
+    }
+
+    /**
+     * Resolves to `undefined` when the ACL isn't readable (403). That's
+     * expected without manage rights, so the cluster is hidden and cached
+     * like any other denial.
+     */
+    private async checkExecutePerms(
+        c: Cluster,
+        user?: iam.User
+    ): Promise<boolean | undefined> {
+        let result: boolean | undefined;
+        try {
+            result = await c.hasExecutePerms(user);
+        } catch (e) {
+            if (!(e instanceof ApiError && e.statusCode === 403)) {
+                throw e;
+            }
+        }
+        // Without a user every cluster is denied; don't cache that.
+        if (user) {
+            this.executePerms.set(c.id, result ?? false);
+        }
+        return result;
+    }
+
+    private setAccessible(c: Cluster, accessible: boolean) {
+        if (accessible) {
+            this._clusters.set(c.id, c);
+            this._onDidChange.fire();
+        } else if (this._clusters.delete(c.id)) {
+            this._onDidChange.fire();
+        }
     }
 
     async start() {
@@ -218,15 +256,17 @@ export class ClusterLoader implements Disposable {
 
     cleanup() {
         this._clusters.clear();
+        this.executePerms.clear();
         this._onDidChange.fire();
     }
 
     /**
-     * Restart loading clusters.
-     * @param cleanup
+     * Restart loading clusters. Always re-checks permissions; `cleanup` also
+     * clears the current list.
      */
     async restart(cleanup = false) {
         await this.stop();
+        this.executePerms.clear();
         if (cleanup) {
             this.cleanup();
         }
