@@ -1951,7 +1951,8 @@
                     },
                     "databricks.proxy.caCert": {
                         "type": "string",
-                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with Node's built-in roots and, on macOS and Linux (unless `#http.systemCertificates#` is off), the OS trust store. Use when a corporate CA cannot be read from the system store. On Windows, setting this stops VS Code from adding the Windows certificate store to these calls, so the file must contain every internal CA you need."
+                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with Node's built-in roots and, unless `#http.systemCertificates#` is off, the OS trust store. It doesn't apply to the bundled Databricks CLI.",
+                        "markdownDeprecationMessage": "Deprecated and will be removed in a future release. The extension now reads the OS trust store on every platform. Install the CA in the OS trust store instead, or start VS Code with the `NODE_EXTRA_CA_CERTS` environment variable set to the PEM bundle's path."
                     }
                 }
             }
