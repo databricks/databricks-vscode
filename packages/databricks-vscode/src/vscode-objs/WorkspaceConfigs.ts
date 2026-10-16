@@ -8,6 +8,8 @@ import {Time, TimeUnits} from "@databricks/sdk-experimental";
  */
 export type PythonEnvironmentSetupMode = "auto" | "manual";
 
+export type HttpProxySupport = "off" | "on" | "fallback" | "override";
+
 /**
  * The explicitly set boolean in an `inspect` result, workspace before global, or
  * `undefined` when none is set. Ignores the declared default (so an override
@@ -280,6 +282,19 @@ export const workspaceConfigs = {
             workspace
                 .getConfiguration("http")
                 .get<boolean>("systemCertificates") ?? true
+        );
+    },
+
+    /**
+     * The `http.proxySupport` VS Code setting. Under `"override"`/`"fallback"`,
+     * VS Code's `http.request` patch handles the SDK's requests and adds the OS
+     * trust store itself.
+     */
+    get httpProxySupport(): HttpProxySupport {
+        return (
+            workspace
+                .getConfiguration("http")
+                .get<HttpProxySupport>("proxySupport") ?? "override"
         );
     },
 };

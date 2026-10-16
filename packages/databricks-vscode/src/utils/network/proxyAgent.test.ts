@@ -42,6 +42,9 @@ describe(__filename, () => {
         when(configsSpy.httpNoProxy).thenReturn([]);
         when(configsSpy.proxyCaCert).thenReturn(undefined);
         when(configsSpy.httpSystemCertificates).thenReturn(true);
+        // Most cases cover the path where our agent carries the trust list;
+        // the `"override"`/`"fallback"` cases set this explicitly.
+        when(configsSpy.httpProxySupport).thenReturn("on");
     });
 
     afterEach(() => {
@@ -180,6 +183,67 @@ describe(__filename, () => {
             )) as HttpsProxyAgent<string>;
 
             assert.strictEqual(agent.connectOpts.timeout, 60000);
+        });
+
+        for (const proxySupport of ["on", "off"] as const) {
+            it(`merges the system trust store when http.proxySupport is "${proxySupport}"`, async () => {
+                when(configsSpy.httpProxySupport).thenReturn(proxySupport);
+                setSystemCertificatesLoaderForTests(async () => [
+                    SYSTEM_CA_PEM,
+                ]);
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(ca.includes(SYSTEM_CA_PEM));
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+            });
+        }
+
+        for (const proxySupport of ["override", "fallback"] as const) {
+            it(`leaves the system store to VS Code when http.proxySupport is "${proxySupport}"`, async () => {
+                when(configsSpy.httpProxySupport).thenReturn(proxySupport);
+                let loaderCalled = false;
+                setSystemCertificatesLoaderForTests(async () => {
+                    loaderCalled = true;
+                    return [SYSTEM_CA_PEM];
+                });
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                assert.strictEqual(loaderCalled, false);
+                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+            });
+        }
+
+        it("merges the system store and databricks.proxy.caCert under override", async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "corp-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            when(configsSpy.httpProxySupport).thenReturn("override");
+            when(configsSpy.proxyCaCert).thenReturn(pemPath);
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(ca.includes(FAKE_CA_PEM));
+                assert.ok(ca.includes(SYSTEM_CA_PEM));
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
+        it("omits the CA under override when http.systemCertificates is off", async () => {
+            when(configsSpy.httpProxySupport).thenReturn("override");
+            when(configsSpy.httpSystemCertificates).thenReturn(false);
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            assert.ok(!("ca" in (agent.options as https.AgentOptions)));
         });
 
         it("merges the system trust store with Node's bundled roots (never replaces them)", async () => {
