@@ -350,6 +350,77 @@ describe(__filename, () => {
             assert.strictEqual(opts?.rejectUnauthorized, false);
         });
 
+        for (const proxySupport of ["override", "fallback"] as const) {
+            it(`leaves proxying to VS Code but keeps databricks.proxy.caCert when http.proxySupport is "${proxySupport}"`, async () => {
+                // VS Code's patch swaps in its own proxy agent and copies `ca`
+                // only from a plain `https.Agent`.
+                const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+                const pemPath = path.join(dir, "corp-ca.pem");
+                fs.writeFileSync(pemPath, FAKE_CA_PEM);
+                when(configsSpy.httpProxySupport).thenReturn(proxySupport);
+                when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+                when(configsSpy.proxyCaCert).thenReturn(pemPath);
+                try {
+                    const agent = (await getDatabricksHttpAgent(
+                        new URL("https://example.com")
+                    )) as https.Agent;
+                    assert.ok(agent instanceof https.Agent);
+                    assert.ok(!(agent instanceof HttpsProxyAgent));
+                    const ca = (agent.options as https.AgentOptions)
+                        .ca as string[];
+                    assert.ok(ca.includes(FAKE_CA_PEM));
+                } finally {
+                    fs.rmSync(dir, {recursive: true, force: true});
+                }
+            });
+        }
+
+        async function capturePlainConnectOpts(agent: https.Agent) {
+            const captured: tls.ConnectionOptions[] = [];
+            const superCreate = https.Agent.prototype.createConnection;
+            https.Agent.prototype.createConnection = function (opts) {
+                captured.push(opts as tls.ConnectionOptions);
+                return undefined;
+            };
+            try {
+                agent.createConnection({host: "example.com", port: 443});
+                agent.createConnection({host: "example.com", port: 443});
+            } finally {
+                https.Agent.prototype.createConnection = superCreate;
+            }
+            return captured;
+        }
+
+        it("shares one SecureContext across a plain agent's connections", async () => {
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+
+            const [first, second] = await capturePlainConnectOpts(agent);
+            assert.ok(first.secureContext);
+            assert.strictEqual(first.secureContext, second.secureContext);
+            // Kept so VS Code's patch can still copy it.
+            assert.ok((first.ca as string[]).includes(SYSTEM_CA_PEM));
+        });
+
+        it("shares one SecureContext across endpoint handshakes through a proxy", async () => {
+            when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as HttpsProxyAgent<string>;
+
+            const first = (await captureEndpointConnectOpts(
+                agent
+            )) as tls.ConnectionOptions;
+            const second = (await captureEndpointConnectOpts(
+                agent
+            )) as tls.ConnectionOptions;
+            assert.ok(first.secureContext);
+            assert.strictEqual(first.secureContext, second.secureContext);
+        });
+
         it("reads the system store through Node", async () => {
             let readFromNode: boolean | undefined;
             setSystemCertificatesLoaderForTests(async (params) => {

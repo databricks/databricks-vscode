@@ -269,6 +269,45 @@ function buildCaBundle(
     ];
 }
 
+/**
+ * Builds one SecureContext for a CA list on first use and shares it across an
+ * agent's connections. With only `ca`, Node builds a fresh context for every
+ * connection, and a large bundle then costs about 1 MB per connection.
+ *
+ * `ca` stays on the options too: VS Code's `http.request` patch copies only
+ * `ca` to its own agent, and its `tls.connect` patch leaves options with a `ca`
+ * alone, so it never adds certs to the shared context.
+ */
+class SharedCaTrust {
+    private secureContext: tls.SecureContext | undefined;
+
+    constructor(readonly ca: string[]) {}
+
+    applyTo(opts: Pick<tls.ConnectionOptions, "ca" | "secureContext">) {
+        this.secureContext ??= tls.createSecureContext({ca: this.ca});
+        opts.ca = this.ca;
+        opts.secureContext = this.secureContext;
+    }
+}
+
+/** `https.Agent` whose connections share one SecureContext for its `ca`. */
+class CaAwareHttpsAgent extends https.Agent {
+    constructor(
+        opts: https.AgentOptions,
+        private readonly trust: SharedCaTrust
+    ) {
+        super(opts);
+    }
+
+    override createConnection(
+        options: https.RequestOptions,
+        callback?: Parameters<https.Agent["createConnection"]>[1]
+    ) {
+        this.trust.applyTo(options);
+        return super.createConnection(options, callback);
+    }
+}
+
 // The per-request options `agent-base` hands to `connect`. Derived from the
 // agent's own `connect` signature so we don't take a direct dependency on
 // `agent-base` (it resolves only transitively via the proxy agents).
@@ -290,7 +329,7 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
     constructor(
         proxy: string,
         opts: https.AgentOptions,
-        private readonly endpointCa: string[] | undefined,
+        private readonly endpointTrust: SharedCaTrust | undefined,
         private readonly endpointRejectUnauthorized: boolean
     ) {
         super(proxy, opts);
@@ -304,33 +343,38 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
         // socket already trusts the same bundle via the constructor options.
         if (opts.secureEndpoint) {
             opts.rejectUnauthorized = this.endpointRejectUnauthorized;
-            if (this.endpointCa) {
-                opts.ca = this.endpointCa;
-            }
+            this.endpointTrust?.applyTo(opts);
         }
         return super.connect(req, opts);
     }
 }
 
 /**
+ * Whether VS Code's `http.request` patch proxies the SDK's requests itself.
+ * Under `"override"`/`"fallback"` it swaps in its own proxy agent whenever it
+ * resolves a proxy, carrying over our agent's `ca` only from a plain
+ * `https.Agent`, so a proxy agent of ours would just drop the `ca`.
+ */
+function hostProxiesRequests(): boolean {
+    const proxySupport = workspaceConfigs.httpProxySupport;
+    return proxySupport === "override" || proxySupport === "fallback";
+}
+
+/**
  * Whether VS Code's `http.request` patch will add the OS trust store to the
- * SDK's connections. Under `"override"`/`"fallback"` it replaces our agent and
- * copies over only its `ca`, so an explicit `ca` just rebuilds a large
- * SecureContext on every connection.
+ * SDK's connections when our agent sets no `ca`.
  */
 function hostAddsSystemCertificates(): boolean {
-    const proxySupport = workspaceConfigs.httpProxySupport;
-    return (
-        (proxySupport === "override" || proxySupport === "fallback") &&
-        workspaceConfigs.httpSystemCertificates
-    );
+    return hostProxiesRequests() && workspaceConfigs.httpSystemCertificates;
 }
 
 /**
  * Build the HTTP(S) agent the Databricks SDK should use, wiring in the proxy
  * (VS Code `http.proxy` setting + `http(s)_proxy` env vars, honouring
- * `NO_PROXY`) and the CA trust list. The OS trust store is only merged when
- * VS Code won't add it itself (see {@link hostAddsSystemCertificates}) or when
+ * `NO_PROXY`) and the CA trust list. Under `http.proxySupport`
+ * `"override"`/`"fallback"` VS Code does the proxying (see
+ * {@link hostProxiesRequests}). The OS trust store is only merged when VS Code
+ * won't add it itself (see {@link hostAddsSystemCertificates}) or when
  * `databricks.proxy.caCert` forces an explicit `ca`.
  */
 export async function getDatabricksHttpAgent(
@@ -354,10 +398,12 @@ export async function getDatabricksHttpAgent(
         ]
     );
     const ca = buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts);
+    const trust = ca ? new SharedCaTrust(ca) : undefined;
     const rejectUnauthorized = strictSSL();
 
-    const resolver = createProxyResolver(params);
-    const proxyUrl = await resolver.resolveProxyURL(host.toString());
+    const proxyUrl = hostProxiesRequests()
+        ? undefined
+        : await createProxyResolver(params).resolveProxyURL(host.toString());
     const usesTls =
         isHttps ||
         (proxyUrl !== undefined && new URL(proxyUrl).protocol === "https:");
@@ -381,15 +427,18 @@ export async function getDatabricksHttpAgent(
             ? new CaAwareHttpsProxyAgent(
                   proxyUrl,
                   agentOptions,
-                  ca,
+                  trust,
                   rejectUnauthorized
               )
             : new HttpProxyAgent(proxyUrl, agentOptions);
     }
 
-    return isHttps
-        ? new https.Agent(agentOptions)
-        : new http.Agent(agentOptions);
+    if (!isHttps) {
+        return new http.Agent(agentOptions);
+    }
+    return trust
+        ? new CaAwareHttpsAgent(agentOptions, trust)
+        : new https.Agent(agentOptions);
 }
 
 // The config shape the WorkspaceClient constructor accepts (ConfigOptions | Config),
