@@ -68,10 +68,11 @@ function getProxyAgentParams(host: URL): ProxyAgentParams {
         isWebSocketPatchEnabled: () => false,
         addCertificatesV1: () => false,
         addCertificatesV2: () => true,
-        // Read the OS trust store (macOS `security`, Linux PEM bundles, Windows
-        // native addon), matching the pre-0.45 behaviour. `true` would instead
-        // pull Node's bundled roots, which we already fold in via `buildCaBundle`.
-        loadSystemCertificatesFromNode: () => false,
+        // Read the OS trust store through Node's `tls.getCACertificates("system")`
+        // (a worker thread on macOS). It returns only the OS store, not Node's
+        // bundled roots, and reads the Windows store without the native
+        // `@vscode/windows-ca-certs` addon, which we don't ship.
+        loadSystemCertificatesFromNode: () => true,
         loadAdditionalCertificates: async () => [],
         log,
         getLogLevel: () => LogLevel.Error,
@@ -103,9 +104,8 @@ export function mergeNoProxy(): string[] {
 let systemCertificatesPromise: Promise<string[] | undefined> | undefined;
 
 // The system-certificate reader, indirected through a module-level binding so
-// tests can simulate an unreadable OS store. @vscode/proxy-agent's own reader
-// catches internally and reads the host machine's real store, so there's no
-// other seam to force the failure path.
+// tests can simulate an unreadable OS store. @vscode/proxy-agent reads the host
+// machine's real store, so there's no other seam to force the failure path.
 let loadSystemCertificatesImpl: (
     params: CertificateParams
 ) => Promise<string[]> = loadSystemCertificates;
@@ -115,15 +115,12 @@ let loadSystemCertificatesImpl: (
  * {@link resetProxyAgentCaches} in tests.
  *
  * Returns `undefined` (never a rejected promise) when the store can't be read.
- * @vscode/proxy-agent reads it via native readers: `security` on macOS and PEM
- * bundle files on Linux, which work out of the box. On Windows the store is read
- * through the native `@vscode/windows-ca-certs` addon — which we deliberately do
- * *not* ship (it publishes no prebuilds and can't be cross-compiled on the Linux
- * release runner), so on Windows that read throws and we fall back here. When the
- * read fails we swallow it so the caller uses Node's bundled roots instead of
- * failing the whole SDK request: with no explicit `ca`, VS Code's own TLS patch
- * still adds the Windows store. A missing custom CA is recoverable, a broken
- * agent is not.
+ * @vscode/proxy-agent reads it through Node's `tls.getCACertificates("system")`
+ * (see `loadSystemCertificatesFromNode` in {@link getProxyAgentParams}), which
+ * covers macOS, Linux and Windows. Unlike its native readers, that path doesn't
+ * catch errors, so a failed read is swallowed here: the caller then uses Node's
+ * bundled roots instead of failing the whole SDK request. A missing custom CA is
+ * recoverable, a broken agent is not.
  */
 async function getSystemCertificates(
     params: ProxyAgentParams

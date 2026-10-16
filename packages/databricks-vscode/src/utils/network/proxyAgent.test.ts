@@ -350,9 +350,21 @@ describe(__filename, () => {
             assert.strictEqual(opts?.rejectUnauthorized, false);
         });
 
+        it("reads the system store through Node", async () => {
+            let readFromNode: boolean | undefined;
+            setSystemCertificatesLoaderForTests(async (params) => {
+                readFromNode = params.loadSystemCertificatesFromNode();
+                return [FAKE_CA_PEM];
+            });
+            await getDatabricksHttpAgent(new URL("https://example.com"));
+            // Node's reader covers the Windows store without the native
+            // `@vscode/windows-ca-certs` addon, which we don't ship.
+            assert.strictEqual(readFromNode, true);
+        });
+
         it("falls back to Node's bundled CAs when the system store can't be read", async () => {
-            // @vscode/proxy-agent's own reader catches internally and reads the
-            // host's real store, so swap the loader for one that rejects.
+            // @vscode/proxy-agent reads the host's real store, so swap the
+            // loader for one that rejects.
             setSystemCertificatesLoaderForTests(async () => {
                 throw new Error("system store unavailable");
             });
@@ -384,8 +396,8 @@ describe(__filename, () => {
         });
 
         it("leaves NODE_EXTRA_CA_CERTS to Node's default store when the system store is empty", async () => {
-            // E.g. Windows, where the extension can't read the store: VS Code's
-            // own patch must still be able to add it.
+            // E.g. a headless machine with no OS store: an explicit `ca` would
+            // stop VS Code's own patch from adding it later.
             const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
             const pemPath = path.join(dir, "extra-ca.pem");
             fs.writeFileSync(pemPath, FAKE_CA_PEM);
