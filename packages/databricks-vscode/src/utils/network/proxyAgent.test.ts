@@ -42,6 +42,9 @@ describe(__filename, () => {
         when(configsSpy.httpNoProxy).thenReturn([]);
         when(configsSpy.proxyCaCert).thenReturn(undefined);
         when(configsSpy.httpSystemCertificates).thenReturn(true);
+        // Most cases cover the path where our agent carries the trust list;
+        // the `"override"`/`"fallback"` cases set this explicitly.
+        when(configsSpy.httpProxySupport).thenReturn("on");
     });
 
     afterEach(() => {
@@ -182,6 +185,67 @@ describe(__filename, () => {
             assert.strictEqual(agent.connectOpts.timeout, 60000);
         });
 
+        for (const proxySupport of ["on", "off"] as const) {
+            it(`merges the system trust store when http.proxySupport is "${proxySupport}"`, async () => {
+                when(configsSpy.httpProxySupport).thenReturn(proxySupport);
+                setSystemCertificatesLoaderForTests(async () => [
+                    SYSTEM_CA_PEM,
+                ]);
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(ca.includes(SYSTEM_CA_PEM));
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+            });
+        }
+
+        for (const proxySupport of ["override", "fallback"] as const) {
+            it(`leaves the system store to VS Code when http.proxySupport is "${proxySupport}"`, async () => {
+                when(configsSpy.httpProxySupport).thenReturn(proxySupport);
+                let loaderCalled = false;
+                setSystemCertificatesLoaderForTests(async () => {
+                    loaderCalled = true;
+                    return [SYSTEM_CA_PEM];
+                });
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                assert.strictEqual(loaderCalled, false);
+                assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+            });
+        }
+
+        it("merges the system store and databricks.proxy.caCert under override", async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+            const pemPath = path.join(dir, "corp-ca.pem");
+            fs.writeFileSync(pemPath, FAKE_CA_PEM);
+            when(configsSpy.httpProxySupport).thenReturn("override");
+            when(configsSpy.proxyCaCert).thenReturn(pemPath);
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            try {
+                const agent = (await getDatabricksHttpAgent(
+                    new URL("https://example.com")
+                )) as https.Agent;
+                const ca = (agent.options as https.AgentOptions).ca as string[];
+                assert.ok(ca.includes(FAKE_CA_PEM));
+                assert.ok(ca.includes(SYSTEM_CA_PEM));
+                assert.ok(ca.includes(tls.rootCertificates[0]));
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true});
+            }
+        });
+
+        it("omits the CA under override when http.systemCertificates is off", async () => {
+            when(configsSpy.httpProxySupport).thenReturn("override");
+            when(configsSpy.httpSystemCertificates).thenReturn(false);
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+            assert.ok(!("ca" in (agent.options as https.AgentOptions)));
+        });
+
         it("merges the system trust store with Node's bundled roots (never replaces them)", async () => {
             // Inject the system store instead of reading the host's: CI runners
             // (notably headless Windows) can return an empty OS store, which
@@ -286,9 +350,92 @@ describe(__filename, () => {
             assert.strictEqual(opts?.rejectUnauthorized, false);
         });
 
+        for (const proxySupport of ["override", "fallback"] as const) {
+            it(`leaves proxying to VS Code but keeps databricks.proxy.caCert when http.proxySupport is "${proxySupport}"`, async () => {
+                // VS Code's patch swaps in its own proxy agent and copies `ca`
+                // only from a plain `https.Agent`.
+                const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
+                const pemPath = path.join(dir, "corp-ca.pem");
+                fs.writeFileSync(pemPath, FAKE_CA_PEM);
+                when(configsSpy.httpProxySupport).thenReturn(proxySupport);
+                when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+                when(configsSpy.proxyCaCert).thenReturn(pemPath);
+                try {
+                    const agent = (await getDatabricksHttpAgent(
+                        new URL("https://example.com")
+                    )) as https.Agent;
+                    assert.ok(agent instanceof https.Agent);
+                    assert.ok(!(agent instanceof HttpsProxyAgent));
+                    const ca = (agent.options as https.AgentOptions)
+                        .ca as string[];
+                    assert.ok(ca.includes(FAKE_CA_PEM));
+                } finally {
+                    fs.rmSync(dir, {recursive: true, force: true});
+                }
+            });
+        }
+
+        async function capturePlainConnectOpts(agent: https.Agent) {
+            const captured: tls.ConnectionOptions[] = [];
+            const superCreate = https.Agent.prototype.createConnection;
+            https.Agent.prototype.createConnection = function (opts) {
+                captured.push(opts as tls.ConnectionOptions);
+                return undefined;
+            };
+            try {
+                agent.createConnection({host: "example.com", port: 443});
+                agent.createConnection({host: "example.com", port: 443});
+            } finally {
+                https.Agent.prototype.createConnection = superCreate;
+            }
+            return captured;
+        }
+
+        it("shares one SecureContext across a plain agent's connections", async () => {
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as https.Agent;
+
+            const [first, second] = await capturePlainConnectOpts(agent);
+            assert.ok(first.secureContext);
+            assert.strictEqual(first.secureContext, second.secureContext);
+            // Kept so VS Code's patch can still copy it.
+            assert.ok((first.ca as string[]).includes(SYSTEM_CA_PEM));
+        });
+
+        it("shares one SecureContext across endpoint handshakes through a proxy", async () => {
+            when(configsSpy.httpProxy).thenReturn("http://127.0.0.1:8080");
+            setSystemCertificatesLoaderForTests(async () => [SYSTEM_CA_PEM]);
+            const agent = (await getDatabricksHttpAgent(
+                new URL("https://example.com")
+            )) as HttpsProxyAgent<string>;
+
+            const first = (await captureEndpointConnectOpts(
+                agent
+            )) as tls.ConnectionOptions;
+            const second = (await captureEndpointConnectOpts(
+                agent
+            )) as tls.ConnectionOptions;
+            assert.ok(first.secureContext);
+            assert.strictEqual(first.secureContext, second.secureContext);
+        });
+
+        it("reads the system store through Node", async () => {
+            let readFromNode: boolean | undefined;
+            setSystemCertificatesLoaderForTests(async (params) => {
+                readFromNode = params.loadSystemCertificatesFromNode();
+                return [FAKE_CA_PEM];
+            });
+            await getDatabricksHttpAgent(new URL("https://example.com"));
+            // Node's reader covers the Windows store without the native
+            // `@vscode/windows-ca-certs` addon, which we don't ship.
+            assert.strictEqual(readFromNode, true);
+        });
+
         it("falls back to Node's bundled CAs when the system store can't be read", async () => {
-            // @vscode/proxy-agent's own reader catches internally and reads the
-            // host's real store, so swap the loader for one that rejects.
+            // @vscode/proxy-agent reads the host's real store, so swap the
+            // loader for one that rejects.
             setSystemCertificatesLoaderForTests(async () => {
                 throw new Error("system store unavailable");
             });
@@ -320,8 +467,8 @@ describe(__filename, () => {
         });
 
         it("leaves NODE_EXTRA_CA_CERTS to Node's default store when the system store is empty", async () => {
-            // E.g. Windows, where the extension can't read the store: VS Code's
-            // own patch must still be able to add it.
+            // E.g. a headless machine with no OS store: an explicit `ca` would
+            // stop VS Code's own patch from adding it later.
             const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbx-ca-"));
             const pemPath = path.join(dir, "extra-ca.pem");
             fs.writeFileSync(pemPath, FAKE_CA_PEM);

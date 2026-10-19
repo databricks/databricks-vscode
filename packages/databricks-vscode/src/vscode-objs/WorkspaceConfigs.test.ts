@@ -2,7 +2,7 @@ import * as assert from "assert";
 import {ConfigurationTarget, workspace} from "vscode";
 import {explicitBoolean, workspaceConfigs} from "./WorkspaceConfigs";
 
-async function set(section: string, key: string, value?: boolean) {
+async function set(section: string, key: string, value?: boolean | string) {
     await workspace
         .getConfiguration(section)
         .update(key, value, ConfigurationTarget.Global);
@@ -96,6 +96,23 @@ describe(__filename, () => {
         it("follows http.systemCertificates", async () => {
             await set("http", "systemCertificates", false);
             assert.strictEqual(workspaceConfigs.httpSystemCertificates, false);
+        });
+    });
+
+    describe("httpProxySupport", () => {
+        async function reset() {
+            await set("http", "proxySupport", undefined);
+        }
+        beforeEach(reset);
+        afterEach(reset);
+
+        it("defaults to override", () => {
+            assert.strictEqual(workspaceConfigs.httpProxySupport, "override");
+        });
+
+        it("follows http.proxySupport", async () => {
+            await set("http", "proxySupport", "on");
+            assert.strictEqual(workspaceConfigs.httpProxySupport, "on");
         });
     });
 });

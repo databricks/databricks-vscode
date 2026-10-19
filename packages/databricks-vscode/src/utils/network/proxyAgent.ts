@@ -68,10 +68,11 @@ function getProxyAgentParams(host: URL): ProxyAgentParams {
         isWebSocketPatchEnabled: () => false,
         addCertificatesV1: () => false,
         addCertificatesV2: () => true,
-        // Read the OS trust store (macOS `security`, Linux PEM bundles, Windows
-        // native addon), matching the pre-0.45 behaviour. `true` would instead
-        // pull Node's bundled roots, which we already fold in via `buildCaBundle`.
-        loadSystemCertificatesFromNode: () => false,
+        // Read the OS trust store through Node's `tls.getCACertificates("system")`
+        // (a worker thread on macOS). It returns only the OS store, not Node's
+        // bundled roots, and reads the Windows store without the native
+        // `@vscode/windows-ca-certs` addon, which we don't ship.
+        loadSystemCertificatesFromNode: () => true,
         loadAdditionalCertificates: async () => [],
         log,
         getLogLevel: () => LogLevel.Error,
@@ -103,9 +104,8 @@ export function mergeNoProxy(): string[] {
 let systemCertificatesPromise: Promise<string[] | undefined> | undefined;
 
 // The system-certificate reader, indirected through a module-level binding so
-// tests can simulate an unreadable OS store. @vscode/proxy-agent's own reader
-// catches internally and reads the host machine's real store, so there's no
-// other seam to force the failure path.
+// tests can simulate an unreadable OS store. @vscode/proxy-agent reads the host
+// machine's real store, so there's no other seam to force the failure path.
 let loadSystemCertificatesImpl: (
     params: CertificateParams
 ) => Promise<string[]> = loadSystemCertificates;
@@ -115,15 +115,12 @@ let loadSystemCertificatesImpl: (
  * {@link resetProxyAgentCaches} in tests.
  *
  * Returns `undefined` (never a rejected promise) when the store can't be read.
- * @vscode/proxy-agent reads it via native readers: `security` on macOS and PEM
- * bundle files on Linux, which work out of the box. On Windows the store is read
- * through the native `@vscode/windows-ca-certs` addon — which we deliberately do
- * *not* ship (it publishes no prebuilds and can't be cross-compiled on the Linux
- * release runner), so on Windows that read throws and we fall back here. When the
- * read fails we swallow it so the caller uses Node's bundled roots instead of
- * failing the whole SDK request: with no explicit `ca`, VS Code's own TLS patch
- * still adds the Windows store. A missing custom CA is recoverable, a broken
- * agent is not.
+ * @vscode/proxy-agent reads it through Node's `tls.getCACertificates("system")`
+ * (see `loadSystemCertificatesFromNode` in {@link getProxyAgentParams}), which
+ * covers macOS, Linux and Windows. Unlike its native readers, that path doesn't
+ * catch errors, so a failed read is swallowed here: the caller then uses Node's
+ * bundled roots instead of failing the whole SDK request. A missing custom CA is
+ * recoverable, a broken agent is not.
  */
 async function getSystemCertificates(
     params: ProxyAgentParams
@@ -272,6 +269,45 @@ function buildCaBundle(
     ];
 }
 
+/**
+ * Builds one SecureContext for a CA list on first use and shares it across an
+ * agent's connections. With only `ca`, Node builds a fresh context for every
+ * connection, and a large bundle then costs about 1 MB per connection.
+ *
+ * `ca` stays on the options too: VS Code's `http.request` patch copies only
+ * `ca` to its own agent, and its `tls.connect` patch leaves options with a `ca`
+ * alone, so it never adds certs to the shared context.
+ */
+class SharedCaTrust {
+    private secureContext: tls.SecureContext | undefined;
+
+    constructor(readonly ca: string[]) {}
+
+    applyTo(opts: Pick<tls.ConnectionOptions, "ca" | "secureContext">) {
+        this.secureContext ??= tls.createSecureContext({ca: this.ca});
+        opts.ca = this.ca;
+        opts.secureContext = this.secureContext;
+    }
+}
+
+/** `https.Agent` whose connections share one SecureContext for its `ca`. */
+class CaAwareHttpsAgent extends https.Agent {
+    constructor(
+        opts: https.AgentOptions,
+        private readonly trust: SharedCaTrust
+    ) {
+        super(opts);
+    }
+
+    override createConnection(
+        options: https.RequestOptions,
+        callback?: Parameters<https.Agent["createConnection"]>[1]
+    ) {
+        this.trust.applyTo(options);
+        return super.createConnection(options, callback);
+    }
+}
+
 // The per-request options `agent-base` hands to `connect`. Derived from the
 // agent's own `connect` signature so we don't take a direct dependency on
 // `agent-base` (it resolves only transitively via the proxy agents).
@@ -293,7 +329,7 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
     constructor(
         proxy: string,
         opts: https.AgentOptions,
-        private readonly endpointCa: string[] | undefined,
+        private readonly endpointTrust: SharedCaTrust | undefined,
         private readonly endpointRejectUnauthorized: boolean
     ) {
         super(proxy, opts);
@@ -307,21 +343,39 @@ class CaAwareHttpsProxyAgent extends HttpsProxyAgent<string> {
         // socket already trusts the same bundle via the constructor options.
         if (opts.secureEndpoint) {
             opts.rejectUnauthorized = this.endpointRejectUnauthorized;
-            if (this.endpointCa) {
-                opts.ca = this.endpointCa;
-            }
+            this.endpointTrust?.applyTo(opts);
         }
         return super.connect(req, opts);
     }
 }
 
 /**
+ * Whether VS Code's `http.request` patch proxies the SDK's requests itself.
+ * Under `"override"`/`"fallback"` it swaps in its own proxy agent whenever it
+ * resolves a proxy, carrying over our agent's `ca` only from a plain
+ * `https.Agent`, so a proxy agent of ours would just drop the `ca`.
+ */
+function hostProxiesRequests(): boolean {
+    const proxySupport = workspaceConfigs.httpProxySupport;
+    return proxySupport === "override" || proxySupport === "fallback";
+}
+
+/**
+ * Whether VS Code's `http.request` patch will add the OS trust store to the
+ * SDK's connections when our agent sets no `ca`.
+ */
+function hostAddsSystemCertificates(): boolean {
+    return hostProxiesRequests() && workspaceConfigs.httpSystemCertificates;
+}
+
+/**
  * Build the HTTP(S) agent the Databricks SDK should use, wiring in the proxy
  * (VS Code `http.proxy` setting + `http(s)_proxy` env vars, honouring
- * `NO_PROXY`) and, unless `http.systemCertificates` is off, the OS certificate
- * trust store. This is what lets the in-process SDK calls work behind corporate
- * proxies and internal-CA TLS interception, matching the bundled CLI's
- * behaviour.
+ * `NO_PROXY`) and the CA trust list. Under `http.proxySupport`
+ * `"override"`/`"fallback"` VS Code does the proxying (see
+ * {@link hostProxiesRequests}). The OS trust store is only merged when VS Code
+ * won't add it itself (see {@link hostAddsSystemCertificates}) or when
+ * `databricks.proxy.caCert` forces an explicit `ca`.
  */
 export async function getDatabricksHttpAgent(
     host: URL,
@@ -330,22 +384,26 @@ export async function getDatabricksHttpAgent(
     const params = getProxyAgentParams(host);
     const isHttps = host.protocol === "https:";
 
+    const needsSystemCertificates =
+        workspaceConfigs.httpSystemCertificates &&
+        (!hostAddsSystemCertificates() || !!workspaceConfigs.proxyCaCert);
+
     // Independent reads (OS trust store, the configured PEM, the
     // NODE_EXTRA_CA_CERTS bundle) — run them together rather than serially.
     const [systemCerts, configuredCaCert, nodeExtraCaCerts] = await Promise.all(
         [
-            workspaceConfigs.httpSystemCertificates
-                ? getSystemCertificates(params)
-                : undefined,
+            needsSystemCertificates ? getSystemCertificates(params) : undefined,
             loadConfiguredCaCert(),
             loadNodeExtraCaCerts(),
         ]
     );
     const ca = buildCaBundle(systemCerts, configuredCaCert, nodeExtraCaCerts);
+    const trust = ca ? new SharedCaTrust(ca) : undefined;
     const rejectUnauthorized = strictSSL();
 
-    const resolver = createProxyResolver(params);
-    const proxyUrl = await resolver.resolveProxyURL(host.toString());
+    const proxyUrl = hostProxiesRequests()
+        ? undefined
+        : await createProxyResolver(params).resolveProxyURL(host.toString());
     const usesTls =
         isHttps ||
         (proxyUrl !== undefined && new URL(proxyUrl).protocol === "https:");
@@ -369,15 +427,18 @@ export async function getDatabricksHttpAgent(
             ? new CaAwareHttpsProxyAgent(
                   proxyUrl,
                   agentOptions,
-                  ca,
+                  trust,
                   rejectUnauthorized
               )
             : new HttpProxyAgent(proxyUrl, agentOptions);
     }
 
-    return isHttps
-        ? new https.Agent(agentOptions)
-        : new http.Agent(agentOptions);
+    if (!isHttps) {
+        return new http.Agent(agentOptions);
+    }
+    return trust
+        ? new CaAwareHttpsAgent(agentOptions, trust)
+        : new https.Agent(agentOptions);
 }
 
 // The config shape the WorkspaceClient constructor accepts (ConfigOptions | Config),
@@ -388,12 +449,12 @@ type WorkspaceClientConfig = ConstructorParameters<typeof WorkspaceClient>[0];
 /**
  * Construct a WorkspaceClient wired for the extension's network environment.
  *
- * The SDK pins its own agent per request, bypassing VS Code's global proxy/CA
- * patching. This injects a proxy- and system-CA-aware agent (and keeps the SDK
- * fetch path and bundled-CLI subprocess consistent via the strict-SSL env) so
- * in-process SDK calls work behind corporate proxies and internal-CA TLS
- * interception, matching the bundled CLI's behaviour. This is the only place
- * the extension should build a WorkspaceClient.
+ * The SDK pins its own agent per request. Under `http.proxySupport` `"on"` or
+ * `"off"` that bypasses VS Code's proxy/CA patching, so the injected agent
+ * carries the proxy and CA trust list itself; under `"override"`/`"fallback"`
+ * VS Code replaces the agent and keeps only its `ca`. The strict-SSL env keeps
+ * the SDK fetch path and bundled-CLI subprocess consistent. This is the only
+ * place the extension should build a WorkspaceClient.
  */
 export async function createWorkspaceClient(
     config: WorkspaceClientConfig,
