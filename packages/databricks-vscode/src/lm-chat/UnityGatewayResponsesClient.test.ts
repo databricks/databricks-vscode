@@ -42,16 +42,8 @@ describe(__filename, () => {
         headers: http.IncomingHttpHeaders;
         body: string;
     }[];
-    let connections: number;
     let closedEarly: Promise<void>;
     let onClosedEarly: () => void;
-
-    class CountingAgent extends http.Agent {
-        createConnection(...args: Parameters<http.Agent["createConnection"]>) {
-            connections++;
-            return super.createConnection(...args);
-        }
-    }
 
     /** A v1 client with the product createWorkspaceClient sets. */
     function apiClient() {
@@ -61,16 +53,14 @@ describe(__filename, () => {
         });
     }
 
-    function newClient(
-        options = v2ClientOptions(apiClient(), host, new CountingAgent())
-    ) {
+    function newClient(options = v2ClientOptions(apiClient(), host)) {
         return new UnityGatewayResponsesClient(options);
     }
 
     /** A client whose transport answers with these body chunks, one per read. */
     function scriptedClient(chunks: (string | Uint8Array)[]) {
         return newClient({
-            ...v2ClientOptions(apiClient(), host, new http.Agent()),
+            ...v2ClientOptions(apiClient(), host),
             httpClient: {
                 send: async (): Promise<HttpResponse> => ({
                     statusCode: 200,
@@ -110,7 +100,6 @@ describe(__filename, () => {
             }
         );
         received = [];
-        connections = 0;
         closedEarly = new Promise((resolve) => (onClosedEarly = resolve));
         handle = (response) => {
             response.writeHead(200, {"content-type": "text/event-stream"});
@@ -149,13 +138,12 @@ describe(__filename, () => {
         await new Promise((resolve) => server.close(resolve));
     });
 
-    it("posts the request to the Responses route through the agent, with v1 auth", async () => {
+    it("posts the request to the Responses route with v1 auth", async () => {
         const events = await collect(
             newClient().createResponse(request, new AbortController().signal)
         );
 
         assert.deepStrictEqual(events, [{type: "response.completed"}]);
-        assert.equal(connections, 1);
         const [sent] = received;
         assert.equal(sent.method, "POST");
         assert.equal(sent.url, "/ai-gateway/mlflow/v1/responses");

@@ -8,29 +8,6 @@ import {Time, TimeUnits} from "@databricks/sdk-experimental";
  */
 export type PythonEnvironmentSetupMode = "auto" | "manual";
 
-/**
- * The explicitly set boolean in an `inspect` result, workspace before global, or
- * `undefined` when none is set. Ignores the declared default (so an override
- * setting can fall back to its built-in `http.*` counterpart) and any
- * non-boolean value such as a `null` written to settings.json.
- */
-export function explicitBoolean(
-    setting: {workspaceValue?: unknown; globalValue?: unknown} | undefined
-): boolean | undefined {
-    for (const value of [setting?.workspaceValue, setting?.globalValue]) {
-        if (typeof value === "boolean") {
-            return value;
-        }
-    }
-    return undefined;
-}
-
-function explicitDatabricksBoolean(key: string): boolean | undefined {
-    return explicitBoolean(
-        workspace.getConfiguration("databricks").inspect<boolean>(key)
-    );
-}
-
 export const workspaceConfigs = {
     get maxFieldLength() {
         return (
@@ -229,58 +206,21 @@ export const workspaceConfigs = {
         return new Time(config, TimeUnits.minutes).toMillSeconds().value;
     },
 
-    /**
-     * Whether TLS certificates must be verified for the extension's SDK HTTP
-     * calls. `databricks.proxy.strictSSL`, when explicitly set, overrides the
-     * built-in `http.proxyStrictSSL`; both default to `true`.
-     */
     get proxyStrictSSL(): boolean {
-        const override = explicitDatabricksBoolean("proxy.strictSSL");
-        if (override !== undefined) {
-            return override;
-        }
         return (
             workspace.getConfiguration("http").get<boolean>("proxyStrictSSL") ??
             true
         );
     },
 
-    /** The `http.proxy` VS Code setting, mirrored for the SDK proxy resolver. */
     get httpProxy(): string | undefined {
         return (
             workspace.getConfiguration("http").get<string>("proxy") || undefined
         );
     },
 
-    /** The `http.noProxy` VS Code setting, mirrored for the SDK proxy resolver. */
     get httpNoProxy(): string[] {
         return workspace.getConfiguration("http").get<string[]>("noProxy", []);
-    },
-
-    /**
-     * Absolute path to a PEM bundle of additional CA certificates to trust for
-     * the extension's SDK calls, merged with Node's built-in roots and (unless
-     * `http.systemCertificates` is off) the OS trust store. An escape hatch for
-     * corporate CAs that can't be read from the system store.
-     */
-    get proxyCaCert(): string | undefined {
-        return (
-            workspace
-                .getConfiguration("databricks")
-                .get<string>("proxy.caCert") || undefined
-        );
-    },
-
-    /**
-     * The `http.systemCertificates` VS Code setting, mirrored for the SDK CA
-     * bundle: when off, the extension doesn't merge the OS certificate store.
-     */
-    get httpSystemCertificates(): boolean {
-        return (
-            workspace
-                .getConfiguration("http")
-                .get<boolean>("systemCertificates") ?? true
-        );
     },
 };
 

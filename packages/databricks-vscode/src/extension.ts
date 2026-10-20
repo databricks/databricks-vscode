@@ -36,7 +36,6 @@ import {
     FileUtils,
     HostUtils,
     PackageJsonUtils,
-    ProxyAgent,
     UrlUtils,
     UtilsCommands,
 } from "./utils";
@@ -1002,16 +1001,21 @@ export async function activate(
         customWhenContext.updateShowClusterView();
     }
 
+    // The SDK's fetch reads this to set `rejectUnauthorized` on each request.
+    function updateStrictSSLEnv() {
+        if (workspaceConfigs.proxyStrictSSL) {
+            delete process.env.DATABRICKS_SDK_PROXY_STRICT_SSL;
+        } else {
+            process.env.DATABRICKS_SDK_PROXY_STRICT_SSL = "false";
+        }
+    }
+
     updateFeatureContexts();
-    // Resolve TLS strict-SSL through the same layered setting the SDK client
-    // path uses (databricks.proxy.strictSSL -> http.proxyStrictSSL -> true), so
-    // both writers of DATABRICKS_SDK_PROXY_STRICT_SSL agree and verification
-    // stays on by default when nothing is configured.
-    ProxyAgent.applyProxyStrictSSLEnv();
+    updateStrictSSLEnv();
     context.subscriptions.push(
         workspace.onDidChangeConfiguration(() => {
             updateFeatureContexts();
-            ProxyAgent.applyProxyStrictSSLEnv();
+            updateStrictSSLEnv();
         })
     );
 

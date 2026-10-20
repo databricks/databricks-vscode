@@ -7,4 +7,3 @@ export * as EnvVarGenerators from "./envVarGenerators";
 export * as DateUtils from "./DateUtils";
 export * as HostUtils from "./hostUtils";
 export * as PromiseUtils from "./promiseUtils";
-export {ProxyAgent} from "./network";

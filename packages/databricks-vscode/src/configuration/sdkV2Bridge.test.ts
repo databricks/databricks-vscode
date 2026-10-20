@@ -5,11 +5,12 @@ import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import http from "node:http";
 import type {AddressInfo} from "node:net";
 import {tmpdir} from "node:os";
+import type {RequestOptions} from "node:https";
 import path from "node:path";
 import {ApiClient, Config} from "@databricks/sdk-experimental";
 import {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {anything, instance, mock, when} from "ts-mockito";
-import {agentHttpClient, v2ClientOptions, v2Credentials} from "./sdkV2Bridge";
+import {v1FetchHttpClient, v2ClientOptions, v2Credentials} from "./sdkV2Bridge";
 
 async function withEnv<T>(
     env: Record<string, string>,
@@ -36,16 +37,8 @@ describe(__filename, () => {
     let server: http.Server;
     let host: URL;
     let received: {headers: http.IncomingHttpHeaders; body: string}[];
-    let connections: number;
     /** Resolves with a request to `/hang`, which is never answered. */
     let hung: Promise<http.IncomingMessage>;
-
-    class CountingAgent extends http.Agent {
-        createConnection(...args: Parameters<http.Agent["createConnection"]>) {
-            connections++;
-            return super.createConnection(...args);
-        }
-    }
 
     beforeEach(async () => {
         mockConfig = mock(Config);
@@ -59,7 +52,6 @@ describe(__filename, () => {
         );
         config = instance(mockConfig);
         received = [];
-        connections = 0;
         let hang: (request: http.IncomingMessage) => void;
         hung = new Promise((resolve) => (hang = resolve));
         server = http.createServer((request, response) => {
@@ -115,7 +107,7 @@ describe(__filename, () => {
                 productVersion: "1.2.3",
             });
             const client = new AiGatewayClient(
-                v2ClientOptions(apiClient, host, new CountingAgent())
+                v2ClientOptions(apiClient, host)
             );
             const names: (string | undefined)[] = [];
             for await (const service of client.listModelServicesIter({
@@ -126,18 +118,40 @@ describe(__filename, () => {
             return names;
         }
 
-        it("calls the host through the agent, with v1 auth and the workspace id", async () => {
+        it("calls the host with v1 auth and the workspace id", async () => {
             when(mockConfig.workspaceId).thenReturn("1234");
 
             assert.deepStrictEqual(await listModelServices(), [
                 "model-services/system.ai.probe",
             ]);
-            assert.equal(connections, 1);
             assert.equal(received[0].headers.authorization, "Bearer v1-token");
             assert.equal(
                 received[0].headers["x-databricks-workspace-id"],
                 "1234"
             );
+        });
+
+        it("applies DATABRICKS_SDK_PROXY_STRICT_SSL to each request", async () => {
+            const rejectUnauthorized: unknown[] = [];
+            const request = http.request;
+            http.request = ((...args: Parameters<typeof http.request>) => {
+                const options = args.find(
+                    (arg): arg is RequestOptions =>
+                        typeof arg === "object" && !(arg instanceof URL)
+                );
+                rejectUnauthorized.push(options?.rejectUnauthorized);
+                return request(...args);
+            }) as typeof http.request;
+            try {
+                await withEnv(
+                    {DATABRICKS_SDK_PROXY_STRICT_SSL: "false"},
+                    listModelServices
+                );
+            } finally {
+                http.request = request;
+            }
+
+            assert.deepStrictEqual(rejectUnauthorized, [false]);
         });
 
         it("sends the v1 client's product as the User-Agent", async () => {
@@ -185,22 +199,10 @@ describe(__filename, () => {
             }
         });
     });
-
-    describe("agentHttpClient", () => {
-        it("sends requests through the given agent", async () => {
-            const response = await agentHttpClient(new CountingAgent()).send({
-                url: host.toString(),
-                method: "GET",
-                headers: new Headers(),
-            });
-
-            assert.equal(response.statusCode, 200);
-            assert.equal(connections, 1);
-        });
-
+    describe("v1FetchHttpClient", () => {
         it("sends byte bodies", async () => {
             const send = (body: Uint8Array | ArrayBuffer) =>
-                agentHttpClient(new CountingAgent()).send({
+                v1FetchHttpClient().send({
                     url: host.toString(),
                     method: "POST",
                     headers: new Headers(),
@@ -219,7 +221,7 @@ describe(__filename, () => {
 
         it("aborts a request in flight when the signal fires", async () => {
             const controller = new AbortController();
-            const sent = agentHttpClient(new CountingAgent()).send({
+            const sent = v1FetchHttpClient().send({
                 url: new URL("/hang", host).toString(),
                 method: "GET",
                 headers: new Headers(),

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import http from "node:http";
 import {CancellationTokenSource} from "vscode";
 import type {CancellationToken} from "vscode";
 import {ApiClient, Config} from "@databricks/sdk-experimental";
@@ -38,8 +37,7 @@ describe(__filename, () => {
         const client = new AiGatewayClient({
             ...v2ClientOptions(
                 new ApiClient(instance(mockConfig)),
-                new URL("https://ws.cloud.databricks.com"),
-                new http.Agent()
+                new URL("https://ws.cloud.databricks.com")
             ),
             httpClient: {
                 send: (request) => {

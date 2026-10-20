@@ -3,7 +3,8 @@ import {CancellationToken, commands, Disposable, Uri, window} from "vscode";
 import {Loggers} from "../../logger";
 import {AzureCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
-import {ProxyAgent, ShellUtils} from "../../utils";
+import {createWorkspaceClient} from "./workspaceClient";
+import {ShellUtils} from "../../utils";
 import {cancellableExecFile} from "../../cli/CliWrapper";
 import {
     FileNotFoundException,
@@ -203,14 +204,11 @@ export class AzureCliCheck implements Disposable {
         expired: boolean;
         error?: Error;
     }> {
-        const workspaceClient = await ProxyAgent.createWorkspaceClient(
-            {
-                host: host.toString(),
-                authType: "azure-cli",
-                azureLoginAppId: this.azureLoginAppId,
-            },
-            host
-        );
+        const workspaceClient = createWorkspaceClient({
+            host: host.toString(),
+            authType: "azure-cli",
+            azureLoginAppId: this.azureLoginAppId,
+        });
         try {
             await workspaceClient.currentUser.me(
                 new Context({cancellationToken})
