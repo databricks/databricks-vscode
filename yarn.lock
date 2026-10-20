@@ -2890,9 +2890,9 @@ __metadata:
   linkType: hard
 
 "argparse@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "argparse@npm:3.0.0"
-  checksum: 166ad46c13ed61e7235f82b9b2f574ebabfe8c83886579d13eef73053c1a9b10b76c160775554b89d8310ae73a0e2806cef41e4db49ef3541a25885c9a3579e3
+  version: 3.0.3
+  resolution: "argparse@npm:3.0.3"
+  checksum: c888652d406b82b1322b7d14ccbd3df9a2e1cd20141416d3cccf505188eac71a5a16136f2ed66aa757dc4840440b39e024c3196f1a9f32629369e5817b603a77
   languageName: node
   linkType: hard
 
@@ -4152,7 +4152,7 @@ __metadata:
     http-proxy-agent: ^9.1.0
     https-proxy-agent: ^9.1.0
     lodash: ^4.18.1
-    markdown-it: ^15.0.1
+    markdown-it: ^15.0.2
     minimatch: ^10.2.3
     mocha: ^12.0.2
     nyc: ^18.0.0
@@ -4608,9 +4608,9 @@ __metadata:
   linkType: hard
 
 "entities@npm:^8.0.0":
-  version: 8.0.0
-  resolution: "entities@npm:8.0.0"
-  checksum: 0b5dcab25b0ed82859555086c0a80d6c7e1fbae76af4de528c45de742fabb54c5f9c788351a4d966211a2997651f2746d6491c3b29bb49abc425384fdc98315e
+  version: 8.1.0
+  resolution: "entities@npm:8.1.0"
+  checksum: 1d10a455a8ef76e05082168e6c69b9640fda3a3dd3ea4023f89885d298cf8183f957fd2225eec97729e3f624e9d90229d718e90068a6918f016a72b3fa47ba39
   languageName: node
   linkType: hard
 
@@ -7507,9 +7507,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"markdown-it@npm:^15.0.1":
-  version: 15.0.1
-  resolution: "markdown-it@npm:15.0.1"
+"markdown-it@npm:^15.0.2":
+  version: 15.0.2
+  resolution: "markdown-it@npm:15.0.2"
   dependencies:
     argparse: ^3.0.0
     entities: ^8.0.0
@@ -7519,7 +7519,7 @@ __metadata:
     uc.micro: ^3.0.0
   bin:
     markdown-it: bin/markdown-it.mjs
-  checksum: e3022464cd76af63cba4647ceb9146a2fbfbb3e8ad4072aeb4c61704e496bd21549c5a78eac4954d1e53746ff9539ff2da75d02fb7bfe0526ee5873d63f40bc6
+  checksum: af89038571dadd0ae97b4a6c8da693f42bbc60d8d7c32efdd65eff98dfd616cd4165c2b6c154ed7c3d44e27486f2c5fc4afd2c6924d7da8d1254f6ddf0e04ea3
   languageName: node
   linkType: hard
 
