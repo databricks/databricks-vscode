@@ -3,13 +3,21 @@
 import assert from "assert";
 import http from "node:http";
 import type {AddressInfo} from "node:net";
+import {reset, spy, when} from "ts-mockito";
+import {recordHttpRequests} from "../../test/utils";
+import {workspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {createWorkspaceClient} from "./workspaceClient";
+
+function distinct<T>(values: T[]): T[] {
+    return [...new Set(values)];
+}
 
 describe(__filename, () => {
     let server: http.Server;
-    let host: string;
-    let originalRequest: typeof http.request;
-    let agents: unknown[];
+    let host: URL;
+    let recorder: ReturnType<typeof recordHttpRequests>;
+    let configsSpy: typeof workspaceConfigs;
+    let strictSSLEnv: string | undefined;
 
     beforeEach(async () => {
         server = http.createServer((request, response) => {
@@ -19,28 +27,37 @@ describe(__filename, () => {
         await new Promise<void>((resolve) =>
             server.listen(0, "127.0.0.1", resolve)
         );
-        host = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-
-        agents = [];
-        originalRequest = http.request;
-        http.request = ((...args: Parameters<typeof http.request>) => {
-            const options = args.find(
-                (arg): arg is http.RequestOptions =>
-                    typeof arg === "object" && !(arg instanceof URL)
-            );
-            agents.push(options?.agent);
-            return originalRequest(...args);
-        }) as typeof http.request;
+        host = new URL(
+            `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+        );
+        recorder = recordHttpRequests(host);
+        configsSpy = spy(workspaceConfigs);
+        strictSSLEnv = process.env.DATABRICKS_SDK_PROXY_STRICT_SSL;
+        delete process.env.DATABRICKS_SDK_PROXY_STRICT_SSL;
     });
 
     afterEach(async () => {
-        http.request = originalRequest;
+        recorder.restore();
+        reset(configsSpy);
+        if (strictSSLEnv === undefined) {
+            delete process.env.DATABRICKS_SDK_PROXY_STRICT_SSL;
+        } else {
+            process.env.DATABRICKS_SDK_PROXY_STRICT_SSL = strictSSLEnv;
+        }
         await new Promise((resolve) => server.close(resolve));
     });
 
+    function me() {
+        return createWorkspaceClient({
+            host: host.toString(),
+            authType: "pat",
+            token: "t",
+        }).currentUser.me();
+    }
+
     it("tags the client with the extension product", () => {
         const client = createWorkspaceClient({
-            host,
+            host: host.toString(),
             authType: "pat",
             token: "t",
         });
@@ -50,15 +67,27 @@ describe(__filename, () => {
 
     // Under `http.proxySupport: on`, VS Code only proxies requests without one.
     it("sends requests without an agent", async () => {
-        const client = createWorkspaceClient({
-            host,
-            authType: "pat",
-            token: "t",
-        });
+        assert.strictEqual((await me()).userName, "user@example.com");
+        assert.deepStrictEqual(
+            distinct(recorder.requests.map(({agent}) => agent)),
+            [undefined]
+        );
+    });
 
-        const me = await client.currentUser.me();
+    it("applies http.proxyStrictSSL to the requests of each new client", async () => {
+        when(configsSpy.proxyStrictSSL).thenReturn(false);
+        await me();
+        const withoutStrictSSL = recorder.requests.splice(0);
+        when(configsSpy.proxyStrictSSL).thenReturn(true);
+        await me();
 
-        assert.strictEqual(me.userName, "user@example.com");
-        assert.deepStrictEqual(agents, [undefined]);
+        assert.deepStrictEqual(
+            distinct(withoutStrictSSL.map((r) => r.rejectUnauthorized)),
+            [false]
+        );
+        assert.deepStrictEqual(
+            distinct(recorder.requests.map((r) => r.rejectUnauthorized)),
+            [true]
+        );
     });
 });

@@ -5,11 +5,11 @@ import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import http from "node:http";
 import type {AddressInfo} from "node:net";
 import {tmpdir} from "node:os";
-import type {RequestOptions} from "node:https";
 import path from "node:path";
 import {ApiClient, Config} from "@databricks/sdk-experimental";
 import {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {anything, instance, mock, when} from "ts-mockito";
+import {recordHttpRequests} from "../test/utils";
 import {v1FetchHttpClient, v2ClientOptions, v2Credentials} from "./sdkV2Bridge";
 
 async function withEnv<T>(
@@ -132,26 +132,24 @@ describe(__filename, () => {
         });
 
         it("applies DATABRICKS_SDK_PROXY_STRICT_SSL to each request", async () => {
-            const rejectUnauthorized: unknown[] = [];
-            const request = http.request;
-            http.request = ((...args: Parameters<typeof http.request>) => {
-                const options = args.find(
-                    (arg): arg is RequestOptions =>
-                        typeof arg === "object" && !(arg instanceof URL)
-                );
-                rejectUnauthorized.push(options?.rejectUnauthorized);
-                return request(...args);
-            }) as typeof http.request;
+            const recorder = recordHttpRequests(host);
             try {
                 await withEnv(
                     {DATABRICKS_SDK_PROXY_STRICT_SSL: "false"},
                     listModelServices
                 );
             } finally {
-                http.request = request;
+                recorder.restore();
             }
 
-            assert.deepStrictEqual(rejectUnauthorized, [false]);
+            assert.deepStrictEqual(
+                [
+                    ...new Set(
+                        recorder.requests.map((r) => r.rejectUnauthorized)
+                    ),
+                ],
+                [false]
+            );
         });
 
         it("sends the v1 client's product as the User-Agent", async () => {

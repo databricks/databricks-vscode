@@ -12,6 +12,7 @@ import {readFile} from "fs/promises";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
+import {updateStrictSSLEnv} from "./configuration/auth/workspaceClient";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
@@ -463,6 +464,36 @@ function registerBundleVariablesView(
     );
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
+const deprecatedProxySettingHints = {
+    "databricks.proxy.strictSSL": "Set http.proxyStrictSSL instead.",
+    "databricks.proxy.caCert":
+        "Add the CA to the OS trust store, or start VS Code with NODE_EXTRA_CA_CERTS set to its PEM file.",
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
+function warnAboutDeprecatedProxySettings() {
+    const settings = workspaceConfigs.configuredDeprecatedProxySettings;
+    if (settings.length === 0) {
+        return;
+    }
+    const message = settings
+        .map(
+            (setting) =>
+                `${setting} is no longer used. ${deprecatedProxySettingHints[setting]}`
+        )
+        .join(" ");
+    logging.NamedLogger.getOrCreate(Loggers.Extension).warn(message);
+    void window.showWarningMessage(message, "Open Settings").then((choice) => {
+        if (choice) {
+            void commands.executeCommand(
+                "workbench.action.openSettings",
+                "databricks.proxy"
+            );
+        }
+    });
+}
+
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
@@ -508,6 +539,16 @@ export async function activate(
     void cli.checkBundledCliVersionForDev(packageMetadata);
     // Warn if the user has overriden the CLI path, and that overriden CLI is out of date
     cli.warnOverridenCliDrift(packageMetadata.cliVersion);
+
+    updateStrictSSLEnv();
+    context.subscriptions.push(
+        workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration("http.proxyStrictSSL")) {
+                updateStrictSSLEnv();
+            }
+        })
+    );
+    warnAboutDeprecatedProxySettings();
 
     // Loggers
     context.subscriptions.push(
@@ -1001,21 +1042,10 @@ export async function activate(
         customWhenContext.updateShowClusterView();
     }
 
-    // The SDK's fetch reads this to set `rejectUnauthorized` on each request.
-    function updateStrictSSLEnv() {
-        if (workspaceConfigs.proxyStrictSSL) {
-            delete process.env.DATABRICKS_SDK_PROXY_STRICT_SSL;
-        } else {
-            process.env.DATABRICKS_SDK_PROXY_STRICT_SSL = "false";
-        }
-    }
-
     updateFeatureContexts();
-    updateStrictSSLEnv();
     context.subscriptions.push(
         workspace.onDidChangeConfiguration(() => {
             updateFeatureContexts();
-            updateStrictSSLEnv();
         })
     );
 

@@ -222,6 +222,23 @@ export const workspaceConfigs = {
     get httpNoProxy(): string[] {
         return workspace.getConfiguration("http").get<string[]>("noProxy", []);
     },
+
+    get configuredDeprecatedProxySettings() {
+        const config = workspace.getConfiguration("databricks");
+        return (["proxy.strictSSL", "proxy.caCert"] as const)
+            .filter((key) => {
+                const values = config.inspect(key);
+                return [
+                    values?.globalValue,
+                    values?.workspaceValue,
+                    values?.workspaceFolderValue,
+                ].some(
+                    (value) =>
+                        value !== undefined && value !== null && value !== ""
+                );
+            })
+            .map((key) => `databricks.${key}` as const);
+    },
 };
 
 export type WorkspaceConfigs = typeof workspaceConfigs;
