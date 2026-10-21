@@ -1,4 +1,5 @@
 import http from "node:http";
+import https from "node:https";
 import type {RequestOptions} from "node:https";
 import {ProviderResult} from "vscode";
 
@@ -17,14 +18,16 @@ export async function resolveProviderResult<T>(
 }
 
 /**
- * Records the options of `http.request` calls to `host` until `restore()`.
- * Typed as https options because the SDK's fetch passes TLS options such as
+ * Records the options of requests to `host` until `restore()`. Typed as https
+ * options because the SDK's fetch passes TLS options such as
  * `rejectUnauthorized` to `http.request` too.
  */
 export function recordHttpRequests(host: URL) {
-    const original = http.request;
+    const transport: {request: typeof http.request} =
+        host.protocol === "https:" ? https : http;
+    const original = transport.request;
     const requests: RequestOptions[] = [];
-    http.request = ((...args: Parameters<typeof http.request>) => {
+    transport.request = ((...args: Parameters<typeof http.request>) => {
         const options = args.find(
             (arg): arg is RequestOptions =>
                 typeof arg === "object" && !(arg instanceof URL)
@@ -40,7 +43,7 @@ export function recordHttpRequests(host: URL) {
     return {
         requests,
         restore: () => {
-            http.request = original;
+            transport.request = original;
         },
     };
 }
