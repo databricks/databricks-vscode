@@ -301,8 +301,8 @@ reach the `WorkspaceClient` / `apiClient` directly.
 - **Build V2 SDK clients (`@databricks/sdk-*`) from `v2ClientOptions`** in
   `configuration/sdkV2Bridge.ts`, not from your own `ClientOptions`. It takes
   the connection's v1 client, authenticates through its `Config`, reuses its
-  User-Agent product, sends requests through the extension's proxy agent, and
-  stops V2 reading `~/.databrickscfg` and `DATABRICKS_*`.
+  User-Agent product, sends requests through v1's fetch so `http.proxyStrictSSL`
+  applies, and stops V2 reading `~/.databrickscfg` and `DATABRICKS_*`.
 - **Never import through deep `/dist/...` paths** (`.../dist/apis/…`,
   `.../dist/retries/…`). They're not a stable entry point — import from the package
   root. Keeping SDK access behind one seam is also what turns a future SDK migration

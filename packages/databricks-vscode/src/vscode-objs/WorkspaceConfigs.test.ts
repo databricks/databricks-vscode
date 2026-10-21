@@ -1,62 +1,16 @@
 import * as assert from "assert";
 import {ConfigurationTarget, workspace} from "vscode";
-import {explicitBoolean, workspaceConfigs} from "./WorkspaceConfigs";
+import {workspaceConfigs} from "./WorkspaceConfigs";
 
-async function set(section: string, key: string, value?: boolean) {
+async function set(section: string, key: string, value?: unknown) {
     await workspace
         .getConfiguration(section)
         .update(key, value, ConfigurationTarget.Global);
 }
 
 describe(__filename, () => {
-    describe("explicitBoolean", () => {
-        it("prefers the workspace value over the global value", () => {
-            assert.strictEqual(
-                explicitBoolean({
-                    globalValue: true,
-                    workspaceValue: false,
-                }),
-                false
-            );
-        });
-
-        it("treats null and missing values as unset", () => {
-            const nullValue = null;
-            assert.strictEqual(
-                explicitBoolean({
-                    globalValue: nullValue,
-                    workspaceValue: nullValue,
-                }),
-                undefined
-            );
-            assert.strictEqual(
-                explicitBoolean({
-                    globalValue: false,
-                    workspaceValue: nullValue,
-                }),
-                false
-            );
-            assert.strictEqual(explicitBoolean(undefined), undefined);
-            assert.strictEqual(
-                explicitBoolean({globalValue: "false"}),
-                undefined
-            );
-        });
-    });
-
-    // The Settings UI removes a user value that equals the default, so any
-    // boolean default (including the implicit `false`) blocks one direction.
-    it("declares a null default for databricks.proxy.strictSSL", () => {
-        assert.strictEqual(
-            workspace.getConfiguration("databricks").inspect("proxy.strictSSL")
-                ?.defaultValue,
-            null
-        );
-    });
-
     describe("proxyStrictSSL", () => {
         async function reset() {
-            await set("databricks", "proxy.strictSSL", undefined);
             await set("http", "proxyStrictSSL", undefined);
         }
         beforeEach(reset);
@@ -66,36 +20,75 @@ describe(__filename, () => {
             assert.strictEqual(workspaceConfigs.proxyStrictSSL, true);
         });
 
-        it("falls back to http.proxyStrictSSL when unset", async () => {
+        it("follows http.proxyStrictSSL", async () => {
             await set("http", "proxyStrictSSL", false);
-            assert.strictEqual(workspaceConfigs.proxyStrictSSL, false);
-        });
-
-        it("lets databricks.proxy.strictSSL override http.proxyStrictSSL", async () => {
-            await set("http", "proxyStrictSSL", false);
-            await set("databricks", "proxy.strictSSL", true);
-            assert.strictEqual(workspaceConfigs.proxyStrictSSL, true);
-
-            await set("http", "proxyStrictSSL", true);
-            await set("databricks", "proxy.strictSSL", false);
             assert.strictEqual(workspaceConfigs.proxyStrictSSL, false);
         });
     });
 
-    describe("httpSystemCertificates", () => {
+    describe("onDidChangeProxyStrictSSL", () => {
         async function reset() {
-            await set("http", "systemCertificates", undefined);
+            await set("http", "proxyStrictSSL", undefined);
+            await set("databricks", "proxy.caCert", undefined);
         }
         beforeEach(reset);
         afterEach(reset);
 
-        it("defaults to true", () => {
-            assert.strictEqual(workspaceConfigs.httpSystemCertificates, true);
+        it("fires only for http.proxyStrictSSL", async () => {
+            let calls = 0;
+            let resolveFired: () => void;
+            const fired = new Promise<void>((resolve) => {
+                resolveFired = resolve;
+            });
+            const disposable = workspaceConfigs.onDidChangeProxyStrictSSL(
+                () => {
+                    calls++;
+                    resolveFired();
+                }
+            );
+            try {
+                await set("databricks", "proxy.caCert", "/etc/corp-ca.pem");
+                await set("http", "proxyStrictSSL", false);
+                await fired;
+                assert.strictEqual(calls, 1);
+            } finally {
+                disposable.dispose();
+            }
+        });
+    });
+
+    describe("configuredDeprecatedProxySettings", () => {
+        async function reset() {
+            await set("databricks", "proxy.strictSSL", undefined);
+            await set("databricks", "proxy.caCert", undefined);
+        }
+        beforeEach(reset);
+        afterEach(reset);
+
+        it("is empty when neither setting is set", () => {
+            assert.deepStrictEqual(
+                workspaceConfigs.configuredDeprecatedProxySettings,
+                []
+            );
         });
 
-        it("follows http.systemCertificates", async () => {
-            await set("http", "systemCertificates", false);
-            assert.strictEqual(workspaceConfigs.httpSystemCertificates, false);
+        it("treats null and empty values as unset", async () => {
+            const nullValue = null;
+            await set("databricks", "proxy.strictSSL", nullValue);
+            await set("databricks", "proxy.caCert", "");
+            assert.deepStrictEqual(
+                workspaceConfigs.configuredDeprecatedProxySettings,
+                []
+            );
+        });
+
+        it("lists the settings that are set", async () => {
+            await set("databricks", "proxy.strictSSL", true);
+            await set("databricks", "proxy.caCert", "/etc/corp-ca.pem");
+            assert.deepStrictEqual(
+                workspaceConfigs.configuredDeprecatedProxySettings,
+                ["databricks.proxy.strictSSL", "databricks.proxy.caCert"]
+            );
         });
     });
 });

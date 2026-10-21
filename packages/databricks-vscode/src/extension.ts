@@ -12,6 +12,7 @@ import {readFile} from "fs/promises";
 import {CliWrapper} from "./cli/CliWrapper";
 import {ConnectionCommands} from "./configuration/ConnectionCommands";
 import {ConnectionManager} from "./configuration/ConnectionManager";
+import {updateStrictSSLEnv} from "./configuration/auth/workspaceClient";
 import {ClusterListDataProvider} from "./cluster/ClusterListDataProvider";
 import {ClusterModel} from "./cluster/ClusterModel";
 import {ClusterCommands} from "./cluster/ClusterCommands";
@@ -36,7 +37,6 @@ import {
     FileUtils,
     HostUtils,
     PackageJsonUtils,
-    ProxyAgent,
     UrlUtils,
     UtilsCommands,
 } from "./utils";
@@ -464,6 +464,36 @@ function registerBundleVariablesView(
     );
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
+const DEPRECATED_PROXY_SETTING_HINTS = {
+    "databricks.proxy.strictSSL": "Set http.proxyStrictSSL instead.",
+    "databricks.proxy.caCert":
+        "Add the CA to the OS trust store, or start VS Code with NODE_EXTRA_CA_CERTS set to its PEM file.",
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
+function warnAboutDeprecatedProxySettings() {
+    const settings = workspaceConfigs.configuredDeprecatedProxySettings;
+    if (settings.length === 0) {
+        return;
+    }
+    const message = settings
+        .map(
+            (setting) =>
+                `${setting} is no longer used. ${DEPRECATED_PROXY_SETTING_HINTS[setting]}`
+        )
+        .join(" ");
+    logging.NamedLogger.getOrCreate(Loggers.Extension).warn(message);
+    void window.showWarningMessage(message, "Open Settings").then((choice) => {
+        if (choice) {
+            void commands.executeCommand(
+                "workbench.action.openSettings",
+                "databricks.proxy"
+            );
+        }
+    });
+}
+
 export async function activate(
     context: ExtensionContext
 ): Promise<PublicApi | undefined> {
@@ -509,6 +539,12 @@ export async function activate(
     void cli.checkBundledCliVersionForDev(packageMetadata);
     // Warn if the user has overriden the CLI path, and that overriden CLI is out of date
     cli.warnOverridenCliDrift(packageMetadata.cliVersion);
+
+    updateStrictSSLEnv();
+    context.subscriptions.push(
+        workspaceConfigs.onDidChangeProxyStrictSSL(updateStrictSSLEnv)
+    );
+    warnAboutDeprecatedProxySettings();
 
     // Loggers
     context.subscriptions.push(
@@ -1003,15 +1039,9 @@ export async function activate(
     }
 
     updateFeatureContexts();
-    // Resolve TLS strict-SSL through the same layered setting the SDK client
-    // path uses (databricks.proxy.strictSSL -> http.proxyStrictSSL -> true), so
-    // both writers of DATABRICKS_SDK_PROXY_STRICT_SSL agree and verification
-    // stays on by default when nothing is configured.
-    ProxyAgent.applyProxyStrictSSLEnv();
     context.subscriptions.push(
         workspace.onDidChangeConfiguration(() => {
             updateFeatureContexts();
-            ProxyAgent.applyProxyStrictSSLEnv();
         })
     );
 

@@ -64,11 +64,7 @@ export class UnityGatewayConnectionManager implements Disposable {
                     import("./UnityGatewayResponsesClient"),
                 ]
             );
-            const options = v2ClientOptions(
-                apiClient,
-                host,
-                await apiClient.getAgent()
-            );
+            const options = v2ClientOptions(apiClient, host);
             return {
                 aiGateway: new aiGateway.AiGatewayClient(options),
                 responses: new responses.UnityGatewayResponsesClient(options),

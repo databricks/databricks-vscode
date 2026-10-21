@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import http from "node:http";
 import {
     CancellationError,
     CancellationTokenSource,
@@ -51,8 +50,7 @@ describe(__filename, () => {
         return new AiGatewayClient({
             ...v2ClientOptions(
                 new ApiClient(config),
-                new URL("https://ws.cloud.databricks.com"),
-                new http.Agent()
+                new URL("https://ws.cloud.databricks.com")
             ),
             httpClient: {
                 send: async (): Promise<HttpResponse> => {
@@ -98,8 +96,7 @@ describe(__filename, () => {
         return new UnityGatewayResponsesClient({
             ...v2ClientOptions(
                 new ApiClient(config),
-                new URL("https://ws.cloud.databricks.com"),
-                new http.Agent()
+                new URL("https://ws.cloud.databricks.com")
             ),
             httpClient: {
                 send: async (request) => {

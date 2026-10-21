@@ -1,5 +1,3 @@
-import type * as http from "node:http";
-import type * as https from "node:https";
 import {Readable} from "node:stream";
 import {
     type ApiClient,
@@ -16,14 +14,12 @@ export type BridgedClientOptions = ClientOptions &
     Required<Pick<ClientOptions, "host" | "credentials" | "httpClient">>;
 
 /**
- * V2 ClientOptions for a connected v1 client. Pass the client's own agent, so
- * both SDKs share one proxy and CA setup. No `logger` yet: V2 logs response
+ * V2 ClientOptions for a connected v1 client. No `logger` yet: V2 logs response
  * bodies unredacted.
  */
 export function v2ClientOptions(
     apiClient: ApiClient,
-    host: URL,
-    agent: http.Agent | https.Agent
+    host: URL
 ): BridgedClientOptions {
     // Global, and read when a client is built. Repeating it is a no-op.
     setProduct(apiClient.product, apiClient.productVersion);
@@ -32,7 +28,7 @@ export function v2ClientOptions(
         host: host.origin,
         workspaceId: config.workspaceId,
         credentials: v2Credentials(config),
-        httpClient: agentHttpClient(agent),
+        httpClient: v1FetchHttpClient(),
         // Without this, V2 fills unset options from ~/.databrickscfg and
         // DATABRICKS_* variables, which may name another workspace.
         profileOptions: {noProfile: true, disableEnv: true},
@@ -55,21 +51,20 @@ export function v2Credentials(config: Config): Credentials {
 }
 
 /**
- * A V2 transport over v1's fetch, so requests go through the extension's
- * proxy- and CA-aware agent (`databricks.proxy.caCert` included), which V2's
- * default global fetch ignores. v1's fetch only sends a body with POST or PUT,
- * so V2's PATCH-based update methods fail through it. It also follows a 301 or
- * 302 with the same headers, Authorization included, and never settles, so a
- * redirected request hangs until its signal aborts.
+ * A V2 transport over v1's fetch, which applies `http.proxyStrictSSL` (through
+ * `DATABRICKS_SDK_PROXY_STRICT_SSL`); VS Code's patched global fetch ignores
+ * it. v1's fetch only sends a body with POST or PUT, so V2's PATCH-based update
+ * methods fail through it. It also follows a 301 or 302 with the same headers,
+ * Authorization included, and never settles, so a redirected request hangs
+ * until its signal aborts.
  */
-export function agentHttpClient(agent: http.Agent | https.Agent): HttpClient {
+export function v1FetchHttpClient(): HttpClient {
     return {
         async send({url, method, headers, body, signal}) {
             const response = await v1Fetch(url, {
                 method,
                 headers,
                 signal,
-                agent,
                 body:
                     body instanceof Uint8Array
                         ? Readable.from(

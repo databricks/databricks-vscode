@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import http from "node:http";
 import {ApiClient, Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import type {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {anything, deepEqual, instance, mock, verify, when} from "ts-mockito";
@@ -29,7 +28,6 @@ describe(__filename, () => {
     let unreachableProfiles: Set<string>;
     let apiClients: Map<string, ApiClient>;
     let restoredProfiles: string[];
-    let agentRequests: string[];
     let aiGatewayClients: {
         client: AiGatewayClient;
         responses: UnityGatewayResponsesClient;
@@ -65,10 +63,6 @@ describe(__filename, () => {
         // As createWorkspaceClient sets them.
         when(mockApiClient.product).thenReturn("databricks-vscode");
         when(mockApiClient.productVersion).thenReturn("1.2.3");
-        when(mockApiClient.getAgent()).thenCall(async () => {
-            agentRequests.push(name);
-            return new http.Agent();
-        });
         const apiClient = instance(mockApiClient);
         apiClients.set(name, apiClient);
         when(mockWorkspaceClient.apiClient).thenReturn(apiClient);
@@ -97,7 +91,6 @@ describe(__filename, () => {
         unreachableProfiles = new Set();
         apiClients = new Map();
         restoredProfiles = [];
-        agentRequests = [];
         aiGatewayClients = [];
         clientFailures = new Set();
         manager = new UnityGatewayConnectionManager(
@@ -256,7 +249,7 @@ describe(__filename, () => {
             ).never();
         });
 
-        it("builds the Unity Gateway clients on v1's proxy agent", async () => {
+        it("builds the Unity Gateway clients", async () => {
             const defaultManager = new UnityGatewayConnectionManager(
                 instance(mock(CliWrapper)),
                 instance(mockStateStorage)
@@ -266,7 +259,6 @@ describe(__filename, () => {
 
                 assert.ok(defaultManager.aiGatewayClient);
                 assert.ok(defaultManager.responsesClient);
-                assert.deepStrictEqual(agentRequests, ["a"]);
             } finally {
                 defaultManager.dispose();
             }

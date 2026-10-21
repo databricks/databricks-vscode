@@ -4,7 +4,6 @@ import {Uri} from "vscode";
 import {logging, Headers} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
-import {mergeNoProxy} from "./network/proxyAgent";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require("../../package.json");
@@ -141,21 +140,12 @@ export async function getDbConnectEnvVars(
 }
 
 /**
- * Proxy env vars forwarded to the bundled Databricks CLI (and any other
- * subprocess). The Go CLI does no proxy handling of its own — it relies on Go's
- * `http.ProxyFromEnvironment`, which reads only these env vars — so this is the
- * only way to route CLI traffic through a proxy.
- *
- * Precedence mirrors the in-process SDK path (`proxyAgent.ts`
- * `getProxyAgentParams`): the VS Code `http.proxy` setting wins over the OS
- * `http(s)_proxy` env vars. That keeps the CLI and the SDK resolving the same
- * proxy from the same inputs, so a user who configures the proxy purely through
- * the VS Code setting gets it applied to both. `no_proxy` is the exception — the
- * `http.noProxy` setting and the env var are *unioned* (not overridden), since a
- * bypass list is only ever safer when it's broader.
- *
- * Absent values stay `undefined` so `removeUndefinedKeys(...)` at the call sites
- * strips them, leaving the CLI's own env untouched when nothing is configured.
+ * Proxy env vars for the bundled Databricks CLI, which reads a proxy only from
+ * these, and for the `.env` file via `getCommonDatabricksEnvVars`. The
+ * `http.proxy` setting wins over the OS env vars; `http.noProxy` and `NO_PROXY`
+ * are merged. Absent values stay `undefined` so callers strip them.
+ * In-process SDK calls don't use these: VS Code's own proxy handling applies
+ * to them, including `http.proxySupport` and system or PAC proxies.
  */
 export function getProxyEnvVars() {
     // The `http.proxy` setting is a single URL used for both schemes.
@@ -165,10 +155,14 @@ export function getProxyEnvVars() {
     const httpsProxy =
         settingProxy || process.env.HTTPS_PROXY || process.env.https_proxy;
 
-    // Merge the `http.noProxy` setting with the NO_PROXY env var (shared with
-    // the in-process SDK proxy resolver), then join back to the comma-separated
-    // form the CLI expects.
-    const noProxy = mergeNoProxy().join(",") || undefined;
+    const envNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
+    const noProxyHosts = [
+        ...workspaceConfigs.httpNoProxy,
+        ...envNoProxy.split(","),
+    ]
+        .map((host) => host.trim())
+        .filter((host) => host.length > 0);
+    const noProxy = [...new Set(noProxyHosts)].join(",") || undefined;
 
     return {
         /* eslint-disable @typescript-eslint/naming-convention */

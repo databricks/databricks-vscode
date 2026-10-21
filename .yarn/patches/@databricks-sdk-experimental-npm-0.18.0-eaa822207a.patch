@@ -1,0 +1,44 @@
+diff --git a/dist/api-client.d.ts b/dist/api-client.d.ts
+index 607a2636c398421a188824dc76587656dd9d3a02..4b0fc096fc6fb65fa565ab5f58fe144e2b421664 100644
+--- a/dist/api-client.d.ts
++++ b/dist/api-client.d.ts
+@@ -24,7 +24,7 @@ export declare class ApiClient {
+     constructor(config: Config, options?: ClientOptions);
+     get host(): Promise<URL>;
+     get accountId(): Promise<string | undefined>;
+-    getAgent(): Promise<http.Agent | https.Agent>;
++    getAgent(): Promise<http.Agent | https.Agent | undefined>;
+     userAgent(): string;
+     searchParams(query: SearchParams): string;
+     request(options: {
+diff --git a/dist/api-client.js b/dist/api-client.js
+index 70ac213da228d0fad2150f3a9dbd09f552db7121..ae3a5281b9824918e2e718af1f92400bf48d5008 100644
+--- a/dist/api-client.js
++++ b/dist/api-client.js
+@@ -83,26 +83,6 @@ class ApiClient {
+         });
+     }
+     async getAgent() {
+-        if (!this._agent) {
+-            await this.config.ensureResolved();
+-            const hostUrl = await this.config.getHost();
+-            const isHttp = hostUrl.protocol === "http:";
+-            if (isHttp) {
+-                this._agent = new http.Agent({
+-                    keepAlive: true,
+-                    keepAliveMsecs: 15000,
+-                    timeout: (this.config.httpTimeoutSeconds || 5) * 1000,
+-                });
+-            }
+-            else {
+-                this._agent = new https.Agent({
+-                    keepAlive: true,
+-                    keepAliveMsecs: 15000,
+-                    rejectUnauthorized: this.config.skipVerify === false,
+-                    timeout: (this.config.httpTimeoutSeconds || 5) * 1000,
+-                });
+-            }
+-        }
+         return this._agent;
+     }
+     userAgent() {

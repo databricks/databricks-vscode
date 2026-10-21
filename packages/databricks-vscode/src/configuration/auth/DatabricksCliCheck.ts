@@ -12,7 +12,7 @@ import {DatabricksCliAuthProvider} from "./AuthProvider";
 import {orchestrate, OrchestrationLoopError, Step} from "./orchestrate";
 import {Loggers} from "../../logger";
 import {execFile} from "../../cli/CliWrapper";
-import {ProxyAgent} from "../../utils";
+import {createWorkspaceClient} from "./workspaceClient";
 
 type StepName = "tryLogin" | "login";
 
@@ -106,18 +106,15 @@ export class DatabricksCliCheck implements Disposable {
     private async tryLogin(
         cancellationToken?: CancellationToken
     ): Promise<boolean> {
-        const workspaceClient = await ProxyAgent.createWorkspaceClient(
-            {
-                host: this.authProvider.host.toString(),
-                authType: "databricks-cli",
-                databricksCliPath: this.authProvider.cliPath,
-                profile: this.authProvider.profile,
-                ...(this.authProvider.workspaceId
-                    ? {workspaceId: this.authProvider.workspaceId}
-                    : {}),
-            },
-            this.authProvider.host
-        );
+        const workspaceClient = createWorkspaceClient({
+            host: this.authProvider.host.toString(),
+            authType: "databricks-cli",
+            databricksCliPath: this.authProvider.cliPath,
+            profile: this.authProvider.profile,
+            ...(this.authProvider.workspaceId
+                ? {workspaceId: this.authProvider.workspaceId}
+                : {}),
+        });
 
         try {
             await workspaceClient.currentUser.me(
