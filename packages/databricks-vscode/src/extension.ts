@@ -465,7 +465,7 @@ function registerBundleVariablesView(
 }
 
 /* eslint-disable @typescript-eslint/naming-convention */
-const deprecatedProxySettingHints = {
+const DEPRECATED_PROXY_SETTING_HINTS = {
     "databricks.proxy.strictSSL": "Set http.proxyStrictSSL instead.",
     "databricks.proxy.caCert":
         "Add the CA to the OS trust store, or start VS Code with NODE_EXTRA_CA_CERTS set to its PEM file.",
@@ -480,7 +480,7 @@ function warnAboutDeprecatedProxySettings() {
     const message = settings
         .map(
             (setting) =>
-                `${setting} is no longer used. ${deprecatedProxySettingHints[setting]}`
+                `${setting} is no longer used. ${DEPRECATED_PROXY_SETTING_HINTS[setting]}`
         )
         .join(" ");
     logging.NamedLogger.getOrCreate(Loggers.Extension).warn(message);
@@ -542,11 +542,7 @@ export async function activate(
 
     updateStrictSSLEnv();
     context.subscriptions.push(
-        workspace.onDidChangeConfiguration((e) => {
-            if (e.affectsConfiguration("http.proxyStrictSSL")) {
-                updateStrictSSLEnv();
-            }
-        })
+        workspaceConfigs.onDidChangeProxyStrictSSL(updateStrictSSLEnv)
     );
     warnAboutDeprecatedProxySettings();
 

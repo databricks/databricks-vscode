@@ -26,6 +26,37 @@ describe(__filename, () => {
         });
     });
 
+    describe("onDidChangeProxyStrictSSL", () => {
+        async function reset() {
+            await set("http", "proxyStrictSSL", undefined);
+            await set("databricks", "proxy.caCert", undefined);
+        }
+        beforeEach(reset);
+        afterEach(reset);
+
+        it("fires only for http.proxyStrictSSL", async () => {
+            let calls = 0;
+            let resolveFired: () => void;
+            const fired = new Promise<void>((resolve) => {
+                resolveFired = resolve;
+            });
+            const disposable = workspaceConfigs.onDidChangeProxyStrictSSL(
+                () => {
+                    calls++;
+                    resolveFired();
+                }
+            );
+            try {
+                await set("databricks", "proxy.caCert", "/etc/corp-ca.pem");
+                await set("http", "proxyStrictSSL", false);
+                await fired;
+                assert.strictEqual(calls, 1);
+            } finally {
+                disposable.dispose();
+            }
+        });
+    });
+
     describe("configuredDeprecatedProxySettings", () => {
         async function reset() {
             await set("databricks", "proxy.strictSSL", undefined);

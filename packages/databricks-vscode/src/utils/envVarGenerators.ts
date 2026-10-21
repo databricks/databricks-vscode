@@ -141,8 +141,9 @@ export async function getDbConnectEnvVars(
 
 /**
  * Proxy env vars for the bundled Databricks CLI, which reads a proxy only from
- * these. The `http.proxy` setting wins over the OS env vars; `http.noProxy` and
- * `NO_PROXY` are merged. Absent values stay `undefined` so callers strip them.
+ * these, and for the `.env` file via `getCommonDatabricksEnvVars`. The
+ * `http.proxy` setting wins over the OS env vars; `http.noProxy` and `NO_PROXY`
+ * are merged. Absent values stay `undefined` so callers strip them.
  * In-process SDK calls don't use these: VS Code's own proxy handling applies
  * to them, including `http.proxySupport` and system or PAC proxies.
  */

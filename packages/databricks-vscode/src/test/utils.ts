@@ -33,7 +33,7 @@ export function recordHttpRequests(host: URL) {
             options?.hostname === host.hostname &&
             String(options.port) === host.port
         ) {
-            requests.push(options);
+            requests.push({...options});
         }
         return original(...args);
     }) as typeof http.request;

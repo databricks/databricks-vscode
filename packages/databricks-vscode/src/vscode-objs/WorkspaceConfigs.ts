@@ -213,6 +213,14 @@ export const workspaceConfigs = {
         );
     },
 
+    onDidChangeProxyStrictSSL(listener: () => void): Disposable {
+        return workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration("http.proxyStrictSSL")) {
+                listener();
+            }
+        });
+    },
+
     get httpProxy(): string | undefined {
         return (
             workspace.getConfiguration("http").get<string>("proxy") || undefined
