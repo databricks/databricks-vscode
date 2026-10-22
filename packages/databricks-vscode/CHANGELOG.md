@@ -1,3 +1,15 @@
+# Release: v2.22.0
+
+## packages/databricks-vscode
+
+## (2026-10-22)
+
+-   fix(bundle): find sub-projects without blocking the extension host (#2249) ([5ebf39f](https://github.com/databricks/databricks-vscode/commit/5ebf39f))
+-   fix(network): let VS Code handle proxies and certificates for SDK calls (#2266) ([589041a](https://github.com/databricks/databricks-vscode/commit/589041a))
+-   fix(python-setup): recover a uv workspace member from a constraint conflict (#2254) ([7752f5d](https://github.com/databricks/databricks-vscode/commit/7752f5d))
+-   fix(python-setup): select the shared uv workspace venv for a workspace member (#2253) ([faa6f58](https://github.com/databricks/databricks-vscode/commit/faa6f58))
+-   Expose the bundle Configuration view and Bundle Resource Explorer in Databricks Remote SSH mode (#2236) ([375dd8d](https://github.com/databricks/databricks-vscode/commit/375dd8d))
+
 # Release: v2.21.0
 
 ## packages/databricks-vscode
