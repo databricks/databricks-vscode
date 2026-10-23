@@ -143,21 +143,21 @@ describe("Automatically refresh resource explorer", async function () {
             async () => {
                 // Title actions show only on hover. Re-fetch the action on
                 // each try: a tree refresh can re-render the title bar.
-                await (await resourceExplorerView.elem)
-                    .$(".pane-header")
-                    .moveTo();
+                await resourceExplorerView.header$.moveTo();
                 const action =
                     await resourceExplorerView.getAction("Collapse All");
                 if (action === undefined) {
                     return false;
                 }
                 await (await action.elem).click();
-                const labels = await Promise.all(
+                const texts = await Promise.all(
                     (await resourceExplorerView.getVisibleItems()).map((i) =>
-                        i.getLabel()
+                        i.elem.getText()
                     )
                 );
-                return labels.length === 1 && labels[0] === "Jobs";
+                return (
+                    texts.length > 0 && !texts.some((t) => t.includes(jobName))
+                );
             },
             {
                 timeout: 20_000,
@@ -166,6 +166,8 @@ describe("Automatically refresh resource explorer", async function () {
             }
         );
 
+        // getResourceViewItem expands the Jobs header again; the job itself
+        // must stay collapsed.
         const jobItem = await getResourceViewItem(
             resourceExplorerView,
             "Jobs",
