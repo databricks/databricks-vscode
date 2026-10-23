@@ -139,6 +139,16 @@ describe("Automatically refresh resource explorer", async function () {
     });
 
     it("should collapse all resources", async function () {
+        const expandedJob = await getResourceViewItem(
+            resourceExplorerView,
+            "Jobs",
+            jobName
+        );
+        assert(
+            expandedJob && (await expandedJob.isExpanded()),
+            "The job node should be expanded before Collapse All"
+        );
+
         await browser.waitUntil(
             async () => {
                 // Title actions show only on hover. Re-fetch the action on

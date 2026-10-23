@@ -68,6 +68,7 @@ export async function findViewSection(name: ViewSectionType) {
  * clicks that land on the toolbar, so the section stays expanded.
  */
 async function collapseViewSection(section: ViewSection) {
+    // A section that is alone in its container has a hidden header.
     const headerClass = (await section.header$.getAttribute("class")) ?? "";
     if (headerClass.includes("hidden") || !(await section.isExpanded())) {
         return;
