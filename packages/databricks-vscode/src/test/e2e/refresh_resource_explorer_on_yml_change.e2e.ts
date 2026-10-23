@@ -20,6 +20,7 @@ describe("Automatically refresh resource explorer", async function () {
     let projectName: string;
     let resourceExplorerView: CustomTreeSection;
     let clusterId: string;
+    let jobName: string;
 
     this.timeout(3 * 60 * 1000);
 
@@ -107,6 +108,7 @@ describe("Automatically refresh resource explorer", async function () {
             vscodeWorkspaceRoot,
             clusterId
         );
+        jobName = jobDef.name!;
 
         await browser.waitUntil(
             async () => {
@@ -134,5 +136,57 @@ describe("Automatically refresh resource explorer", async function () {
                 `Task view item with name ${task.task_key} not found`
             );
         }
+    });
+
+    it("should collapse all resources", async function () {
+        const expandedJob = await getResourceViewItem(
+            resourceExplorerView,
+            "Jobs",
+            jobName
+        );
+        assert(
+            expandedJob && (await expandedJob.isExpanded()),
+            "The job node should be expanded before Collapse All"
+        );
+
+        await browser.waitUntil(
+            async () => {
+                // Title actions show only on hover. Re-fetch the action on
+                // each try: a tree refresh can re-render the title bar.
+                await resourceExplorerView.header$.moveTo();
+                const action =
+                    await resourceExplorerView.getAction("Collapse All");
+                if (action === undefined) {
+                    return false;
+                }
+                await (await action.elem).click();
+                const texts = await Promise.all(
+                    (await resourceExplorerView.getVisibleItems()).map((i) =>
+                        i.elem.getText()
+                    )
+                );
+                return (
+                    texts.length > 0 && !texts.some((t) => t.includes(jobName))
+                );
+            },
+            {
+                timeout: 20_000,
+                interval: 2_000,
+                timeoutMsg: "Resource explorer did not collapse to headers",
+            }
+        );
+
+        // getResourceViewItem expands the Jobs header again; the job itself
+        // must stay collapsed.
+        const jobItem = await getResourceViewItem(
+            resourceExplorerView,
+            "Jobs",
+            jobName
+        );
+        assert(jobItem, `Job ${jobName} not found in resource explorer`);
+        assert(
+            !(await jobItem.isExpanded()),
+            "Collapse All should also collapse nested job nodes"
+        );
     });
 });
