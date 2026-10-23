@@ -62,6 +62,23 @@ export async function findViewSection(name: ViewSectionType) {
     }
 }
 
+/**
+ * Collapses a view section by clicking its twisty. wdio's `collapse()` clicks the
+ * header centre, which a wide title-bar toolbar can cover; VS Code ignores header
+ * clicks that land on the toolbar, so the section stays expanded.
+ */
+async function collapseViewSection(section: ViewSection) {
+    const headerClass = (await section.header$.getAttribute("class")) ?? "";
+    if (headerClass.includes("hidden") || !(await section.isExpanded())) {
+        return;
+    }
+    await section.header$.$(".twisty-container").click();
+    await browser.waitUntil(async () => !(await section.isExpanded()), {
+        timeout: 5_000,
+        timeoutMsg: "View section did not collapse",
+    });
+}
+
 export async function getViewSection(
     name: ViewSectionType
 ): Promise<ViewSection | undefined> {
@@ -79,7 +96,10 @@ export async function getViewSection(
 
     for (const s of ViewSectionTypes) {
         if (s !== name) {
-            await (await findViewSection(s))?.collapse();
+            const other = await findViewSection(s);
+            if (other) {
+                await collapseViewSection(other);
+            }
         }
     }
 
