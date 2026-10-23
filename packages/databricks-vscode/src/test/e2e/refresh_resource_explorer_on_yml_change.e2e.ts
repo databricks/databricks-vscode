@@ -135,4 +135,27 @@ describe("Automatically refresh resource explorer", async function () {
             );
         }
     });
+
+    it("should collapse all resources", async function () {
+        await (await resourceExplorerView.elem).click();
+        const action = await resourceExplorerView.getAction("Collapse All");
+        assert(action, "Collapse All action not found");
+        await (await action.elem).click();
+
+        await browser.waitUntil(
+            async () => {
+                const labels = await Promise.all(
+                    (await resourceExplorerView.getVisibleItems()).map((i) =>
+                        i.getLabel()
+                    )
+                );
+                return labels.length === 1 && labels[0] === "Jobs";
+            },
+            {
+                timeout: 10_000,
+                interval: 1_000,
+                timeoutMsg: "Resource explorer did not collapse to headers",
+            }
+        );
+    });
 });
