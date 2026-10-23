@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import {
     dismissNotifications,
+    getLocalFolderTreeItem,
     getTabByTitle,
     getUniqueResourceName,
     getViewSection,
@@ -9,12 +10,10 @@ import {
     waitForTreeItems,
 } from "./utils/commonUtils.ts";
 import {Workbench, sleep} from "wdio-vscode-service";
-import {tmpdir} from "os";
 import {Key} from "webdriverio";
 
 describe("Bundle Init", async function () {
     let workbench: Workbench;
-    let vscodeWorkspaceRoot: string;
     let projectName: string;
 
     this.timeout(3 * 60 * 1000);
@@ -56,7 +55,11 @@ describe("Bundle Init", async function () {
         const profileSelectionInput = await waitForInput();
         await profileSelectionInput.selectQuickPick("DEFAULT");
 
-        const parentDir = tmpdir();
+        // Create the project inside the open workspace, so the extension makes it
+        // the active project in place. A project outside the workspace is opened
+        // with a window reload, and on VS Code 1.104+ a reload cancels the
+        // extension test runner, which makes VS Code exit mid-test.
+        const parentDir = process.env.WORKSPACE_PATH!;
         const parentFolderInput = await waitForInput();
         // Type in the parentDir value to the input
         await browser.keys(parentDir.split(""));
@@ -145,19 +148,13 @@ describe("Bundle Init", async function () {
         const openProjectFolderInput = await waitForInput();
         await openProjectFolderInput.selectQuickPick(projectName);
 
-        // Wait until vscode is re-opened with the new workspace root
         await browser.waitUntil(
-            async () => {
-                vscodeWorkspaceRoot = (await browser.executeWorkbench(
-                    (vscode) => {
-                        return vscode.workspace.workspaceFolders[0].uri.fsPath;
-                    }
-                )) as string;
-                return vscodeWorkspaceRoot.includes(projectName);
-            },
+            async () =>
+                (await getLocalFolderTreeItem(projectName)) !== undefined,
             {
                 timeout: 60_000,
-                timeoutMsg: "Can't connect to the new project window",
+                interval: 2_000,
+                timeoutMsg: "The new project didn't become the active project",
             }
         );
     });

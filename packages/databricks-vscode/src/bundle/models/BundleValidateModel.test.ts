@@ -1,6 +1,6 @@
 import assert from "assert";
 import {Uri} from "vscode";
-import {anything, instance, mock, when} from "ts-mockito";
+import {anything, capture, instance, mock, verify, when} from "ts-mockito";
 import {CliWrapper} from "../../cli/CliWrapper";
 import {BundleWatcher} from "../BundleWatcher";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
@@ -8,6 +8,8 @@ import {AuthProvider} from "../../configuration/auth/AuthProvider";
 import {BundleValidateModel} from "./BundleValidateModel";
 
 describe("BundleValidateModel", () => {
+    let mockCli: CliWrapper;
+
     function buildModel(validateStdout: object): BundleValidateModel {
         const fakeWatcher = {
             onDidChange: () => ({dispose() {}}),
@@ -15,9 +17,10 @@ describe("BundleValidateModel", () => {
         const fakeWorkspaceFolderManager = {
             activeProjectUri: Uri.file("/tmp/project"),
         } as unknown as WorkspaceFolderManager;
-        const mockCli = mock(CliWrapper);
+        mockCli = mock(CliWrapper);
         when(
             mockCli.bundleValidate(
+                anything(),
                 anything(),
                 anything(),
                 anything(),
@@ -38,19 +41,45 @@ describe("BundleValidateModel", () => {
         return model;
     }
 
-    it("reads bundle.engine off the validate output", async () => {
-        const model = buildModel({
-            bundle: {name: "proj", engine: "terraform"},
-        });
+    it("skips the CLI when the auth guard refuses the target", async () => {
+        const model = buildModel({bundle: {name: "proj"}});
+        model.setAuthProvider(
+            {toJSON: () => ({})} as unknown as AuthProvider,
+            async () => ({allowed: false, reason: "nope"})
+        );
 
-        assert.strictEqual(await model.get("engine"), "terraform");
+        assert.deepStrictEqual(await model.load(), {});
+        verify(
+            mockCli.bundleValidate(
+                anything(),
+                anything(),
+                anything(),
+                anything(),
+                anything(),
+                anything()
+            )
+        ).never();
     });
 
-    it("leaves engine undefined when the validate output omits it", async () => {
-        const model = buildModel({
-            bundle: {name: "proj"},
-        });
+    it("pins the bundle root to the project folder in remote mode", async () => {
+        // A credential guard means Remote SSH mode: the CLI must resolve the
+        // same bundle root the guard checked, so the model passes the project
+        // root and pinBundleRoot=true.
+        const model = buildModel({bundle: {name: "proj"}});
+        model.setAuthProvider(
+            {toJSON: () => ({})} as unknown as AuthProvider,
+            async () => ({allowed: true})
+        );
 
-        assert.strictEqual(await model.get("engine"), undefined);
+        await model.load();
+
+        const [, , projectRoot, , , pinBundleRoot] = capture(
+            mockCli.bundleValidate
+        ).last();
+        assert.strictEqual(
+            (projectRoot as Uri).fsPath,
+            Uri.file("/tmp/project").fsPath
+        );
+        assert.strictEqual(pinBundleRoot, true);
     });
 });

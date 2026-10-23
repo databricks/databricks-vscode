@@ -4,12 +4,21 @@ updates:
     directory: "/packages/databricks-sdk-js"
     schedule:
       interval: "daily"
+    # The Databricks npm mirror serves a new release only ~7 days after it is
+    # published; opening a PR sooner fails CI with a JFrog 403 on the missing
+    # tarball. Wait out that ~7-day window plus a buffer (as the github-actions
+    # block below also does) so Dependabot only proposes mirror-available versions.
+    cooldown:
+      default-days: 10
     ignore:
       - dependency-name: "@databricks/*"
   - package-ecosystem: "npm"
     directory: "/packages/databricks-vscode"
     schedule:
       interval: "daily"
+    # See the note above: hold new releases past the ~7d mirror window plus buffer.
+    cooldown:
+      default-days: 10
     ignore:
       - dependency-name: "@databricks/*"
       # ESM-only majors — blocked until the build/test tooling is migrated off
@@ -20,11 +29,11 @@ updates:
         versions: [">=5"]
       - dependency-name: "@types/chai"
         versions: [">=5"]
-      # @types/vscode must track engines.vscode (^1.86.0); bump both together
+      # @types/vscode must track engines.vscode (^1.104.0); bump both together
       # only when the minimum supported VS Code version is deliberately raised.
       # See PR #1933.
       - dependency-name: "@types/vscode"
-        versions: [">=1.87"]
+        versions: [">=1.105"]
       # @types/node must track the runtime we ship on (engines.node ">=22"; the
       # VS Code extension host runs Node 18), not the latest release. Newer types
       # would type-check against APIs absent at runtime. Bump only when the Node
@@ -41,11 +50,11 @@ updates:
     directory: "/packages/databricks-vscode-types"
     ignore:
       - dependency-name: "@databricks/*"
-      # @types/vscode must track engines.vscode (^1.86.0); bump both together
+      # @types/vscode must track engines.vscode (^1.104.0); bump both together
       # only when the minimum supported VS Code version is deliberately raised.
       # See PR #1933.
       - dependency-name: "@types/vscode"
-        versions: [">=1.87"]
+        versions: [">=1.105"]
       # TypeScript 7 removes `moduleResolution: node10` (see tsconfig_base); moving
       # to it is a deliberate migration, not a drop-in bump. Stay on 6.x for now.
       # See PR #1993.
@@ -53,9 +62,13 @@ updates:
         versions: [">=7"]
     schedule:
       interval: "daily"
+    # See the note above: hold new releases past the ~7d mirror window plus buffer.
+    cooldown:
+      default-days: 10
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    # ~7d mirror window plus buffer, matching the npm blocks above.
     cooldown:
-      default-days: 7
+      default-days: 10

@@ -1,15 +1,14 @@
 import {Loggers} from "../logger";
 import {readFile} from "fs/promises";
-import {ExtensionContext, Uri} from "vscode";
+import {Uri} from "vscode";
 import {logging, Headers} from "@databricks/sdk-experimental";
 import {ConnectionManager} from "../configuration/ConnectionManager";
-import {TerraformMetadata} from "./terraformUtils";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require("../../package.json");
 
 const extensionVersion = packageJson.version;
-const terraformMetadata = packageJson.terraformMetadata as TerraformMetadata;
 
 //Get env variables from user's .env file
 export async function getUserEnvVars(userEnvPath: Uri) {
@@ -140,20 +139,41 @@ export async function getDbConnectEnvVars(
     /* eslint-enable @typescript-eslint/naming-convention */
 }
 
+/**
+ * Proxy env vars for the bundled Databricks CLI, which reads a proxy only from
+ * these, and for the `.env` file via `getCommonDatabricksEnvVars`. The
+ * `http.proxy` setting wins over the OS env vars; `http.noProxy` and `NO_PROXY`
+ * are merged. Absent values stay `undefined` so callers strip them.
+ * In-process SDK calls don't use these: VS Code's own proxy handling applies
+ * to them, including `http.proxySupport` and system or PAC proxies.
+ */
 export function getProxyEnvVars() {
+    // The `http.proxy` setting is a single URL used for both schemes.
+    const settingProxy = workspaceConfigs.httpProxy;
+    const httpProxy =
+        settingProxy || process.env.HTTP_PROXY || process.env.http_proxy;
+    const httpsProxy =
+        settingProxy || process.env.HTTPS_PROXY || process.env.https_proxy;
+
+    const envNoProxy = process.env.NO_PROXY || process.env.no_proxy || "";
+    const noProxyHosts = [
+        ...workspaceConfigs.httpNoProxy,
+        ...envNoProxy.split(","),
+    ]
+        .map((host) => host.trim())
+        .filter((host) => host.length > 0);
+    const noProxy = [...new Set(noProxyHosts)].join(",") || undefined;
+
     return {
         /* eslint-disable @typescript-eslint/naming-convention */
-        HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy,
-        HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy,
-        NO_PROXY: process.env.NO_PROXY || process.env.no_proxy,
+        HTTP_PROXY: httpProxy,
+        HTTPS_PROXY: httpsProxy,
+        NO_PROXY: noProxy,
         /* eslint-enable @typescript-eslint/naming-convention */
     };
 }
 
-export function getEnvVarsForCli(
-    extensionContext: ExtensionContext,
-    configfilePath?: string
-) {
+export function getEnvVarsForCli(configfilePath?: string) {
     /* eslint-disable @typescript-eslint/naming-convention */
     return {
         HOME: process.env.HOME,
@@ -163,25 +183,6 @@ export function getEnvVarsForCli(
         DATABRICKS_OUTPUT_FORMAT: "json",
         DATABRICKS_CLI_UPSTREAM: "databricks-vscode",
         DATABRICKS_CLI_UPSTREAM_VERSION: extensionVersion,
-        ...getCLIDependenciesEnvVars(extensionContext),
-    };
-    /* eslint-enable @typescript-eslint/naming-convention */
-}
-
-export function getCLIDependenciesEnvVars(extensionContext: ExtensionContext) {
-    if (!terraformMetadata) {
-        return {};
-    }
-    /* eslint-disable @typescript-eslint/naming-convention */
-    return {
-        DATABRICKS_TF_VERSION: terraformMetadata.version,
-        DATABRICKS_TF_EXEC_PATH: extensionContext.asAbsolutePath(
-            terraformMetadata.execRelPath
-        ),
-        DATABRICKS_TF_PROVIDER_VERSION: terraformMetadata.providerVersion,
-        DATABRICKS_TF_CLI_CONFIG_FILE: extensionContext.asAbsolutePath(
-            terraformMetadata.terraformCliConfigRelPath
-        ),
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 }

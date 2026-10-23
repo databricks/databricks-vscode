@@ -20,6 +20,8 @@
  * provision — every acceptance case uses `--dry-run`). It follows
  * libs/localenv/result.go: `dryRun: false`, no `plan`, and the `venvPath` /
  * `backupPath` fields the extension's adopt-interpreter step consumes.
+ * SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER follows the same file for a member of a
+ * uv workspace: the shared venv and the constraint pins live at the root.
  */
 
 import {PythonSetupResult} from "../PythonSetupResult";
@@ -249,7 +251,7 @@ export const SUCCESS_REAL_RUN: PythonSetupResult = {
         artifactSource: "network",
     },
     greenfield: false,
-    venvPath: "/home/user/project/.venv",
+    venvPath: ".venv",
     backupPath: "/home/user/project/pyproject.toml.bak",
     phases: [
         {phase: "preflight", status: "ok"},
@@ -262,6 +264,18 @@ export const SUCCESS_REAL_RUN: PythonSetupResult = {
     warnings: [],
     error: null,
     durationMs: 0,
+};
+
+/**
+ * Synthesized real run in `bundles/sales`, a member of the uv workspace at
+ * `/home/user/monorepo`. `venvPath` stays relative to the member folder.
+ */
+export const SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER: PythonSetupResult = {
+    ...SUCCESS_REAL_RUN,
+    venvPath: "../../.venv",
+    backupPath: "/home/user/monorepo/bundles/sales/pyproject.toml.bak",
+    uvWorkspaceRoot: "/home/user/monorepo",
+    uvWorkspaceBackupPath: "/home/user/monorepo/pyproject.toml.bak",
 };
 
 /**

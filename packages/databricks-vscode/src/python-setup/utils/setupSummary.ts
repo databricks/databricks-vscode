@@ -3,6 +3,7 @@ import {
     PythonSetupComputeInfo,
     PythonSetupResult,
 } from "../models/PythonSetupResult";
+import {SetupPresetFlags} from "./pythonSetupPresetPicker";
 import {venvInterpreterPath} from "./venvInterpreterPath";
 
 /**
@@ -14,8 +15,15 @@ import {venvInterpreterPath} from "./venvInterpreterPath";
  * message names the count but the outcome stays informational; the warnings
  * themselves are listed in the details.
  */
-export function formatSetupNotification(result: PythonSetupResult): string {
-    const tail = ".venv created and selected for your Databricks project.";
+export function formatSetupNotification(
+    result: PythonSetupResult,
+    platform: NodeJS.Platform = process.platform
+): string {
+    const venv = venvFolder(result, platform);
+    // Another member may have created the shared venv already.
+    const tail = result.uvWorkspaceRoot
+        ? `the shared uv workspace venv (${venv}) is selected for your Databricks project.`
+        : `${venv} created and selected for your Databricks project.`;
     const fallback =
         result.pythonResolution === "installed_fallback"
             ? "Python download failed; used a compatible installed Python " +
@@ -39,37 +47,52 @@ export function formatSetupNotification(result: PythonSetupResult): string {
  * messages) — necessary because in `--output json` mode the CLI streams little
  * or nothing to stderr on success, so without this the channel would be empty.
  *
+ * `flags` are the run's two orthogonal skip flags, resolved from the preset the
+ * user picked. They — not `result.mode` — decide what the panel claims was done:
+ * `mode` encodes only the databricks-connect axis (`default` vs
+ * `constraints-only`), so a DB Connect run (`--no-constraints`) is byte-identical
+ * to a Full run in that field and reading it would mis-report the constraints
+ * axis. `skipDbconnect` selects the databricks-connect vs plain-Python wording;
+ * `skipConstraints` gates the "added constraints" line.
+ *
  * `projectName` is the human-readable name uv associated with the venv (from
  * pyproject's `[project].name`, else the project folder name), surfaced by the
- * caller from `.venv/pyvenv.cfg`. It is shown in parentheses beside the venv
- * folder when known; when omitted the bare `.venv` folder name stands alone.
+ * caller from the venv's `pyvenv.cfg`. It is shown in parentheses beside the
+ * venv folder when known; when omitted the folder name stands alone.
  *
- * `platform` selects the OS-specific interpreter path shown in the notebook
- * hint (`.venv/bin/python` vs `.venv\Scripts\python.exe`); it defaults to the
- * host and is injectable so the output is deterministic in tests.
+ * `platform` selects the OS-specific venv folder and interpreter path shown
+ * (`.venv/bin/python` vs `.venv\Scripts\python.exe`); it defaults to the host
+ * and is injectable so the output is deterministic in tests.
  *
  * Returned with a leading and trailing newline so it reads as its own block
  * beneath any CLI output already streamed to the channel.
  */
 export function formatSetupLog(
     result: PythonSetupResult,
+    flags: SetupPresetFlags,
     projectName?: string,
     platform: NodeJS.Platform = process.platform
 ): string {
-    const isDefault = result.mode === "default";
-    // The venv folder is always `.venv`; when the caller resolved the project
-    // name, show it alongside so the line reads like the label VS Code puts on
-    // the interpreter (e.g. ".venv (my-project)").
-    const venvLabel = projectName ? `.venv (${projectName})` : ".venv";
+    const withDbconnect = !flags.skipDbconnect;
+    const constraintsApplied = !flags.skipConstraints;
+    // When the caller resolved the project name, show it alongside so the line
+    // reads like the label VS Code puts on the interpreter (e.g.
+    // ".venv (my-project)").
+    const venv = venvFolder(result, platform);
+    const venvLabel = projectName ? `${venv} (${projectName})` : venv;
+    // A uv workspace member keeps its pins and their backup in the root file.
+    const pinsFile = result.uvWorkspaceRoot
+        ? "the uv workspace root pyproject.toml"
+        : "pyproject.toml";
     const lines: string[] = [
-        isDefault
+        withDbconnect
             ? "Python environment ready for Databricks Connect."
-            : "Python environment ready — constraints applied.",
+            : "Python environment ready.",
         "",
     ];
 
     lines.push(`Python:             ${result.resolved?.pythonVersion ?? ""}`);
-    if (isDefault && result.resolved?.dbconnectVersion) {
+    if (withDbconnect && result.resolved?.dbconnectVersion) {
         lines.push(`databricks-connect: ${result.resolved.dbconnectVersion}`);
     }
     const compute = computeLabel(result.compute);
@@ -78,11 +101,22 @@ export function formatSetupLog(
     }
 
     lines.push("", "What was done:");
-    lines.push("  • Added matching Databricks constraints to pyproject.toml");
+    if (constraintsApplied) {
+        lines.push(`  • Added matching Databricks constraints to ${pinsFile}`);
+    }
     lines.push(
-        `  • Built a new virtual environment with uv sync called ${venvLabel}`
+        result.uvWorkspaceRoot
+            ? `  • Synced the shared uv workspace virtual environment ${venvLabel} with uv sync`
+            : `  • Built a new virtual environment with uv sync called ${venvLabel}`
     );
     lines.push(`  • Selected ${venvLabel} as the workspace interpreter`);
+    if (result.uvWorkspaceBackupPath) {
+        lines.push(
+            `  • Backed up your previous uv workspace root pyproject.toml (${path.basename(
+                result.uvWorkspaceBackupPath
+            )})`
+        );
+    }
     if (result.backupPath) {
         lines.push(
             `  • Backed up your previous pyproject.toml (${path.basename(
@@ -94,7 +128,7 @@ export function formatSetupLog(
     // Name the environment to look for in the picker when we have it; the
     // interpreter path is the version-proof anchor either way. Render it
     // OS-aware (`.venv/bin/python` vs `.venv\Scripts\python.exe`).
-    const interpreter = venvInterpreterPath(".venv", platform);
+    const interpreter = venvInterpreterPath(venv, platform);
     const selectedHint = projectName
         ? `is selected: ${projectName} (\`${interpreter}\`).`
         : `is selected (\`${interpreter}\`).`;
@@ -132,4 +166,17 @@ function computeLabel(
         return `cluster ${compute.clusterId}`;
     }
     return compute.source || undefined;
+}
+
+/**
+ * The venv folder as the CLI reports it, relative to the project (`../../.venv`
+ * for a uv workspace member), with the separators of `platform`. A dry run
+ * reports none; `.venv` stands in.
+ */
+function venvFolder(
+    result: PythonSetupResult,
+    platform: NodeJS.Platform
+): string {
+    const venv = result.venvPath || ".venv";
+    return platform === "win32" ? venv.replace(/\//g, "\\") : venv;
 }

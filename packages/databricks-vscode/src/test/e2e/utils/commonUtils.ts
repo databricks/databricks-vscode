@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import path from "node:path";
 import {randomUUID} from "crypto";
 import {
     CustomTreeSection,
@@ -6,6 +7,7 @@ import {
     ViewControl,
     ViewSection,
     InputBox,
+    TreeItem,
 } from "wdio-vscode-service";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -45,8 +47,8 @@ export async function findViewSection(name: ViewSectionType) {
         (await (await control?.openView())?.getContent()?.getSections()) ?? [];
     for (const v of views) {
         let title = await v.getTitle();
-        if (title === null) {
-            // VSCode 1.120+ no longer sets the 'title' HTML attribute on .title elements;
+        if (!title) {
+            // Newer VS Code versions leave the title attribute missing or empty;
             // fall back to reading the element's text content.
             title = await (v as any).title$.getText();
         }
@@ -83,6 +85,51 @@ export async function getViewSection(
 
     await section!.expand();
     return section;
+}
+
+/** The CONFIGURATION section's "Local Folder" item, if it points at `folder`. */
+export async function getLocalFolderTreeItem(folder: string) {
+    const section = (await getViewSection(
+        "CONFIGURATION"
+    )) as CustomTreeSection;
+    assert(section, "CONFIGURATION section doesn't exist");
+    const items = await section.getVisibleItems();
+    for (const item of items) {
+        const label = await item.getLabel();
+        if (label.toLowerCase().includes("local folder")) {
+            const desc = await item.getDescription();
+            const descPath = path.normalize(desc!);
+            console.log("Local Folder description:", descPath);
+            if (descPath.includes(folder)) {
+                return item;
+            }
+        }
+    }
+    return undefined;
+}
+
+/**
+ * Finds an inline action button on a hovered tree item by label.
+ * wdio-vscode-service's `getActionButton` reads labels from a `title` attribute
+ * that VS Code no longer sets (from 1.104); the button's aria-label still has it.
+ * The item must already be hovered (call item.elem.moveTo() before this).
+ */
+export async function getActionButton(
+    item: TreeItem,
+    label: string
+): Promise<WebdriverIO.Element | undefined> {
+    // Search anywhere inside the item element; don't require .actions-container
+    // parent or role="button" — both can be absent in newer VS Code versions.
+    const buttons = await item.elem.$$("a.action-label");
+    for (const btn of buttons) {
+        const ariaLabel = await btn.getAttribute("aria-label");
+        const title = await btn.getAttribute("title");
+        const btnLabel = ariaLabel || title;
+        if (btnLabel && btnLabel.includes(label)) {
+            return btn;
+        }
+    }
+    return undefined;
 }
 
 export async function getTreeViewItems(name: ViewSectionType, section: string) {

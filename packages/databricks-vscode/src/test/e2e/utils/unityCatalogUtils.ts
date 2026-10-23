@@ -90,29 +90,6 @@ export async function findUCItem(
 }
 
 /**
- * Finds an action button on a hovered tree item by label.
- * Works around wdio-vscode-service reading null 'title' attributes in VSCode 1.120+.
- * The item must already be hovered (call item.elem.moveTo() before this).
- */
-export async function getUCActionButton(
-    item: TreeItem,
-    label: string
-): Promise<WebdriverIO.Element | undefined> {
-    // Search anywhere inside the item element; don't require .actions-container
-    // parent or role="button" — both can be absent in VS Code 1.120+.
-    const buttons = await item.elem.$$("a.action-label");
-    for (const btn of buttons) {
-        const ariaLabel = await btn.getAttribute("aria-label");
-        const title = await btn.getAttribute("title");
-        const btnLabel = ariaLabel || title;
-        if (btnLabel && btnLabel.includes(label)) {
-            return btn;
-        }
-    }
-    return undefined;
-}
-
-/**
  * Expands an already-located tree item and returns its children once the list
  * has fully loaded and stabilised.
  *

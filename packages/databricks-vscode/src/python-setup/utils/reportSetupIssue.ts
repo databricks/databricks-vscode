@@ -129,9 +129,13 @@ export function redactSetupStderr(
             "<redacted-token>"
         )
         // Emails: an address never spans a path separator, so this can't be
-        // undone by the path rules below.
+        // undone by the path rules below. The quantifiers are bounded (to RFC
+        // limits: local part ≤64, domain ≤255) so a long run of `@`-less
+        // local-part characters — e.g. a huge uv resolution dump — can't drive
+        // the unanchored match into quadratic backtracking (a 5s+ ReDoS stall
+        // on slower CI for a 50k-char stderr).
         .replace(
-            /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
+            /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}/g,
             "<redacted-email>"
         )
         // Known token shapes: Databricks PAT, GitHub tokens, AWS access-key ids,

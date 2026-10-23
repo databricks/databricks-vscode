@@ -9,6 +9,7 @@ import {
     TreeItemCollapsibleState,
     ThemeIcon,
     Location,
+    Uri,
 } from "vscode";
 import {JobRunStatus} from "../../bundle/run/JobRunStatus";
 import {ConnectionManager} from "../../configuration/ConnectionManager";
@@ -69,20 +70,24 @@ export class TaskTreeNode implements BundleResourceExplorerTreeNode {
 
     private getIconPathForType(taskType: string) {
         return {
-            dark: this.context.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "dark",
-                    "resource-explorer",
-                    `${taskType}.svg`
+            dark: Uri.file(
+                this.context.asAbsolutePath(
+                    path.join(
+                        "resources",
+                        "dark",
+                        "resource-explorer",
+                        `${taskType}.svg`
+                    )
                 )
             ),
-            light: this.context.asAbsolutePath(
-                path.join(
-                    "resources",
-                    "light",
-                    "resource-explorer",
-                    `${taskType}.svg`
+            light: Uri.file(
+                this.context.asAbsolutePath(
+                    path.join(
+                        "resources",
+                        "light",
+                        "resource-explorer",
+                        `${taskType}.svg`
+                    )
                 )
             ),
         };

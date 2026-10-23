@@ -8,6 +8,7 @@ import {
     SUCCESS_DEFAULT,
     SUCCESS_CONSTRAINTS_ONLY,
     SUCCESS_REAL_RUN,
+    SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER,
     SUCCESS_WITH_WARNINGS,
     ERROR_NO_TARGET,
     ERROR_USAGE,
@@ -46,8 +47,19 @@ describe("parsePythonSetupResult", () => {
         const r = parsePythonSetupResult(asStdout(SUCCESS_REAL_RUN));
         expect(r.ok).to.equal(true);
         expect(r.dryRun).to.equal(false);
-        expect(r.venvPath).to.equal("/home/user/project/.venv");
+        expect(r.venvPath).to.equal(".venv");
         expect(r.backupPath).to.equal("/home/user/project/pyproject.toml.bak");
+    });
+
+    it("parses the uv workspace fields of a workspace member run", () => {
+        const r = parsePythonSetupResult(
+            asStdout(SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER)
+        );
+        expect(r.venvPath).to.equal("../../.venv");
+        expect(r.uvWorkspaceRoot).to.equal("/home/user/monorepo");
+        expect(r.uvWorkspaceBackupPath).to.equal(
+            "/home/user/monorepo/pyproject.toml.bak"
+        );
     });
 
     it("parses an E_NO_TARGET failure and exposes the error object", () => {

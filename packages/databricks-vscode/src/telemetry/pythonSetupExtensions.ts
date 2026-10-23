@@ -65,7 +65,10 @@ export interface PythonSetupDrift {
  * kind attached when the reading was taken. Both categorical/boolean.
  */
 export interface PythonSetupAdoption {
-    /** Whether the project's managed `.venv` interpreter still exists on disk. */
+    /**
+     * Whether the project's managed venv interpreter still exists on disk (for a
+     * uv workspace member, the shared venv at the root).
+     */
     venvPresent: boolean;
     /** The compute kind attached at the time of the reading. */
     currentTargetType: TargetCompute;
@@ -166,6 +169,8 @@ function categoricalEnvKey(envKey: string | undefined): string | undefined {
  *   another dependency group) was removed so a single managed pin survives.
  * - `W_USER_CONSTRAINT_CONFLICT` — a user dependency is provably disjoint from an
  *   env constraint.
+ * - `W_UV_WORKSPACE_CONSTRAINTS_REPLACED` — for a uv workspace member, the pins
+ *   in the root pyproject.toml, which every member shares, are replaced.
  *
  * Held as a set so an unknown code (schema drift, or a code added CLI-side before
  * this list is updated) collapses to {@link UNRECOGNISED_WARNING_CODE} rather than
@@ -178,6 +183,7 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
     "W_DBCONNECT_PIN_DUPLICATED",
     "W_DBCONNECT_CONSOLIDATED",
     "W_USER_CONSTRAINT_CONFLICT",
+    "W_UV_WORKSPACE_CONSTRAINTS_REPLACED",
 ]);
 
 /** Bucket for a warning code outside {@link KNOWN_WARNING_CODES}. */
@@ -309,6 +315,12 @@ Telemetry.prototype.recordPythonSetupAttempt = function (
         reported = true;
         reportResult({
             outcome: report.outcome,
+            // Also stamped on the result (not only the attempt) so provision
+            // errors and outcomes can be split by setup mode without an
+            // attempt<->result correlation join. Always present here -- the
+            // closure captured the attempt; only the standalone no_compute
+            // result (no attempt) omits it.
+            setupPreset: attempt.setupPreset,
             ...(report.pythonSetupFlow !== undefined
                 ? {pythonSetupFlow: report.pythonSetupFlow}
                 : {}),

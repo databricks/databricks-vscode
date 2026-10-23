@@ -57,6 +57,120 @@ incremental rebuilds while you work:
 yarn workspace databricks run watch
 ```
 
+### Previewing local CLI changes
+
+The extension runs the CLI bundled at
+`packages/databricks-vscode/bin/databricks` (`databricks.exe` on Windows).
+Installing a different CLI on your `PATH` does not change this binary. You can
+replace it locally without changing `cli.version` in `package.json`; `bin/` is
+gitignored. Use a separate extension checkout or worktree if you also need to
+develop against the pinned CLI.
+
+The following commands use a macOS/Linux shell. Check out the CLI branch you want
+to test in a sibling [CLI repository](https://github.com/databricks/cli), with its
+build prerequisites installed:
+
+```text
+parent/
+├── cli/                 # CLI source; ./task build produces cli/cli
+└── databricks-vscode/   # this repository
+```
+
+From this repository's root, build and link the CLI:
+
+```sh
+(cd ../cli && ./task build)
+yarn workspace databricks run package:cli:link
+./packages/databricks-vscode/bin/databricks version
+```
+
+`package:cli:link` replaces the bundled binary with a symlink to `../cli/cli`.
+For another directory layout, create a symlink to your CLI checkout's built
+binary instead. On Windows, copy the built executable to
+`packages/databricks-vscode/bin/databricks.exe`. Remove any previous symlink
+before copying a binary so the copy does not overwrite its target.
+
+Build the extension and launch its development host from this repository's root
+(`code` must be available on your `PATH`):
+
+```sh
+yarn build
+code --new-window --extensionDevelopmentPath "$PWD/packages/databricks-vscode"
+```
+
+Exercise the extension action affected by your CLI change. For SSH, complete the
+[client and server setup below](#previewing-ssh-client-and-server-changes) before
+using **Databricks → Start SSH tunnel**. Check that the **Databricks SSH Tunnel**
+terminal invokes the CLI in this checkout's `bin/` directory.
+
+After editing CLI code, rebuild the CLI and reload the Extension Development Host
+with **Developer: Reload Window**. A symlink picks up the rebuilt binary; a copied
+binary must be copied again. Restart existing CLI commands or SSH connections to
+use the new build. Rebuild the extension only if its source also changed.
+
+The development host's bundled-CLI version warning is expected when deliberately
+testing a different version. Do not run `package:cli:fetch` during the preview:
+it replaces your local override with the pinned release. Commands that invoke it,
+such as `package:bundle-schema:write`, also replace the override.
+
+#### Previewing SSH client and server changes
+
+SSH uses a local client and a Linux server uploaded to the workspace. `./task build`
+only builds the local CLI; use `./task snapshot-release` to build the Linux server
+archives. This requires the CLI repository's GoReleaser setup.
+
+Set the absolute CLI checkout path, then build the snapshot:
+
+```sh
+CLI_CHECKOUT=/absolute/path/to/cli
+(cd "$CLI_CHECKOUT" && ./task snapshot-release)
+```
+
+Before using the extension's SSH action, connect once with `--releases-dir` to
+upload the snapshot's server binaries. The client built and linked above can be
+used for this command. Choose an authenticated workspace profile explicitly. This
+command starts a serverless SSH job and runs a smoke command:
+
+```sh
+CLI_PROFILE=your-profile
+./packages/databricks-vscode/bin/databricks ssh connect \
+  --profile "$CLI_PROFILE" \
+  --name cli-preview \
+  --releases-dir "$CLI_CHECKOUT/dist" \
+  --server-timeout 1h \
+  --shutdown-delay 5m \
+  -- 'echo CLI_PREVIEW_OK'
+```
+
+For dedicated compute, replace `--name cli-preview` with
+`--cluster <cluster-id> --auto-start-cluster`, using a dedicated single-user
+cluster assigned to you. Then reload the development host and use **Start SSH
+tunnel**, selecting that workspace/profile and compute. The extension does not
+pass `--releases-dir`; it reuses the uploaded binaries for the bundled CLI's
+version. Repeat the upload step for each workspace you test.
+
+Server uploads are cached by CLI version. Rebuilding uncommitted changes can keep
+the same version and silently reuse an earlier server binary, even with a new
+`--name`. For another server revision, create a new local CLI commit, run
+`./task --force snapshot-release`, rebuild the linked client, and repeat the upload
+step. Stop the previous preview's SSH job so a running server is not reused.
+
+If you launch VS Code with a custom `--user-data-dir`, also copy the Remote-SSH
+settings the CLI adds to your normal VS Code user settings into that profile's
+`User/settings.json`. These include `remote.SSH.remoteServerListenOnSocket`, the
+host entries in `remote.SSH.remotePlatform` and
+`remote.SSH.serverPickPortsFromRange`, and `remote.SSH.defaultExtensions`.
+
+#### Restoring the pinned CLI
+
+If you tested SSH, close the remote windows, cancel the preview job runs shown by
+the CLI, and stop any dedicated compute you started. Restore the extension's
+pinned CLI from this repository's root, then reload the development host:
+
+```sh
+yarn workspace databricks run package:cli:fetch
+```
+
 ## Testing
 
 Run the full check (lint + unit tests) across all workspaces from the repo root:
@@ -120,6 +234,57 @@ at an existing profile (for example `export DATABRICKS_CONFIG_PROFILE=DEFAULT`);
 `TEST_DEFAULT_CLUSTER_ID` is still required in that case. The extension e2e tests
 also build a `.vsix` package as part of `test:integ:prepare`, so make sure you
 have run `yarn build` first.
+
+### Running one end-to-end spec
+
+After `yarn build` and `yarn workspace databricks run test:integ:prepare`, use
+`test:integ:run` to run a selected file. Replace the example path with any
+`.e2e.ts` spec:
+
+```sh
+yarn workspace databricks run test:integ:run \
+  --spec src/test/e2e/auth.e2e.ts
+```
+
+For a local OAuth login, add `--profile <name>`; the runner obtains a token from
+that CLI profile. In CI, it uses the existing credential environment. Use
+`test:integ:extension` instead to rebuild the test VSIX before running.
+
+To use an existing VS Code installation and locally downloaded extension VSIXs
+(for example, when marketplace downloads fail), run:
+
+```sh
+VSCODE_TEST_VERSION='<installed-vscode-version>' \
+VSCODE_TEST_BINARY='/absolute/path/to/Visual Studio Code.app/Contents/MacOS/Code' \
+EXTENSION_VSIX_DIR='/absolute/path/to/extension-vsixs' \
+yarn workspace databricks run test:integ:run \
+  --profile <name> \
+  --spec src/test/e2e/auth.e2e.ts
+```
+
+Replace the placeholders with your local values and keep the quoted binary path
+on one line. Without these overrides, the runner downloads VS Code and extensions.
+
+### Running the SSH spec
+
+`src/test/e2e/ssh_connection.ucws.e2e.ts` opens a real Remote SSH window over a
+serverless tunnel, so it needs more than the other specs: a workspace that offers
+Serverless SSH compute, a tunnel port that workspace permits, and an installable
+`ms-vscode-remote.remote-ssh` (from the marketplace, or vendored into
+`EXTENSION_VSIX_DIR`). It is therefore opt-in and is excluded from every run that
+does not ask for it:
+
+```sh
+TEST_SSH_E2E=true \
+yarn workspace databricks run test:integ:run \
+  --profile <name> \
+  --spec src/test/e2e/ssh_connection.ucws.e2e.ts
+```
+
+With the flag set nothing is skipped: a Remote SSH that will not install fails
+the run rather than reporting success with no SSH coverage. This spec also runs
+on a current VS Code release rather than the extension's minimum supported
+version, because Remote SSH requires one.
 
 ## Code style
 

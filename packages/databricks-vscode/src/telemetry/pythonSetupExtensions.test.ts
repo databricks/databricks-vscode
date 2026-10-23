@@ -66,6 +66,7 @@ describe(__filename, () => {
         expect(events[1].props).to.deep.equal({
             "version": "1.0",
             "event.outcome": "ok",
+            "event.setupPreset": "full",
             "event.envKey": "serverless/serverless-v5",
         });
     });
@@ -124,6 +125,7 @@ describe(__filename, () => {
         expect(events[1].props).to.deep.equal({
             "version": "1.0",
             "event.outcome": "cancelled",
+            "event.setupPreset": "python",
         });
         // The failure mode this guards against: recordEvent stringifies an
         // explicit undefined, which would pollute the schema.
@@ -154,6 +156,7 @@ describe(__filename, () => {
         expect(events[1].props).to.deep.equal({
             "version": "1.0",
             "event.outcome": "failed",
+            "event.setupPreset": "full",
             "event.failurePhase": "provision",
             "event.errorCode": "E_PROVISION",
             "event.envKey": "dbr/15.4.x-scala2.12",
@@ -310,14 +313,18 @@ describe(__filename, () => {
                 {code: "W_DBCONNECT_CONSOLIDATED", message: "irrelevant"},
                 {code: "W_USER_CONSTRAINT_CONFLICT", message: "irrelevant"},
                 {code: "W_USER_CONSTRAINT_CONFLICT", message: "irrelevant"},
+                {
+                    code: "W_UV_WORKSPACE_CONSTRAINTS_REPLACED",
+                    message: "irrelevant",
+                },
             ],
         });
 
         // The total is a numeric metric, not a property.
-        expect(events[1].metrics["event.warningsCount"]).to.equal(6);
+        expect(events[1].metrics["event.warningsCount"]).to.equal(7);
         expect(events[1].props).to.not.have.property("event.warningsCount");
         // The per-code counts are a JSON-stringified property (objects never
-        // become metrics), covering all five known codes with the repeated one
+        // become metrics), covering all known codes with the repeated one
         // counted twice.
         expect(
             JSON.parse(events[1].props["event.warningCodeCounts"])
@@ -327,6 +334,7 @@ describe(__filename, () => {
             W_DBCONNECT_PIN_DUPLICATED: 1,
             W_DBCONNECT_CONSOLIDATED: 1,
             W_USER_CONSTRAINT_CONFLICT: 2,
+            W_UV_WORKSPACE_CONSTRAINTS_REPLACED: 1,
         });
     });
 
@@ -442,6 +450,7 @@ describe(__filename, () => {
         expect(Object.keys(events[1].props).sort()).to.deep.equal([
             "event.envKey",
             "event.outcome",
+            "event.setupPreset",
             "version",
         ]);
     });

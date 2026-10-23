@@ -19,7 +19,6 @@ export enum Events {
     BUNDLE_RUN = "bundleRun",
     BUNDLE_INIT = "bundleInit",
     BUNDLE_SUB_PROJECTS = "bundleSubProjects",
-    BUNDLE_TERRAFORM_ENGINE_WARNING = "bundleTerraformEngineWarning",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
     COMPUTE_SELECTED = "computeSelected",
     WORKFLOW_RUN = "workflowRun",
@@ -46,16 +45,6 @@ export type ManualLoginSource =
     | "command"
     | "api";
 export type BundleRunResourceType = "pipelines" | "jobs";
-/**
- * What the user did with the Terraform-engine deprecation warning:
- *  - `'guide'` — opened the migration guide.
- *  - `'hidden'` — chose "Don't show again" (persisted opt-out for the workspace).
- *  - `'dismissed'` — closed it without either.
- */
-export type BundleTerraformEngineWarningAction =
-    | "guide"
-    | "hidden"
-    | "dismissed";
 export type BundleRunType =
     | "run"
     | "validate"
@@ -385,16 +374,6 @@ export class EventTypes {
             comment: "The resource type",
         },
     };
-    [Events.BUNDLE_TERRAFORM_ENGINE_WARNING]: EventType<{
-        action: BundleTerraformEngineWarningAction;
-    }> = {
-        comment:
-            "Surfaced the deprecation warning for the Terraform bundle deployment engine. Recorded once per surfacing (at most once per session per workspace, until the user opts out), so the count tracks how many users still have bundles on the Terraform engine.",
-        action: {
-            comment:
-                "What the user did with the warning: 'guide' chose to open the migration guide, 'hidden' chose \"Don't show again\" (persisted opt-out for the workspace), 'dismissed' closed it without either.",
-        },
-    };
     [Events.AITOOLS_INSTALL]: EventType<
         {
             result: AiToolsInstallResult;
@@ -402,6 +381,8 @@ export class EventTypes {
             source?: AiToolsInstallSource;
             agents?: string[];
             cursorPlugin?: boolean;
+            globalErrorCategory?: string;
+            agentErrors?: Record<string, string>;
         } & DurationMeasurement
     > = {
         comment: "Install Databricks AI tools",
@@ -423,6 +404,14 @@ export class EventTypes {
         cursorPlugin: {
             comment:
                 "In Cursor, whether the Databricks marketplace plugin (a superset of the Cursor skills) was installed as part of this flow, rather than the cursor skills via the CLI",
+        },
+        globalErrorCategory: {
+            comment:
+                "The CLI's classification of a top-level install failure that has no per-agent entry (e.g. a skills-group install). A closed category token (e.g. SKILL_NOT_FOUND, PLUGIN_INSTALL_FAILED), never the CLI's free-form error message. Omitted when there was no top-level failure.",
+        },
+        agentErrors: {
+            comment:
+                "Per-agent install errors as a map of agent id to its categorical error, for each requested agent that did not install (failed or skipped). Categories are the CLI's closed set, never the free-form per-agent message. Omitted when every requested agent installed.",
         },
     };
     [Events.AITOOLS_UPDATE]: EventType<
@@ -602,6 +591,7 @@ export class EventTypes {
     };
     [Events.PYTHON_ENV_SETUP_RESULT]: EventType<{
         outcome: PythonSetupOutcome;
+        setupPreset?: SetupPreset;
         pythonSetupFlow?: PythonSetupFlow;
         failurePhase?: PythonSetupFailurePhase;
         errorCode?: PythonSetupErrorCode;
@@ -630,6 +620,14 @@ export class EventTypes {
             comment:
                 "ok | failed | cancelled (user aborted) | not_started (the CLI produced no " +
                 "result) | no_compute (the CTA was a dead end: nothing was attached to set up for)",
+        },
+        setupPreset: {
+            comment:
+                "The preset tier the user picked (full / dbconnect / python), mirrored from the " +
+                "matching attempt so provision errors and outcomes can be split by setup mode " +
+                "without joining to python_env.setup.attempt. Present on every result except " +
+                "no_compute, which is emitted without a preceding attempt. See the attempt " +
+                "event's setupPreset for the tier semantics",
         },
         pythonSetupFlow: {
             comment:
@@ -733,7 +731,8 @@ export class EventTypes {
             "still physically exists, which drift never checks. Categorical/boolean data only.",
         venvPresent: {
             comment:
-                "Whether the project's managed .venv interpreter still exists on disk. False means " +
+                "Whether the project's managed venv interpreter (for a uv workspace member, the " +
+                "shared venv at the root) still exists on disk. False means " +
                 "the environment was provisioned once but is now gone (deleted or never restored)",
         },
         currentTargetType: {

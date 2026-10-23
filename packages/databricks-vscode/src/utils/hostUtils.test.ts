@@ -1,6 +1,11 @@
 import {env} from "vscode";
 import assert from "assert";
-import {getHostCliCommand, isCursor, isHostCliOnPath} from "./hostUtils";
+import {
+    getHostCliCommand,
+    isCursor,
+    isHostCliOnPath,
+    isRemoteSshMode,
+} from "./hostUtils";
 import {cancellableExecFile} from "../cli/CliWrapper";
 
 describe(__filename, () => {
@@ -31,6 +36,36 @@ describe(__filename, () => {
     it("is false for VS Code", () => {
         stubUriScheme("vscode");
         assert.strictEqual(isCursor(), false);
+    });
+
+    describe("isRemoteSshMode", () => {
+        let originalEnv: NodeJS.ProcessEnv;
+
+        beforeEach(() => {
+            originalEnv = process.env;
+            process.env = {...originalEnv};
+            delete process.env.DATABRICKS_REMOTE_ENV;
+            delete process.env.DATABRICKS_VIRTUAL_ENV;
+        });
+
+        afterEach(() => {
+            process.env = originalEnv;
+        });
+
+        it("is true when the remote environment sets both variables", () => {
+            process.env.DATABRICKS_REMOTE_ENV = "1";
+            process.env.DATABRICKS_VIRTUAL_ENV = "/tmp/venv";
+            assert.strictEqual(isRemoteSshMode(), true);
+        });
+
+        it("is false without the virtual environment", () => {
+            process.env.DATABRICKS_REMOTE_ENV = "1";
+            assert.strictEqual(isRemoteSshMode(), false);
+        });
+
+        it("is false outside a remote session", () => {
+            assert.strictEqual(isRemoteSshMode(), false);
+        });
     });
 
     it("resolves the host CLI command to cursor in Cursor", () => {

@@ -15,11 +15,18 @@ import {StoredFavoriteRef} from "../ui/unity-catalog/types";
  * - `pythonVersion`: the interpreter minor version that was provisioned (e.g.
  *   `3.12`).
  * - `timestamp`: ISO-8601 time of the successful setup.
+ * - `venvPath`: the absolute venv folder. A uv workspace member shares the
+ *   venv at the workspace root.
+ * - `projectRoot`: the project folder of the setup.
+ *
+ * State saved by older versions has no `venvPath` or `projectRoot`.
  */
 export interface PythonSetupState {
     envKey: string;
     pythonVersion: string;
     timestamp: string;
+    venvPath?: string;
+    projectRoot?: string;
 }
 
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -118,13 +125,17 @@ const StorageConfigurations = {
         defaultValue: false,
     }),
 
-    // Set when the user picks "Don't show again" on the deprecation warning for
-    // the Terraform bundle deployment engine, so it stays silenced for this
-    // workspace. A plain dismissal leaves it false so the warning can resurface
-    // on a later session (see BundleEngineManager).
-    "databricks.bundle.hideTerraformEngineWarning": withType<boolean>()({
-        location: "workspace",
-        defaultValue: false,
+    // The ~/.databrickscfg profile of the Unity Gateway sign-in, with its host
+    // and workspace id. Global because that sign-in is per user, separate from
+    // each project's bundle sign-in. Both are checked on restore, since the
+    // config file can differ between windows, and on a unified host several
+    // workspaces share the host.
+    "databricks.unityGateway.savedProfile": withType<{
+        profile: string;
+        host: string;
+        workspaceId: string;
+    }>()({
+        location: "global",
     }),
 };
 

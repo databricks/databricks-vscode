@@ -19,7 +19,8 @@ async function main() {
         await fs.mkdir(cachePath, {recursive: true});
 
         let vscodeExecutablePath = await downloadAndUnzipVSCode({
-            version: process.env.VSCODE_TEST_VERSION || "stable",
+            // TODO: revert this back to "stable" when the timeout issue is resolved
+            version: process.env.VSCODE_TEST_VERSION || "1.138.0",
             cachePath,
             timeout: 60000,
         });

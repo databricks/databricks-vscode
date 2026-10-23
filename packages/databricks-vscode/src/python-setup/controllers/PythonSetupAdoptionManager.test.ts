@@ -1,4 +1,5 @@
 import {expect} from "chai";
+import path from "node:path";
 import {PythonSetupAdoption} from "../../telemetry/pythonSetupExtensions";
 import {
     PythonSetupAdoptionDeps,
@@ -15,6 +16,7 @@ function makeDeps(over: Partial<PythonSetupAdoptionDeps> = {}): {
         isAttributable: () => true,
         isVpexActive: () => true,
         getTargetType: () => "serverless",
+        savedSetup: () => undefined,
         venvExists: () => true,
         record: (r) => recorded.push(r),
         ...over,
@@ -37,6 +39,52 @@ describe("PythonSetupAdoptionManager", () => {
         expect(recorded).to.deep.equal([
             {venvPresent: false, currentTargetType: "serverless"},
         ]);
+    });
+
+    it("checks the venv folder that the last setup saved", () => {
+        // A uv workspace member shares the venv at the workspace root.
+        const checked: string[] = [];
+        const {deps} = makeDeps({
+            projectRoot: () => "/mono/bundles/sales",
+            savedSetup: () => ({
+                projectRoot: "/mono/bundles/sales",
+                venvPath: "/mono/.venv",
+            }),
+            venvExists: (venvDir) => {
+                checked.push(venvDir);
+                return true;
+            },
+        });
+        new PythonSetupAdoptionManager(deps).report();
+        expect(checked).to.deep.equal(["/mono/.venv"]);
+    });
+
+    it("does not emit while the saved setup belongs to another project", () => {
+        // Two bundles in one workspace folder: the state is from bundle A.
+        let root = "/ws/b";
+        const {deps, recorded} = makeDeps({
+            projectRoot: () => root,
+            savedSetup: () => ({projectRoot: "/ws/a", venvPath: "/ws/a/.venv"}),
+        });
+        const manager = new PythonSetupAdoptionManager(deps);
+        manager.report();
+        expect(recorded).to.deep.equal([]);
+        // Not latched: switching to A still emits.
+        root = "/ws/a";
+        manager.report();
+        expect(recorded).to.have.length(1);
+    });
+
+    it("checks <project>/.venv when the saved state has no venv folder", () => {
+        const checked: string[] = [];
+        const {deps} = makeDeps({
+            venvExists: (venvDir) => {
+                checked.push(venvDir);
+                return true;
+            },
+        });
+        new PythonSetupAdoptionManager(deps).report();
+        expect(checked).to.deep.equal([path.join("/ws/project", ".venv")]);
     });
 
     it("passes through the attached compute kind, including none", () => {

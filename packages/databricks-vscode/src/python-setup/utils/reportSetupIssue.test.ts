@@ -256,6 +256,16 @@ describe("redactSetupStderr", () => {
         expect(out.length).to.be.lessThan(1600);
         expect(out).to.match(/truncat/i);
     });
+
+    it("redacts a huge @-less stderr without catastrophic backtracking", () => {
+        // A long run of email-local-part characters with no `@` used to drive
+        // the unbounded email regex into quadratic backtracking (~1.6s), which
+        // blew past Mocha's timeout on slower CI. The bounded quantifiers keep
+        // it linear; a 1s budget against a now-~10ms operation is a wide margin.
+        const start = Date.now();
+        redactSetupStderr("boom\n" + "y".repeat(50000));
+        expect(Date.now() - start).to.be.lessThan(1000);
+    });
 });
 
 describe("buildSetupReportUrl", () => {

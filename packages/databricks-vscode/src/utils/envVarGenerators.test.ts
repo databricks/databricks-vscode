@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {anything, instance, mock, when} from "ts-mockito";
+import {anything, instance, mock, reset, spy, when} from "ts-mockito";
 import {ConnectionManager} from "../configuration/ConnectionManager";
 import {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
 import {ApiClient, Config} from "@databricks/sdk-experimental";
@@ -13,6 +13,7 @@ import {
 import {Uri} from "vscode";
 import assert from "assert";
 import {AuthProvider} from "../configuration/auth/AuthProvider";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 describe(__filename, () => {
     let mockConnectionManager: ConnectionManager;
@@ -22,8 +23,14 @@ describe(__filename, () => {
     const mockHost = "http://example.com";
     let mockApiClient: ApiClient;
     let existingEnv: any;
+    let configsSpy: typeof workspaceConfigs;
 
     beforeEach(() => {
+        configsSpy = spy(workspaceConfigs);
+        // Default: no proxy configured via VS Code settings, so getProxyEnvVars
+        // falls back to the process env vars the tests set explicitly.
+        when(configsSpy.httpProxy).thenReturn(undefined);
+        when(configsSpy.httpNoProxy).thenReturn([]);
         mockConnectionManager = mock(ConnectionManager);
         mockDatabricksWorkspace = mock(DatabricksWorkspace);
         mockCluster = mock(Cluster);
@@ -45,6 +52,7 @@ describe(__filename, () => {
     });
 
     afterEach(() => {
+        reset(configsSpy);
         process.env = existingEnv;
     });
 
@@ -83,6 +91,51 @@ describe(__filename, () => {
             HTTP_PROXY: "http://example.com",
             HTTPS_PROXY: "https://example.com",
             NO_PROXY: "https://example.com",
+        });
+    });
+
+    it("should use the http.proxy setting for both schemes when set", () => {
+        delete process.env.HTTP_PROXY;
+        delete process.env.HTTPS_PROXY;
+        delete process.env.http_proxy;
+        delete process.env.https_proxy;
+        when(configsSpy.httpProxy).thenReturn("http://proxy.local:8080");
+
+        const actual = getProxyEnvVars();
+        assert.deepEqual(actual, {
+            HTTP_PROXY: "http://proxy.local:8080",
+            HTTPS_PROXY: "http://proxy.local:8080",
+            NO_PROXY: undefined,
+        });
+    });
+
+    it("should let the http.proxy setting win over env vars", () => {
+        process.env.HTTP_PROXY = "http://env-proxy.local:1";
+        process.env.HTTPS_PROXY = "http://env-proxy.local:1";
+        when(configsSpy.httpProxy).thenReturn("http://setting-proxy.local:2");
+
+        const actual = getProxyEnvVars();
+        assert.deepEqual(actual, {
+            HTTP_PROXY: "http://setting-proxy.local:2",
+            HTTPS_PROXY: "http://setting-proxy.local:2",
+            NO_PROXY: undefined,
+        });
+    });
+
+    it("should merge http.noProxy setting with the NO_PROXY env var", () => {
+        delete process.env.no_proxy;
+        process.env.NO_PROXY = "shared.example.com,env.example.com";
+        when(configsSpy.httpNoProxy).thenReturn([
+            "setting.example.com",
+            "shared.example.com",
+        ]);
+
+        const actual = getProxyEnvVars();
+        assert.deepEqual(actual, {
+            HTTP_PROXY: undefined,
+            HTTPS_PROXY: undefined,
+            // Deduped: "shared.example.com" appears in both sources but once here.
+            NO_PROXY: "setting.example.com,shared.example.com,env.example.com",
         });
     });
 

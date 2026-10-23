@@ -52,10 +52,34 @@ export const workspaceConfigs = {
         return config || process.env.DATABRICKS_CONFIG_FILE || undefined;
     },
 
+    get databricksCliPath() {
+        return workspace
+            .getConfiguration("databricks")
+            .get<string>("overrideDatabricksCLIPath");
+    },
+
     get experimetalFeatureOverides() {
         return workspace
             .getConfiguration("databricks")
             .get<Array<string>>("experiments.optInto", []);
+    },
+
+    // An Event for changes to `experiments.optInto`. The caller owns the
+    // returned Disposable.
+    onDidChangeExperimentsOptInto(
+        listener: () => void,
+        thisArgs?: unknown,
+        disposables?: Disposable[]
+    ): Disposable {
+        return workspace.onDidChangeConfiguration(
+            (e) => {
+                if (e.affectsConfiguration("databricks.experiments.optInto")) {
+                    listener.call(thisArgs);
+                }
+            },
+            undefined,
+            disposables
+        );
     },
 
     /**
@@ -72,6 +96,14 @@ export const workspaceConfigs = {
      */
     get msPythonEnvFile() {
         return workspace.getConfiguration("python").get<string>("envFile");
+    },
+
+    get configureJupyterCellMarkers(): boolean {
+        return (
+            workspace
+                .getConfiguration("databricks")
+                .get<boolean>("notebooks.configureJupyterCellMarkers") ?? true
+        );
     },
 
     get jupyterCellMarkerRegex(): string | undefined {
@@ -180,6 +212,48 @@ export const workspaceConfigs = {
                 .get<number>("bundle.remoteStateRefreshInterval") ?? 5;
 
         return new Time(config, TimeUnits.minutes).toMillSeconds().value;
+    },
+
+    get proxyStrictSSL(): boolean {
+        return (
+            workspace.getConfiguration("http").get<boolean>("proxyStrictSSL") ??
+            true
+        );
+    },
+
+    onDidChangeProxyStrictSSL(listener: () => void): Disposable {
+        return workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration("http.proxyStrictSSL")) {
+                listener();
+            }
+        });
+    },
+
+    get httpProxy(): string | undefined {
+        return (
+            workspace.getConfiguration("http").get<string>("proxy") || undefined
+        );
+    },
+
+    get httpNoProxy(): string[] {
+        return workspace.getConfiguration("http").get<string[]>("noProxy", []);
+    },
+
+    get configuredDeprecatedProxySettings() {
+        const config = workspace.getConfiguration("databricks");
+        return (["proxy.strictSSL", "proxy.caCert"] as const)
+            .filter((key) => {
+                const values = config.inspect(key);
+                return [
+                    values?.globalValue,
+                    values?.workspaceValue,
+                    values?.workspaceFolderValue,
+                ].some(
+                    (value) =>
+                        value !== undefined && value !== null && value !== ""
+                );
+            })
+            .map((key) => `databricks.${key}` as const);
     },
 };
 

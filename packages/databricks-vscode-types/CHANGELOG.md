@@ -1,3 +1,39 @@
+# Release: v2.22.0
+
+## packages/databricks-vscode-types
+
+## (2026-10-22)
+
+# Release: v2.21.0
+
+## packages/databricks-vscode-types
+
+## (2026-10-12)
+
+# Release: v2.20.0
+
+## packages/databricks-vscode-types
+
+## (2026-10-01)
+
+# Release: v2.19.0
+
+## packages/databricks-vscode-types
+
+## (2026-09-25)
+
+# Release: v2.18.0
+
+## packages/databricks-vscode-types
+
+## (2026-09-17)
+
+# Release: v2.17.2
+
+## packages/databricks-vscode-types
+
+## (2026-09-11)
+
 # Release: v2.17.0
 
 ## packages/databricks-vscode-types

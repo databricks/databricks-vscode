@@ -1,4 +1,4 @@
-import {WorkspaceFsEntity} from "../sdk-extensions";
+import {WorkspaceFsEntity, WorkspaceFsUtils} from "../sdk-extensions";
 import {posix} from "path";
 import {
     Disposable,
@@ -167,11 +167,10 @@ export class WorkspaceFsDataProvider
                 );
             }
 
-            if (a.type === "DIRECTORY") {
-                return -1;
-            }
-            if (b.type === "DIRECTORY") {
-                return +1;
+            const aIsDir = WorkspaceFsUtils.isDirectory(a);
+            const bIsDir = WorkspaceFsUtils.isDirectory(b);
+            if (aIsDir !== bIsDir) {
+                return aIsDir ? -1 : 1;
             }
 
             return a.path.localeCompare(b.path);

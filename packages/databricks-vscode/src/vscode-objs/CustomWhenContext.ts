@@ -1,5 +1,6 @@
 import {commands} from "vscode";
 import {workspaceConfigs} from "./WorkspaceConfigs";
+import type {ConnectionState} from "../configuration/models/WorkspaceConnectionModel";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class CustomWhenContext {
@@ -82,6 +83,30 @@ export class CustomWhenContext {
             workspaceConfigs.experimetalFeatureOverides.includes(
                 "views.cluster"
             )
+        );
+    }
+
+    setLanguageModelChatEnabled(enabled: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.feature.chat.unityGateway",
+            enabled
+        );
+    }
+
+    setUnityGatewayHasSavedProfile(value: boolean) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.unityGateway.hasSavedProfile",
+            value
+        );
+    }
+
+    setUnityGatewayState(value: ConnectionState) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.unityGateway.state",
+            value
         );
     }
 

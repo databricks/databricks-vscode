@@ -1,7 +1,8 @@
 import {randomBytes} from "crypto";
 import {existsSync} from "fs";
-import {copyFile, rename, rm} from "fs/promises";
+import {access, constants, copyFile, realpath, rename, rm} from "fs/promises";
 import path from "path";
+import {containsPath} from "../utils/containsPath";
 import {commands, ProgressLocation, Uri, window} from "vscode";
 import {PackageManagerDetection} from "../../language/packageManagerDetection";
 import {Telemetry} from "../../telemetry";
@@ -272,36 +273,32 @@ export function makePythonSetupDeps(
                 wiring.createQuickPick
             );
         },
-        adoptInterpreter: async (venvPath: string, projectRoot: string) => {
+        // Windows keeps the path as given.
+        realPath: async (folder: string) =>
+            process.platform === "win32" ? folder : realpath(folder),
+        adoptInterpreter: async (venvDir: string, projectRoot: string) => {
             await wiring.setActiveInterpreter(
-                venvInterpreterPath(venvPath),
+                venvInterpreterPath(venvDir),
                 Uri.file(projectRoot)
             );
         },
-        openProjectFile: async (projectRoot: string) => {
+        openProjectFile: async (folder: string) => {
             // Open the pyproject.toml the conflicting run merged into, so the
             // user can inspect/adjust the dependencies that clashed. A
             // constraint conflict always mutates disk (constraints are merged
             // before provisioning fails), so the file exists.
             await window.showTextDocument(
-                Uri.file(path.join(projectRoot, "pyproject.toml"))
+                Uri.file(path.join(folder, "pyproject.toml"))
             );
         },
-        restoreProjectFile: async (projectRoot: string, backupPath: string) => {
+        checkProjectFileBackup: async (folder: string, backupPath: string) => {
+            assertBackupInside(folder, backupPath);
+            await access(backupPath, constants.R_OK);
+        },
+        restoreProjectFile: async (folder: string, backupPath: string) => {
             // Restore the CLI's pre-merge backup over pyproject.toml (the seam's
             // doc covers why the DB Connect retry needs this).
-            const root = path.resolve(projectRoot);
-            // backupPath comes from the CLI result: refuse anything resolving
-            // outside the project so a malformed/unexpected path can't copy an
-            // arbitrary file over pyproject.toml. Lexical containment (path is
-            // from the trusted local CLI, so symlink canonicalization is not
-            // warranted).
-            const rel = path.relative(root, path.resolve(backupPath));
-            if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
-                throw new Error(
-                    `Refusing to restore pyproject.toml from a backup outside the project: ${backupPath}`
-                );
-            }
+            const root = assertBackupInside(folder, backupPath);
             // Write atomically: copy to a temp sibling on the same filesystem,
             // then rename over pyproject.toml, so an interrupted or failed copy
             // can never leave the project file truncated. Clean the temp up if
@@ -434,17 +431,15 @@ export function makePythonSetupDeps(
                 );
             }
         },
-        showSuccess: async (result) => {
+        showSuccess: async (result, flags, venvDir) => {
             // Write the full breakdown to the log channel: in --output json
             // mode the CLI streams little or nothing to stderr on success, so
             // the channel would otherwise be empty. This is where the details
             // the one-line message omits (versions, compute, backup, how to run
             // notebooks, full warnings) live. Enrich the venv lines with the
             // project name uv recorded in pyvenv.cfg when it can be read.
-            const projectName = result.venvPath
-                ? await readVenvProjectName(result.venvPath)
-                : undefined;
-            wiring.log.append(formatSetupLog(result, projectName));
+            const projectName = await readVenvProjectName(venvDir);
+            wiring.log.append(formatSetupLog(result, flags, projectName));
             // Reveal the output channel automatically so those details are in
             // front of the user, then still raise the notification (with its
             // "View Details" button) as before.
@@ -505,4 +500,22 @@ export function makePythonSetupDeps(
                 )
             ),
     };
+}
+
+/**
+ * Throw unless `backupPath` is inside `folder`; return the resolved folder.
+ * backupPath comes from the CLI result, so a malformed/unexpected path must
+ * not copy an arbitrary file over pyproject.toml. Lexical containment (the
+ * path is from the trusted local CLI, so symlink canonicalization is not
+ * warranted).
+ */
+function assertBackupInside(folder: string, backupPath: string): string {
+    const root = path.resolve(folder);
+    const backup = path.resolve(backupPath);
+    if (backup === root || !containsPath(root, backup)) {
+        throw new Error(
+            `Refusing to restore pyproject.toml from a backup outside ${root}: ${backupPath}`
+        );
+    }
+    return root;
 }

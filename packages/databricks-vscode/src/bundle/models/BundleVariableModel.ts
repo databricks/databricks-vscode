@@ -6,7 +6,7 @@ import {BundleSchema} from "../types";
 import {readFile} from "fs/promises";
 import {NamedLogger} from "@databricks/sdk-experimental/dist/logging";
 import {Loggers} from "../../logger";
-import {onError} from "../../utils/onErrorDecorator";
+import {onError, withOnErrorHandler} from "../../utils/onErrorDecorator";
 import {BundleValidateModel} from "./BundleValidateModel";
 import {WorkspaceFolderManager} from "../../vscode-objs/WorkspaceFolderManager";
 
@@ -46,8 +46,31 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
             }),
             this.onDidChangeKey("variables")(async () => {
                 await this.writeFile();
+            }),
+            // Don't rely on the file watcher alone: on Linux, VS Code's recursive
+            // watcher can miss a nested folder created mid-session
+            // (parcel-bundler/watcher#97), so it never reports this file.
+            workspace.onDidSaveTextDocument(async (document) => {
+                if (
+                    document.uri.fsPath === this.bundleVariableFilePath?.fsPath
+                ) {
+                    await this.refreshOverrides();
+                }
             })
         );
+    }
+
+    // Errors are logged, never thrown: callers such as the reset command would
+    // otherwise report them as their own failure.
+    @onError({log: true, throw: false})
+    private async refreshOverrides() {
+        // Validate fails when a required variable loses its only value (e.g. on
+        // reset). Log it and refresh the tree anyway, so it doesn't stay stale.
+        await withOnErrorHandler(() => this.bundleValidateModel.refresh(), {
+            log: true,
+            throw: false,
+        })();
+        await this.stateCache.refresh();
     }
 
     public async writeFile() {
@@ -83,18 +106,9 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
 
         this.disposables.push(
             this.overrideFileWatcher,
-            this.overrideFileWatcher.onDidChange(async () => {
-                await this.bundleValidateModel.refresh();
-                await this.stateCache.refresh();
-            }),
-            this.overrideFileWatcher.onDidCreate(async () => {
-                await this.bundleValidateModel.refresh();
-                await this.stateCache.refresh();
-            }),
-            this.overrideFileWatcher.onDidDelete(async () => {
-                await this.bundleValidateModel.refresh();
-                await this.stateCache.refresh();
-            })
+            this.overrideFileWatcher.onDidChange(() => this.refreshOverrides()),
+            this.overrideFileWatcher.onDidCreate(() => this.refreshOverrides()),
+            this.overrideFileWatcher.onDidDelete(() => this.refreshOverrides())
         );
     }
 
@@ -252,5 +266,6 @@ export class BundleVariableModel extends BaseModelWithStateCache<BundleVariableM
                 throw e;
             }
         }
+        await this.refreshOverrides();
     }
 }
