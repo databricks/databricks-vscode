@@ -1,3 +1,26 @@
+# Release: v2.22.0
+
+## packages/databricks-vscode
+
+## (2026-10-22)
+
+-   fix(bundle): find sub-projects without blocking the extension host (#2249) ([5ebf39f](https://github.com/databricks/databricks-vscode/commit/5ebf39f))
+-   fix(network): let VS Code handle proxies and certificates for SDK calls (#2266) ([589041a](https://github.com/databricks/databricks-vscode/commit/589041a))
+-   fix(python-setup): recover a uv workspace member from a constraint conflict (#2254) ([7752f5d](https://github.com/databricks/databricks-vscode/commit/7752f5d))
+-   fix(python-setup): select the shared uv workspace venv for a workspace member (#2253) ([faa6f58](https://github.com/databricks/databricks-vscode/commit/faa6f58))
+-   Expose the bundle Configuration view and Bundle Resource Explorer in Databricks Remote SSH mode (#2236) ([375dd8d](https://github.com/databricks/databricks-vscode/commit/375dd8d))
+-   Update Databricks CLI to v1.22.1 (#2270) ([bc837b5](https://github.com/databricks/databricks-vscode/commit/bc837b5))
+
+# Release: v2.21.0
+
+## packages/databricks-vscode
+
+## (2026-10-12)
+
+-   Remove the Terraform deployment engine, as part of the update to Databricks CLI v1.20.0 (#2243) ([b087b77](https://github.com/databricks/databricks-vscode/commit/b087b77)). Bundles now always deploy with the direct engine: setting `bundle.engine: terraform` or `DATABRICKS_BUNDLE_ENGINE=terraform` is an error, and if existing Terraform state can't be migrated, the deploy fails instead of falling back to Terraform. If you still need Terraform, stay on extension v2.20.0. The extension also no longer ships the Terraform binary that security scans flagged (#2166). See the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.20.0) for details
+-   Verify TLS certificates for SDK calls again by default: an unset `databricks.proxy.strictSSL` now falls back to `http.proxyStrictSSL` (verification was skipped since v2.19.0), and honor `http.systemCertificates` (#2244) ([8654191](https://github.com/databricks/databricks-vscode/commit/8654191))
+-   Sort folders alphabetically in the Workspace File System view (#2233) ([9b26c33](https://github.com/databricks/databricks-vscode/commit/9b26c33)), see #2231
+
 # Release: v2.20.0
 
 ## packages/databricks-vscode

@@ -131,8 +131,13 @@ root would emit a spurious `venvPresent: false` and inflate the denominator. So 
 gauge is skipped when the workspace has more than one root, rather than record an
 untrustworthy reading.
 
-The one-root guard is a heuristic, not proof of provenance — the key records no root,
-so a rare edge (a multi-root workspace reduced to one root mid-session, leaving the
+Within one root, the state records the project folder of its setup (in state saved
+by newer versions), and the gauge skips a reading for another project. It checks the
+venv folder that the state records: for a uv workspace member, the shared venv at the
+workspace root.
+
+The one-root guard is a heuristic, not proof of provenance — older state records no
+root, so a rare edge (a multi-root workspace reduced to one root mid-session, leaving the
 prior root's key) can still mis-attribute. Eliminating that needs the per-project
 storage schema, deferred (the drift detector shares the single-key limitation and
 does not even guard multi-root). Multi-root Databricks workspaces are uncommon, so

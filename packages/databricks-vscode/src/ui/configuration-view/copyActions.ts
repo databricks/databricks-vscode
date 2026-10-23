@@ -11,12 +11,15 @@ import {ConfigurationTreeItem} from "./types";
 /* eslint-disable @typescript-eslint/naming-convention -- keys are exact TreeItem label text, not identifiers */
 export const COPY_KINDS: Readonly<Record<string, string>> = {
     "Local Folder": "path",
+    "Bundle": "path",
     "Remote Folder": "path",
     "Path": "path",
     "Target": "target",
     "Host": "host",
     "Mode": "mode",
     "Auth Type": "authType",
+    "Bundle Connection": "authType",
+    "Gateway Connection": "authType",
     "Cluster": "clusterName",
     "Cluster ID": "clusterId",
     "Databricks Runtime": "runtime",

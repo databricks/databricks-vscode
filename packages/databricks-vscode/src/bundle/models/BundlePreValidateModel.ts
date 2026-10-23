@@ -1,10 +1,9 @@
-import {Uri} from "vscode";
-import {BundleFileSet, BundleWatcher} from "..";
+import {Event, Uri} from "vscode";
+import {BundleFileSet, BundleWatcher, mergeBundleData} from "..";
 import {BundleSchema, BundleTarget} from "../types";
 import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithStateCache";
 import {UrlUtils} from "../../utils";
 import {Mutex} from "../../locking";
-import * as lodash from "lodash";
 import {withOnErrorHandler} from "../../utils/onErrorDecorator";
 
 export type BundlePreValidateState = {
@@ -22,18 +21,54 @@ export type BundlePreValidateState = {
     };
 
 /**
+ * Return a copy of a target's `workspace` block with an empty-string (or
+ * whitespace-only) `host`/`profile` removed, so merging it over the global
+ * `workspace` keeps the global value — the way the CLI resolves an empty target
+ * host/profile. Only `host` and `profile` matter here: they are the auth fields
+ * the credential guard reads, and an empty one must not blank (and so hide) the
+ * global value from the guard. A non-object value (e.g. a `${...}` variable that
+ * parsed to a string) is returned unchanged.
+ */
+function dropEmptyAuthFields(workspace: unknown): unknown {
+    if (typeof workspace !== "object" || workspace === null) {
+        return workspace;
+    }
+    const copy: Record<string, unknown> = {
+        ...(workspace as Record<string, unknown>),
+    };
+    for (const key of ["host", "profile"] as const) {
+        const value = copy[key];
+        if (typeof value === "string" && value.trim() === "") {
+            delete copy[key];
+        }
+    }
+    return copy;
+}
+
+/**
  * Reads and writes bundle configs. This class does not notify when the configs change.
  * We use the BundleWatcher to notify when the configs change.
  */
 export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreValidateState> {
     protected mutex = new Mutex();
     private target: string | undefined;
+    /**
+     * The host of the pinned session credentials in Remote SSH mode. A target
+     * with no `workspace.host` of its own is run by the CLI against
+     * `DATABRICKS_HOST` (the session host), so config loading uses this as the
+     * host rather than throwing on an empty one. Unset in normal mode, where a
+     * host-less target still surfaces as an invalid host.
+     */
+    private sessionHost: URL | undefined;
+    /** Any bundle file changed, whether or not a target is set. */
+    public readonly onDidChangeBundleFiles: Event<void>;
 
     constructor(
         private readonly bundleFileSet: BundleFileSet,
         private readonly bunldeFileWatcher: BundleWatcher
     ) {
         super();
+        this.onDidChangeBundleFiles = this.bunldeFileWatcher.onDidChange;
         this.disposables.push(
             this.bunldeFileWatcher.onDidChange(
                 withOnErrorHandler(
@@ -59,6 +94,92 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         })();
     }
 
+    /**
+     * The target's `workspace` auth fields (`host`, `profile`) resolved fresh
+     * from disk, bypassing bundleDataCache, with the global `workspace` block
+     * merged in the same way as `targets` so they match what the CLI resolves.
+     * The remote-mode credential guard reads these through here (ConfigModel),
+     * so a missed BundleWatcher event can't leave it approving a host that no
+     * longer matches the YAML on disk.
+     *
+     * `profile` matters because a target that authenticates via a named profile
+     * takes its host from that profile (overriding `DATABRICKS_HOST`), and the
+     * CLI reports `workspace.profile` rather than the resolved host — so the
+     * guard can't catch it by comparing hosts and fails closed on it instead.
+     *
+     * Returns the merged `{host, profile}`; the raw string when the whole
+     * `workspace` block is an unresolved `${...}` variable (the guard fails
+     * closed on that); or undefined when the target isn't defined.
+     */
+    public async getTargetWorkspaceFromDisk(
+        target: string
+    ): Promise<{host?: string; profile?: string} | string | undefined> {
+        const bundle = await this.bundleFileSet.readMergedBundleFromDisk();
+        if (bundle?.targets?.[target] === undefined) {
+            return undefined;
+        }
+        // A whole `workspace` block given as an unresolved `${...}` variable
+        // parses as a string; the merged view below would mangle it into an
+        // indexed object with no host, so surface the string and let the guard
+        // fail closed rather than read an empty host.
+        const targetWorkspace: unknown = bundle.targets?.[target]?.workspace;
+        if (typeof targetWorkspace === "string") {
+            return targetWorkspace;
+        }
+        const globalWorkspace: unknown = bundle.workspace;
+        if (typeof globalWorkspace === "string") {
+            return globalWorkspace;
+        }
+        const workspace = this.getRawTargetData(bundle, target)?.workspace as
+            | {host?: string; profile?: string}
+            | undefined;
+        return {host: workspace?.host, profile: workspace?.profile};
+    }
+
+    /**
+     * How many bundle files set this target's `workspace.host` / `.profile`,
+     * counting a file's top-level `workspace` block and its `targets[target]`
+     * `workspace` block together (one file sets the field at most once each).
+     * Read fresh from disk, per file, bypassing the merged view.
+     *
+     * The guard fails closed when either is set in more than one file: the CLI
+     * merges include files "last file wins", and we only match that order if
+     * our glob + sort mirror Go's exactly. Rather than trust the merge where it
+     * decides which host the session token reaches, refuse when the host (or
+     * profile) is contested across files.
+     */
+    public async getWorkspaceAuthFileCounts(
+        target: string
+    ): Promise<{hostFiles: number; profileFiles: number}> {
+        // Count the file when the key is *present*, whatever its value —
+        // including "" and null. The CLI's last-file-wins merge decides which
+        // file's value survives, and an empty or null value in a later file can
+        // still change the resolved host, so a contested key is untrustworthy
+        // regardless of value.
+        const isSet = (workspace: unknown, key: "host" | "profile") => {
+            if (typeof workspace !== "object" || workspace === null) {
+                return false;
+            }
+            return key in (workspace as Record<string, unknown>);
+        };
+
+        let hostFiles = 0;
+        let profileFiles = 0;
+        await this.bundleFileSet.forEach(async (data) => {
+            const blocks: unknown[] = [
+                data?.workspace,
+                data?.targets?.[target]?.workspace,
+            ];
+            if (blocks.some((w) => isSet(w, "host"))) {
+                hostFiles++;
+            }
+            if (blocks.some((w) => isSet(w, "profile"))) {
+                profileFiles++;
+            }
+        });
+        return {hostFiles, profileFiles};
+    }
+
     get defaultTarget() {
         return this.targets.then((targets) => {
             if (targets === undefined) {
@@ -76,28 +197,59 @@ export class BundlePreValidateModel extends BaseModelWithStateCache<BundlePreVal
         this.resetCache();
     }
 
+    /**
+     * Set (or clear) the session host used as the fallback for a host-less
+     * target, and reload so the pre-validate state reflects it. Called when the
+     * environment credentials are pinned in Remote SSH mode.
+     */
+    public async setSessionHost(host: URL | undefined) {
+        if (this.sessionHost?.toString() === host?.toString()) {
+            return;
+        }
+        this.sessionHost = host;
+        await this.stateCache.refresh();
+    }
+
     protected readStateFromTarget(
         target?: BundleTarget
     ): BundlePreValidateState | undefined {
-        return target
-            ? {
-                  ...target,
-                  host: UrlUtils.normalizeHost(target?.workspace?.host ?? ""),
-                  mode: target?.mode as BundlePreValidateState["mode"],
-                  authParams: undefined,
-              }
-            : undefined;
+        if (target === undefined) {
+            return undefined;
+        }
+        // Fall back to the session host (remote mode only) when the target sets
+        // no host of its own, mirroring the credential guard's `session` case.
+        const host =
+            target.workspace?.host || this.sessionHost?.toString() || "";
+        return {
+            ...target,
+            host: UrlUtils.normalizeHost(host),
+            mode: target?.mode as BundlePreValidateState["mode"],
+            authParams: undefined,
+        };
+    }
+
+    /** See {@link BundleFileSet.hasUnsupportedGlobClass}. */
+    public hasUnsupportedIncludeGlob(): Promise<boolean> {
+        return this.bundleFileSet.hasUnsupportedGlobClass();
     }
 
     private getRawTargetData(bundle: BundleSchema, target: string) {
         const targetObject = Object.assign({}, bundle?.targets?.[target]);
         const globalWorkspace = Object.assign({}, bundle?.workspace);
-        if (targetObject !== undefined) {
-            targetObject.workspace = lodash.merge(
-                globalWorkspace ?? {},
-                targetObject.workspace
-            );
-        }
+        // An empty-string `host`/`profile` in the target doesn't override the
+        // global one in the CLI — it resolves to the global value — but
+        // mergeBundleData only keeps the earlier value for `null`, so a later
+        // "" would blank it. Drop empty auth fields (on a copy, so the shared
+        // bundleDataCache isn't mutated) and let the global value survive,
+        // matching the CLI. Otherwise the credential guard reads no host
+        // (→ session, allowed) while the CLI sends the token to the global host.
+        const targetWorkspace = dropEmptyAuthFields(targetObject.workspace);
+        // Merge like the CLI (a later null keeps the earlier value), the same as
+        // readMergedBundleFromDisk, so a `workspace: ~` can't blank a host.
+        targetObject.workspace = mergeBundleData(
+            globalWorkspace,
+            targetWorkspace
+        );
         return targetObject;
     }
 

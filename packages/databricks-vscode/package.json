@@ -4,7 +4,7 @@
     "description": "IDE support for Databricks",
     "publisher": "databricks",
     "license": "LicenseRef-LICENSE",
-    "version": "2.20.0",
+    "version": "2.22.0",
     "engines": {
         "vscode": "^1.104.0",
         "node": ">=22.0"
@@ -144,6 +144,7 @@
                 "command": "databricks.unityGateway.signIn",
                 "title": "Sign in to Unity Gateway",
                 "category": "Databricks",
+                "icon": "$(gear)",
                 "enablement": "databricks.feature.chat.unityGateway"
             },
             {
@@ -379,56 +380,56 @@
                 "command": "databricks.connection.bundle.selectTarget",
                 "icon": "$(gear)",
                 "title": "Select a Declarative Automation Bundle target",
-                "enablement": "databricks.context.activated && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.selectActiveProjectFolder",
                 "icon": "$(gear)",
                 "title": "Select a Databricks project folder",
-                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.refreshRemoteState",
                 "icon": "$(refresh)",
                 "title": "Refresh remote state",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deploy",
                 "icon": "$(cloud-upload)",
                 "title": "Deploy bundle",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRunFromInput",
                 "icon": "$(run)",
                 "title": "Deploy the bundle and run a resource",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRunJob",
                 "icon": "$(run)",
                 "title": "Deploy the bundle and run the job",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRunPipeline",
                 "icon": "$(run-all)",
                 "title": "Deploy the bundle and run the pipeline",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.deployAndRunSelectedTables",
                 "icon": "$(run)",
                 "title": "Deploy the bundle and select pipeline tables for partial update",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
@@ -438,28 +439,28 @@
                     "light": "resources/light/check-line-icon.svg"
                 },
                 "title": "Deploy the bundle and validate the pipeline",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.clearPipelineDiagnostics",
                 "icon": "$(clear-all)",
                 "title": "Clear pipeline diagnostics",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.showPipelineEventDetails",
                 "icon": "$(info)",
                 "title": "Show more information",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
                 "category": "Databricks"
             },
             {
                 "command": "databricks.bundle.cancelRun",
                 "title": "Cancel run",
                 "icon": "$(stop)",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks"
             },
             {
@@ -492,7 +493,7 @@
             {
                 "command": "databricks.bundle.showLogs",
                 "title": "Show bundle logs",
-                "enablement": "databricks.context.activated && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated",
                 "category": "Databricks"
             },
             {
@@ -642,21 +643,21 @@
             {
                 "command": "databricks.bundle.variable.openFile",
                 "title": "Override bundle variables",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks",
                 "icon": "$(gear)"
             },
             {
                 "command": "databricks.bundle.variable.reset",
                 "title": "Reset bundle variables to default values",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks",
                 "icon": "$(discard)"
             },
             {
                 "command": "databricks.bundle.destroy",
                 "title": "Destroy bundle",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle",
                 "category": "Databricks",
                 "icon": "$(trash)"
             },
@@ -664,13 +665,13 @@
                 "command": "databricks.bundle.forceDeploy",
                 "title": "Force deploy bundle",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode"
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
             },
             {
                 "command": "databricks.bundle.forceDestroy",
                 "title": "Force destroy bundle",
                 "category": "Databricks",
-                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle && !databricks.context.remoteMode"
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && databricks.context.bundle.deploymentState == idle"
             },
             {
                 "command": "databricks.sync.start",
@@ -708,7 +709,7 @@
                 {
                     "id": "configurationView",
                     "name": "Configuration",
-                    "when": "!databricks.context.remoteMode"
+                    "when": "!databricks.context.remoteMode || databricks.context.activated"
                 },
                 {
                     "id": "sshTunnelView",
@@ -724,13 +725,13 @@
                     "id": "dabsResourceExplorerView",
                     "name": "Bundle Resource Explorer",
                     "visibility": "visible",
-                    "when": "databricks.context.bundle.isTargetSet && !databricks.context.remoteMode"
+                    "when": "databricks.context.bundle.isTargetSet || (databricks.context.remoteMode && databricks.context.activated)"
                 },
                 {
                     "id": "dabsVariableView",
                     "name": "Bundle Variables",
                     "visibility": "visible",
-                    "when": "databricks.context.bundle.isTargetSet && !databricks.context.remoteMode"
+                    "when": "databricks.context.bundle.isTargetSet"
                 },
                 {
                     "id": "workspaceFsView",
@@ -843,7 +844,7 @@
             {
                 "view": "configurationView",
                 "contents": "Initializing...",
-                "when": "workspaceFolderCount > 0 && !databricks.context.initialized"
+                "when": "workspaceFolderCount > 0 && !databricks.context.initialized && !databricks.context.remoteMode"
             },
             {
                 "view": "configurationView",
@@ -882,11 +883,47 @@
             },
             {
                 "view": "configurationView",
-                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)"
+                "contents": "Use Unity Gateway models in VS Code Chat. [Learn more](https://docs.databricks.com/aws/en/ai-gateway/)\n[Sign in to Unity Gateway](command:databricks.unityGateway.signIn)",
+                "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == DISCONNECTED && !databricks.context.unityGateway.hasSavedProfile"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Unity Gateway isn't connected.\n[Sign in to Unity Gateway](command:databricks.unityGateway.signIn)",
+                "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == DISCONNECTED && databricks.context.unityGateway.hasSavedProfile"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Connecting to Unity Gateway...",
+                "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == CONNECTING"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Signed in to Unity Gateway.\n[Change Unity Gateway workspace](command:databricks.unityGateway.signIn)",
+                "when": "(workspaceFolderCount == 0 || (databricks.context.initialized && !databricks.context.isBundleProject)) && databricks.feature.chat.unityGateway && databricks.context.unityGateway.state == CONNECTED"
+            },
+            {
+                "view": "configurationView",
+                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)",
+                "when": "!databricks.context.remoteMode"
+            },
+            {
+                "view": "configurationView",
+                "contents": "A Databricks project was not detected in the selected folder:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "databricks.context.remoteMode"
+            },
+            {
+                "view": "configurationView",
+                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html)",
+                "when": "databricks.context.remoteMode"
             },
             {
                 "view": "sshTunnelView",
                 "contents": "Connect your IDE to a Databricks SSH tunnel so you can run all Python and SQL workloads using Databricks compute.\n[Start SSH tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
+            },
+            {
+                "view": "dabsResourceExplorerView",
+                "contents": "No bundle target selected.\n[Select a target](command:databricks.connection.bundle.selectTarget)\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "databricks.context.remoteMode && !databricks.context.bundle.isTargetSet"
             }
         ],
         "menus": {
@@ -944,6 +981,11 @@
                     "command": "databricks.bundle.refreshRemoteState",
                     "when": "view == dabsResourceExplorerView && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.selectActiveProjectFolder",
+                    "when": "view == dabsResourceExplorerView && databricks.context.remoteMode && databricks.context.bundle.deploymentState == idle",
+                    "group": "navigation@0"
                 },
                 {
                     "command": "databricks.bundle.deploy",
@@ -1135,6 +1177,21 @@
                     "command": "databricks.connection.configureLogin",
                     "when": "view == configurationView && viewItem =~ /^databricks.configuration.authType.*$/ && databricks.context.bundle.deploymentState == idle",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.unityGateway.signIn",
+                    "when": "view == configurationView && viewItem =~ /^databricks\\.configuration\\.unityGateway\\./ && databricks.feature.chat.unityGateway",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.unityGateway.signIn",
+                    "when": "view == configurationView && viewItem =~ /^databricks\\.configuration\\.unityGateway\\./ && databricks.feature.chat.unityGateway",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.unityGateway.signOut",
+                    "when": "view == configurationView && viewItem =~ /^databricks\\.configuration\\.unityGateway\\./ && databricks.feature.chat.unityGateway && databricks.context.unityGateway.hasSavedProfile",
+                    "group": "navigation@3"
                 },
                 {
                     "command": "databricks.connection.attachClusterQuickPick",
@@ -1890,12 +1947,18 @@
                         "description": "Override location for the Databricks CLI (defaults to the CLI bundled with this extension). *Warning:* it is recommended NOT to set this. If you override the CLI to an outdated version this extension may break."
                     },
                     "databricks.proxy.strictSSL": {
-                        "type": "boolean",
-                        "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. When unset, the built-in `#http.proxyStrictSSL#` value is used. Set to `false` only when a corporate CA certificate cannot be resolved from the system trust store."
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "default": null,
+                        "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. No longer used.",
+                        "markdownDeprecationMessage": "No longer used. The extension now follows `#http.proxyStrictSSL#` for TLS certificate verification."
                     },
                     "databricks.proxy.caCert": {
                         "type": "string",
-                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates to trust for the extension's Databricks SDK calls, merged with the OS trust store and Node's built-in roots. Use when a corporate CA cannot be read from the system store — in particular on Windows, where the extension does not read the system certificate store and relies on this setting for internal CAs."
+                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates. No longer used.",
+                        "markdownDeprecationMessage": "No longer used. The extension's Databricks calls now use VS Code's certificate handling, which adds the OS trust store when `#http.systemCertificates#` is on. Install the CA in the OS trust store, or start VS Code with the `NODE_EXTRA_CA_CERTS` environment variable set to the PEM bundle's path."
                     }
                 }
             }
@@ -1912,7 +1975,7 @@
         "useYarn": false
     },
     "cli": {
-        "version": "1.19.0"
+        "version": "1.22.1"
     },
     "scripts": {
         "vscode:prepublish": "rm -rf out && yarn run package:compile && yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && yarn run generate-telemetry",
@@ -1933,7 +1996,7 @@
         "package:copy-webview-toolkit": "cp ./node_modules/@vscode/webview-ui-toolkit/dist/toolkit.js ./out/toolkit.js",
         "package:copy-markdown-it": "cp ./node_modules/markdown-it/dist/browser/markdown-it.umd.min.js ./out/markdown-it.min.js",
         "package:copy-highlight": "esbuild ./node_modules/highlight.js/lib/common.js --bundle --format=iife --global-name=hljs --outfile=out/highlight.min.js --minify",
-        "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --external:@vscode/windows-ca-certs --format=cjs --platform=node --sourcemap --target=es2019",
+        "esbuild:base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --target=es2019",
         "build": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && tsc --build --force",
         "watch": "yarn run package:wrappers:write && yarn run package:jupyter-init-script:write && yarn run package:copy-webview-toolkit && yarn run package:copy-markdown-it && yarn run package:copy-highlight && tsc --build --watch --verbose",
         "fix": "eslint src --fix && prettier . --write",
@@ -1953,24 +2016,25 @@
     },
     "dependencies": {
         "@databricks/databricks-vscode-types": "workspace:^",
+        "@databricks/sdk-aigateway": "0.23.0",
+        "@databricks/sdk-auth": "0.51.0",
+        "@databricks/sdk-core": "0.51.0",
         "@databricks/sdk-experimental": "^0.18.0",
+        "@databricks/sdk-options": "0.51.0",
         "@types/lodash": "^4.14.202",
         "@types/shell-quote": "^1.7.5",
         "@vscode/debugadapter": "^1.64.0",
         "@vscode/extension-telemetry": "^1.5.2",
-        "@vscode/proxy-agent": "^0.45.0",
         "@vscode/webview-ui-toolkit": "^1.4.0",
         "add": "^2.0.6",
         "ansi-to-html": "^0.7.2",
         "bcryptjs": "^3.0.3",
         "highlight.js": "^11.10.0",
-        "http-proxy-agent": "^9.1.0",
-        "https-proxy-agent": "^9.1.0",
         "lodash": "^4.18.1",
         "markdown-it": "^15.0.1",
         "minimatch": "^10.2.3",
         "shell-env": "^4.0.3",
-        "shell-quote": "^1.9.0",
+        "shell-quote": "^1.11.0",
         "triple-beam": "^1.4.1",
         "winston": "^3.11.0",
         "yaml": "^2.8.3"
@@ -2002,7 +2066,6 @@
         "esbuild": "^0.28.1",
         "eslint": "^10.6.0",
         "eslint-plugin-local-rules": "^3.0.2",
-        "extract-zip": "^2.0.1",
         "fs-extra": "^11.2.0",
         "glob": "^13.0.6",
         "mocha": "^12.0.2",

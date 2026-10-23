@@ -285,7 +285,41 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@databricks/sdk-experimental@npm:^0.18.0":
+"@databricks/sdk-aigateway@npm:0.23.0":
+  version: 0.23.0
+  resolution: "@databricks/sdk-aigateway@npm:0.23.0"
+  dependencies:
+    "@databricks/sdk-auth": ">=0.51.0 <1.0.0"
+    "@databricks/sdk-core": ">=0.51.0 <1.0.0"
+    "@databricks/sdk-options": ">=0.51.0 <1.0.0"
+    "@js-temporal/polyfill": ^0.5.0
+    json-bigint: ^1.0.0
+    zod: ^4.3.6
+  checksum: 3494c652577a8ab2b21a8e7aeb464052906c7d94eb416aa5e580623f4a0e7631d097c889acd8e6d2532f32e6dd7b879336f53187ec5c56db9a7694c4b192b8f2
+  languageName: node
+  linkType: hard
+
+"@databricks/sdk-auth@npm:0.51.0, @databricks/sdk-auth@npm:>=0.51.0 <1.0.0":
+  version: 0.51.0
+  resolution: "@databricks/sdk-auth@npm:0.51.0"
+  dependencies:
+    "@databricks/sdk-core": ">=0.51.0 <1.0.0"
+    zod: ^4.3.6
+  checksum: 060d42ee3052f3bd9f3ae437e9f9c17100123821e0074363416ca8685fa7f7c769a049ffb00599d9c7f205c8ae4e336f8e61d8e07b97512ead8a7e5c2669cf93
+  languageName: node
+  linkType: hard
+
+"@databricks/sdk-core@npm:0.51.0, @databricks/sdk-core@npm:>=0.51.0 <1.0.0":
+  version: 0.51.0
+  resolution: "@databricks/sdk-core@npm:0.51.0"
+  dependencies:
+    json-bigint: ^1.0.0
+    zod: ^4.3.6
+  checksum: dc1192a93bb7252c35c79a77b4b70850a83d1820d8b0c6393ba0221cb9ddd350992dd2d96e8b8c0f46131fca6f2e26230c067410c52c077ad715df2d3588d42e
+  languageName: node
+  linkType: hard
+
+"@databricks/sdk-experimental@npm:0.18.0":
   version: 0.18.0
   resolution: "@databricks/sdk-experimental@npm:0.18.0"
   dependencies:
@@ -294,6 +328,28 @@ __metadata:
     reflect-metadata: ^0.2.2
     semver: ^7.7.3
   checksum: eefb552284eaa5577baaa173f1612611833bd805cbd822f11373223d74b2e2b37d2a6dbe7bdf522312339bcecf8384a2510c5a74b51612664ddca7a4b51fa503
+  languageName: node
+  linkType: hard
+
+"@databricks/sdk-experimental@patch:@databricks/sdk-experimental@npm:0.18.0#.yarn/patches/@databricks-sdk-experimental-npm-0.18.0-eaa822207a.patch::locator=%40databricks%2Fdatabricks-vscode%40workspace%3A.":
+  version: 0.18.0
+  resolution: "@databricks/sdk-experimental@patch:@databricks/sdk-experimental@npm%3A0.18.0#.yarn/patches/@databricks-sdk-experimental-npm-0.18.0-eaa822207a.patch::version=0.18.0&hash=772964&locator=%40databricks%2Fdatabricks-vscode%40workspace%3A."
+  dependencies:
+    google-auth-library: ^10.5.0
+    ini: ^6.0.0
+    reflect-metadata: ^0.2.2
+    semver: ^7.7.3
+  checksum: 1e176ff4869a1086ccf9cc3054b6dfc8045dbb42472aef3096ba2e0da4ffdb57cde5970327761cd7d5f86b325cd91cb04cbf1b06abf9ef7c53fe9e9652a0153b
+  languageName: node
+  linkType: hard
+
+"@databricks/sdk-options@npm:0.51.0, @databricks/sdk-options@npm:>=0.51.0 <1.0.0":
+  version: 0.51.0
+  resolution: "@databricks/sdk-options@npm:0.51.0"
+  dependencies:
+    "@databricks/sdk-auth": ">=0.51.0 <1.0.0"
+    "@databricks/sdk-core": ">=0.51.0 <1.0.0"
+  checksum: 0db8474b92cabebf11643d340d97dd46b378e644c8fd77c9e295797db04dd6a37084f51cb923a4af5cbcddfc85f2bae2a59fd971ddeda6488b8baf2c5a9c7a8c
   languageName: node
   linkType: hard
 
@@ -1215,6 +1271,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@js-temporal/polyfill@npm:^0.5.0":
+  version: 0.5.1
+  resolution: "@js-temporal/polyfill@npm:0.5.1"
+  dependencies:
+    jsbi: ^4.3.0
+  checksum: f87127500d4532034d74836160bc013d02989dfe4f67f9264aeca6b2bb1eaed66e1bdb80e37e6e1c647d698726d317459ff13d8b2aa25b107af24c06590e8bd0
+  languageName: node
+  linkType: hard
+
 "@lukeed/ms@npm:^2.0.1":
   version: 2.0.1
   resolution: "@lukeed/ms@npm:2.0.1"
@@ -1525,13 +1590,6 @@ __metadata:
   version: 2.0.1
   resolution: "@tootallnate/once@npm:2.0.1"
   checksum: 487b59b5adb8458dc13394a5aae997bf9705c51fa1e2396c50cd967019d06b273faba3c4d9e7895a996b9e9b055f1c55e53d822e54b3e9c298bcb4f6967cd0d5
-  languageName: node
-  linkType: hard
-
-"@tootallnate/once@npm:^3.0.0":
-  version: 3.0.1
-  resolution: "@tootallnate/once@npm:3.0.1"
-  checksum: 1ec82a3ff0dd2270eb09631789bd63a34445f62dd3031f0d620f4b1c81c5916d5cdb312ae651c4e390ecf62115279165421024efa75b2bb708d0699dc80c4a42
   languageName: node
   linkType: hard
 
@@ -2073,25 +2131,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vscode/proxy-agent@npm:^0.45.0":
-  version: 0.45.0
-  resolution: "@vscode/proxy-agent@npm:0.45.0"
-  dependencies:
-    "@tootallnate/once": ^3.0.0
-    "@vscode/windows-ca-certs": ^0.3.1
-    agent-base: ^7.0.1
-    debug: ^4.3.4
-    http-proxy-agent: ^7.0.0
-    https-proxy-agent: ^7.0.2
-    socks-proxy-agent: ^8.0.1
-    undici: ^7.2.0
-  dependenciesMeta:
-    "@vscode/windows-ca-certs":
-      optional: true
-  checksum: 07c5767be646c52e052cb7bc74fb050e4416beb7b81ddce8c378dddfee585dd6cf6c5514597848becc59c85f08ebeece25190cf610b600b6527cd52e0e34b13b
-  languageName: node
-  linkType: hard
-
 "@vscode/test-electron@npm:^2.4.1":
   version: 2.5.2
   resolution: "@vscode/test-electron@npm:2.5.2"
@@ -2129,16 +2168,6 @@ __metadata:
   peerDependencies:
     react: ">=16.9.0"
   checksum: d6555018749339be6c4d4baf2b3f3154f193c760f32905004f2a96dc1a09e980b7c7d209391b91b5f215ae288d4c19a1796e939616e3409cd6ccda2ae8f81837
-  languageName: node
-  linkType: hard
-
-"@vscode/windows-ca-certs@npm:^0.3.1":
-  version: 0.3.4
-  resolution: "@vscode/windows-ca-certs@npm:0.3.4"
-  dependencies:
-    node-addon-api: ^8.2.0
-    node-gyp: latest
-  conditions: os=win32
   languageName: node
   linkType: hard
 
@@ -2563,20 +2592,6 @@ __metadata:
   dependencies:
     debug: 4
   checksum: f52b6872cc96fd5f622071b71ef200e01c7c4c454ee68bc9accca90c98cfb39f2810e3e9aa330435835eedc8c23f4f8a15267f67c6e245d2b33757575bdac49d
-  languageName: node
-  linkType: hard
-
-"agent-base@npm:9.0.0":
-  version: 9.0.0
-  resolution: "agent-base@npm:9.0.0"
-  checksum: eb697a9eb4841c9936623b02779b8d705b886f343fdabf8d4bbe258094c61d9eb324886035345b304325b1d9c807e96efbc2ea2d3fa58011c837ad6b982a1f50
-  languageName: node
-  linkType: hard
-
-"agent-base@npm:^7.0.1":
-  version: 7.1.4
-  resolution: "agent-base@npm:7.1.4"
-  checksum: 86a7f542af277cfbd77dd61e7df8422f90bac512953709003a1c530171a9d019d072e2400eab2b59f84b49ab9dd237be44315ca663ac73e82b3922d10ea5eafa
   languageName: node
   linkType: hard
 
@@ -4053,7 +4068,11 @@ __metadata:
   resolution: "databricks@workspace:packages/databricks-vscode"
   dependencies:
     "@databricks/databricks-vscode-types": "workspace:^"
+    "@databricks/sdk-aigateway": 0.23.0
+    "@databricks/sdk-auth": 0.51.0
+    "@databricks/sdk-core": 0.51.0
     "@databricks/sdk-experimental": ^0.18.0
+    "@databricks/sdk-options": 0.51.0
     "@istanbuljs/nyc-config-typescript": ^1.0.2
     "@sinonjs/fake-timers": ^15.4.0
     "@types/chai": ^4.3.11
@@ -4074,7 +4093,6 @@ __metadata:
     "@typescript-eslint/utils": ^8.62.0
     "@vscode/debugadapter": ^1.64.0
     "@vscode/extension-telemetry": ^1.5.2
-    "@vscode/proxy-agent": ^0.45.0
     "@vscode/test-electron": ^3.1.0
     "@vscode/webview-ui-toolkit": ^1.4.0
     "@wdio/cli": ^9.29.0
@@ -4089,12 +4107,9 @@ __metadata:
     esbuild: ^0.28.1
     eslint: ^10.6.0
     eslint-plugin-local-rules: ^3.0.2
-    extract-zip: ^2.0.1
     fs-extra: ^11.2.0
     glob: ^13.0.6
     highlight.js: ^11.10.0
-    http-proxy-agent: ^9.1.0
-    https-proxy-agent: ^9.1.0
     lodash: ^4.18.1
     markdown-it: ^15.0.1
     minimatch: ^10.2.3
@@ -4103,7 +4118,7 @@ __metadata:
     prettier: ^3.1.1
     quicktype-core: ^26.0.0
     shell-env: ^4.0.3
-    shell-quote: ^1.9.0
+    shell-quote: ^1.11.0
     tmp-promise: ^3.0.3
     triple-beam: ^1.4.1
     ts-mockito: ^2.6.1
@@ -6225,17 +6240,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"http-proxy-agent@npm:^9.1.0":
-  version: 9.1.0
-  resolution: "http-proxy-agent@npm:9.1.0"
-  dependencies:
-    agent-base: 9.0.0
-    debug: ^4.3.4
-    proxy-agent-negotiate: 1.1.0
-  checksum: e7071053fe8d71fe819201259b716e49c26a35f2c4169217794197182b77896ff94cdf0bc092598b94f60764049450f608a0e95c1f06cd3af98e11ea8ab2c9e0
-  languageName: node
-  linkType: hard
-
 "http2-wrapper@npm:^2.1.10":
   version: 2.2.0
   resolution: "http2-wrapper@npm:2.2.0"
@@ -6256,24 +6260,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.2, https-proxy-agent@npm:^7.0.5, https-proxy-agent@npm:^7.0.6":
+"https-proxy-agent@npm:^7.0.1, https-proxy-agent@npm:^7.0.5, https-proxy-agent@npm:^7.0.6":
   version: 7.0.6
   resolution: "https-proxy-agent@npm:7.0.6"
   dependencies:
     agent-base: ^7.1.2
     debug: 4
   checksum: b882377a120aa0544846172e5db021fa8afbf83fea2a897d397bd2ddd8095ab268c24bc462f40a15f2a8c600bf4aa05ce52927f70038d4014e68aefecfa94e8d
-  languageName: node
-  linkType: hard
-
-"https-proxy-agent@npm:^9.1.0":
-  version: 9.1.0
-  resolution: "https-proxy-agent@npm:9.1.0"
-  dependencies:
-    agent-base: 9.0.0
-    debug: ^4.3.4
-    proxy-agent-negotiate: 1.1.0
-  checksum: f1070354ab4efa198e726a56e744119b7efc86d6eee744d2997360cc49d791b029586ab68a3e35f32e914c2df85e5c6fd92b837f5eaac5d038623fd9e969da71
   languageName: node
   linkType: hard
 
@@ -6930,6 +6923,13 @@ __metadata:
   bin:
     js-yaml: bin/js-yaml.mjs
   checksum: 87811ae075b0daa4b6f9d958fb52c31d366db80587ca63f2d8396c9706f7269be6ab3a58699d73d0bdf3707e70bebb8e7a72f11b42462fe47a87899fd85c06a9
+  languageName: node
+  linkType: hard
+
+"jsbi@npm:^4.3.0":
+  version: 4.3.2
+  resolution: "jsbi@npm:4.3.2"
+  checksum: 58e06ea3328c1f455ab92219254b4ac09257fee2b611f4af73c0a6606022bbf2f5b9bf1f6f713eda3c943a842454e8ee0948b0525362cb0182e54e851e8d67c4
   languageName: node
   linkType: hard
 
@@ -7918,15 +7918,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-addon-api@npm:^8.2.0":
-  version: 8.9.2
-  resolution: "node-addon-api@npm:8.9.2"
-  dependencies:
-    node-gyp: latest
-  checksum: 820b3099b7d27c555fd9d98c986feab52d7eaf2e4dac1bce927857368baa0f2a3f31db5bd5112acd45222fd33a453b3baf8bf78771a0643a4b712e09a33f0fdf
-  languageName: node
-  linkType: hard
-
 "node-domexception@npm:^1.0.0":
   version: 1.0.0
   resolution: "node-domexception@npm:1.0.0"
@@ -8720,18 +8711,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"proxy-agent-negotiate@npm:1.1.0":
-  version: 1.1.0
-  resolution: "proxy-agent-negotiate@npm:1.1.0"
-  peerDependencies:
-    kerberos: ^2.0.0
-  peerDependenciesMeta:
-    kerberos:
-      optional: true
-  checksum: 4554c42b8b872f37cf76c9044b7a5827bccf41ad77a1992b09bb89b84c779f5536bdd0d3312f247565e09fba8700e48a25f233e339705978242e3ca1d0dab149
-  languageName: node
-  linkType: hard
-
 "proxy-agent@npm:^6.5.0":
   version: 6.5.0
   resolution: "proxy-agent@npm:6.5.0"
@@ -9365,10 +9344,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shell-quote@npm:^1.9.0":
-  version: 1.9.0
-  resolution: "shell-quote@npm:1.9.0"
-  checksum: 2ec85fb903121c684c3536d051e377e98746cf88525e08c298baaa7b42c168de75c3201cef00db66556e89e340a8cf26bd4c18e7a3fd78799449a21cac43da2e
+"shell-quote@npm:^1.11.0":
+  version: 1.11.0
+  resolution: "shell-quote@npm:1.11.0"
+  checksum: e43545a68a9de0f2e17b5727aa2ab32135c1ea430c3de728b98bbe0a0aab9aadce21dcaf71c33135ee70ee560abd4acc7e1f26797913045f26f15b75ce6d4dd3
   languageName: node
   linkType: hard
 
@@ -9500,7 +9479,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"socks-proxy-agent@npm:^8.0.1, socks-proxy-agent@npm:^8.0.5":
+"socks-proxy-agent@npm:^8.0.5":
   version: 8.0.5
   resolution: "socks-proxy-agent@npm:8.0.5"
   dependencies:
@@ -10427,7 +10406,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:^7.19.0, undici@npm:^7.2.0":
+"undici@npm:^7.19.0":
   version: 7.29.1
   resolution: "undici@npm:7.29.1"
   checksum: 1e78f8920a92e60f1cb1489dac1066424e5afcbd27131638389731c7ad53dbfa6c6f3a77c335f9607cce80a4ca273c38a6d7316f0041ce37a3f51364c6531296
@@ -11142,5 +11121,12 @@ __metadata:
     compress-commons: ^6.0.2
     readable-stream: ^4.0.0
   checksum: aa5abd6a89590eadeba040afbc375f53337f12637e5e98330012a12d9886cde7a3ccc28bd91aafab50576035bbb1de39a9a316eecf2411c8b9009c9f94f0db27
+  languageName: node
+  linkType: hard
+
+"zod@npm:^4.3.6":
+  version: 4.6.5
+  resolution: "zod@npm:4.6.5"
+  checksum: bc73aaee52bc9137bae3f5bf9b49f4475223c24be86d81881856dd26696cb693d1a3f51d9cf5c86c6f9b081316557673806d00ab3a0f244c9576ff39a11ae6ea
   languageName: node
   linkType: hard

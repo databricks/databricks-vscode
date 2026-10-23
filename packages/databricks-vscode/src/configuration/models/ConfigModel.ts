@@ -1,9 +1,21 @@
 import {Disposable, EventEmitter, Uri, Event} from "vscode";
+import lodash from "lodash";
 import {Mutex} from "../../locking";
 import {CachedValue} from "../../locking/CachedValue";
 import {StateStorage} from "../../vscode-objs/StateStorage";
-import {onError} from "../../utils/onErrorDecorator";
-import {AuthProvider} from "../auth/AuthProvider";
+import {onError, withOnErrorHandler} from "../../utils/onErrorDecorator";
+import {
+    AuthProvider,
+    BundleAuthDecision,
+    BundleAuthGuard,
+} from "../auth/AuthProvider";
+import {
+    describePausedReason,
+    UnresolvedReason,
+} from "../../bundle/BundleAuthReason";
+import {normalizeHost} from "../../utils/urlUtils";
+import {logging} from "@databricks/sdk-experimental";
+import {Loggers} from "../../logger";
 import {
     OverrideableConfigModel,
     OverrideableConfigState,
@@ -26,6 +38,12 @@ import {
 const defaults: ConfigState = {
     mode: "development",
 };
+
+/** The outcome of resolving a bundle target's `workspace.host`. */
+export type TargetWorkspaceHost =
+    | {kind: "session"}
+    | {kind: "host"; host: URL}
+    | {kind: "unresolved"; reason: UnresolvedReason};
 
 const TOP_LEVEL_VALIDATE_CONFIG_KEYS = ["clusterId", "remoteRootPath"] as const;
 
@@ -118,8 +136,14 @@ export class ConfigModel implements Disposable {
     public readonly onDidChangeAuthProvider: Event<void> =
         this.onDidChangeAuthProviderEmitter.event;
 
+    /** Serialises target resolution so overlapping ones can't set it twice. */
+    private readonly resolveTargetMutex = new Mutex();
+
     private _target: string | undefined;
     private _authProvider: AuthProvider | undefined;
+    private pinned:
+        | {authProvider: AuthProvider; authGuard: BundleAuthGuard}
+        | undefined;
 
     constructor(
         private readonly bundleValidateModel: BundleValidateModel,
@@ -127,7 +151,15 @@ export class ConfigModel implements Disposable {
         private readonly bundlePreValidateModel: BundlePreValidateModel,
         private readonly bundleRemoteStateModel: BundleRemoteStateModel,
         private readonly vscodeWhenContext: CustomWhenContext,
-        private readonly stateStorage: StateStorage
+        private readonly stateStorage: StateStorage,
+        // Remote SSH mode. The target-resolution rules below (serialised resolve,
+        // keep the saved target when it resolves to none, resolve when a bundle
+        // file appears) are remote-only. They must key off this static flag, not
+        // off a pinned auth provider: the provider is pinned only after the
+        // environment connect succeeds, which races ConfigModel.init() and never
+        // happens at all if the connect fails — leaving a bundle file that
+        // appears later without a resolved target until a reload.
+        private readonly remoteMode: boolean = false
     ) {
         this.disposables.push(
             this.overrideableConfigModel.onDidChange(async () => {
@@ -135,10 +167,24 @@ export class ConfigModel implements Disposable {
                 await this.configCache.refresh();
             }),
             this.bundlePreValidateModel.onDidChange(async () => {
-                await this.readTarget();
+                await this.resolveTarget();
                 //refresh cache to trigger onDidChange event
                 await this.configCache.refresh();
             }),
+            // Remote mode only: with no target the pre-validate state stays
+            // empty, so nothing else notices a bundle file appearing or gaining
+            // targets. Normal mode's BundleProjectManager owns this, so leave its
+            // behaviour unchanged.
+            this.bundlePreValidateModel.onDidChangeBundleFiles(
+                withOnErrorHandler(
+                    async () => {
+                        if (this.remoteMode && this.target === undefined) {
+                            await this.resolveTarget();
+                        }
+                    },
+                    {log: true, throw: false}
+                )
+            ),
             ...TOP_LEVEL_VALIDATE_CONFIG_KEYS.map((key) =>
                 this.bundleValidateModel.onDidChangeKey(key)(async () => {
                     //refresh cache to trigger onDidChange event
@@ -149,8 +195,10 @@ export class ConfigModel implements Disposable {
                 await this.configCache.refresh();
             }),
             this.onDidChangeKey("mode")(async () => {
+                // readState's @onError resolves the cached value to undefined
+                // when a child model throws (same case the `get` guard handles).
                 this.vscodeWhenContext.isDevTarget(
-                    (await this.configCache.value).mode === "development"
+                    (await this.configCache.value)?.mode === "development"
                 );
             })
         );
@@ -158,18 +206,38 @@ export class ConfigModel implements Disposable {
 
     @onError({popup: true})
     public async init() {
-        await this.readTarget();
+        await this.resolveTarget();
     }
 
     get targets() {
         return this.bundlePreValidateModel.targets;
     }
     /**
-     * Try to read target from bundle config.
-     * If not found, try to read from state storage.
-     * If not found, try to read the default target from bundle.
+     * Keep the current target if the bundle still defines it; otherwise use the
+     * saved target, else the bundle's default.
      */
-    private async readTarget() {
+    public async resolveTarget() {
+        // Normal mode keeps its original un-serialised behaviour. Remote mode
+        // resolves from several triggers (startup, folder change, bundle-file
+        // change) that can overlap, so it serialises them.
+        if (!this.remoteMode) {
+            await this.resolveTargetLocked();
+            return;
+        }
+        await this.resolveTargetMutex.synchronise(() =>
+            this.resolveTargetLocked()
+        );
+    }
+
+    /** Clear the target and resolve it again, e.g. for a new project folder. */
+    public async reresolveTarget() {
+        await this.resolveTargetMutex.synchronise(async () => {
+            await this.setTarget(undefined);
+            await this.resolveTargetLocked();
+        });
+    }
+
+    private async resolveTargetLocked() {
         const targets = Object.keys(
             (await this.bundlePreValidateModel.targets) ?? {}
         );
@@ -188,7 +256,12 @@ export class ConfigModel implements Disposable {
         });
 
         try {
-            await this.setTarget(savedTarget);
+            // Remote mode only: resolving to no target doesn't overwrite the
+            // saved one, so a bundle file that briefly disappears (e.g. during a
+            // git checkout) gets its target back. Normal mode persists as
+            // before, so clearing the target still clears the saved value.
+            const persist = !this.remoteMode || savedTarget !== undefined;
+            await this.commitTarget(savedTarget, persist);
         } catch (e: any) {
             let message: string = String(e);
             if (e instanceof Error) {
@@ -208,6 +281,10 @@ export class ConfigModel implements Disposable {
      * Set target in the state storage and invalidate the configs cache.
      */
     public async setTarget(target: string | undefined) {
+        await this.commitTarget(target, true);
+    }
+
+    private async commitTarget(target: string | undefined, persist: boolean) {
         if (target === this._target) {
             return;
         }
@@ -222,7 +299,12 @@ export class ConfigModel implements Disposable {
         try {
             await this.configsMutex.synchronise(async () => {
                 this._target = target;
-                await this.stateStorage.set("databricks.bundle.target", target);
+                if (persist) {
+                    await this.stateStorage.set(
+                        "databricks.bundle.target",
+                        target
+                    );
+                }
                 // We want to wait for all the configs to be loaded before we emit any change events from the
                 // configStateCache.
                 this.bundlePreValidateModel.setTarget(target);
@@ -241,32 +323,257 @@ export class ConfigModel implements Disposable {
             throw e;
         } finally {
             this.onDidChangeTargetEmitter.fire();
-            await this.setAuthProvider(undefined);
             this.vscodeWhenContext.isTargetSet(this._target !== undefined);
+            if (this.pinned === undefined) {
+                await this.setAuthProvider(undefined);
+            } else {
+                // The child models drop auth on a target change. Re-applying it
+                // here, outside the try, means a failing authenticated refresh
+                // doesn't wipe the config cache.
+                await this.reapplyPinnedAuthProvider();
+            }
+        }
+    }
+
+    /**
+     * Pin an auth provider that doesn't depend on the target, such as the
+     * environment credentials in Remote SSH mode. setTarget keeps it instead of
+     * clearing it. Bundle commands only send its credentials to a target on the
+     * session's own host (or one with no host of its own, where the CLI falls
+     * back to the session host); a target on any other host is refused, since
+     * the session's credentials only authenticate against the session's host.
+     * Re-pinning the same credentials is a no-op, so a reconnect doesn't re-run
+     * the bundle CLI.
+     */
+    public async pinAuthProvider(authProvider: AuthProvider) {
+        if (
+            lodash.isEqual(
+                this.pinned?.authProvider.toJSON(),
+                authProvider.toJSON()
+            )
+        ) {
+            return;
+        }
+        this.pinned = {
+            authProvider,
+            authGuard: async (target): Promise<BundleAuthDecision> => {
+                const resolution = await this.getTargetWorkspaceHost(target);
+                switch (resolution.kind) {
+                    case "session":
+                        return {allowed: true};
+                    case "host":
+                        return resolution.host.hostname ===
+                            authProvider.host.hostname
+                            ? {allowed: true}
+                            : {
+                                  allowed: false,
+                                  reason: describePausedReason("host-mismatch"),
+                              };
+                    case "unresolved":
+                        // Fail closed: we can't tell where the CLI would send
+                        // the credentials, so don't send them.
+                        return {
+                            allowed: false,
+                            reason: describePausedReason(resolution.reason),
+                        };
+                }
+            },
+        };
+        // Config loading mirrors the guard's `session` rule: a host-less target
+        // uses the session host (the CLI falls back to DATABRICKS_HOST), so the
+        // pre-validate state resolves instead of throwing on an empty host.
+        await this.bundlePreValidateModel.setSessionHost(authProvider.host);
+        await this.reapplyPinnedAuthProvider();
+    }
+
+    /**
+     * Hand the pinned provider to the child models and refresh the
+     * authenticated state, e.g. after the user allows another host. Never
+     * throws: a failing CLI run is logged.
+     */
+    public async reapplyPinnedAuthProvider() {
+        const pinned = this.pinned;
+        if (pinned === undefined) {
+            return;
+        }
+        await this.configsMutex.synchronise(async () =>
+            this.assignAuthProvider(pinned.authProvider, pinned.authGuard)
+        );
+        // Outside configsMutex so `get` callers don't wait on the CLI.
+        await this.refreshAuthenticatedState();
+    }
+
+    /**
+     * Refresh validate, and the remote state only when validate's output
+     * didn't change: BundleCommands pulls the remote state on a validate
+     * change, so refreshing it here too would run `bundle summary` twice.
+     */
+    private async refreshAuthenticatedState() {
+        const logger = logging.NamedLogger.getOrCreate(Loggers.Extension);
+        let validateChanged = false;
+        const listener = this.bundleValidateModel.onDidChange(async () => {
+            validateChanged = true;
+        });
+        try {
+            await this.bundleValidateModel.refresh();
+        } catch (e) {
+            logger.error("Failed to refresh the bundle validate state", e);
+        } finally {
+            listener.dispose();
+        }
+        if (!validateChanged) {
+            try {
+                await this.bundleRemoteStateModel.refresh();
+            } catch (e) {
+                logger.error("Failed to refresh the bundle remote state", e);
+            }
+        }
+    }
+
+    /**
+     * How the CLI would resolve this target's workspace host, read fresh from
+     * the YAML on disk (bypassing the config cache, so a missed file-watcher
+     * event can't leave a stale host approved). The credential guard and the
+     * host-mismatch UI both read it here so they always agree on the target's
+     * host.
+     *  - `session`: no `workspace.host` and no `workspace.profile`, so the CLI
+     *    falls back to `DATABRICKS_HOST` — the session's own host in Remote SSH
+     *    mode.
+     *  - `host`: an explicit, parseable host.
+     *  - `unresolved`: a host we can't vouch for, so callers fail closed, with a
+     *    `reason` naming which case. A `workspace.profile` (the profile picks its
+     *    own host, overriding `DATABRICKS_HOST`, and the CLI doesn't report the
+     *    resolved host so we can't compare it); a host present but unparseable
+     *    here (e.g. a `${...}` variable the CLI resolves but we don't); a whole
+     *    `workspace` block supplied as a `${...}` variable; a `host`/`profile`
+     *    set in more than one file, where the CLI's last-file-wins merge decides
+     *    the host and we won't trust our file order to match it; a target absent
+     *    from the bundle we built; or an `include` pattern with a `[…]` class the
+     *    CLI reads differently from node-glob.
+     */
+    public async getTargetWorkspaceHost(
+        target: string
+    ): Promise<TargetWorkspaceHost> {
+        // The include file set has to match the CLI's for the resolved host to
+        // be trustworthy. node-glob and Go read several `[…]` classes
+        // differently (e.g. `[!x]` negates here but is literal in Go; Go has no
+        // POSIX classes), so we can't tell which files the CLI loads: fail closed
+        // before resolving anything.
+        try {
+            if (await this.bundlePreValidateModel.hasUnsupportedIncludeGlob()) {
+                return {kind: "unresolved", reason: "glob-class"};
+            }
+        } catch {
+            return {kind: "unresolved", reason: "unreadable"};
+        }
+        let workspace: {host?: string; profile?: string} | string | undefined;
+        try {
+            workspace =
+                await this.bundlePreValidateModel.getTargetWorkspaceFromDisk(
+                    target
+                );
+        } catch {
+            return {kind: "unresolved", reason: "unreadable"};
+        }
+        // The target isn't in the merged bundle we built (no root file, or two
+        // of them). The CLI may still define it from a file set we read
+        // differently, so don't treat "no host here" as the safe session case.
+        if (workspace === undefined) {
+            return {kind: "unresolved", reason: "absent-target"};
+        }
+        // The whole `workspace` block resolved to an unresolved `${...}`
+        // variable: we can't tell where it points, so fail closed.
+        if (typeof workspace === "string") {
+            return {kind: "unresolved", reason: "variable"};
+        }
+        // Backstop: if the host or profile is contested across files, the CLI's
+        // last-file-wins merge picks the host and we won't bet the session
+        // token on our file order matching the CLI's. Fail closed.
+        try {
+            const {hostFiles, profileFiles} =
+                await this.bundlePreValidateModel.getWorkspaceAuthFileCounts(
+                    target
+                );
+            if (hostFiles > 1 || profileFiles > 1) {
+                return {kind: "unresolved", reason: "multi-file"};
+            }
+        } catch {
+            return {kind: "unresolved", reason: "unreadable"};
+        }
+        // A profile authenticates against its own host (overriding
+        // DATABRICKS_HOST), so the session's credentials could reach another
+        // workspace. Remote mode only authenticates against the ambient
+        // session, so refuse rather than guess the profile's host.
+        if (
+            typeof workspace?.profile === "string" &&
+            workspace.profile.trim() !== ""
+        ) {
+            return {kind: "unresolved", reason: "profile"};
+        }
+        // Read as `unknown`: the YAML value can be a non-string at runtime
+        // despite the type, and we must not let `.trim()` throw on it.
+        const host: unknown = workspace?.host;
+        // Absent or null (`host: ~`): the CLI treats the host as unset and falls
+        // back to DATABRICKS_HOST — the session host.
+        if (host === undefined || host === null) {
+            return {kind: "session"};
+        }
+        // A non-string host (e.g. `host: 8080`) is malformed; fail closed rather
+        // than throw on it.
+        if (typeof host !== "string") {
+            return {kind: "unresolved", reason: "invalid-host"};
+        }
+        // An explicit empty string also falls back to the session host.
+        if (host.trim() === "") {
+            return {kind: "session"};
+        }
+        try {
+            return {kind: "host", host: normalizeHost(host)};
+        } catch {
+            return {kind: "unresolved", reason: "invalid-host"};
         }
     }
 
     @Mutex.synchronise("configsMutex")
     public async setAuthProvider(authProvider: AuthProvider | undefined) {
-        this._authProvider = authProvider;
-        this.bundleRemoteStateModel.setAuthProvider(authProvider);
-        this.bundleValidateModel.setAuthProvider(authProvider);
-        this.onDidChangeAuthProviderEmitter.fire();
+        this.assignAuthProvider(authProvider);
         await Promise.all([
             this.bundleRemoteStateModel.refresh(),
             this.bundleValidateModel.refresh(),
         ]);
     }
 
+    private assignAuthProvider(
+        authProvider: AuthProvider | undefined,
+        authGuard?: BundleAuthGuard
+    ) {
+        this._authProvider = authProvider;
+        this.bundleRemoteStateModel.setAuthProvider(authProvider, authGuard);
+        this.bundleValidateModel.setAuthProvider(authProvider, authGuard);
+        this.onDidChangeAuthProviderEmitter.fire();
+    }
+
     get authProvider(): AuthProvider | undefined {
         return this._authProvider;
+    }
+
+    /**
+     * The host of the pinned (Remote SSH) credentials, or undefined in normal
+     * mode / before the environment connect. The host-mismatch UI compares
+     * against this rather than the live connection host, so the paused badge
+     * tracks what the guard actually enforces — which keeps refusing while the
+     * provider stays pinned, even if the connection drops.
+     */
+    get pinnedHost(): URL | undefined {
+        return this.pinned?.authProvider.host;
     }
 
     @Mutex.synchronise("configsMutex")
     public async get<T extends keyof ConfigState>(
         key: T
     ): Promise<ConfigState[T] | undefined> {
-        return (await this.configCache.value)[key] ?? defaults[key];
+        // readState's @onError resolves to undefined when a child model throws.
+        return (await this.configCache.value)?.[key] ?? defaults[key];
     }
 
     @Mutex.synchronise("configsMutex")

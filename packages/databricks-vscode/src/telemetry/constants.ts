@@ -19,7 +19,6 @@ export enum Events {
     BUNDLE_RUN = "bundleRun",
     BUNDLE_INIT = "bundleInit",
     BUNDLE_SUB_PROJECTS = "bundleSubProjects",
-    BUNDLE_TERRAFORM_ENGINE_WARNING = "bundleTerraformEngineWarning",
     CONNECTION_STATE_CHANGED = "connectionStateChanged",
     COMPUTE_SELECTED = "computeSelected",
     WORKFLOW_RUN = "workflowRun",
@@ -46,16 +45,6 @@ export type ManualLoginSource =
     | "command"
     | "api";
 export type BundleRunResourceType = "pipelines" | "jobs";
-/**
- * What the user did with the Terraform-engine deprecation warning:
- *  - `'guide'` — opened the migration guide.
- *  - `'hidden'` — chose "Don't show again" (persisted opt-out for the workspace).
- *  - `'dismissed'` — closed it without either.
- */
-export type BundleTerraformEngineWarningAction =
-    | "guide"
-    | "hidden"
-    | "dismissed";
 export type BundleRunType =
     | "run"
     | "validate"
@@ -383,16 +372,6 @@ export class EventTypes {
         comment: "An external resource URL was opened",
         type: {
             comment: "The resource type",
-        },
-    };
-    [Events.BUNDLE_TERRAFORM_ENGINE_WARNING]: EventType<{
-        action: BundleTerraformEngineWarningAction;
-    }> = {
-        comment:
-            "Surfaced the deprecation warning for the Terraform bundle deployment engine. Recorded once per surfacing (at most once per session per workspace, until the user opts out), so the count tracks how many users still have bundles on the Terraform engine.",
-        action: {
-            comment:
-                "What the user did with the warning: 'guide' chose to open the migration guide, 'hidden' chose \"Don't show again\" (persisted opt-out for the workspace), 'dismissed' closed it without either.",
         },
     };
     [Events.AITOOLS_INSTALL]: EventType<
@@ -752,7 +731,8 @@ export class EventTypes {
             "still physically exists, which drift never checks. Categorical/boolean data only.",
         venvPresent: {
             comment:
-                "Whether the project's managed .venv interpreter still exists on disk. False means " +
+                "Whether the project's managed venv interpreter (for a uv workspace member, the " +
+                "shared venv at the root) still exists on disk. False means " +
                 "the environment was provisioned once but is now gone (deleted or never restored)",
         },
         currentTargetType: {

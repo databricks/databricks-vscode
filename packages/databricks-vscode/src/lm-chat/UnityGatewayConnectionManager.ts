@@ -2,6 +2,7 @@ import {EventEmitter} from "vscode";
 import type {Disposable, Event} from "vscode";
 import {logging} from "@databricks/sdk-experimental";
 import type {ApiClient} from "@databricks/sdk-experimental";
+import type {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import type {CliWrapper} from "../cli/CliWrapper";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {DatabricksWorkspace} from "../configuration/DatabricksWorkspace";
@@ -10,6 +11,12 @@ import type {ConnectionState} from "../configuration/models/WorkspaceConnectionM
 import {Mutex} from "../locking";
 import {Loggers} from "../logger";
 import type {StateStorage} from "../vscode-objs/StateStorage";
+import type {UnityGatewayResponsesClient} from "./UnityGatewayResponsesClient";
+
+export interface UnityGatewayClients {
+    aiGateway: AiGatewayClient;
+    responses: UnityGatewayResponsesClient;
+}
 
 /**
  * The user's Unity Gateway sign-in. It is separate from the bundle project's
@@ -21,6 +28,7 @@ import type {StateStorage} from "../vscode-objs/StateStorage";
 export class UnityGatewayConnectionManager implements Disposable {
     private readonly mutex = new Mutex();
     private readonly connection = new WorkspaceConnectionModel();
+    private clients?: UnityGatewayClients;
 
     private readonly _onDidChange = new EventEmitter<void>();
     /** Fires when the state or the saved profile changes. */
@@ -29,14 +37,39 @@ export class UnityGatewayConnectionManager implements Disposable {
     private readonly disposables: Disposable[] = [
         this.connection,
         this._onDidChange,
-        this.connection.onDidChangeState(() => this._onDidChange.fire()),
+        this.connection.onDidChangeState((state) => {
+            // connect() sets it before reporting CONNECTED.
+            if (state !== "CONNECTED") {
+                this.clients = undefined;
+            }
+            this._onDidChange.fire();
+        }),
     ];
 
     constructor(
         private readonly cli: CliWrapper,
         private readonly stateStorage: StateStorage,
         private readonly fromProfile = (profile: string, cli: CliWrapper) =>
-            ProfileAuthProvider.from(profile, cli)
+            ProfileAuthProvider.from(profile, cli),
+        private readonly newClients = async (
+            host: URL,
+            apiClient: ApiClient
+        ): Promise<UnityGatewayClients> => {
+            // The V2 SDK is bundled either way; importing it here defers
+            // evaluating it to the first connect.
+            const [aiGateway, {v2ClientOptions}, responses] = await Promise.all(
+                [
+                    import("@databricks/sdk-aigateway/v1"),
+                    import("../configuration/sdkV2Bridge"),
+                    import("./UnityGatewayResponsesClient"),
+                ]
+            );
+            const options = v2ClientOptions(apiClient, host);
+            return {
+                aiGateway: new aiGateway.AiGatewayClient(options),
+                responses: new responses.UnityGatewayResponsesClient(options),
+            };
+        }
     ) {}
 
     get state(): ConnectionState {
@@ -49,6 +82,16 @@ export class UnityGatewayConnectionManager implements Disposable {
 
     get apiClient(): ApiClient | undefined {
         return this.connection.apiClient;
+    }
+
+    /** V2 client for Unity Gateway APIs, authenticated through `apiClient`. */
+    get aiGatewayClient(): AiGatewayClient | undefined {
+        return this.clients?.aiGateway;
+    }
+
+    /** Client for chat replies, authenticated like `aiGatewayClient`. */
+    get responsesClient(): UnityGatewayResponsesClient | undefined {
+        return this.clients?.responses;
     }
 
     /**
@@ -147,7 +190,15 @@ export class UnityGatewayConnectionManager implements Disposable {
         authProvider: ProfileAuthProvider,
         save?: () => Promise<void>
     ): Promise<void> {
-        await this.connection.connect(authProvider, save);
+        await this.connection.connect(authProvider, async () => {
+            // The connection has its workspace by the time setup runs.
+            const clients = await this.newClients(
+                authProvider.host,
+                this.connection.apiClient!
+            );
+            await save?.();
+            this.clients = clients;
+        });
         logging.NamedLogger.getOrCreate(Loggers.Extension).info(
             `Connected to Unity Gateway on ${authProvider.host.toString()}`
         );

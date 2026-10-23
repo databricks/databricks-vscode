@@ -4,7 +4,6 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {LoginWizard} from "../configuration/LoginWizard";
 import {Mutex} from "../locking";
 import {onError} from "../utils/onErrorDecorator";
-import {isLanguageModelChatEnabled} from "./languageModelChatExperiment";
 import {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
 
 export class UnityGatewayCommands {
@@ -13,9 +12,9 @@ export class UnityGatewayCommands {
     constructor(
         private readonly cli: CliWrapper,
         private readonly connectionManager: UnityGatewayConnectionManager,
+        private readonly isEnabled: () => boolean,
         private readonly runLoginWizard = (cli: CliWrapper) =>
-            LoginWizard.run(cli),
-        private readonly isEnabled = isLanguageModelChatEnabled
+            LoginWizard.run(cli)
     ) {}
 
     /** Also switches the workspace when already signed in. */

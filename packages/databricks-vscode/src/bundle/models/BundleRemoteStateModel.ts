@@ -3,7 +3,11 @@ import {BaseModelWithStateCache} from "../../configuration/models/BaseModelWithS
 import {Mutex} from "../../locking";
 
 import {BundleTarget, Resource, ResourceKey, Resources} from "../types";
-import {AuthProvider} from "../../configuration/auth/AuthProvider";
+import {
+    AuthProvider,
+    BundleAuthDecision,
+    BundleAuthGuard,
+} from "../../configuration/auth/AuthProvider";
 import lodash from "lodash";
 import {WorkspaceConfigs} from "../../vscode-objs/WorkspaceConfigs";
 import {logging} from "@databricks/sdk-experimental";
@@ -50,6 +54,7 @@ export function getResource(
 export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemoteState> {
     public target: string | undefined;
     public authProvider: AuthProvider | undefined;
+    private authGuard: BundleAuthGuard | undefined;
     protected mutex = new Mutex();
     private logger = logging.NamedLogger.getOrCreate(Loggers.Bundle);
 
@@ -72,60 +77,88 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
 
     @Mutex.synchronise("mutex")
     public async deploy(force = false, token?: CancellationToken) {
-        if (this.target === undefined) {
+        // Snapshot target + auth + project root before the guard's await: a
+        // setTarget / setAuthProvider that lands during the await must not let
+        // the CLI run a target the guard never checked (or with swapped
+        // credentials), and the CLI must resolve the same bundle root the guard
+        // reasoned about (pinBundleRoot — remote mode only, see
+        // CliWrapper.getBundleCommandEnvVars).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
+        if (target === undefined) {
             throw new Error("Target is undefined");
         }
-        if (this.authProvider === undefined) {
+        if (authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
+        await this.assertAuthAllowed(target);
 
         await this.cli.bundleDeploy(
-            this.target,
-            this.authProvider,
-            this.projectRoot,
+            target,
+            authProvider,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
             force,
-            token
+            token,
+            pinBundleRoot
         );
     }
 
     @Mutex.synchronise("mutex")
     public async destroy(force = false, token: CancellationToken) {
-        if (this.target === undefined) {
+        // Snapshot target + auth + project root before the guard await (TOCTOU
+        // + bundle-root pin, see deploy()).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
+        if (target === undefined) {
             throw new Error("Target is undefined");
         }
-        if (this.authProvider === undefined) {
+        if (authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
+        await this.assertAuthAllowed(target);
 
         await this.cli.bundleDestroy(
-            this.target,
-            this.authProvider,
-            this.projectRoot,
+            target,
+            authProvider,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
             force,
-            token
+            token,
+            pinBundleRoot
         );
     }
 
     @Mutex.synchronise("mutex")
     public async sync(token: CancellationToken) {
-        if (this.target === undefined) {
+        // Snapshot target + auth + project root before the guard await (TOCTOU
+        // + bundle-root pin, see deploy()).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
+        if (target === undefined) {
             throw new Error("Target is undefined");
         }
-        if (this.authProvider === undefined) {
+        if (authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
+        await this.assertAuthAllowed(target);
 
         await this.cli.bundleSync(
-            this.target,
-            this.authProvider,
-            this.projectRoot,
+            target,
+            authProvider,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
             this.logger,
-            token
+            token,
+            pinBundleRoot
         );
     }
 
@@ -133,20 +166,28 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         resourceKey: string,
         additionalArgs: string[] = []
     ) {
-        if (this.target === undefined) {
+        // Snapshot target + auth + project root before the guard await (TOCTOU
+        // + bundle-root pin, see deploy()).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
+        if (target === undefined) {
             throw new Error("Target is undefined");
         }
-        if (this.authProvider === undefined) {
+        if (authProvider === undefined) {
             throw new Error("No authentication method is set");
         }
+        await this.assertAuthAllowed(target);
 
         return await this.cli.getBundleRunCommand(
-            this.target,
-            this.authProvider,
+            target,
+            authProvider,
             resourceKey,
-            this.projectRoot,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
-            additionalArgs
+            additionalArgs,
+            pinBundleRoot
         );
     }
 
@@ -157,27 +198,60 @@ export class BundleRemoteStateModel extends BaseModelWithStateCache<BundleRemote
         this.target = target;
         this.resetCache();
         this.authProvider = undefined;
+        this.authGuard = undefined;
     }
 
-    public setAuthProvider(authProvider: AuthProvider | undefined) {
+    public setAuthProvider(
+        authProvider: AuthProvider | undefined,
+        authGuard?: BundleAuthGuard
+    ) {
         if (
             !lodash.isEqual(this.authProvider?.toJSON(), authProvider?.toJSON())
         ) {
             this.authProvider = authProvider;
         }
+        this.authGuard = authGuard;
+    }
+
+    private async authDecision(target: string): Promise<BundleAuthDecision> {
+        return this.authGuard === undefined
+            ? {allowed: true}
+            : this.authGuard(target);
+    }
+
+    private async assertAuthAllowed(target: string) {
+        const decision = await this.authDecision(target);
+        if (!decision.allowed) {
+            throw new Error(
+                `Bundle commands for target "${target}" are paused because ` +
+                    `${decision.reason}. Review the Target row in the ` +
+                    "Configuration view."
+            );
+        }
     }
 
     protected async readState(): Promise<BundleRemoteState> {
-        if (this.target === undefined || this.authProvider === undefined) {
+        // Snapshot target + auth + project root before the guard await (TOCTOU,
+        // see deploy()).
+        const target = this.target;
+        const authProvider = this.authProvider;
+        const projectRoot = this.projectRoot;
+        const pinBundleRoot = this.authGuard !== undefined;
+        if (
+            target === undefined ||
+            authProvider === undefined ||
+            !(await this.authDecision(target)).allowed
+        ) {
             return {};
         }
 
         const {stdout} = await this.cli.bundleSummarise(
-            this.target,
-            this.authProvider,
-            this.projectRoot,
+            target,
+            authProvider,
+            projectRoot,
             this.workspaceConfigs.databrickscfgLocation,
-            this.logger
+            this.logger,
+            pinBundleRoot
         );
 
         if (stdout === "" || stdout === undefined) {

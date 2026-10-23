@@ -8,7 +8,7 @@ import {AzureCliCheck} from "./AzureCliCheck";
 import {DatabricksCliCheck} from "./DatabricksCliCheck";
 import {Loggers} from "../../logger";
 import {CliWrapper} from "../../cli/CliWrapper";
-import {ProxyAgent} from "../../utils";
+import {createWorkspaceClient} from "./workspaceClient";
 
 // TODO: Resolve this with SDK's AuthType.
 export type AuthType =
@@ -17,6 +17,22 @@ export type AuthType =
     | "google-id"
     | "profile"
     | "pat";
+
+/**
+ * The outcome of a {@link BundleAuthGuard} check. When refused, `reason` is a
+ * short phrase naming why (e.g. "it deploys to a different workspace than this
+ * session"), so callers can show the real cause instead of a fixed message.
+ */
+export type BundleAuthDecision =
+    | {allowed: true}
+    | {allowed: false; reason: string};
+
+/**
+ * Checked right before an authenticated bundle CLI call: whether the
+ * credentials may be sent for this target. The CLI sends them to the target's
+ * own workspace.host.
+ */
+export type BundleAuthGuard = (target: string) => Promise<BundleAuthDecision>;
 
 export abstract class AuthProvider {
     constructor(
@@ -44,7 +60,7 @@ export abstract class AuthProvider {
 
     async getWorkspaceClient(): Promise<WorkspaceClient> {
         const config = await this.getSdkConfig();
-        return ProxyAgent.createWorkspaceClient(config, this.host);
+        return createWorkspaceClient(config);
     }
 
     /**
@@ -350,7 +366,7 @@ export class DatabricksCliAuthProvider extends AuthProvider {
         const env: Record<string, string> = {
             DATABRICKS_HOST: this.host.toString(),
             DATABRICKS_AUTH_TYPE: "databricks-cli",
-            // Point the SDK/Terraform provider at the bundled CLI so they don't
+            // Point the SDK at the bundled CLI so it doesn't
             // fall back to searching PATH (and fail with "databricks CLI not
             // found") in subprocesses that don't inherit our resolved path.
             DATABRICKS_CLI_PATH: this.cliPath,

@@ -31,6 +31,15 @@ import {
 
 const withLogContext = logging.withLogContext;
 
+/**
+ * A file name that must not exist inside a bundle root. In remote mode the
+ * extension points the CLI's `DATABRICKS_CONFIG_FILE` at this path (joined onto
+ * the pinned bundle root) so the CLI can't read the user's `.databrickscfg` —
+ * see {@link CliWrapper.getBundleCommandEnvVars}.
+ */
+export const REMOTE_MODE_NONEXISTENT_CONFIG_FILE =
+    ".databricks-vscode-nonexistent-databrickscfg";
+
 export interface ExecFileOptions {
     /**
      * Close the child's stdin immediately after spawning. Node gives the child
@@ -492,9 +501,9 @@ function defaultCliPath(context: ExtensionContext) {
     // The bundled binary is named `databricks.exe` on Windows. We must
     // include the extension here: while spawning the CLI ourselves works
     // without it (Windows' CreateProcess auto-appends `.exe`), this path is
-    // also forwarded to the Databricks Go SDK / Terraform provider via the
-    // DATABRICKS_CLI_PATH env var, and they do a literal file lookup that
-    // fails on an extensionless path with "databricks CLI not found".
+    // also forwarded to the Databricks Go SDK via the DATABRICKS_CLI_PATH env
+    // var, and it does a literal file lookup that fails on an extensionless
+    // path with "databricks CLI not found".
     const binName =
         process.platform === "win32" ? "databricks.exe" : "databricks";
     return context.asAbsolutePath(`./bin/${binName}`);
@@ -713,10 +722,7 @@ export class CliWrapper {
         try {
             res = await execFile(cmd.command, cmd.args, {
                 env: {
-                    ...EnvVarGenerators.getEnvVarsForCli(
-                        this.extensionContext,
-                        configfilePath
-                    ),
+                    ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
                     ...EnvVarGenerators.getProxyEnvVars(),
                 },
             });
@@ -802,7 +808,7 @@ export class CliWrapper {
 
     private aitoolsEnv(): Record<string, string | undefined> {
         return {
-            ...EnvVarGenerators.getEnvVarsForCli(this.extensionContext),
+            ...EnvVarGenerators.getEnvVarsForCli(),
             ...EnvVarGenerators.getProxyEnvVars(),
         };
     }
@@ -961,14 +967,12 @@ export class CliWrapper {
 
     async getBundleCommandEnvVars(
         authProvider: AuthProvider,
-        configfilePath?: string
+        configfilePath?: string,
+        bundleRoot?: string
     ) {
         // Add python executable to PATH
         const executable = await this.pythonExtension?.getPythonExecutable();
-        const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(
-            this.extensionContext,
-            configfilePath
-        );
+        const cliEnvVars = EnvVarGenerators.getEnvVarsForCli(configfilePath);
         let shellPath = cliEnvVars.PATH;
         if (executable) {
             shellPath = `${path.dirname(executable)}${
@@ -982,8 +986,39 @@ export class CliWrapper {
             ...authProvider.toEnv(),
             ...this.getLogginEnvVars(),
             ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
+            // In remote mode point the config file at a path that does not
+            // exist, so the CLI can't read the user's `.databrickscfg`. Its
+            // `configureProfile` (cmd/root/bundle.go) otherwise reads
+            // `[__settings__].default_profile` and sets it as `workspace.profile`
+            // even when `DATABRICKS_HOST` is set, authenticating against that
+            // profile's host with the session token. The credential guard treats
+            // a host-less, profile-less target as the session host and allows it,
+            // so the token would leak to the default profile's host — at startup,
+            // with no user action. Forcing a missing config file makes the CLI
+            // fall back to `DATABRICKS_HOST` (the session host), matching the
+            // guard. Remote mode already refuses every target with a profile, so
+            // this removes nothing that works today. A conditional spread (not a
+            // plain key) keeps normal mode untouched: a `DATABRICKS_CONFIG_FILE:
+            // undefined` would make removeUndefinedKeys drop the value cliEnvVars
+            // set. Gated on `bundleRoot`, the same remote-mode signal as the pin.
+            ...(bundleRoot !== undefined
+                ? {
+                      // eslint-disable-next-line @typescript-eslint/naming-convention
+                      DATABRICKS_CONFIG_FILE: path.join(
+                          bundleRoot,
+                          REMOTE_MODE_NONEXISTENT_CONFIG_FILE
+                      ),
+                  }
+                : {}),
             /* eslint-disable @typescript-eslint/naming-convention */
             DATABRICKS_CLUSTER_ID: this.clusterId,
+            // Pin the bundle root to the project folder the credential guard
+            // checked. Without it the CLI resolves the root by walking up from
+            // the cwd, so a parent `databricks.yml` could override the project
+            // folder and the token would reach a host the guard never saw. Set
+            // only in remote mode (undefined here → removeUndefinedKeys omits
+            // it, so normal mode keeps the CLI's own root resolution).
+            DATABRICKS_BUNDLE_ROOT: bundleRoot,
             PATH: shellPath,
             /* eslint-enable @typescript-eslint/naming-convention */
         });
@@ -994,7 +1029,8 @@ export class CliWrapper {
         authProvider: AuthProvider,
         workspaceFolder: Uri,
         configfilePath?: string,
-        logger?: logging.NamedLogger
+        logger?: logging.NamedLogger,
+        pinBundleRoot = false
     ) {
         const bundleOpName = "validate";
         return await runBundleCommand(
@@ -1007,7 +1043,11 @@ export class CliWrapper {
                 end: "Finished reading local bundle configuration.",
                 error: "Failed to read local bundle configuration.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             // Print stdout to the debug log (not visible in the output channel).
             // stderr data will be printed to the output channel with the error level.
@@ -1020,7 +1060,8 @@ export class CliWrapper {
         authProvider: AuthProvider,
         workspaceFolder: Uri,
         configfilePath?: string,
-        logger?: logging.NamedLogger
+        logger?: logging.NamedLogger,
+        pinBundleRoot = false
     ) {
         const bundleOpName = "summarize";
         return await runBundleCommand(
@@ -1032,9 +1073,8 @@ export class CliWrapper {
                 "--include-locations",
                 "--target",
                 target,
-                // Forces the CLI to regenerate local terraform state and pull the remote state.
-                // Regenerating terraform state is useful when we want to ensure that the provider version
-                // used in the local state matches the bundled version we supply with the extension.
+                // Skips the local cache and loads the deployment state from the
+                // remote workspace, so the summary reflects the latest deploy.
                 "--force-pull",
             ],
             workspaceFolder,
@@ -1043,7 +1083,11 @@ export class CliWrapper {
                 end: "Bundle configuration refreshed.",
                 error: "Failed to refresh bundle configuration.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             // Print stdout to the debug log (not visible in the output channel).
             // stderr data will be printed to the output channel with the error level.
@@ -1054,7 +1098,6 @@ export class CliWrapper {
     getBundleInitEnvVars(authProvider: AuthProvider) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
-                this.extensionContext,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -1072,7 +1115,6 @@ export class CliWrapper {
     getSshConnectEnvVars(authProvider: AuthProvider) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
-                this.extensionContext,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -1116,7 +1158,6 @@ export class CliWrapper {
     getSetupLocalEnvVars(authProvider: AuthProvider, target?: string) {
         return removeUndefinedKeys({
             ...EnvVarGenerators.getEnvVarsForCli(
-                this.extensionContext,
                 workspaceConfigs.databrickscfgLocation
             ),
             ...EnvVarGenerators.getProxyEnvVars(),
@@ -1157,7 +1198,8 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger,
         force = false,
-        token?: CancellationToken
+        token?: CancellationToken,
+        pinBundleRoot = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
@@ -1181,7 +1223,11 @@ export class CliWrapper {
                 end: "Bundle deployed successfully.",
                 error: "Failed to deploy the bundle.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             {},
             token
@@ -1195,7 +1241,8 @@ export class CliWrapper {
         configfilePath?: string,
         logger?: logging.NamedLogger,
         force = false,
-        token?: CancellationToken
+        token?: CancellationToken,
+        pinBundleRoot = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
@@ -1215,7 +1262,11 @@ export class CliWrapper {
                 end: "Bundle destroyed successfully.",
                 error: "Failed to destroy the bundle.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             {},
             token
@@ -1228,7 +1279,8 @@ export class CliWrapper {
         workspaceFolder: Uri,
         configfilePath?: string,
         logger?: logging.NamedLogger,
-        token?: CancellationToken
+        token?: CancellationToken,
+        pinBundleRoot = false
     ) {
         await commands.executeCommand("databricks.bundle.showLogs");
         return await runBundleCommand(
@@ -1241,7 +1293,11 @@ export class CliWrapper {
                 end: "Bundle assets uploaded successfully.",
                 error: "Failed to upload bundle assets.",
             },
-            await this.getBundleCommandEnvVars(authProvider, configfilePath),
+            await this.getBundleCommandEnvVars(
+                authProvider,
+                configfilePath,
+                pinBundleRoot ? workspaceFolder.fsPath : undefined
+            ),
             logger,
             {},
             token
@@ -1254,23 +1310,40 @@ export class CliWrapper {
         resourceKey: string,
         workspaceFolder: Uri,
         configfilePath?: string,
-        additionalArgs: string[] = []
+        additionalArgs: string[] = [],
+        pinBundleRoot = false
     ): Promise<{
         cmd: string;
         args: string[];
         options: SpawnOptionsWithoutStdio;
     }> {
         const env: Record<string, string> = removeUndefinedKeys({
-            ...EnvVarGenerators.getEnvVarsForCli(
-                this.extensionContext,
-                configfilePath
-            ),
+            ...EnvVarGenerators.getEnvVarsForCli(configfilePath),
             ...EnvVarGenerators.getProxyEnvVars(),
             ...authProvider.toEnv(),
             ...((await this._bundleVariableModel?.getEnvVariables()) ?? {}),
             ...this.getLogginEnvVars(),
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+            // Remote mode: force a missing config file so the CLI can't read
+            // `.databrickscfg`'s default_profile and send the session token to
+            // that profile's host (see getBundleCommandEnvVars). Same root value
+            // the pin uses, so both produce the identical path.
+            ...(pinBundleRoot
+                ? {
+                      // eslint-disable-next-line @typescript-eslint/naming-convention
+                      DATABRICKS_CONFIG_FILE: path.join(
+                          workspaceFolder.fsPath,
+                          REMOTE_MODE_NONEXISTENT_CONFIG_FILE
+                      ),
+                  }
+                : {}),
+            /* eslint-disable @typescript-eslint/naming-convention */
             DATABRICKS_CLUSTER_ID: this.clusterId,
+            // Pin the bundle root to the project folder the guard checked (see
+            // getBundleCommandEnvVars). Remote mode only; undefined otherwise.
+            DATABRICKS_BUNDLE_ROOT: pinBundleRoot
+                ? workspaceFolder.fsPath
+                : undefined,
+            /* eslint-enable @typescript-eslint/naming-convention */
         });
 
         return {
@@ -1301,7 +1374,7 @@ export class CliWrapper {
         }
 
         const env = {
-            ...EnvVarGenerators.getEnvVarsForCli(this.extensionContext),
+            ...EnvVarGenerators.getEnvVarsForCli(),
             ...EnvVarGenerators.getProxyEnvVars(),
         };
         const overrideResult = await getCliVersion(overridePath, env);

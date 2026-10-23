@@ -1,5 +1,15 @@
 import {expect} from "chai";
-import {mkdtemp, readdir, readFile, rm, writeFile} from "fs/promises";
+import {
+    chmod,
+    mkdir,
+    mkdtemp,
+    readdir,
+    readFile,
+    realpath,
+    rm,
+    symlink,
+    writeFile,
+} from "fs/promises";
 import {tmpdir} from "os";
 import path from "path";
 import {commands, env, QuickPick, QuickPickItem, Uri, window} from "vscode";
@@ -483,11 +493,14 @@ describe("makePythonSetupDeps saveState", () => {
         deps.saveState({
             envKey: "serverless/serverless-v5",
             pythonVersion: "3.12",
+            venvPath: "/proj/.venv",
+            projectRoot: "/proj",
         });
 
         expect(persisted).to.have.length(1);
         expect(persisted[0].envKey).to.equal("serverless/serverless-v5");
         expect(persisted[0].pythonVersion).to.equal("3.12");
+        expect(persisted[0].venvPath).to.equal("/proj/.venv");
         // A wiring-supplied ISO-8601 timestamp is added.
         expect(persisted[0].timestamp).to.be.a("string");
         expect(Number.isNaN(Date.parse(persisted[0].timestamp))).to.equal(
@@ -1033,6 +1046,33 @@ describe("makePythonSetupDeps openProjectFile", () => {
     });
 });
 
+describe("makePythonSetupDeps realPath", () => {
+    it("resolves symlinks in the project folder on Unix", async function () {
+        if (process.platform === "win32") {
+            // Windows keeps the path as given, and symlinks need privileges.
+            this.skip();
+        }
+        const root = await realpath(
+            await mkdtemp(path.join(tmpdir(), "vpex-ws-"))
+        );
+        try {
+            await mkdir(path.join(root, "deep", "bundles", "a"), {
+                recursive: true,
+            });
+            await symlink(
+                path.join(root, "deep", "bundles"),
+                path.join(root, "link")
+            );
+            const deps = makePythonSetupDeps(makeWiring());
+            expect(await deps.realPath(path.join(root, "link", "a"))).to.equal(
+                path.join(root, "deep", "bundles", "a")
+            );
+        } finally {
+            await rm(root, {recursive: true, force: true});
+        }
+    });
+});
+
 describe("makePythonSetupDeps restoreProjectFile", () => {
     it("copies the CLI's backup over the project's pyproject.toml", async () => {
         const dir = await mkdtemp(path.join(tmpdir(), "vpex-restore-"));
@@ -1133,6 +1173,77 @@ describe("makePythonSetupDeps restoreProjectFile", () => {
     });
 });
 
+describe("makePythonSetupDeps checkProjectFileBackup", () => {
+    it("accepts a backup that exists inside the folder", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-check-"));
+        try {
+            const backup = path.join(dir, "pyproject.toml.bak");
+            await writeFile(backup, "original\n");
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.checkProjectFileBackup(dir, backup);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("accepts a backup whose name starts with two dots", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-check-"));
+        try {
+            const backup = path.join(dir, "..cache.bak");
+            await writeFile(backup, "original\n");
+            const deps = makePythonSetupDeps(makeWiring());
+            await deps.checkProjectFileBackup(dir, backup);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("rejects a backup that cannot be read", async function () {
+        if (process.platform === "win32" || process.getuid?.() === 0) {
+            // chmod does not remove read access there.
+            this.skip();
+        }
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-check-"));
+        try {
+            const backup = path.join(dir, "pyproject.toml.bak");
+            await writeFile(backup, "original\n");
+            await chmod(backup, 0o200);
+            const deps = makePythonSetupDeps(makeWiring());
+            let threw = false;
+            try {
+                await deps.checkProjectFileBackup(dir, backup);
+            } catch {
+                threw = true;
+            }
+            expect(threw).to.equal(true);
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+        }
+    });
+
+    it("rejects a missing backup or one outside the folder", async () => {
+        const dir = await mkdtemp(path.join(tmpdir(), "vpex-check-"));
+        const outside = await mkdtemp(path.join(tmpdir(), "vpex-out-"));
+        try {
+            const foreign = path.join(outside, "x.bak");
+            await writeFile(foreign, "x\n");
+            const deps = makePythonSetupDeps(makeWiring());
+            for (const backup of [path.join(dir, "missing.bak"), foreign]) {
+                let threw = false;
+                try {
+                    await deps.checkProjectFileBackup(dir, backup);
+                } catch {
+                    threw = true;
+                }
+                expect(threw, backup).to.equal(true);
+            }
+        } finally {
+            await rm(dir, {recursive: true, force: true});
+            await rm(outside, {recursive: true, force: true});
+        }
+    });
+});
+
 describe("makePythonSetupDeps showSuccess", () => {
     let originalInfo: typeof window.showInformationMessage;
     let originalWarn: typeof window.showWarningMessage;
@@ -1192,7 +1303,7 @@ describe("makePythonSetupDeps showSuccess", () => {
             })
         );
 
-        await deps.showSuccess(SUCCESS_DEFAULT, {});
+        await deps.showSuccess(SUCCESS_DEFAULT, {}, "/proj/.venv");
 
         expect(appended.join("")).to.have.length.greaterThan(0);
         // The automatic reveal fires regardless of what the user clicks.
@@ -1205,7 +1316,7 @@ describe("makePythonSetupDeps showSuccess", () => {
     it("raises an info toast (never a warning) when the run had warnings", async () => {
         const deps = makePythonSetupDeps(makeWiring());
 
-        await deps.showSuccess(SUCCESS_WITH_WARNINGS, {});
+        await deps.showSuccess(SUCCESS_WITH_WARNINGS, {}, "/proj/.venv");
 
         // A successful run is informational even when it carried warnings;
         // the warning count is in the message and the details behind it.
@@ -1213,6 +1324,28 @@ describe("makePythonSetupDeps showSuccess", () => {
         expect(infoShownWith[0].message).to.contain("warning");
         expect(infoShownWith[0].actions).to.contain("View Details");
         expect(warnShownWith).to.have.length(0);
+    });
+
+    it("reads the project name from the venv folder it is given", async () => {
+        const appended: string[] = [];
+        const venvDir = await mkdtemp(path.join(tmpdir(), "venv-"));
+        try {
+            await writeFile(
+                path.join(venvDir, "pyvenv.cfg"),
+                "home = /usr/bin\nprompt = sales\n"
+            );
+            const deps = makePythonSetupDeps(
+                makeWiring({
+                    log: {append: (c) => appended.push(c), show: () => {}},
+                })
+            );
+
+            await deps.showSuccess(SUCCESS_DEFAULT, {}, venvDir);
+        } finally {
+            await rm(venvDir, {recursive: true, force: true});
+        }
+
+        expect(appended.join("")).to.contain(".venv (sales)");
     });
 
     it("reveals the channel again when View Details is picked", async () => {
@@ -1229,7 +1362,7 @@ describe("makePythonSetupDeps showSuccess", () => {
         );
         reply = "View Details";
 
-        await deps.showSuccess(SUCCESS_DEFAULT, {});
+        await deps.showSuccess(SUCCESS_DEFAULT, {}, "/proj/.venv");
 
         // Once on the automatic reveal, again when the button is picked.
         expect(shown).to.equal(2);

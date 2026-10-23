@@ -1,5 +1,6 @@
 import {commands} from "vscode";
 import {workspaceConfigs} from "./WorkspaceConfigs";
+import type {ConnectionState} from "../configuration/models/WorkspaceConnectionModel";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class CustomWhenContext {
@@ -97,6 +98,14 @@ export class CustomWhenContext {
         commands.executeCommand(
             "setContext",
             "databricks.context.unityGateway.hasSavedProfile",
+            value
+        );
+    }
+
+    setUnityGatewayState(value: ConnectionState) {
+        commands.executeCommand(
+            "setContext",
+            "databricks.context.unityGateway.state",
             value
         );
     }

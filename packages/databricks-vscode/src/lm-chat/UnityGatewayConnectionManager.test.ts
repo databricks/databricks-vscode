@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import assert from "assert";
-import {ApiClient, WorkspaceClient} from "@databricks/sdk-experimental";
+import {ApiClient, Config, WorkspaceClient} from "@databricks/sdk-experimental";
+import type {AiGatewayClient} from "@databricks/sdk-aigateway/v1";
 import {anything, deepEqual, instance, mock, verify, when} from "ts-mockito";
 import {CliWrapper} from "../cli/CliWrapper";
 import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import type {ConnectionState} from "../configuration/ConnectionManager";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {UnityGatewayConnectionManager} from "./UnityGatewayConnectionManager";
+import type {UnityGatewayResponsesClient} from "./UnityGatewayResponsesClient";
 
 const PROFILE_KEY = "databricks.unityGateway.savedProfile";
 const WORKSPACE_ID = "1234";
@@ -26,6 +28,13 @@ describe(__filename, () => {
     let unreachableProfiles: Set<string>;
     let apiClients: Map<string, ApiClient>;
     let restoredProfiles: string[];
+    let aiGatewayClients: {
+        client: AiGatewayClient;
+        responses: UnityGatewayResponsesClient;
+        host: string;
+        apiClient: ApiClient;
+    }[];
+    let clientFailures: Set<string>;
     let manager: UnityGatewayConnectionManager;
     let states: ConnectionState[];
 
@@ -48,7 +57,13 @@ describe(__filename, () => {
                 } as any;
             },
         } as any);
-        const apiClient = instance(mock(ApiClient));
+        const mockConfig = mock(Config);
+        const mockApiClient = mock(ApiClient);
+        when(mockApiClient.config).thenReturn(instance(mockConfig));
+        // As createWorkspaceClient sets them.
+        when(mockApiClient.product).thenReturn("databricks-vscode");
+        when(mockApiClient.productVersion).thenReturn("1.2.3");
+        const apiClient = instance(mockApiClient);
         apiClients.set(name, apiClient);
         when(mockWorkspaceClient.apiClient).thenReturn(apiClient);
 
@@ -76,6 +91,8 @@ describe(__filename, () => {
         unreachableProfiles = new Set();
         apiClients = new Map();
         restoredProfiles = [];
+        aiGatewayClients = [];
+        clientFailures = new Set();
         manager = new UnityGatewayConnectionManager(
             instance(mock(CliWrapper)),
             instance(mockStateStorage),
@@ -85,6 +102,20 @@ describe(__filename, () => {
                     throw new Error("profile not found");
                 }
                 return profile(name);
+            },
+            async (host, apiClient) => {
+                if (clientFailures.has(host.hostname)) {
+                    throw new Error("can't load the V2 SDK");
+                }
+                const client = {} as AiGatewayClient;
+                const responses = {} as UnityGatewayResponsesClient;
+                aiGatewayClients.push({
+                    client,
+                    responses,
+                    host: host.toString(),
+                    apiClient,
+                });
+                return {aiGateway: client, responses};
             }
         );
         states = [];
@@ -135,6 +166,22 @@ describe(__filename, () => {
             assert.deepStrictEqual(states, ["CONNECTING", "CONNECTED"]);
         });
 
+        it("builds Unity Gateway clients from the workspace's v1 client", async () => {
+            await manager.signIn(profile("a"));
+
+            assert.equal(aiGatewayClients.length, 1);
+            assert.equal(
+                aiGatewayClients[0].host,
+                "https://a.cloud.databricks.com/"
+            );
+            assert.equal(aiGatewayClients[0].apiClient, apiClients.get("a"));
+            assert.equal(manager.aiGatewayClient, aiGatewayClients[0].client);
+            assert.equal(
+                manager.responsesClient,
+                aiGatewayClients[0].responses
+            );
+        });
+
         it("disconnects, keeping the saved profile, when switching fails", async () => {
             await manager.signIn(profile("a"));
             unreachableProfiles.add("b");
@@ -147,6 +194,8 @@ describe(__filename, () => {
 
             assert.equal(manager.state, "DISCONNECTED");
             assert.equal(manager.databricksWorkspace, undefined);
+            assert.equal(manager.aiGatewayClient, undefined);
+            assert.equal(manager.responsesClient, undefined);
             verify(
                 mockStateStorage.set(PROFILE_KEY, deepEqual(saved("b")))
             ).never();
@@ -178,8 +227,52 @@ describe(__filename, () => {
 
             assert.equal(manager.state, "DISCONNECTED");
             assert.equal(manager.databricksWorkspace, undefined);
+            assert.equal(manager.aiGatewayClient, undefined);
             assert.equal(manager.hasSavedProfile, false);
             assert.deepStrictEqual(states, ["CONNECTING", "DISCONNECTED"]);
+        });
+
+        it("disconnects, saving nothing, when the new client can't be built", async () => {
+            await manager.signIn(profile("a"));
+            clientFailures.add("b.cloud.databricks.com");
+
+            await assert.rejects(
+                () => manager.signIn(profile("b")),
+                /can't load the V2 SDK/
+            );
+
+            assert.equal(manager.state, "DISCONNECTED");
+            assert.equal(manager.apiClient, undefined);
+            assert.equal(manager.aiGatewayClient, undefined);
+            verify(
+                mockStateStorage.set(PROFILE_KEY, deepEqual(saved("b")))
+            ).never();
+        });
+
+        it("builds the Unity Gateway clients", async () => {
+            const defaultManager = new UnityGatewayConnectionManager(
+                instance(mock(CliWrapper)),
+                instance(mockStateStorage)
+            );
+            try {
+                await defaultManager.signIn(profile("a"));
+
+                assert.ok(defaultManager.aiGatewayClient);
+                assert.ok(defaultManager.responsesClient);
+            } finally {
+                defaultManager.dispose();
+            }
+        });
+
+        it("has the Unity Gateway client by the time it reports CONNECTED", async () => {
+            const clients: (AiGatewayClient | undefined)[] = [];
+            manager.onDidChange(() => clients.push(manager.aiGatewayClient));
+
+            await manager.signIn(profile("a"));
+
+            assert.equal(clients.length, 2);
+            assert.equal(clients[0], undefined);
+            assert.equal(clients[1], aiGatewayClients[0].client);
         });
     });
 
@@ -199,6 +292,7 @@ describe(__filename, () => {
 
             assert.equal(manager.state, "CONNECTED");
             assert.equal(workspaceHost(), "https://a.cloud.databricks.com/");
+            assert.equal(manager.aiGatewayClient, aiGatewayClients[0].client);
             assert.deepStrictEqual(restoredProfiles, ["a"]);
         });
 
@@ -290,6 +384,8 @@ describe(__filename, () => {
 
             assert.equal(manager.state, "DISCONNECTED");
             assert.equal(manager.apiClient, undefined);
+            assert.equal(manager.aiGatewayClient, undefined);
+            assert.equal(manager.responsesClient, undefined);
             verify(mockStateStorage.set(PROFILE_KEY, undefined)).never();
             assert.deepStrictEqual(states, ["DISCONNECTED"]);
 
@@ -335,6 +431,7 @@ describe(__filename, () => {
             assert.equal(manager.state, "DISCONNECTED");
             assert.equal(manager.databricksWorkspace, undefined);
             assert.equal(manager.apiClient, undefined);
+            assert.equal(manager.aiGatewayClient, undefined);
             verify(mockStateStorage.set(PROFILE_KEY, undefined)).once();
             assert.deepStrictEqual(states, ["DISCONNECTED"]);
         });

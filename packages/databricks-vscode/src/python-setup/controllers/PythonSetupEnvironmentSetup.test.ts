@@ -1,6 +1,8 @@
 import {expect} from "chai";
+import path from "node:path";
 import {
     PythonSetupEnvironmentSetup,
+    PythonSetupPersistedState,
     PythonSetupSetupDeps,
 } from "./PythonSetupEnvironmentSetup";
 import {
@@ -11,6 +13,7 @@ import {
 import {PythonSetupResult} from "../models/PythonSetupResult";
 import {
     SUCCESS_REAL_RUN,
+    SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER,
     SUCCESS_REAL_RUN_WITH_WARNINGS,
     ERROR_NO_TARGET,
     ERROR_USAGE,
@@ -123,8 +126,10 @@ function makeDeps(
             status: "ok",
             compute: {kind: "serverless", version: "5"},
         }),
+        realPath: async (p) => p,
         adoptInterpreter: async () => {},
         openProjectFile: async () => {},
+        checkProjectFileBackup: async () => {},
         restoreProjectFile: async () => {},
         saveState: () => {},
         notify: async () => {},
@@ -157,7 +162,7 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
     it("runs the CLI and marks ready on a successful real run", async () => {
         const cli = makeCli({resolve: SUCCESS_REAL_RUN});
         const adopted: Array<{venvPath: string; root: string}> = [];
-        const saved: Array<{envKey: string; pythonVersion: string}> = [];
+        const saved: PythonSetupPersistedState[] = [];
         const succeeded: PythonSetupResult[] = [];
         const setup = new PythonSetupEnvironmentSetup(
             makeDeps({
@@ -187,12 +192,14 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         expect(cli.options[0].cwd).to.equal("/proj");
         expect(cli.options[0].onLog).to.be.a("function");
         expect(adopted).to.deep.equal([
-            {venvPath: SUCCESS_REAL_RUN.venvPath, root: "/proj"},
+            {venvPath: path.resolve("/proj", ".venv"), root: "/proj"},
         ]);
         expect(saved).to.deep.equal([
             {
                 envKey: SUCCESS_REAL_RUN.compute!.envKey,
                 pythonVersion: SUCCESS_REAL_RUN.resolved!.pythonVersion,
+                venvPath: path.resolve("/proj", ".venv"),
+                projectRoot: "/proj",
             },
         ]);
         // The success is announced, with the parsed result.
@@ -223,8 +230,97 @@ describe("PythonSetupEnvironmentSetup.setup", () => {
         // Adoption targets /projA (the run's cwd), never the switched-to /projB:
         // otherwise B's interpreter setting would point at A's venv.
         expect(adopted).to.deep.equal([
-            {venvPath: SUCCESS_REAL_RUN.venvPath, root: "/projA"},
+            {venvPath: path.resolve("/projA", ".venv"), root: "/projA"},
         ]);
+    });
+
+    it("resolves a relative venvPath from the real project folder", async () => {
+        // The CLI counts venvPath from the symlink-resolved project folder, so
+        // the controller must not join it to the project folder by text.
+        const adopted: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER}),
+                projectRoot: () => "/link/sales",
+                realPath: async () => "/mono/deep/bundles/sales",
+                adoptInterpreter: async (venvDir) => {
+                    adopted.push(venvDir);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(adopted).to.deep.equal([
+            path.resolve("/mono/deep/bundles/sales", "../../.venv"),
+        ]);
+    });
+
+    it("keeps .venv under the project folder as opened", async () => {
+        // The same folder either way, but the opened form keeps the interpreter
+        // inside the workspace folder for the Python extension.
+        const adopted: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                projectRoot: () => "/link/proj",
+                realPath: async () => "/real/proj",
+                adoptInterpreter: async (venvDir) => {
+                    adopted.push(venvDir);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(adopted).to.deep.equal([path.resolve("/link/proj", ".venv")]);
+    });
+
+    it("keeps an absolute venvPath as it is", async () => {
+        const abs = path.resolve("/envs/shared");
+        const adopted: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: {...SUCCESS_REAL_RUN, venvPath: abs}}),
+                realPath: async () => "/real/proj",
+                adoptInterpreter: async (venvDir) => {
+                    adopted.push(venvDir);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(adopted).to.deep.equal([abs]);
+    });
+
+    it("adopts and saves the shared venv at the root for a uv workspace member", async () => {
+        const member = "/mono/bundles/sales";
+        const shared = path.resolve(member, "../../.venv");
+        const adopted: Array<{venvPath: string; root: string}> = [];
+        const saved: PythonSetupPersistedState[] = [];
+        const venvDirs: string[] = [];
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER}),
+                projectRoot: () => member,
+                adoptInterpreter: async (venvPath, root) => {
+                    adopted.push({venvPath, root});
+                },
+                saveState: (s) => {
+                    saved.push(s);
+                },
+                showSuccess: async (_r, _flags, venvDir) => {
+                    venvDirs.push(venvDir);
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(setup.ready).to.equal(true);
+        expect(adopted).to.deep.equal([{venvPath: shared, root: member}]);
+        expect(saved.map((s) => s.venvPath)).to.deep.equal([shared]);
+        expect(venvDirs).to.deep.equal([shared]);
     });
 
     it("reports ready only for the project it was set up for, not another active project", async () => {
@@ -1320,6 +1416,46 @@ describe("PythonSetupEnvironmentSetup telemetry", () => {
         ]);
     });
 
+    it("offers no report when the project folder is gone before adoption", async () => {
+        // A folder renamed or deleted during the CLI run is not an extension
+        // defect: no "Report this problem", and adoption never runs.
+        const telemetry = makeTelemetryRecorder();
+        const errors: Array<{message: string; actions?: unknown[]}> = [];
+        let adopted = false;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                ...telemetry,
+                cli: makeCli({resolve: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER}),
+                realPath: async () => {
+                    throw new Error("ENOENT: no such file or directory");
+                },
+                adoptInterpreter: async () => {
+                    adopted = true;
+                },
+                showError: async (message, _detail, actions) => {
+                    errors.push({message, actions});
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(adopted).to.equal(false);
+        expect(setup.ready).to.equal(false);
+        expect(errors).to.have.length(1);
+        expect(errors[0].message).to.contain("/proj");
+        expect(errors[0].actions ?? []).to.deep.equal([]);
+        expect(telemetry.results).to.deep.equal([
+            {
+                outcome: "failed",
+                failurePhase: "adopt",
+                envKey: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER.compute!.envKey,
+                reportOffered: false,
+                warnings: SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER.warnings,
+            },
+        ]);
+    });
+
     it("reports cancelled when the user aborts the run", async () => {
         const telemetry = makeTelemetryRecorder();
         const setup = new PythonSetupEnvironmentSetup(
@@ -1873,7 +2009,7 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         expect(cli.calls[1].skipConstraints).to.equal(true);
         expect(cli.calls[1].skipDbconnect).to.equal(undefined);
         // The retry succeeded, so the interpreter is adopted and the project is ready.
-        expect(adopted).to.deep.equal([SUCCESS_REAL_RUN.venvPath]);
+        expect(adopted).to.deep.equal([path.resolve("/proj", ".venv")]);
         expect(setup.ready).to.equal(true);
     });
 
@@ -1969,6 +2105,434 @@ describe("PythonSetupEnvironmentSetup constraint-conflict recovery", () => {
         await (openAction as {run: () => Promise<void>}).run();
 
         expect(openedRoots).to.deep.equal(["/proj"]);
+    });
+
+    /** {@link conflictResult} for `/mono/bundles/sales`, a uv workspace member. */
+    function memberConflictResult(): PythonSetupResult {
+        return {
+            ...conflictResult(),
+            backupPath: "/mono/bundles/sales/pyproject.toml.bak",
+            uvWorkspaceRoot: "/mono",
+            uvWorkspaceBackupPath: "/mono/pyproject.toml.bak",
+        };
+    }
+
+    async function retryMemberConflict(result: PythonSetupResult) {
+        const restored: Array<{root: string; backupPath: string}> = [];
+        const cli = makeScriptedCli([result, SUCCESS_REAL_RUN]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => "/mono/bundles/sales",
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (root, backupPath) => {
+                    restored.push({root, backupPath});
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+        return {restored, calls: cli.calls};
+    }
+
+    it("restores the uv workspace root pyproject.toml too before a member retry", async () => {
+        // The pins live in the root file, and --no-constraints does not touch
+        // it, so a retry without this restore conflicts again.
+        const {restored, calls} = await retryMemberConflict(
+            memberConflictResult()
+        );
+
+        expect(restored).to.deep.equal([
+            {
+                root: "/mono/bundles/sales",
+                backupPath: "/mono/bundles/sales/pyproject.toml.bak",
+            },
+            {root: "/mono", backupPath: "/mono/pyproject.toml.bak"},
+        ]);
+        expect(calls).to.have.length(2);
+        expect(calls[1].skipConstraints).to.equal(true);
+    });
+
+    it("checks every backup before it restores the first one", async () => {
+        // A failed root check must not leave the member file restored alone.
+        const restored: string[] = [];
+        const cli = makeScriptedCli([memberConflictResult(), SUCCESS_REAL_RUN]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => "/mono/bundles/sales",
+                pickSetupPreset: async () => "full",
+                checkProjectFileBackup: async (folder) => {
+                    if (folder === "/mono") {
+                        throw new Error("backup is gone");
+                    }
+                },
+                restoreProjectFile: async (_root, backupPath) => {
+                    restored.push(backupPath);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        let threw = false;
+        try {
+            await (retryAction as {run: () => Promise<void>}).run();
+        } catch {
+            threw = true;
+        }
+
+        expect(threw).to.equal(true);
+        expect(restored).to.deep.equal([]);
+        expect(cli.calls).to.have.length(1);
+    });
+
+    it("ignores a stale retry of the uv workspace root project after a member run", async () => {
+        // The root project's result has no uvWorkspaceRoot, but its backup is the
+        // shared root file, which a later member run rewrote.
+        let activeRoot = "/mono";
+        const restored: string[] = [];
+        const cli = makeScriptedCli([
+            conflictResult(),
+            {...SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER, uvWorkspaceRoot: "/mono"},
+        ]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => activeRoot,
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (_root, backupPath) => {
+                    restored.push(backupPath);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        activeRoot = "/mono/bundles/a";
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal([]);
+        expect(cli.calls).to.have.length(2);
+    });
+
+    it("keeps a retry live after a setup run of an unrelated project", async () => {
+        let activeRoot = "/projA";
+        const restored: string[] = [];
+        const cli = makeScriptedCli([
+            conflictResult(),
+            SUCCESS_REAL_RUN,
+            SUCCESS_REAL_RUN,
+        ]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => activeRoot,
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (_root, backupPath) => {
+                    restored.push(backupPath);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        activeRoot = "/projB";
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal(["/proj/pyproject.toml.bak"]);
+        expect(cli.calls).to.have.length(3);
+    });
+
+    it("restores a backup that the CLI named from the real project folder", async () => {
+        // A standalone project open through a symlink: the CLI reports real paths.
+        const restored: Array<{root: string; backupPath: string}> = [];
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeScriptedCli([
+                    {
+                        ...conflictResult(),
+                        backupPath: "/real/proj/pyproject.toml.bak",
+                    },
+                    SUCCESS_REAL_RUN,
+                ]),
+                projectRoot: () => "/link/proj",
+                realPath: async () => "/real/proj",
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (root, backupPath) => {
+                    restored.push({root, backupPath});
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal([
+            {root: "/real/proj", backupPath: "/real/proj/pyproject.toml.bak"},
+        ]);
+    });
+
+    it("offers the retry when only the uv workspace root was backed up", async () => {
+        const {restored} = await retryMemberConflict({
+            ...memberConflictResult(),
+            backupPath: undefined,
+        });
+
+        expect(restored).to.deep.equal([
+            {root: "/mono", backupPath: "/mono/pyproject.toml.bak"},
+        ]);
+    });
+
+    it("offers no retry for a member when the uv workspace root was not backed up", async () => {
+        // The root kept its pins from an earlier run, and --no-constraints does
+        // not remove them, so a retry would conflict again.
+        let actions: PythonSetupErrorAction[] | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({
+                    resolve: {
+                        ...memberConflictResult(),
+                        uvWorkspaceBackupPath: undefined,
+                    },
+                }),
+                projectRoot: () => "/mono/bundles/sales",
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, a) => {
+                    actions = a;
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(actions?.map((a) => a.label)).to.not.include(
+            "Retry DB Connect setup"
+        );
+    });
+
+    it("offers no retry when the reported uv workspace root does not contain the project", async () => {
+        let actions: PythonSetupErrorAction[] | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({
+                    resolve: {
+                        ...memberConflictResult(),
+                        uvWorkspaceRoot: "/elsewhere",
+                        uvWorkspaceBackupPath: "/elsewhere/pyproject.toml.bak",
+                    },
+                }),
+                projectRoot: () => "/mono/bundles/sales",
+                pickSetupPreset: async () => "full",
+                showError: async (_message, _detail, a) => {
+                    actions = a;
+                },
+            })
+        );
+
+        await setup.setup();
+
+        expect(actions?.map((a) => a.label)).to.not.include(
+            "Retry DB Connect setup"
+        );
+    });
+
+    it("ignores a stale member retry after another member synced the same uv workspace", async () => {
+        // Member B's later run wrote its pins into the shared root; A's old root
+        // backup must not replace them.
+        let activeRoot = "/mono/bundles/a";
+        const restored: string[] = [];
+        const notified: string[] = [];
+        const cli = makeScriptedCli([
+            memberConflictResult(),
+            {...SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER, uvWorkspaceRoot: "/mono"},
+        ]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => activeRoot,
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (_root, backupPath) => {
+                    restored.push(backupPath);
+                },
+                notify: async (m) => {
+                    notified.push(m);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        activeRoot = "/mono/bundles/b";
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal([]);
+        expect(cli.calls).to.have.length(2);
+        // The click is not silent: the user learns to run the setup again.
+        expect(notified).to.have.length(1);
+    });
+
+    it("ignores a stale member retry when the workspace is open through a symlink", async () => {
+        // The CLI reports the real root; later runs keep the opened folder form.
+        let activeRoot = "/link/bundles/a";
+        const restored: string[] = [];
+        const cli = makeScriptedCli([
+            memberConflictResult(),
+            {...SUCCESS_REAL_RUN_UV_WORKSPACE_MEMBER, uvWorkspaceRoot: "/mono"},
+        ]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => activeRoot,
+                realPath: async (p) => p.replace(/^\/link/, "/mono"),
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (_root, backupPath) => {
+                    restored.push(backupPath);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        activeRoot = "/link/bundles/b";
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal([]);
+        expect(cli.calls).to.have.length(2);
+    });
+
+    it("ignores a stale member retry after a setup of the uv workspace root project", async () => {
+        // The root project is not a member, so its result has no
+        // uvWorkspaceRoot, but its run still rewrites the shared root file.
+        let activeRoot = "/mono/bundles/a";
+        const restored: string[] = [];
+        const cli = makeScriptedCli([memberConflictResult(), SUCCESS_REAL_RUN]);
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli,
+                projectRoot: () => activeRoot,
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (_root, backupPath) => {
+                    restored.push(backupPath);
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        activeRoot = "/mono";
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal([]);
+        expect(cli.calls).to.have.length(2);
+    });
+
+    it("trusts a uv workspace root that contains the real project folder", async () => {
+        // The project is open through a symlink; the CLI reports real paths.
+        const restored: Array<{root: string; backupPath: string}> = [];
+        let retryAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeScriptedCli([
+                    memberConflictResult(),
+                    SUCCESS_REAL_RUN,
+                ]),
+                projectRoot: () => "/link/sales",
+                realPath: async () => "/mono/bundles/sales",
+                pickSetupPreset: async () => "full",
+                restoreProjectFile: async (root, backupPath) => {
+                    restored.push({root, backupPath});
+                },
+                showError: async (_message, _detail, actions) => {
+                    retryAction = actions?.find(
+                        (a) => a.label === "Retry DB Connect setup"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        await (retryAction as {run: () => Promise<void>}).run();
+
+        expect(restored).to.deep.equal([
+            {
+                root: "/mono/bundles/sales",
+                backupPath: "/mono/bundles/sales/pyproject.toml.bak",
+            },
+            {root: "/mono", backupPath: "/mono/pyproject.toml.bak"},
+        ]);
+    });
+
+    it("opens the uv workspace root pyproject.toml, which holds the pins, for a member", async () => {
+        const openedRoots: string[] = [];
+        let openAction: PythonSetupErrorAction | undefined;
+        const setup = new PythonSetupEnvironmentSetup(
+            makeDeps({
+                cli: makeCli({resolve: memberConflictResult()}),
+                projectRoot: () => "/mono/bundles/sales",
+                pickSetupPreset: async () => "full",
+                openProjectFile: async (root) => {
+                    openedRoots.push(root);
+                },
+                showError: async (_message, _detail, actions) => {
+                    openAction = actions?.find(
+                        (a) => a.label === "Open pyproject.toml"
+                    );
+                },
+            })
+        );
+
+        await setup.setup();
+        await (openAction as {run: () => Promise<void>}).run();
+
+        expect(openedRoots).to.deep.equal(["/mono"]);
     });
 
     it("records the conflict failure without offering a report", async () => {
