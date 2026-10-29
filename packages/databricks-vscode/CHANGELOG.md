@@ -4,8 +4,8 @@
 
 ## (2026-10-29)
 
--   Allow opting out of automatic Jupyter cell-marker configuration (#2239) ([70df03f](https://github.com/databricks/databricks-vscode/commit/70df03f)), closes [#2239](https://github.com/databricks/databricks-vscode/issues/2239) [#1729](https://github.com/databricks/databricks-vscode/issues/1729)
--   Stop reading the `valid` field from `auth profiles` (#2190) ([29f2962](https://github.com/databricks/databricks-vscode/commit/29f2962)), closes [#2190](https://github.com/databricks/databricks-vscode/issues/2190) [databricks/cli#5216](https://github.com/databricks/cli/issues/5216)
+-   Add the `databricks.notebooks.configureJupyterCellMarkers` setting to opt out of the extension writing Jupyter cell-marker settings to your workspace settings. Disable it in User settings and reload the window; settings written earlier are not removed (#2239, #1729) ([70df03f](https://github.com/databricks/databricks-vscode/commit/70df03f))
+-   Stay compatible with upcoming Databricks CLI versions that drop the `valid` field from `databricks auth profiles` output (#2190) ([29f2962](https://github.com/databricks/databricks-vscode/commit/29f2962))
 
 # Release: v2.22.0
 
