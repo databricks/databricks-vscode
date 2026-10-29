@@ -4,9 +4,9 @@
 
 ## (2026-10-29)
 
--   Allow opting out of automatic Jupyter cell-marker configuration (#2239) ([70df03f](https://github.com/databricks/databricks-vscode/commit/70df03f)), closes [#2239](https://github.com/databricks/databricks-vscode/issues/2239) [#1729](https://github.com/databricks/databricks-vscode/issues/1729)
--   Stop reading the `valid` field from `auth profiles` (#2190) ([29f2962](https://github.com/databricks/databricks-vscode/commit/29f2962)), closes [#2190](https://github.com/databricks/databricks-vscode/issues/2190) [databricks/cli#5216](https://github.com/databricks/cli/issues/5216)
--   Update Databricks CLI to v1.23.0 (#2276) ([060043f](https://github.com/databricks/databricks-vscode/commit/060043f)), closes [#2276](https://github.com/databricks/databricks-vscode/issues/2276)
+-   Add the `databricks.notebooks.configureJupyterCellMarkers` setting to opt out of the extension writing Jupyter cell-marker settings to your workspace settings. Disable it in User settings and reload the window; settings written earlier are not removed (#2239, #1729) ([70df03f](https://github.com/databricks/databricks-vscode/commit/70df03f))
+-   Stay compatible with upcoming Databricks CLI versions that drop the `valid` field from `databricks auth profiles` output (#2190) ([29f2962](https://github.com/databricks/databricks-vscode/commit/29f2962))
+-   Update Databricks CLI to v1.23.0 (#2276) ([060043f](https://github.com/databricks/databricks-vscode/commit/060043f)). Bundle deploys upload files through the legacy import endpoint again, so notebooks (including SQL notebooks) are no longer uploaded as plain files. Adds the `workspace.sync_mode` bundle setting (`overwrite`, `in-place`, `immutable`), which replaces the now-deprecated `presets.source_linked_deployment` and `experimental.immutable_folder`. `databricks ssh connect` now makes `claude` and `codex` available on dedicated clusters and on serverless. See the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.23.0) for details
 
 # Release: v2.22.0
 
