@@ -1,7 +1,11 @@
 import {env} from "vscode";
 import assert from "assert";
+import path from "path";
+import os from "os";
+import {mkdir, mkdtemp, rm, writeFile} from "fs/promises";
 import {
     getHostCliCommand,
+    getHostCliPath,
     isCursor,
     isHostCliOnPath,
     isRemoteSshMode,
@@ -150,6 +154,82 @@ describe(__filename, () => {
             assert.strictEqual(
                 await isHostCliOnPath(exec, failingShellEnv),
                 true
+            );
+        });
+    });
+
+    describe("getHostCliPath", () => {
+        let root: string;
+
+        beforeEach(async () => {
+            root = await mkdtemp(path.join(os.tmpdir(), "host-cli-"));
+        });
+
+        afterEach(async () => {
+            await rm(root, {recursive: true, force: true});
+        });
+
+        async function touch(...segments: string[]) {
+            const file = path.join(root, ...segments);
+            await mkdir(path.dirname(file), {recursive: true});
+            await writeFile(file, "");
+            return file;
+        }
+
+        it("finds the macOS layout under appRoot", async () => {
+            stubUriScheme("vscode");
+            const cli = await touch("app", "bin", "code");
+            assert.strictEqual(
+                await getHostCliPath(path.join(root, "app"), "darwin"),
+                cli
+            );
+        });
+
+        it("finds the Linux layout above resources/app", async () => {
+            stubUriScheme("cursor");
+            const cli = await touch("bin", "cursor");
+            assert.strictEqual(
+                await getHostCliPath(
+                    path.join(root, "resources", "app"),
+                    "linux"
+                ),
+                cli
+            );
+        });
+
+        it("finds the versioned Windows layout", async () => {
+            stubUriScheme("vscode");
+            const cli = await touch("bin", "code.cmd");
+            assert.strictEqual(
+                await getHostCliPath(
+                    path.join(root, "abc123", "resources", "app"),
+                    "win32"
+                ),
+                cli
+            );
+        });
+
+        it("finds Cursor's Windows layout under appRoot", async () => {
+            stubUriScheme("cursor");
+            const cli = await touch("resources", "app", "bin", "cursor.cmd");
+            assert.strictEqual(
+                await getHostCliPath(
+                    path.join(root, "resources", "app"),
+                    "win32"
+                ),
+                cli
+            );
+        });
+
+        it("is undefined when no candidate exists", async () => {
+            stubUriScheme("vscode");
+            await mkdir(path.join(root, "bin", "code"), {recursive: true});
+            assert.strictEqual(
+                await getHostCliPath(
+                    path.join(root, "resources", "app"),
+                    "linux"
+                ),
+                undefined
             );
         });
     });

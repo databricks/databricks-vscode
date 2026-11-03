@@ -1,4 +1,6 @@
 import {env} from "vscode";
+import path from "path";
+import {stat} from "fs/promises";
 import {ExecUtils, logging} from "@databricks/sdk-experimental";
 import {cancellableExecFile} from "../cli/CliWrapper";
 import {Loggers} from "../logger";
@@ -35,6 +37,47 @@ export function isRemoteSshMode(): boolean {
  */
 export function getHostCliCommand(): "code" | "cursor" {
     return isCursor() ? "cursor" : "code";
+}
+
+/**
+ * The absolute path of the running editor's shell command (see
+ * getHostCliCommand), or undefined if it can't be found. `databricks ssh
+ * connect` runs it instead of looking the command up on PATH, where it is often
+ * missing because users never ran "Install shell command" or skipped "Add to
+ * PATH" at install.
+ */
+export async function getHostCliPath(
+    appRoot: string = env.appRoot,
+    platform: NodeJS.Platform = process.platform
+): Promise<string | undefined> {
+    const name = getHostCliCommand() + (platform === "win32" ? ".cmd" : "");
+    // Relative to appRoot (<install>/resources/app, or
+    // <app>.app/Contents/Resources/app on macOS):
+    const candidates = [
+        // bin/: VS Code and Cursor on macOS; Cursor on Windows, and on Linux in
+        // some builds.
+        path.join(appRoot, "bin", name),
+        // ../../bin/: VS Code on Linux and Windows; Cursor on Linux in other
+        // builds.
+        path.join(appRoot, "..", "..", "bin", name),
+        // ../../../bin/: VS Code on Windows builds with versioned updates,
+        // which nest the app under <install>/<commit>/resources/app.
+        path.join(appRoot, "..", "..", "..", "bin", name),
+    ];
+    for (const candidate of candidates) {
+        if (await isFile(candidate)) {
+            return candidate;
+        }
+    }
+    return undefined;
+}
+
+async function isFile(filePath: string): Promise<boolean> {
+    try {
+        return (await stat(filePath)).isFile();
+    } catch {
+        return false;
+    }
 }
 
 /** The subset of `shell-env`'s `shellEnv` we depend on. */
