@@ -1,4 +1,6 @@
 import {env} from "vscode";
+import path from "path";
+import {stat} from "fs/promises";
 import {ExecUtils, logging} from "@databricks/sdk-experimental";
 import {cancellableExecFile} from "../cli/CliWrapper";
 import {Loggers} from "../logger";
@@ -31,10 +33,63 @@ export function isRemoteSshMode(): boolean {
  * VS Code Insiders ships its shell command as `code-insiders`, but the CLI has
  * no Insiders descriptor and always invokes `code`, so we deliberately probe
  * `code` there too — probing `code-insiders` would check a command the CLI
- * never calls. Real Insiders support belongs upstream in the CLI.
+ * never calls. getHostCliPath sidesteps this by handing the CLI the Insiders
+ * launcher's absolute path when it can find it.
  */
 export function getHostCliCommand(): "code" | "cursor" {
     return isCursor() ? "cursor" : "code";
+}
+
+/**
+ * The absolute path of the running editor's shell command, or undefined if it
+ * can't be found. `databricks ssh connect` runs it instead of looking the
+ * command up on PATH, where it is often missing because users never ran
+ * "Install shell command" or skipped "Add to PATH" at install.
+ *
+ * Unlike getHostCliCommand this resolves Insiders to its own launcher, which is
+ * `code-insiders` on Linux and Windows but plain `code` inside the macOS bundle.
+ */
+export async function getHostCliPath(
+    appRoot: string = env.appRoot,
+    platform: NodeJS.Platform = process.platform
+): Promise<string | undefined> {
+    const name = getHostCliFileName(platform);
+    // Relative to appRoot (<install>/resources/app, or
+    // <app>.app/Contents/Resources/app on macOS):
+    const candidates = [
+        // bin/: VS Code, Insiders and Cursor on macOS; Cursor on Windows, and
+        // on Linux in some builds.
+        path.join(appRoot, "bin", name),
+        // ../../bin/: VS Code and Insiders on Linux and Windows; Cursor on
+        // Linux in other builds.
+        path.join(appRoot, "..", "..", "bin", name),
+        // ../../../bin/: VS Code and Insiders on Windows builds with versioned
+        // updates, which nest the app under <install>/<commit>/resources/app.
+        path.join(appRoot, "..", "..", "..", "bin", name),
+    ];
+    for (const candidate of candidates) {
+        if (await isFile(candidate)) {
+            return candidate;
+        }
+    }
+    return undefined;
+}
+
+function getHostCliFileName(platform: NodeJS.Platform): string {
+    const isInsiders = env.uriScheme === "vscode-insiders";
+    const name =
+        isInsiders && platform !== "darwin"
+            ? "code-insiders"
+            : getHostCliCommand();
+    return platform === "win32" ? `${name}.cmd` : name;
+}
+
+async function isFile(filePath: string): Promise<boolean> {
+    try {
+        return (await stat(filePath)).isFile();
+    } catch {
+        return false;
+    }
 }
 
 /** The subset of `shell-env`'s `shellEnv` we depend on. */
