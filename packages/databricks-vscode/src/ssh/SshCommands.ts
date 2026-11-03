@@ -491,6 +491,10 @@ export class SshCommands implements Disposable {
         const env: Record<string, string> = {
             ...this.cli.getSshConnectEnvVars(authProvider),
         };
+        const hostCliPath = await HostUtils.getHostCliPath();
+        if (hostCliPath !== undefined) {
+            env["DATABRICKS_SSH_IDE_COMMAND"] = hostCliPath;
+        }
 
         // The transient terminal is not retained on `this.disposables`: doing so
         // would only release it on extension deactivate/reload, tearing down an
