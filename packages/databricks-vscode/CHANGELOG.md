@@ -1,3 +1,12 @@
+# Release: v2.23.1
+
+## packages/databricks-vscode
+
+## (2026-11-05)
+
+-   Resolve the editor executable relative to env.appRoot (#2285) ([004553b](https://github.com/databricks/databricks-vscode/commit/004553b)), closes [#2285](https://github.com/databricks/databricks-vscode/issues/2285)
+-   Update Databricks CLI to v1.24.0 (#2286) ([40eb86e](https://github.com/databricks/databricks-vscode/commit/40eb86e)), closes [#2286](https://github.com/databricks/databricks-vscode/issues/2286)
+
 # Release: v2.23.0
 
 ## packages/databricks-vscode
