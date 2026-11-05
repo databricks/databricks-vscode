@@ -255,6 +255,19 @@ export const workspaceConfigs = {
             })
             .map((key) => `databricks.${key}` as const);
     },
+
+    get allowedExtensions() {
+        const value = workspace
+            .getConfiguration("extensions")
+            .get<
+                string | Record<string, boolean | string | string[] | undefined>
+            >("allowed");
+        // `"*"` is the only valid string value
+        return typeof value === "string" || value === undefined
+            ? // eslint-disable-next-line @typescript-eslint/naming-convention
+              {"*": true}
+            : value;
+    },
 };
 
 export type WorkspaceConfigs = typeof workspaceConfigs;

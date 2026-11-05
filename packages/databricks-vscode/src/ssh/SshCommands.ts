@@ -29,8 +29,12 @@ import {onError} from "../utils/onErrorDecorator";
 import {HostUtils} from "../utils";
 import {logging} from "@databricks/sdk-experimental";
 import {Loggers} from "../logger";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 const SERVERLESS_LABEL = "$(cloud) Serverless";
+const MICROSOFT_SPECIAL_CASE_PUBLISHER_ID = "microsoft";
+const VSCODE_SSH_EXTENSION_ID = "ms-vscode-remote.remote-ssh";
+const CURSOR_SSH_EXTENSION_ID = "anysphere.remote-ssh";
 
 type Compute = SshConnectCompute;
 
@@ -182,6 +186,25 @@ export class SshCommands implements Disposable {
         // terminal report the real error rather than blocking a tunnel that
         // would have worked.
         await this.warnIfHostCliMissing();
+        const {allowed, extensionId} = await this.checkSshExtensionAllowed();
+        if (!allowed) {
+            const openSetting = "Open setting";
+            const choice = await window.showErrorMessage(
+                "The 'Remote - SSH' extension is required to start an SSH tunnel, but installing it is blocked.",
+                {
+                    modal: true,
+                    detail: `Please modify the 'extensions.allowed' setting to allow '${extensionId}', then try again.`,
+                },
+                openSetting
+            );
+            if (choice === openSetting) {
+                await commands.executeCommand(
+                    "workbench.action.openSettings",
+                    "extensions.allowed"
+                );
+            }
+            return;
+        }
         const context = await this.resolveTunnelContext();
         if (context === undefined) {
             return;
@@ -507,6 +530,45 @@ export class SshCommands implements Disposable {
         });
         terminal.show();
         terminal.sendText(`${this.cli.escapedCliPath} ${args.join(" ")}`);
+    }
+
+    private async checkSshExtensionAllowed(): Promise<{
+        allowed: boolean;
+        extensionId:
+            | typeof CURSOR_SSH_EXTENSION_ID
+            | typeof VSCODE_SSH_EXTENSION_ID;
+    }> {
+        const allowedExtensions = workspaceConfigs.allowedExtensions;
+        const {extensionId, publisherIds} = HostUtils.isCursor()
+            ? ({
+                  extensionId: CURSOR_SSH_EXTENSION_ID,
+                  publisherIds: [CURSOR_SSH_EXTENSION_ID.split(".")[0]],
+              } as const)
+            : ({
+                  extensionId: VSCODE_SSH_EXTENSION_ID,
+                  // VSCode special cases 'microsoft' as a publisher ID to refer to any extension published
+                  // by Microsoft regardless of the actual publisher ID
+                  publisherIds: [
+                      MICROSOFT_SPECIAL_CASE_PUBLISHER_ID,
+                      VSCODE_SSH_EXTENSION_ID.split(".")[0],
+                  ],
+              } as const);
+        // VS Code applies the most specific rule: extension ID, then
+        // publisher, then the "*" wildcard.
+        const extensionValue = allowedExtensions[extensionId];
+        if (extensionValue !== undefined) {
+            return {allowed: extensionValue !== false, extensionId};
+        }
+        const publisherValues = publisherIds
+            .map((id) => allowedExtensions[id])
+            .filter((value) => value !== undefined);
+        if (publisherValues.length > 0) {
+            return {
+                allowed: publisherValues.every((value) => value !== false),
+                extensionId,
+            };
+        }
+        return {allowed: allowedExtensions["*"] !== false, extensionId};
     }
 
     dispose() {
