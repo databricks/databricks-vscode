@@ -1,3 +1,12 @@
+# Release: v2.23.1
+
+## packages/databricks-vscode
+
+## (2026-11-05)
+
+-   Treat a bundle variable used as the value of a secret as sensitive, as part of the update to Databricks CLI v1.24.0 (#2286) ([40eb86e](https://github.com/databricks/databricks-vscode/commit/40eb86e)). If another field, such as a job parameter or the secret's `comment`, references that variable, `bundle validate` and `bundle deploy` fail, because the value would be used in plain text. Mark other variables that hold secrets with `sensitive: true` to get the same protection. If you can't change the bundle yet, stay on extension v2.23.0. Serverless SSH connections get a new default connection name, so the first connection after the update is set up again; the old connection's SSH keys and known hosts in your local `.databricks` folder are no longer used and can be removed. Signing in with a profile name that contains a dot, such as `team.prod`, no longer overwrites the host and token of the `[team]` profile. `bundle deploy` no longer redeploys an app on every run because of its `config.env` values. See the [CLI release notes](https://github.com/databricks/cli/releases/tag/v1.24.0) for details
+-   Open the remote window for a Databricks SSH tunnel when the `code` or `cursor` command is not on your PATH: the extension now finds the editor executable in its install folder (#2285) ([004553b](https://github.com/databricks/databricks-vscode/commit/004553b))
+
 # Release: v2.23.0
 
 ## packages/databricks-vscode
