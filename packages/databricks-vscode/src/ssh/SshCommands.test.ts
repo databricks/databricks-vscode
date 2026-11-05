@@ -1,5 +1,5 @@
 import assert from "assert";
-import {commands, Uri, window} from "vscode";
+import {commands, Uri, window, workspace} from "vscode";
 import {instance, mock} from "ts-mockito";
 import {CliWrapper} from "../cli/CliWrapper";
 import {SshCommands} from "./SshCommands";
@@ -171,3 +171,218 @@ describe(__filename, () => {
         assert.strictEqual(executedCommands.length, 0);
     });
 });
+
+/**
+ * Exercises the `extensions.allowed` gate in startTunnelCommand: when policy
+ * blocks the host's Remote - SSH extension, the tunnel must stop with an
+ * actionable error instead of proceeding to compute selection. The setting is
+ * stubbed at `workspace.getConfiguration` so the WorkspaceConfigs normalisation
+ * is covered too.
+ */
+/* eslint-disable @typescript-eslint/naming-convention -- keys mirror `extensions.allowed` */
+describe(`${__filename} extensions.allowed`, () => {
+    const VSCODE_SSH = "ms-vscode-remote.remote-ssh";
+    const CURSOR_SSH = "anysphere.remote-ssh";
+
+    let originalIsHostCliOnPath: typeof HostUtils.isHostCliOnPath;
+    let originalIsCursor: typeof HostUtils.isCursor;
+    let originalShowErrorMessage: typeof window.showErrorMessage;
+    let originalExecuteCommand: typeof commands.executeCommand;
+    let originalGetConfiguration: typeof workspace.getConfiguration;
+
+    let allowedSetting: unknown;
+    let shownErrors: {message: string; options: unknown; items: string[]}[];
+    let executedCommands: {command: string; args: unknown[]}[];
+    let errorResponse: string | undefined;
+    let resolvedContext: boolean;
+
+    // Runs the command and reports whether it got past the gate.
+    async function startTunnel(): Promise<boolean> {
+        const sshCommands = new SshCommands(instance(mock(CliWrapper)));
+        resolvedContext = false;
+        (sshCommands as any).resolveTunnelContext = async () => {
+            resolvedContext = true;
+            return undefined;
+        };
+        await sshCommands.startTunnelCommand();
+        return resolvedContext;
+    }
+
+    beforeEach(() => {
+        allowedSetting = undefined;
+        shownErrors = [];
+        executedCommands = [];
+        errorResponse = undefined;
+
+        originalIsHostCliOnPath = HostUtils.isHostCliOnPath;
+        originalIsCursor = HostUtils.isCursor;
+        originalShowErrorMessage = window.showErrorMessage;
+        originalExecuteCommand = commands.executeCommand;
+        originalGetConfiguration = workspace.getConfiguration;
+
+        (HostUtils as any).isHostCliOnPath = async () => true;
+        (HostUtils as any).isCursor = () => false;
+        (workspace as any).getConfiguration = (section?: string) => {
+            const real = originalGetConfiguration(section);
+            if (section !== "extensions") {
+                return real;
+            }
+            return {
+                ...real,
+                get: (key: string) =>
+                    key === "allowed" ? allowedSetting : real.get(key),
+            };
+        };
+        (window as any).showErrorMessage = (
+            message: string,
+            options: unknown,
+            ...items: string[]
+        ) => {
+            shownErrors.push({message, options, items});
+            return Promise.resolve(errorResponse);
+        };
+        (commands as any).executeCommand = (
+            command: string,
+            ...args: unknown[]
+        ) => {
+            executedCommands.push({command, args});
+            return Promise.resolve();
+        };
+    });
+
+    afterEach(() => {
+        (HostUtils as any).isHostCliOnPath = originalIsHostCliOnPath;
+        (HostUtils as any).isCursor = originalIsCursor;
+        (window as any).showErrorMessage = originalShowErrorMessage;
+        (commands as any).executeCommand = originalExecuteCommand;
+        (workspace as any).getConfiguration = originalGetConfiguration;
+    });
+
+    const allowedCases: [string, unknown][] = [
+        ["the setting is unset", undefined],
+        ['the setting is the string "*"', "*"],
+        ["all extensions are allowed", {"*": true}],
+        ["the publisher is allowed", {"*": false, "ms-vscode-remote": true}],
+        [
+            'Microsoft is allowed via the "microsoft" special case',
+            {"*": false, "microsoft": true},
+        ],
+        ["the extension is allowed", {"*": false, [VSCODE_SSH]: true}],
+        [
+            "only stable releases of the extension are allowed",
+            {"*": false, [VSCODE_SSH]: "stable"},
+        ],
+        [
+            "specific versions of the extension are allowed",
+            {"*": false, [VSCODE_SSH]: ["0.120.0"]},
+        ],
+        [
+            "the extension is allowed despite its publisher being blocked",
+            {"*": true, "ms-vscode-remote": false, [VSCODE_SSH]: true},
+        ],
+        [
+            "unrelated extensions are blocked",
+            {"*": true, "other-publisher": false, "other.ext": false},
+        ],
+    ];
+    for (const [name, value] of allowedCases) {
+        it(`proceeds when ${name}`, async () => {
+            allowedSetting = value;
+
+            assert.strictEqual(await startTunnel(), true);
+            assert.strictEqual(shownErrors.length, 0);
+        });
+    }
+
+    const blockedCases: [string, unknown][] = [
+        ["all extensions are blocked", {"*": false}],
+        [
+            "only unrelated extensions are allowed",
+            {"*": false, "other-publisher": true, "anysphere": true},
+        ],
+        [
+            "the extension is blocked despite its publisher being allowed",
+            {"*": false, "ms-vscode-remote": true, [VSCODE_SSH]: false},
+        ],
+        [
+            "the extension is blocked despite Microsoft being allowed",
+            {"*": false, "microsoft": true, [VSCODE_SSH]: false},
+        ],
+        [
+            "the extension is blocked under an allow-all wildcard",
+            {"*": true, [VSCODE_SSH]: false},
+        ],
+        [
+            "the publisher is blocked under an allow-all wildcard",
+            {"*": true, "ms-vscode-remote": false},
+        ],
+        [
+            "Microsoft is blocked under an allow-all wildcard",
+            {"*": true, "microsoft": false},
+        ],
+    ];
+    for (const [name, value] of blockedCases) {
+        it(`stops when ${name}`, async () => {
+            allowedSetting = value;
+
+            assert.strictEqual(await startTunnel(), false);
+            assert.strictEqual(shownErrors.length, 1);
+            assert.deepStrictEqual(shownErrors[0].items, ["Open setting"]);
+            assert.ok(
+                (shownErrors[0].options as {detail: string}).detail.includes(
+                    `'${VSCODE_SSH}'`
+                )
+            );
+            assert.strictEqual(executedCommands.length, 0);
+        });
+    }
+
+    it("opens the setting when the user picks 'Open setting'", async () => {
+        allowedSetting = {"*": false};
+        errorResponse = "Open setting";
+
+        assert.strictEqual(await startTunnel(), false);
+        assert.deepStrictEqual(executedCommands, [
+            {
+                command: "workbench.action.openSettings",
+                args: ["extensions.allowed"],
+            },
+        ]);
+    });
+
+    describe("in Cursor", () => {
+        beforeEach(() => {
+            (HostUtils as any).isCursor = () => true;
+        });
+
+        it("checks the Cursor extension, not the VS Code one", async () => {
+            allowedSetting = {"*": false, [VSCODE_SSH]: true};
+
+            assert.strictEqual(await startTunnel(), false);
+            assert.ok(
+                (shownErrors[0].options as {detail: string}).detail.includes(
+                    `'${CURSOR_SSH}'`
+                )
+            );
+        });
+
+        it("proceeds when the Cursor publisher is allowed", async () => {
+            allowedSetting = {"*": false, "anysphere": true};
+
+            assert.strictEqual(await startTunnel(), true);
+        });
+
+        it('does not treat "microsoft" as covering the Cursor extension', async () => {
+            allowedSetting = {"*": false, "microsoft": true};
+
+            assert.strictEqual(await startTunnel(), false);
+        });
+
+        it("stops when the Cursor extension is blocked", async () => {
+            allowedSetting = {"*": true, [CURSOR_SSH]: false};
+
+            assert.strictEqual(await startTunnel(), false);
+        });
+    });
+});
+/* eslint-enable @typescript-eslint/naming-convention */
