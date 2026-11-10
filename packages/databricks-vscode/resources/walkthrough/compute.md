@@ -1,0 +1,1 @@
+Interactive compute runs your Python files and notebooks. [Run files on a cluster](https://docs.databricks.com/dev-tools/vscode-ext/run), [Run files with Databricks Connect](https://docs.databricks.com/dev-tools/vscode-ext/databricks-connect) and [Run notebooks cell by cell](https://docs.databricks.com/dev-tools/vscode-ext/notebooks) show how.

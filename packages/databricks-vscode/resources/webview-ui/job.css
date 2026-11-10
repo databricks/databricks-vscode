@@ -1,0 +1,182 @@
+body {
+    color: var(--vscode-editor-foreground);
+    font-family: var(--vscode-font-family);
+    font-weight: var(--vscode-font-weight);
+    margin: 0;
+    padding: 0;
+}
+
+div {
+    box-sizing: border-box;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+li .label {
+    margin-top: 1em;
+    display: block;
+    font-size: smaller;
+}
+
+li .value {
+    display: block;
+    font-size: small;
+}
+
+.vscode-button {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border-color: var(--vscode-button-border);
+    border-width: 0;
+    padding: 0.5em;
+}
+.vscode-button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+.vscode-disabled,
+.vscode-button.vscode-disabled:hover {
+    background-color: var(--vscode-disabledForeground);
+}
+
+li .vscode-button {
+    margin-top: 1em;
+    display: block;
+}
+
+.container {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+}
+
+.output {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: auto;
+    border-right: 1px solid;
+    border-right-color: var(--vscode-settings-dropdownListBorder);
+}
+
+.output header {
+    padding: 8px;
+    border-bottom: 1px solid;
+    border-bottom-color: var(--vscode-settings-dropdownListBorder);
+}
+
+#spinner {
+    margin-top: 50%;
+    align-self: center;
+    display: none;
+}
+
+/* Replaces the webview UI toolkit's progress ring. */
+.spinner-ring {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--vscode-progressBar-background);
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+a {
+    color: var(--vscode-textLink-foreground);
+}
+
+#frame {
+    width: 100%;
+    flex: 1;
+    overflow: auto;
+    margin: 0;
+    border: none;
+    display: none;
+}
+
+#stdout {
+    font-family: Menlo, Monaco, "Courier New", monospace;
+    font-weight: normal;
+    font-size: 12px;
+    font-feature-settings:
+        "liga" 0,
+        "calt" 0;
+    line-height: 18px;
+    padding: 8px;
+    width: auto;
+    flex: 1;
+    margin: 0;
+    border: none;
+    display: none;
+}
+
+#error {
+    display: none;
+}
+
+#error-stack {
+    margin-top: 10px;
+    white-space: pre;
+    font-family: monospace;
+}
+
+.alert-error .error-icon {
+    display: inline-block;
+    padding: 0 8px;
+}
+
+.alert-error {
+    display: flex;
+    padding: 8px;
+    margin: 8px;
+    color: rgb(200, 45, 76);
+    border-color: rgb(251, 208, 216);
+    background-color: #fff5f7;
+    border: 1px solid #fbd0d8;
+    border-radius: 4px;
+    overflow: scroll;
+}
+
+.output.spinner #spinner {
+    display: block;
+}
+
+.output.html #frame {
+    display: block;
+}
+
+.output.stdout #stdout {
+    display: block;
+}
+
+.output.error #error {
+    display: flex;
+}
+
+.details {
+    padding: 10px;
+    width: 220px;
+}
+
+#compute-section #serverless-compute {
+    display: none;
+}
+#compute-section #run-cluster {
+    display: block;
+}
+#compute-section.serverless #serverless-compute {
+    display: block;
+}
+#compute-section.serverless #run-cluster {
+    display: none;
+}

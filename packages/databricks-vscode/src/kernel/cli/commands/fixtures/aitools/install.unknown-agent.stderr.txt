@@ -1,0 +1,1 @@
+Error: unknown agent "bogus". Available agents: claude-code, cursor, codex, opencode, copilot, antigravity, pi, gemini, goose

@@ -1,0 +1,16 @@
+bundle:
+  name: variables_bundle
+variables:
+  warehouse:
+    description: The warehouse
+    default: small
+  catalog:
+    default: main
+targets:
+  dev_test:
+    mode: development
+    default: true
+    workspace:
+      host: https://mock.databricks.test
+    variables:
+      catalog: dev_catalog

@@ -1,0 +1,145 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["typescript", "unicorn", "oxc", "import", "node"],
+    "categories": {
+        "correctness": "error",
+        "suspicious": "warn"
+    },
+    "options": {
+        "typeAware": true
+    },
+    // The extension's own rules (packages/databricks-vscode/oxlint-plugin.mjs).
+    "jsPlugins": ["./packages/databricks-vscode/oxlint-plugin.mjs"],
+    "env": {
+        "node": true,
+        "es2024": true
+    },
+    "rules": {
+        "typescript/no-floating-promises": "error",
+        "typescript/no-misused-promises": "error",
+        "import/no-cycle": "error",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unnecessary-type-assertion": "off",
+        "unicorn/consistent-function-scoping": "off",
+        "unicorn/no-array-sort": "off",
+        "typescript/consistent-return": "off",
+        "eslint/no-shadow": "off",
+        "eslint/no-underscore-dangle": "off"
+    },
+    "ignorePatterns": ["**/dist/**", "**/.wdio-vscode-service/**", "**/logs/**", ".yarn/**"],
+    "overrides": [
+        {
+            "files": ["packages/databricks-vscode-e2e/src/**/*.e2e.ts"],
+            "rules": {
+                "typescript/no-misused-promises": "off"
+            }
+        },
+        // These postMessage calls are VS Code's webview API (Webview.postMessage
+        // and acquireVsCodeApi().postMessage), which takes no targetOrigin; the
+        // rule is about window.postMessage.
+        {
+            "files": [
+                "packages/databricks-vscode/src/platform/ui/WebviewHost.ts",
+                "packages/databricks-vscode/resources/webview-ui/*.js"
+            ],
+            "rules": {
+                "unicorn/require-post-message-target-origin": "off"
+            }
+        },
+        // The import boundaries between platform/, kernel/ and features/ are
+        // dependency-cruiser rules (packages/databricks-vscode/.dependency-cruiser.cjs),
+        // which see resolved paths. These two are about the import string.
+        {
+            "files": ["packages/databricks-vscode/src/**"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "paths": [
+                            {
+                                "name": "@databricks/sdk-experimental",
+                                "message": "The legacy SDK is replaced by the modular @databricks/sdk-* packages. Build clients through connection.api.get(...)."
+                            }
+                        ],
+                        "patterns": [
+                            {
+                                "regex": "/dist/",
+                                "message": "Don't reach into a package's dist/. Import what its package.json exports."
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        // The single owners in AGENTS.md's hard rules that are calls, not
+        // imports. dependency-cruiser holds the child_process one. Tests are
+        // exempt, as from the import boundaries.
+        {
+            "files": ["packages/databricks-vscode/src/**"],
+            "excludeFiles": [
+                "packages/databricks-vscode/src/**/*.test.ts",
+                "packages/databricks-vscode/src/test/**",
+                "packages/databricks-vscode/src/test-support/**",
+                // Hands ContextKeys its setContext callback.
+                "packages/databricks-vscode/src/extension.ts"
+            ],
+            "rules": {
+                "databricks/context-keys-only": "error"
+            }
+        },
+        {
+            "files": ["packages/databricks-vscode/src/**"],
+            "excludeFiles": [
+                "packages/databricks-vscode/src/**/*.test.ts",
+                "packages/databricks-vscode/src/test/**",
+                "packages/databricks-vscode/src/test-support/**",
+                // Builds every client.
+                "packages/databricks-vscode/src/kernel/connection/ApiClients.ts"
+            ],
+            "rules": {
+                "databricks/sdk-clients-through-api": "error"
+            }
+        },
+        {
+            "files": ["packages/databricks-vscode/src/**"],
+            "excludeFiles": [
+                "packages/databricks-vscode/src/**/*.test.ts",
+                "packages/databricks-vscode/src/test/**",
+                "packages/databricks-vscode/src/test-support/**",
+                // The ExtensionHost adapter, over vscode.extensions and the Extensions view.
+                "packages/databricks-vscode/src/platform/workspace.ts"
+            ],
+            "rules": {
+                "databricks/extensions-through-kernel": "error"
+            }
+        },
+        // Every request goes through the transport, which takes VS Code's proxy
+        // and certificate settings. The transport itself is exempt.
+        {
+            "files": ["packages/databricks-vscode/src/**"],
+            "excludeFiles": [
+                "packages/databricks-vscode/src/**/*.test.ts",
+                "packages/databricks-vscode/src/test/**",
+                "packages/databricks-vscode/src/test-support/**",
+                "packages/databricks-vscode/src/kernel/connection/nodeHttpClient.ts"
+            ],
+            "rules": {
+                "databricks/http-through-transport": "error"
+            }
+        },
+        // Errors are rendered by the CommandRegistry only.
+        {
+            "files": ["packages/databricks-vscode/src/features/**"],
+            "excludeFiles": ["packages/databricks-vscode/src/**/*.test.ts"],
+            "rules": {
+                "no-restricted-properties": [
+                    "error",
+                    {
+                        "property": "showErrorMessage",
+                        "message": "Throw a UserFacingError (platform/errors.ts) with its actions instead; the CommandRegistry renders it once, logs it and records the failure. Outside a command (a listener, a background task), pass it to ctx.commands.showError. Throw CancelledError when the user dismisses a prompt."
+                    }
+                ]
+            }
+        }
+    ]
+}

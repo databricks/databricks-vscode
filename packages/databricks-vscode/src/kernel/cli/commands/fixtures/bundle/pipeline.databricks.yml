@@ -1,0 +1,21 @@
+bundle:
+  name: pipeline_bundle
+targets:
+  dev_test:
+    mode: development
+    default: true
+    workspace:
+      host: https://mock.databricks.test
+    resources:
+      pipelines:
+        vscode_integration_test:
+          name: integration_pipeline
+          catalog: main
+          target: vscode_integration_test
+          libraries:
+            - notebook:
+                path: src/notebook.ipynb
+      schemas:
+        my_schema:
+          name: my_schema
+          catalog_name: main

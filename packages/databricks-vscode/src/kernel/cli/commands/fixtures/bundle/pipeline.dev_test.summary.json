@@ -1,0 +1,136 @@
+{
+  "__locations": {
+    "files": [
+      "databricks.yml"
+    ],
+    "locations": {
+      "bundle": [
+        [
+          0,
+          2,
+          3
+        ]
+      ],
+      "resources": [
+        [
+          0,
+          10,
+          7
+        ]
+      ],
+      "resources.pipelines": [
+        [
+          0,
+          11,
+          9
+        ]
+      ],
+      "resources.pipelines.vscode_integration_test": [
+        [
+          0,
+          12,
+          11
+        ]
+      ],
+      "resources.schemas": [
+        [
+          0,
+          19,
+          9
+        ]
+      ],
+      "resources.schemas.my_schema": [
+        [
+          0,
+          20,
+          11
+        ]
+      ],
+      "workspace": [
+        [
+          0,
+          8,
+          7
+        ]
+      ]
+    },
+    "version": 1
+  },
+  "bundle": {
+    "deployment": {
+      "lock": {
+        "enabled": false
+      }
+    },
+    "environment": "dev_test",
+    "git": {
+      "bundle_root_path": "."
+    },
+    "mode": "development",
+    "name": "pipeline_bundle",
+    "target": "dev_test"
+  },
+  "presets": {
+    "jobs_max_concurrent_runs": 4,
+    "name_prefix": "[dev e2e] ",
+    "pipelines_development": true,
+    "tags": {
+      "dev": "e2e"
+    },
+    "trigger_pause_status": "PAUSED"
+  },
+  "resources": {
+    "pipelines": {
+      "vscode_integration_test": {
+        "catalog": "main",
+        "channel": "CURRENT",
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/e2e@example.com/.bundle/pipeline_bundle/dev_test/state/metadata.json"
+        },
+        "development": true,
+        "edition": "ADVANCED",
+        "libraries": [
+          {
+            "notebook": {
+              "path": "/Workspace/Users/e2e@example.com/.bundle/pipeline_bundle/dev_test/files/src/notebook"
+            }
+          }
+        ],
+        "modified_status": "created",
+        "name": "[dev e2e] integration_pipeline",
+        "tags": {
+          "dev": "e2e"
+        },
+        "target": "vscode_integration_test"
+      }
+    },
+    "schemas": {
+      "my_schema": {
+        "catalog_name": "main",
+        "modified_status": "created",
+        "name": "dev_e2e_my_schema"
+      }
+    }
+  },
+  "sync": {
+    "paths": [
+      "."
+    ]
+  },
+  "workspace": {
+    "artifact_path": "/Workspace/Users/e2e@example.com/.bundle/pipeline_bundle/dev_test/artifacts",
+    "current_user": {
+      "domain_friendly_name": "e2e",
+      "id": "1",
+      "short_name": "e2e",
+      "userName": "e2e@example.com"
+    },
+    "file_path": "/Workspace/Users/e2e@example.com/.bundle/pipeline_bundle/dev_test/files",
+    "host": "https://mock.databricks.test",
+    "profile": "DEFAULT",
+    "resource_path": "/Workspace/Users/e2e@example.com/.bundle/pipeline_bundle/dev_test/resources",
+    "root_path": "/Workspace/Users/e2e@example.com/.bundle/pipeline_bundle/dev_test",
+    "state_path": "/Workspace/Users/e2e@example.com/.bundle/pipeline_bundle/dev_test/state"
+  }
+}

@@ -1,0 +1,1 @@
+A project holds your code and a `databricks.yml` file that describes it. [Configure your project](https://docs.databricks.com/dev-tools/vscode-ext/configure) and [Declarative Automation Bundles](https://docs.databricks.com/dev-tools/vscode-ext/bundles) explain the details.

@@ -1,0 +1,2236 @@
+{
+    "name": "databricks",
+    "displayName": "Databricks",
+    "version": "0.0.0",
+    "description": "IDE support for Databricks",
+    "categories": [
+        "Data Science",
+        "Machine Learning"
+    ],
+    "keywords": [
+        "data science",
+        "databricks",
+        "ds",
+        "lakehouse",
+        "machine learning",
+        "ml",
+        "spark"
+    ],
+    "homepage": "https://github.com/databricks/databricks-vscode/blob/release/3.x/packages/databricks-vscode/README.md",
+    "bugs": {
+        "url": "https://github.com/databricks/databricks-vscode/issues"
+    },
+    "license": "LicenseRef-LICENSE",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/databricks/databricks-vscode.git"
+    },
+    "publisher": "databricks",
+    "main": "dist/extension.js",
+    "types": "dist/extension.d.ts",
+    "scripts": {
+        "build": "tsc -b --force",
+        "watch": "tsc -b --clean && tsc -b --watch --preserveWatchOutput",
+        "clean": "tsc -b --clean",
+        "test": "vitest run",
+        "test:fast": "vitest run --exclude 'src/test/budgets/**' --exclude src/features/python/python.test.ts",
+        "mutation": "node scripts/strykerSandbox.mjs && stryker run --force",
+        "mutation:incremental": "node scripts/strykerSandbox.mjs && stryker run",
+        "mutation:python": "node scripts/strykerSandbox.mjs && stryker run stryker.python.config.mjs --force",
+        "mutation:python:incremental": "node scripts/strykerSandbox.mjs && stryker run stryker.python.config.mjs",
+        "typecheck": "tsc -p tsconfig.test.json",
+        "lint:deps": "depcruise src --output-type err-long",
+        "generate:telemetry": "node scripts/generateTelemetry.mjs",
+        "fetch:cli": "node --use-system-ca scripts/fetchCli.mjs",
+        "package": "node --use-system-ca scripts/packageVsix.mjs --pre-release"
+    },
+    "dependencies": {
+        "@databricks/sdk-accessmanagement": "0.51.3",
+        "@databricks/sdk-aigateway": "0.23.3",
+        "@databricks/sdk-auth": "0.54.0",
+        "@databricks/sdk-clusters": "0.52.4",
+        "@databricks/sdk-commandexecution": "0.51.3",
+        "@databricks/sdk-core": "0.51.2",
+        "@databricks/sdk-dataquality": "0.51.3",
+        "@databricks/sdk-jobs": "0.57.4",
+        "@databricks/sdk-options": "0.51.3",
+        "@databricks/sdk-pipelines": "0.58.4",
+        "@databricks/sdk-scim": "0.51.3",
+        "@databricks/sdk-uc-catalogs": "0.52.3",
+        "@databricks/sdk-uc-entitytagassignments": "0.51.3",
+        "@databricks/sdk-uc-functions": "0.51.3",
+        "@databricks/sdk-uc-grants": "0.51.3",
+        "@databricks/sdk-uc-registeredmodels": "0.52.3",
+        "@databricks/sdk-uc-schemas": "0.51.3",
+        "@databricks/sdk-uc-tables": "0.52.3",
+        "@databricks/sdk-uc-volumes": "0.51.3",
+        "@databricks/sdk-workspacefiles": "0.0.1",
+        "@databricks/sdk-workspaces": "0.51.3",
+        "@highlightjs/cdn-assets": "11.12.0",
+        "@vscode/debugadapter": "^1.68.0",
+        "@vscode/debugprotocol": "^1.68.0",
+        "@vscode/extension-telemetry": "^1.5.2",
+        "ansi-to-html": "^0.7.2",
+        "bcryptjs": "^3.0.3",
+        "markdown-it": "15.0.2",
+        "tinyglobby": "^0.2.17",
+        "yaml": "^2.9.1",
+        "zod": "^4.3.6"
+    },
+    "devDependencies": {
+        "@databricks/databricks-vscode-types": "workspace:^",
+        "@stryker-mutator/core": "^10.0.0",
+        "@stryker-mutator/vitest-runner": "^10.0.0",
+        "@swc/core": "^1.16.13",
+        "@types/node": "^24.13.6",
+        "@types/vscode": "1.125.0",
+        "@types/ws": "^8.18.1",
+        "@vscode/vsce": "4.0.0",
+        "dependency-cruiser": "^18.5.0",
+        "typescript": "^7.0.2",
+        "vitest": "^4.1.9",
+        "ws": "^8.21.3"
+    },
+    "contributes": {
+        "commands": [
+            {
+                "command": "databricks.ssh.startTunnel",
+                "title": "Start SSH tunnel",
+                "category": "Databricks",
+                "icon": "$(remote)",
+                "enablement": "!databricks.context.host.noTunnel"
+            },
+            {
+                "command": "databricks.aitools.install",
+                "enablement": "!databricks.context.host.noAiTools",
+                "title": "Install AI tools",
+                "category": "Databricks",
+                "icon": "$(cloud-download)"
+            },
+            {
+                "command": "databricks.aitools.checkForUpdates",
+                "enablement": "!databricks.context.host.noAiTools",
+                "title": "Check for AI tools updates",
+                "category": "Databricks",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.aitools.reload",
+                "enablement": "!databricks.context.host.noAiTools",
+                "title": "Reload AI tools",
+                "category": "Databricks",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "databricks.aitools.update",
+                "enablement": "!databricks.context.host.noAiTools",
+                "title": "Update AI tools",
+                "category": "Databricks",
+                "icon": "$(arrow-circle-up)"
+            },
+            {
+                "command": "databricks.aitools.uninstall",
+                "enablement": "!databricks.context.host.noAiTools",
+                "title": "Uninstall AI tools",
+                "category": "Databricks",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "databricks.aitools.addCursorPlugin",
+                "enablement": "!databricks.context.host.noAiTools",
+                "title": "Add Databricks plugin to Cursor",
+                "category": "Databricks",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.aitools.installAgent",
+                "enablement": "!databricks.context.host.noAiTools",
+                "title": "Install AI tools for this agent",
+                "category": "Databricks",
+                "icon": "$(cloud-download)"
+            },
+            {
+                "command": "databricks.aitools.showInstallPrompt",
+                "enablement": "!databricks.context.host.noAiTools",
+                "title": "Show AI tools install prompt again",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.quickstart.open",
+                "title": "Show Quickstart",
+                "category": "Databricks",
+                "enablement": "!databricks.context.host.fixedIdentity"
+            },
+            {
+                "command": "databricks.logs.openFolder",
+                "title": "Open full logs",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.utils.openExternal",
+                "title": "Open link externally",
+                "icon": "$(link-external)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.utils.goToDefinition",
+                "title": "Go to definition",
+                "icon": "$(go-to-file)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.utils.copy",
+                "title": "Copy",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.configureLogin",
+                "icon": "$(gear)",
+                "title": "Sign in to Databricks workspace",
+                "enablement": "databricks.context.activated && !databricks.context.bundle.busy && !databricks.context.host.fixedIdentity",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.switchWorkspace",
+                "icon": "$(arrow-swap)",
+                "title": "Switch workspace",
+                "enablement": "databricks.context.activated && !databricks.context.bundle.busy && !databricks.context.host.fixedIdentity",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.switchProfile",
+                "icon": "$(arrow-swap)",
+                "title": "Switch profile",
+                "enablement": "databricks.context.activated && !databricks.context.bundle.busy && !databricks.context.host.fixedIdentity",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.signInAgain",
+                "icon": "$(refresh)",
+                "title": "Sign in again",
+                "enablement": "databricks.context.activated && !databricks.context.bundle.busy && !databricks.context.host.fixedIdentity",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.selectWorkspace",
+                "icon": "$(list-selection)",
+                "title": "Select a workspace",
+                "enablement": "databricks.context.activated && !databricks.context.bundle.busy && !databricks.context.host.fixedIdentity",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.logout",
+                "icon": "$(sign-out)",
+                "title": "Sign out",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && (databricks.context.connected || databricks.context.connection.failed) && !databricks.context.host.fixedIdentity"
+            },
+            {
+                "command": "databricks.connection.openDatabricksConfigFile",
+                "title": "Open Databricks configuration file",
+                "enablement": "databricks.context.activated && !databricks.context.host.fixedIdentity",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.showConnectionMenu",
+                "title": "Manage connection",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityGateway.signIn",
+                "title": "Sign in to Unity Gateway",
+                "icon": "$(arrow-swap)",
+                "enablement": "!databricks.context.unityGateway.unavailable",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityGateway.signOut",
+                "title": "Sign out of Unity Gateway",
+                "icon": "$(sign-out)",
+                "enablement": "!databricks.context.unityGateway.unavailable && databricks.context.unityGateway.hasSavedProfile",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityGateway.switchWorkspace",
+                "icon": "$(arrow-swap)",
+                "title": "Switch Unity Gateway workspace",
+                "enablement": "!databricks.context.unityGateway.unavailable",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityGateway.signInAgain",
+                "icon": "$(refresh)",
+                "title": "Sign in again",
+                "enablement": "!databricks.context.unityGateway.unavailable",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityGateway.selectWorkspace",
+                "icon": "$(list-selection)",
+                "title": "Select a workspace",
+                "enablement": "!databricks.context.unityGateway.unavailable",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityGateway.chooseModel",
+                "title": "Choose a model in Chat",
+                "enablement": "!databricks.context.unityGateway.unavailable",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityGateway.showMenu",
+                "title": "Manage Unity Gateway connection",
+                "enablement": "!databricks.context.unityGateway.unavailable",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.selectActiveProjectFolder",
+                "icon": "$(gear)",
+                "title": "Select a Databricks project folder",
+                "enablement": "databricks.context.activated && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.initNewProject",
+                "icon": "$(new-folder)",
+                "title": "Initialize new project",
+                "category": "Databricks",
+                "enablement": "!databricks.context.host.noNewProjects"
+            },
+            {
+                "command": "databricks.connection.bundle.selectTarget",
+                "icon": "$(gear)",
+                "title": "Select a Declarative Automation Bundle target",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.refreshRemoteState",
+                "icon": "$(refresh)",
+                "title": "Refresh remote state",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deploy",
+                "icon": "$(cloud-upload)",
+                "title": "Deploy bundle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.destroy",
+                "title": "Destroy bundle",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "databricks.bundle.forceDeploy",
+                "title": "Force deploy bundle",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy"
+            },
+            {
+                "command": "databricks.bundle.forceDestroy",
+                "title": "Force destroy bundle",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy"
+            },
+            {
+                "command": "databricks.bundle.variable.openFile",
+                "title": "Override bundle variables",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks",
+                "icon": "$(gear)"
+            },
+            {
+                "command": "databricks.bundle.variable.reset",
+                "title": "Reset bundle variables to default values",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks",
+                "icon": "$(discard)"
+            },
+            {
+                "command": "databricks.bundle.showLogs",
+                "title": "Show bundle logs",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndRunFromInput",
+                "icon": "$(run)",
+                "title": "Deploy the bundle and run a resource",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndRunJob",
+                "icon": "$(run)",
+                "title": "Deploy the bundle and run the job",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndRunPipeline",
+                "icon": "$(run-all)",
+                "title": "Deploy the bundle and run the pipeline",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndRunSelectedTables",
+                "icon": "$(run)",
+                "title": "Deploy the bundle and select pipeline tables for partial update",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.deployAndValidatePipeline",
+                "icon": {
+                    "dark": "resources/dark/check-line-icon.svg",
+                    "light": "resources/light/check-line-icon.svg"
+                },
+                "title": "Deploy the bundle and validate the pipeline",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.clearPipelineDiagnostics",
+                "icon": "$(clear-all)",
+                "title": "Clear pipeline diagnostics",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.showPipelineEventDetails",
+                "icon": "$(info)",
+                "title": "Show more information",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.bundle.cancelRun",
+                "title": "Cancel run",
+                "icon": "$(stop)",
+                "enablement": "databricks.context.activated && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyPath",
+                "title": "Copy Path",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyTarget",
+                "title": "Copy Target",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyHost",
+                "title": "Copy Host",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyMode",
+                "title": "Copy Mode",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyClusterName",
+                "title": "Copy Cluster Name",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyClusterId",
+                "title": "Copy Cluster ID",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyRuntime",
+                "title": "Copy Runtime",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyCreator",
+                "title": "Copy Creator",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyState",
+                "title": "Copy State",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyAccessMode",
+                "title": "Copy Access Mode",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copySyncState",
+                "title": "Copy Sync State",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyScope",
+                "title": "Copy Scope",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.configuration.copyVersion",
+                "title": "Copy Version",
+                "enablement": "databricks.context.activated",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.sync.start",
+                "title": "Start synchronization",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.connected && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "icon": "$(sync)"
+            },
+            {
+                "command": "databricks.sync.startFull",
+                "title": "Start synchronization (full sync)",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.connected && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "icon": "$(sync)"
+            },
+            {
+                "command": "databricks.sync.stop",
+                "title": "Stop synchronization",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.connected && databricks.context.bundle.isTargetSet && databricks.context.bundle.isDevTarget",
+                "icon": "$(sync-ignored)"
+            },
+            {
+                "command": "databricks.wsfs.refresh",
+                "title": "Refresh workspace filesystem view",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.mountedWorkspace",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.createFolder",
+                "title": "Create Folder",
+                "icon": "$(new-folder)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.mountedWorkspace",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.createFolder.toolbar",
+                "title": "Create Folder",
+                "icon": "$(new-folder)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.mountedWorkspace",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.createNewFile",
+                "title": "Create File",
+                "icon": "$(new-file)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.mountedWorkspace",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.createNewFile.toolbar",
+                "title": "Create File",
+                "icon": "$(new-file)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.mountedWorkspace",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.openInBrowser",
+                "enablement": "!databricks.context.host.mountedWorkspace",
+                "title": "Open in Browser",
+                "icon": "$(link-external)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.copyPath",
+                "enablement": "!databricks.context.host.mountedWorkspace",
+                "title": "Copy Path",
+                "icon": "$(copy)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.delete",
+                "enablement": "!databricks.context.host.mountedWorkspace",
+                "title": "Delete",
+                "icon": "$(trash)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.uploadFile",
+                "enablement": "!databricks.context.host.mountedWorkspace",
+                "title": "Upload File",
+                "icon": "$(cloud-upload)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.uploadFile.toolbar",
+                "enablement": "!databricks.context.host.mountedWorkspace",
+                "title": "Upload File",
+                "icon": "$(cloud-upload)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.wsfs.downloadFile",
+                "enablement": "!databricks.context.host.mountedWorkspace",
+                "title": "Download",
+                "icon": "$(cloud-download)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.filter",
+                "title": "Filter",
+                "icon": "$(filter)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.refresh",
+                "title": "Refresh Unity Catalog view",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && (databricks.context.connected || databricks.context.host.fixedIdentity)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.copyStorageLocation",
+                "title": "Copy storage location",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.copyViewSql",
+                "title": "Copy view SQL",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.copyName",
+                "title": "Copy",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.refreshNode",
+                "title": "Refresh",
+                "icon": "$(refresh)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.pin",
+                "title": "Add to Favorites",
+                "icon": "$(star-empty)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.unpin",
+                "title": "Remove from Favorites",
+                "icon": "$(star-full)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.openExternal",
+                "title": "Open in Databricks",
+                "icon": "$(link-external)",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.unityCatalog.showDetail",
+                "title": "Show details",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.connection.attachCluster",
+                "title": "Attach compute",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.fixedCompute",
+                "icon": "$(plug)"
+            },
+            {
+                "command": "databricks.connection.attachClusterQuickPick",
+                "title": "Configure compute",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.fixedCompute",
+                "icon": "$(gear)"
+            },
+            {
+                "command": "databricks.connection.detachCluster",
+                "title": "Detach compute",
+                "category": "Databricks",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.fixedCompute",
+                "icon": "$(debug-disconnect)"
+            },
+            {
+                "command": "databricks.cluster.filterByAll",
+                "title": "All",
+                "enablement": "databricks.context.activated && databricks.context.connected"
+            },
+            {
+                "command": "databricks.cluster.filterByRunning",
+                "title": "Running",
+                "enablement": "databricks.context.activated && databricks.context.connected"
+            },
+            {
+                "command": "databricks.cluster.filterByMe",
+                "title": "Created by me",
+                "enablement": "databricks.context.activated && databricks.context.connected"
+            },
+            {
+                "command": "databricks.cluster.refresh",
+                "icon": "$(refresh)",
+                "title": "Refresh",
+                "enablement": "databricks.context.activated && databricks.context.connected"
+            },
+            {
+                "command": "databricks.cluster.start",
+                "title": "Start Compute",
+                "icon": "$(debug-start)",
+                "enablement": "databricks.context.activated && databricks.context.connected",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.cluster.stop",
+                "title": "Stop Compute",
+                "icon": "$(stop-circle)",
+                "enablement": "databricks.context.activated && databricks.context.connected",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.run.runEditorContentsAsWorkflow",
+                "title": "Run File as Workflow",
+                "category": "Databricks",
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.connected && !databricks.context.host.fixedCompute",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
+            },
+            {
+                "command": "databricks.run.runEditorContents",
+                "title": "Upload and Run File",
+                "category": "Databricks",
+                "enablement": "!inDebugMode && databricks.context.activated && databricks.context.connected && !databricks.context.serverless && !databricks.context.host.fixedCompute",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
+            },
+            {
+                "command": "databricks.environment.refresh",
+                "title": "Refresh python environment status",
+                "icon": "$(refresh)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.setup",
+                "title": "Setup python environment",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.selectPythonInterpreter",
+                "title": "Change Python environment",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.reinstallDBConnect",
+                "title": "Reinstall Databricks Connect",
+                "icon": "$(gear)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.autocomplete.configure",
+                "title": "Configure autocomplete for Databricks globals",
+                "enablement": "databricks.context.activated && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.notebookInitScript.verify",
+                "title": "Verify Databricks notebook init scripts",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.setupPythonEnv",
+                "title": "Set up Python environment (uv)",
+                "icon": "$(rocket)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.rerunPythonEnv",
+                "title": "Re-run Python setup",
+                "icon": "$(sync)",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.useManualPythonSetup",
+                "title": "Use manual Python environment setup",
+                "enablement": "databricks.context.activated && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.environment.installUv",
+                "title": "Install uv",
+                "enablement": "databricks.context.activated && !databricks.context.host.givenPython",
+                "category": "Databricks"
+            },
+            {
+                "command": "databricks.run.dbconnect.debug",
+                "title": "Debug current file with Databricks Connect",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
+            },
+            {
+                "command": "databricks.run.dbconnect.run",
+                "title": "Run current file with Databricks Connect",
+                "enablement": "databricks.context.activated && databricks.context.connected && !databricks.context.host.givenPython",
+                "category": "Databricks",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
+            }
+        ],
+        "configuration": [
+            {
+                "title": "Databricks",
+                "properties": {
+                    "databricks.overrideDatabricksConfigFile": {
+                        "type": "string",
+                        "scope": "machine-overridable",
+                        "default": "",
+                        "description": "Override location of .databrickscfg file (default: DATABRICKS_CONFIG_FILE environment variable or ~/.databrickscfg)"
+                    },
+                    "databricks.overrideDatabricksCLIPath": {
+                        "type": "string",
+                        "scope": "machine",
+                        "description": "Override location for the Databricks CLI (defaults to the CLI bundled with this extension). *Warning:* it is recommended NOT to set this. If you override the CLI to an outdated version this extension may break."
+                    },
+                    "databricks.clusters.onlyShowAccessibleClusters": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable/disable filtering for only accessible compute (compute on which the current user can run code)"
+                    },
+                    "databricks.experiments.optInto": {
+                        "type": "array",
+                        "default": [],
+                        "items": {
+                            "enum": [
+                                "views.cluster"
+                            ],
+                            "enumDescriptions": [
+                                "Show cluster view in the explorer."
+                            ],
+                            "type": "string"
+                        },
+                        "description": "Opt into experimental features."
+                    },
+                    "databricks.notebooks.configureJupyterCellMarkers": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Automatically configure Jupyter cell markers in workspace settings for Databricks Python notebooks. Disable in User settings to leave Jupyter cell markers unchanged. Reload the window after changing this setting. Previously written settings are not removed."
+                    },
+                    "databricks.wsfs.rearrangeCells": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable rearranging cells in wrapper files created when using `workspace` as the sync destination. **Note:** It is recommended to NOT disable this setting. If you do disable it, you will need to manually handle sys.path for local imports in your notebooks."
+                    },
+                    "databricks.connect.progress": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "Show PySpark progress bar when using Databricks Connect. Requires `ipywidgets` package and `pyspark@3.5.0+`."
+                    },
+                    "databricks.connect.serverlessDbconnectVersion": {
+                        "type": "string",
+                        "default": "17.3",
+                        "markdownDescription": "Default `databricks-connect` version for serverless compute. Determines required Python version and suggested package version. Minimum supported value is `15.4`."
+                    },
+                    "databricks.ipythonDir": {
+                        "type": "string",
+                        "scope": "machine-overridable",
+                        "description": "Absolute path to a directory for storing IPython files. Defaults to IPYTHONDIR environment variable (if set) or ~/.ipython."
+                    },
+                    "databricks.python.environmentSetup": {
+                        "type": "string",
+                        "enum": [
+                            "auto",
+                            "manual"
+                        ],
+                        "enumDescriptions": [
+                            "Automatically set up a uv-managed Python environment matched to your Databricks compute for suitable uv projects.",
+                            "Never run automated Python environment setup; use your own interpreter and environment (for example an existing `.venv` with `databricks-connect`) as-is."
+                        ],
+                        "default": "auto",
+                        "markdownDescription": "Controls the extension's automated Python environment setup for uv projects. `auto` (default) offers and runs uv-native setup (`databricks environments setup-local`) for suitable projects. `manual` disables it entirely so your existing interpreter/environment is used as-is — useful when your network blocks `raw.githubusercontent.com`, which the automated setup requires to fetch runtime constraints."
+                    },
+                    "databricks.proxy.strictSSL": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "default": null,
+                        "markdownDescription": "Controls whether TLS certificates are verified for the extension's Databricks SDK calls. No longer used.",
+                        "markdownDeprecationMessage": "No longer used. The extension now follows `#http.proxyStrictSSL#` for TLS certificate verification."
+                    },
+                    "databricks.proxy.caCert": {
+                        "type": "string",
+                        "markdownDescription": "Absolute path to a PEM bundle of additional CA certificates. No longer used.",
+                        "markdownDeprecationMessage": "No longer used. The extension's Databricks calls now use VS Code's certificate handling, which adds the OS trust store when `#http.systemCertificates#` is on. Install the CA in the OS trust store, or start VS Code with the `NODE_EXTRA_CA_CERTS` environment variable set to the PEM bundle's path."
+                    }
+                }
+            }
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "databricks.connection.signInAgain",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.connection.switchProfile",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.connection.selectWorkspace",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityGateway.signInAgain",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityGateway.selectWorkspace",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityGateway.switchWorkspace",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityGateway.chooseModel",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.connection.switchWorkspace",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.utils.goToDefinition",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.utils.copy",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyPath",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyTarget",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyHost",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyMode",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterName",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterId",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyRuntime",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyCreator",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyState",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyAccessMode",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copySyncState",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyScope",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.configuration.copyVersion",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunJob",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunPipeline",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.deployAndValidatePipeline",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunSelectedTables",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.showPipelineEventDetails",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.bundle.cancelRun",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder.toolbar",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.createNewFile.toolbar",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.delete",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.downloadFile",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.copyPath",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.openInBrowser",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.uploadFile",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.wsfs.uploadFile.toolbar",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyStorageLocation",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyViewSql",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyName",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityCatalog.refreshNode",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityCatalog.pin",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityCatalog.unpin",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityCatalog.openExternal",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.unityCatalog.showDetail",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.connection.attachCluster",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.cluster.filterByAll",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.cluster.filterByRunning",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.cluster.filterByMe",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.cluster.refresh",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.cluster.start",
+                    "when": "!databricks.context.host.fixedCompute"
+                },
+                {
+                    "command": "databricks.cluster.stop",
+                    "when": "!databricks.context.host.fixedCompute"
+                },
+                {
+                    "command": "databricks.run.runEditorContents",
+                    "when": "resourceLangId == python && !databricks.context.host.fixedCompute"
+                },
+                {
+                    "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "when": "(resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow) && !databricks.context.host.fixedCompute"
+                },
+                {
+                    "command": "databricks.environment.setupPythonEnv",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.environment.rerunPythonEnv",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.aitools.addCursorPlugin",
+                    "when": "databricks.context.aitools.showCursorPlugin && !databricks.context.host.noAiTools"
+                },
+                {
+                    "command": "databricks.aitools.install",
+                    "when": "!databricks.context.aitools.installed && !databricks.context.host.noAiTools"
+                },
+                {
+                    "command": "databricks.aitools.uninstall",
+                    "when": "databricks.context.aitools.installed && !databricks.context.host.noAiTools"
+                },
+                {
+                    "command": "databricks.aitools.update",
+                    "when": "databricks.context.aitools.installed && !databricks.context.host.noAiTools"
+                },
+                {
+                    "command": "databricks.aitools.checkForUpdates",
+                    "when": "databricks.context.aitools.installed && !databricks.context.host.noAiTools"
+                },
+                {
+                    "command": "databricks.aitools.reload",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.aitools.installAgent",
+                    "when": "false"
+                },
+                {
+                    "command": "databricks.aitools.showInstallPrompt",
+                    "when": "databricks.context.aitools.installPromptHidden && !databricks.context.aitools.installed && !databricks.context.host.noAiTools"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "databricks.connection.signInAgain",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.error\\.signInAgain(\\.target)?$/ && !databricks.context.host.fixedIdentity",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.selectWorkspace",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.error\\.selectWorkspace(\\.target)?$/ && !databricks.context.host.fixedIdentity",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.switchWorkspace",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.(connected|error|error\\.signInAgain)$/ && !databricks.context.host.fixedIdentity",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.connection.switchProfile",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.(connected|error|error\\.signInAgain)\\.target$/ && !databricks.context.host.fixedIdentity",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.connection.logout",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.(connected|error|error\\.signInAgain|error\\.selectWorkspace)(\\.target)?$/ && !databricks.context.host.fixedIdentity",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.unityGateway.signInAgain",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.unityGateway\\.error\\.signInAgain$/ && !databricks.context.unityGateway.unavailable",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.unityGateway.selectWorkspace",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.unityGateway\\.error\\.selectWorkspace$/ && !databricks.context.unityGateway.unavailable",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.unityGateway.switchWorkspace",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.unityGateway\\.(connected|error|error\\.signInAgain)$/ && !databricks.context.unityGateway.unavailable",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.unityGateway.signOut",
+                    "when": "view == signInView && viewItem =~ /^databricks\\.connection\\.unityGateway\\.(connected|error|error\\.signInAgain|error\\.selectWorkspace)$/ && !databricks.context.unityGateway.unavailable",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
+                    "when": "viewItem =~ /^databricks.*\\.(has-url).*$/ && !databricks.context.bundle.busy",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.utils.openExternal",
+                    "when": "viewItem =~ /^databricks.*\\.(has-url).*$/ && !databricks.context.bundle.busy",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.utils.goToDefinition",
+                    "when": "viewItem =~ /^databricks.*\\.(has-source-location).*$/",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.utils.goToDefinition",
+                    "when": "viewItem =~ /^databricks.*\\.(has-source-location).*$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.bundle.selectActiveProjectFolder",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.activeProjectFolder/ && !databricks.context.bundle.busy",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.bundle.selectActiveProjectFolder",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.activeProjectFolder/ && !databricks.context.bundle.busy",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.connection.bundle.selectTarget",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && !databricks.context.bundle.busy",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.connection.bundle.selectTarget",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.target.*$/ && !databricks.context.bundle.busy",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.configuration.copyPath",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=path$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyTarget",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=target$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyHost",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=host$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyMode",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=mode$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterName",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=clusterName$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyClusterId",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=clusterId$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyRuntime",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=runtime$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyCreator",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=creator$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyState",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=state$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyAccessMode",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=accessMode$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copySyncState",
+                    "when": "view == configurationView && viewItem =~ /\\.copy=syncState$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyScope",
+                    "when": "view == modelsAndAiToolsView && viewItem =~ /\\.copy=scope$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.configuration.copyVersion",
+                    "when": "view == modelsAndAiToolsView && viewItem =~ /\\.copy=version$/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunJob",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.resource=jobs.runnable.*$/ && !databricks.context.bundle.busy",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunJob",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.resource=jobs.runnable.*$/ && !databricks.context.bundle.busy",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunPipeline",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && !databricks.context.bundle.busy",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunPipeline",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && !databricks.context.bundle.busy",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndValidatePipeline",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && !databricks.context.bundle.busy",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndValidatePipeline",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && !databricks.context.bundle.busy",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunSelectedTables",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && !databricks.context.bundle.busy",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.deployAndRunSelectedTables",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.resource=pipelines.runnable.*$/ && !databricks.context.bundle.busy",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.bundle.showPipelineEventDetails",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.*.has-pipeline-details.*$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.showPipelineEventDetails",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.*.has-pipeline-details.*$/",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.bundle.cancelRun",
+                    "when": "view == configurationView && viewItem =~ /^databricks.bundle.*.cancellable.*$/ && !databricks.context.bundle.busy",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.utils.copy",
+                    "when": "view == configurationView && (viewItem =~ /^databricks.bundle./ || viewItem =~ /-header$|^(task_header|catalog|target|state_message|start_time|end_time|dataset_field|datasets_placeholder)$/)",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.sync.start",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-stopped.*$/ && databricks.context.bundle.isDevTarget",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.sync.start",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-stopped.*$/ && databricks.context.bundle.isDevTarget",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.sync.stop",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-running.*$/ && databricks.context.bundle.isDevTarget",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.sync.stop",
+                    "when": "view == configurationView && viewItem =~ /^databricks.*sync.*is-running.*$/ && databricks.context.bundle.isDevTarget",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.wsfs.copyPath",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs\\./",
+                    "group": "wsfs_nav@0"
+                },
+                {
+                    "command": "databricks.wsfs.openInBrowser",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs\\./",
+                    "group": "wsfs_nav@1"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder",
+                    "when": "view == workspaceFsView && (viewItem == wsfs.directory || viewItem == wsfs.repo)",
+                    "group": "wsfs_mut@0"
+                },
+                {
+                    "command": "databricks.wsfs.createNewFile",
+                    "when": "view == workspaceFsView && (viewItem == wsfs.directory || viewItem == wsfs.repo)",
+                    "group": "wsfs_mut@1"
+                },
+                {
+                    "command": "databricks.wsfs.uploadFile",
+                    "when": "view == workspaceFsView && (viewItem == wsfs.directory || viewItem == wsfs.repo)",
+                    "group": "wsfs_mut@2"
+                },
+                {
+                    "command": "databricks.wsfs.downloadFile",
+                    "when": "view == workspaceFsView && (viewItem == wsfs.file || viewItem == wsfs.notebook)",
+                    "group": "wsfs_mut@0"
+                },
+                {
+                    "command": "databricks.wsfs.delete",
+                    "when": "view == workspaceFsView && viewItem =~ /^wsfs\\./",
+                    "group": "wsfs_danger@0"
+                },
+                {
+                    "command": "databricks.unityCatalog.openExternal",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.has-url/",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.unityCatalog.openExternal",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.has-url/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyName",
+                    "when": "view == unityCatalogView && viewItem =~ /unityCatalog/",
+                    "group": "navigation_2@0"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyStorageLocation",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.has-storage/",
+                    "group": "navigation_2@1"
+                },
+                {
+                    "command": "databricks.unityCatalog.copyViewSql",
+                    "when": "view == unityCatalogView && viewItem =~ /\\.is-view/",
+                    "group": "navigation_2@2"
+                },
+                {
+                    "command": "databricks.unityCatalog.refreshNode",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column|table)/",
+                    "group": "navigation_2@3"
+                },
+                {
+                    "command": "databricks.unityCatalog.refreshNode",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(?!column|table)/",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.unityCatalog.pin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion)/ && !(viewItem =~ /\\.is-pinned/)",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "databricks.unityCatalog.unpin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion).*\\.is-pinned/",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "databricks.unityCatalog.pin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion)/ && !(viewItem =~ /\\.is-pinned/)",
+                    "group": "navigation_2@4"
+                },
+                {
+                    "command": "databricks.unityCatalog.unpin",
+                    "when": "view == unityCatalogView && viewItem =~ /^unityCatalog\\.(catalog|schema|table|volume|function|registeredModel|modelVersion).*\\.is-pinned/",
+                    "group": "navigation_2@4"
+                },
+                {
+                    "command": "databricks.connection.attachCluster",
+                    "when": "view == clusterView && viewItem =~ /^cluster\\./ && !databricks.context.bundle.busy && !databricks.context.host.fixedCompute",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.connection.attachCluster",
+                    "when": "view == clusterView && viewItem =~ /^cluster\\./ && !databricks.context.bundle.busy && !databricks.context.host.fixedCompute",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.cluster.start",
+                    "when": "view == clusterView && viewItem =~ /^cluster\\.terminated$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.cluster.stop",
+                    "when": "view == clusterView && viewItem =~ /^cluster\\.(running|pending)$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.connection.attachClusterQuickPick",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*$/ && !databricks.context.bundle.busy && !databricks.context.host.fixedCompute",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "databricks.connection.attachClusterQuickPick",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*$/ && !databricks.context.bundle.busy && !databricks.context.host.fixedCompute",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.cluster.stop",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*\\.(running|pending).*$/ && !databricks.context.bundle.busy",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.cluster.stop",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.cluster.*\\.(running|pending).*$/ && !databricks.context.bundle.busy",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.cluster.start",
+                    "when": "view == configurationView && viewItem =~ /databricks.configuration.cluster.*\\.terminated.*/ && !databricks.context.bundle.busy",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.cluster.start",
+                    "when": "view == configurationView && viewItem =~ /databricks.configuration.cluster.*\\.terminated.*/ && !databricks.context.bundle.busy",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "databricks.environment.refresh",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.root.(success|error)$/ && !databricks.context.host.givenPython",
+                    "group": "inline@0",
+                    "icon": "$(refresh)"
+                },
+                {
+                    "command": "databricks.environment.refresh",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.root.(success|error)$/ && !databricks.context.host.givenPython",
+                    "group": "navigation@0",
+                    "icon": "$(refresh)"
+                },
+                {
+                    "command": "databricks.environment.rerunPythonEnv",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.(success|drifted)$/ && !databricks.context.host.givenPython",
+                    "group": "inline@0",
+                    "icon": "$(sync)"
+                },
+                {
+                    "command": "databricks.environment.rerunPythonEnv",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.pythonSetup.(success|drifted)$/ && !databricks.context.host.givenPython",
+                    "group": "navigation@0",
+                    "icon": "$(sync)"
+                },
+                {
+                    "command": "databricks.environment.selectPythonInterpreter",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkPythonEnvironment.success$/ && !databricks.context.host.givenPython",
+                    "group": "inline@0",
+                    "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.environment.selectPythonInterpreter",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkPythonEnvironment.success$/ && !databricks.context.host.givenPython",
+                    "group": "navigation@0",
+                    "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.environment.reinstallDBConnect",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkEnvironmentDependencies.success$/ && !databricks.context.host.givenPython",
+                    "group": "inline@0",
+                    "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.environment.reinstallDBConnect",
+                    "when": "view == configurationView && viewItem =~ /^databricks.environment.checkEnvironmentDependencies.success$/ && !databricks.context.host.givenPython",
+                    "group": "navigation@0",
+                    "icon": "$(gear)"
+                },
+                {
+                    "command": "databricks.aitools.addCursorPlugin",
+                    "when": "view == modelsAndAiToolsView && viewItem =~ /^databricks.configuration.aitools.(installed|upToDate|updateAvailable|checking|updating|error)$/ && databricks.context.aitools.showCursorPlugin",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.aitools.uninstall",
+                    "when": "view == modelsAndAiToolsView && viewItem =~ /^databricks.configuration.aitools.(installed|upToDate|updateAvailable|checking|updating|error)$/",
+                    "group": "navigation@9"
+                },
+                {
+                    "command": "databricks.aitools.installAgent",
+                    "when": "view == modelsAndAiToolsView && viewItem =~ /^databricks.configuration.aitools.agent.notInstalled$/",
+                    "group": "inline@0"
+                },
+                {
+                    "command": "databricks.bundle.variable.openFile",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.group.variables$/ && !databricks.context.bundle.busy",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "databricks.bundle.variable.reset",
+                    "when": "view == configurationView && viewItem =~ /^databricks.configuration.group.variables$/ && !databricks.context.bundle.busy",
+                    "group": "inline@2"
+                }
+            ],
+            "view/title": [
+                {
+                    "command": "databricks.bundle.initNewProject",
+                    "group": "navigation@1",
+                    "when": "view == configurationView && !databricks.context.host.noNewProjects"
+                },
+                {
+                    "command": "databricks.bundle.refreshRemoteState",
+                    "when": "view == configurationView && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.deploy",
+                    "when": "view == configurationView && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.destroy",
+                    "when": "view == configurationView && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.bundle.forceDeploy",
+                    "when": "view == configurationView && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy"
+                },
+                {
+                    "command": "databricks.bundle.forceDestroy",
+                    "when": "view == configurationView && databricks.context.bundle.isTargetSet && !databricks.context.bundle.busy"
+                },
+                {
+                    "command": "databricks.wsfs.refresh",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.wsfs.createFolder.toolbar",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.wsfs.createNewFile.toolbar",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.wsfs.uploadFile.toolbar",
+                    "when": "view == workspaceFsView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.unityCatalog.filter",
+                    "when": "view == unityCatalogView",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.unityCatalog.refresh",
+                    "when": "view == unityCatalogView",
+                    "group": "navigation@1"
+                },
+                {
+                    "submenu": "databricks.cluster.filter",
+                    "when": "view == clusterView",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "databricks.cluster.refresh",
+                    "when": "view == clusterView",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "databricks.quickstart.open",
+                    "when": "view == configurationView && !databricks.context.host.fixedIdentity"
+                }
+            ],
+            "databricks.cluster.filter": [
+                {
+                    "command": "databricks.cluster.filterByAll"
+                },
+                {
+                    "command": "databricks.cluster.filterByMe"
+                },
+                {
+                    "command": "databricks.cluster.filterByRunning"
+                }
+            ],
+            "editor/title": [
+                {
+                    "submenu": "databricks.run",
+                    "group": "navigation@0",
+                    "when": "databricks.context.isActiveFileInActiveWorkspace && (databricks.context.showRunAsWorkflow || resourceExtname == .ipynb)"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "submenu": "databricks.run",
+                    "when": "resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow"
+                }
+            ],
+            "databricks.run": [
+                {
+                    "command": "databricks.connection.configureLogin",
+                    "when": "databricks.context.activated && !databricks.context.connected && !databricks.context.host.fixedIdentity",
+                    "group": "1_login@0"
+                },
+                {
+                    "command": "databricks.run.runEditorContents",
+                    "when": "databricks.context.activated && resourceLangId == python && !databricks.context.serverless && !databricks.context.host.fixedCompute",
+                    "group": "2_remote@1"
+                },
+                {
+                    "command": "databricks.run.runEditorContentsAsWorkflow",
+                    "when": "databricks.context.activated && (resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow) && !databricks.context.host.fixedCompute",
+                    "group": "2_remote@2"
+                },
+                {
+                    "command": "databricks.run.dbconnect.debug",
+                    "when": "databricks.context.activated && resourceLangId == python",
+                    "group": "3_local@1"
+                },
+                {
+                    "command": "databricks.run.dbconnect.run",
+                    "when": "databricks.context.activated && resourceLangId == python",
+                    "group": "3_local@2"
+                }
+            ]
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "databricksBar",
+                    "title": "Databricks",
+                    "icon": "resources/light/logo.svg"
+                }
+            ]
+        },
+        "languageModelChatProviders": [
+            {
+                "vendor": "databricks",
+                "displayName": "Databricks",
+                "icon": {
+                    "light": "resources/light/logo.svg",
+                    "dark": "resources/dark/logo.svg"
+                }
+            }
+        ],
+        "views": {
+            "databricksBar": [
+                {
+                    "id": "signInView",
+                    "name": "Connection"
+                },
+                {
+                    "id": "modelsAndAiToolsView",
+                    "name": "Models & AI tools",
+                    "when": "!databricks.context.host.noAiTools || !databricks.context.unityGateway.unavailable"
+                },
+                {
+                    "id": "sshTunnelView",
+                    "name": "SSH Tunnel",
+                    "visibility": "collapsed",
+                    "when": "!databricks.context.host.noTunnel && databricks.context.connected && databricks.context.initialized && !databricks.context.bundle.isTargetSet"
+                },
+                {
+                    "id": "configurationView",
+                    "name": "Project"
+                },
+                {
+                    "id": "sshTunnelProjectView",
+                    "name": "SSH Tunnel",
+                    "visibility": "collapsed",
+                    "when": "!databricks.context.host.noTunnel && databricks.context.connected && databricks.context.initialized && databricks.context.bundle.isTargetSet"
+                },
+                {
+                    "id": "clusterView",
+                    "name": "Compute",
+                    "when": "databricks.feature.views.cluster"
+                },
+                {
+                    "id": "workspaceFsView",
+                    "name": "Workspace file system",
+                    "when": "databricks.context.activated && !databricks.context.host.mountedWorkspace && databricks.context.connected"
+                },
+                {
+                    "id": "unityCatalogView",
+                    "name": "Unity Catalog",
+                    "when": "databricks.context.activated && (databricks.context.connected || databricks.context.host.fixedIdentity)"
+                }
+            ]
+        },
+        "walkthroughs": [
+            {
+                "id": "quickstart",
+                "title": "Get started with Databricks",
+                "description": "Sign in, open a project, and deploy it to your workspace.",
+                "when": "!remoteName",
+                "steps": [
+                    {
+                        "id": "sign-in",
+                        "title": "Sign in to your workspace",
+                        "description": "Connect VS Code to a Databricks workspace.\n[Sign in to Databricks workspace](command:databricks.connection.configureLogin)",
+                        "media": {
+                            "markdown": "resources/walkthrough/sign-in.md"
+                        }
+                    },
+                    {
+                        "id": "project",
+                        "title": "Open or create a project",
+                        "description": "A project is a folder with a databricks.yml file.\n[Create a new Databricks project](command:databricks.bundle.initNewProject)\n[Open folder](command:vscode.openFolder)",
+                        "when": "!databricks.context.project",
+                        "media": {
+                            "markdown": "resources/walkthrough/project.md"
+                        }
+                    },
+                    {
+                        "id": "compute",
+                        "title": "Choose compute",
+                        "description": "Pick the cluster that runs your code. Serverless needs no cluster.\n[Configure compute](command:databricks.connection.attachClusterQuickPick)",
+                        "media": {
+                            "markdown": "resources/walkthrough/compute.md"
+                        }
+                    },
+                    {
+                        "id": "deploy",
+                        "title": "Deploy your project",
+                        "description": "Deploy the bundle to your workspace, then run a job or pipeline from the Resources group in the Project view.\n[Deploy bundle](command:databricks.bundle.deploy)",
+                        "media": {
+                            "markdown": "resources/walkthrough/deploy.md"
+                        }
+                    },
+                    {
+                        "id": "learn",
+                        "title": "Learn more",
+                        "description": "Add AI tools to your coding agents, or read the user guide.\n[Install AI tools](command:databricks.aitools.install)\n[Read the user guide](https://docs.databricks.com/dev-tools/vscode-ext.html)",
+                        "media": {
+                            "markdown": "resources/walkthrough/learn.md"
+                        }
+                    }
+                ]
+            }
+        ],
+        "viewsWelcome": [
+            {
+                "view": "signInView",
+                "contents": "Sign in to use your Databricks workspace in VS Code, and Databricks models in VS Code Chat.",
+                "when": "!databricks.context.connected && !databricks.context.host.fixedIdentity && !databricks.context.unityGateway.unavailable && !databricks.context.signInView.hasRows"
+            },
+            {
+                "view": "signInView",
+                "contents": "Sign in to use your Databricks workspace in VS Code.",
+                "when": "!databricks.context.connected && !databricks.context.host.fixedIdentity && databricks.context.unityGateway.unavailable && !databricks.context.signInView.hasRows"
+            },
+            {
+                "view": "signInView",
+                "contents": "[Sign in to Databricks](command:databricks.connection.configureLogin)",
+                "when": "!databricks.context.connected && !databricks.context.host.fixedIdentity && !databricks.context.signInView.hasRows"
+            },
+            {
+                "view": "signInView",
+                "contents": "This window signs in with the SSH tunnel's credentials, and they don't connect. If the session's token expired, close this window and start the tunnel again from a local window.",
+                "when": "!databricks.context.connected && databricks.context.host.fixedIdentity && !databricks.context.signInView.hasRows"
+            },
+            {
+                "view": "signInView",
+                "contents": "To learn more about how to use the Databricks extension for Visual Studio Code [read our docs](https://docs.databricks.com/dev-tools/vscode-ext.html) or [Quickstart guide](command:databricks.quickstart.open)",
+                "when": "!databricks.context.host.fixedIdentity && !databricks.context.signInView.hasRows"
+            },
+            {
+                "view": "signInView",
+                "contents": "The guides for this extension, such as how to run files and deploy bundles, are in the [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html).",
+                "when": "databricks.context.host.fixedIdentity && !databricks.context.signInView.hasRows"
+            },
+            {
+                "view": "sshTunnelView",
+                "contents": "Connect your IDE to a Databricks SSH tunnel so you can run all Python and SQL workloads using Databricks compute.\n[Start SSH tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
+            },
+            {
+                "view": "sshTunnelProjectView",
+                "contents": "Connect your IDE to a Databricks SSH tunnel so you can run all Python and SQL workloads using Databricks compute.\n[Start SSH tunnel](command:databricks.ssh.startTunnel)\nTo learn more about the SSH tunnel [read our docs](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel)."
+            },
+            {
+                "view": "configurationView",
+                "contents": "To learn more about [Declarative Automation Bundles](https://docs.databricks.com/dev-tools/vscode-ext/bundles).",
+                "when": "workspaceFolderCount == 0"
+            },
+            {
+                "view": "configurationView",
+                "contents": "[Open folder](command:vscode.openFolder)",
+                "when": "workspaceFolderCount == 0"
+            },
+            {
+                "view": "configurationView",
+                "contents": "[Create a new Databricks project](command:databricks.bundle.initNewProject)",
+                "when": "workspaceFolderCount == 0 && !databricks.context.host.noNewProjects"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Initializing...",
+                "when": "workspaceFolderCount > 0 && !databricks.context.initialized"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Choose a Databricks project from a subfolder of the open folder:\n[Choose a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable && !databricks.context.configurationView.hasRows"
+            },
+            {
+                "view": "configurationView",
+                "contents": "This folder has a Databricks project configuration (.databricks/project.json) from an older version of the extension. The extension now works with Declarative Automation Bundles and no longer migrates these projects.\n[Learn how to migrate](https://docs.databricks.com/dev-tools/vscode-ext/bundles)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.legacyProject"
+            },
+            {
+                "view": "configurationView",
+                "contents": "No bundle (databricks.yml) was found in the open folder or its subfolders, except hidden folders and node_modules. To use one elsewhere, pick its folder:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.project && !databricks.context.subProjectsAvailable"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Select a folder where you want to create a new Databricks project using a [template](https://docs.databricks.com/en/dev-tools/bundles/templates#template-project-structure):\n[Create a new project](command:databricks.bundle.initNewProject)",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.project && !databricks.context.host.noNewProjects"
+            },
+            {
+                "view": "configurationView",
+                "contents": "Loading configuration",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.project && !databricks.context.configurationView.hasRows"
+            }
+        ],
+        "colors": [
+            {
+                "id": "databricks.unityCatalog.catalog",
+                "description": "Icon color for Unity Catalog catalog nodes",
+                "defaults": {
+                    "dark": "#9B6CF7",
+                    "light": "#6B2FD4",
+                    "highContrast": "#C586C0",
+                    "highContrastLight": "#6B2FD4"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.schema",
+                "description": "Icon color for Unity Catalog schema nodes",
+                "defaults": {
+                    "dark": "#0DB7C4",
+                    "light": "#007A85",
+                    "highContrast": "#4EC9B0",
+                    "highContrastLight": "#007A85"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.table",
+                "description": "Icon color for Unity Catalog table nodes",
+                "defaults": {
+                    "dark": "#FF6B2C",
+                    "light": "#C84B0A",
+                    "highContrast": "#FF6B2C",
+                    "highContrastLight": "#C84B0A"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.volume",
+                "description": "Icon color for Unity Catalog volume nodes",
+                "defaults": {
+                    "dark": "#4FC1E9",
+                    "light": "#0E6FA0",
+                    "highContrast": "#4FC1E9",
+                    "highContrastLight": "#0E6FA0"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.function",
+                "description": "Icon color for Unity Catalog function nodes",
+                "defaults": {
+                    "dark": "#FFB347",
+                    "light": "#A06000",
+                    "highContrast": "#FFCA28",
+                    "highContrastLight": "#A06000"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.columnKey",
+                "description": "Icon color for Unity Catalog non-nullable (key) column nodes",
+                "defaults": {
+                    "dark": "#F47C7C",
+                    "light": "#C0392B",
+                    "highContrast": "#F47C7C",
+                    "highContrastLight": "#C0392B"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.column",
+                "description": "Icon color for Unity Catalog nullable column nodes",
+                "defaults": {
+                    "dark": "#8EAFC2",
+                    "light": "#4A6B82",
+                    "highContrast": "#8EAFC2",
+                    "highContrastLight": "#4A6B82"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.registeredModel",
+                "description": "Color for registered model nodes in the Unity Catalog view",
+                "defaults": {
+                    "dark": "#C586C0",
+                    "light": "#AF00DB",
+                    "highContrast": "#C586C0"
+                }
+            },
+            {
+                "id": "databricks.unityCatalog.modelVersion",
+                "description": "Color for model version nodes in the Unity Catalog view",
+                "defaults": {
+                    "dark": "#B5CEA8",
+                    "light": "#008000",
+                    "highContrast": "#B5CEA8"
+                }
+            }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "databricks",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "sync or sync-full"
+                    }
+                }
+            }
+        ],
+        "submenus": [
+            {
+                "id": "databricks.cluster.filter",
+                "label": "Filter compute ...",
+                "icon": "$(filter)"
+            },
+            {
+                "id": "databricks.run",
+                "label": "Run on Databricks",
+                "icon": {
+                    "dark": "resources/dark/databricks-run-icon.svg",
+                    "light": "resources/light/databricks-run-icon.svg"
+                }
+            }
+        ],
+        "debuggers": [
+            {
+                "type": "databricks",
+                "languages": [
+                    "python"
+                ],
+                "label": "Databricks",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "program"
+                        ],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Absolute path to a python file."
+                            },
+                            "args": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Command line arguments."
+                            },
+                            "env": {
+                                "type": "object",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Environment variables."
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "databricks",
+                        "request": "launch",
+                        "name": "Run on Databricks",
+                        "program": "${file}",
+                        "args": [],
+                        "env": {}
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "Databricks: Launch",
+                        "description": "A new configuration for running a user selected Python file on Databricks.",
+                        "body": {
+                            "type": "databricks",
+                            "request": "launch",
+                            "name": "Run on Databricks",
+                            "program": "^\"\\${file}\"",
+                            "args": []
+                        }
+                    }
+                ]
+            },
+            {
+                "type": "databricks-workflow",
+                "languages": [
+                    "python",
+                    "sql",
+                    "r",
+                    "scala"
+                ],
+                "label": "Databricks Workflow",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "program"
+                        ],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Absolute path to a python file."
+                            },
+                            "parameters": {
+                                "type": "object",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Values of the notebook widget parameters as specified by the key of the parameter."
+                            },
+                            "args": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "Command line arguments for Python tasks."
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "databricks-workflow",
+                        "request": "launch",
+                        "name": "Run on Databricks as Workflow",
+                        "program": "${file}",
+                        "parameters": {},
+                        "args": []
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "Databricks: Launch as Workflow",
+                        "description": "A new configuration for running a user selected Python file on Databricks as a workflow.",
+                        "body": {
+                            "type": "databricks-workflow",
+                            "request": "launch",
+                            "name": "Run on Databricks as a Workflow",
+                            "program": "^\"\\${file}\"",
+                            "parameters": {},
+                            "args": []
+                        }
+                    }
+                ]
+            },
+            {
+                "type": "python",
+                "configurationAttributes": {
+                    "launch": {
+                        "properties": {
+                            "databricks": {
+                                "type": "boolean",
+                                "description": "Setup databricks environment variables and globals."
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "debugpy",
+                "configurationAttributes": {
+                    "launch": {
+                        "properties": {
+                            "databricks": {
+                                "type": "boolean",
+                                "description": "Setup databricks environment variables and globals."
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "activationEvents": [
+        "onDebugResolve:databricks",
+        "onDebugResolve:databricks-workflow",
+        "onDebugResolve:debugpy",
+        "onDebugResolve:python",
+        "onFileSystem:databricks-wsfs",
+        "workspaceContains:**/bundle.yaml",
+        "workspaceContains:**/bundle.yml",
+        "workspaceContains:**/databricks.yaml",
+        "workspaceContains:**/databricks.yml",
+        "workspaceContains:.databricks"
+    ],
+    "extensionPack": [
+        "ms-python.debugpy",
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "redhat.vscode-yaml"
+    ],
+    "icon": "images/databricks-logo.png",
+    "galleryBanner": {
+        "theme": "light"
+    },
+    "engines": {
+        "vscode": "^1.128.0"
+    },
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": false,
+            "description": "The extension runs the Databricks CLI on the project's bundle files, and a bundle can run commands its project defines. Trust this folder to use the Databricks extension."
+        }
+    },
+    "cli": {
+        "version": "1.24.0"
+    },
+    "pricing": "Free"
+}

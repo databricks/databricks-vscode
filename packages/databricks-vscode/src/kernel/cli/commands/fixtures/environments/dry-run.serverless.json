@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "command": "environments setup-local",
+  "ok": true,
+  "mode": "default",
+  "dryRun": true,
+  "compute": {
+    "source": "serverless",
+    "serverlessVersion": "v4",
+    "envKey": "serverless/serverless-v4"
+  },
+  "resolved": {
+    "pythonVersion": "3.12",
+    "dbconnectVersion": "17.3.0",
+    "artifactSource": "network"
+  },
+  "greenfield": false,
+  "plan": {
+    "wouldWrite": "/tmp/sl-probe/pyproject.toml",
+    "wouldInstallPython": "3.12",
+    "diff": ""
+  },
+  "phases": [
+    {
+      "phase": "preflight",
+      "status": "ok"
+    },
+    {
+      "phase": "resolve",
+      "status": "ok"
+    },
+    {
+      "phase": "fetch",
+      "status": "ok"
+    },
+    {
+      "phase": "merge",
+      "status": "ok"
+    },
+    {
+      "phase": "provision",
+      "status": "ok"
+    },
+    {
+      "phase": "validate",
+      "status": "ok"
+    }
+  ],
+  "warnings": [],
+  "error": null,
+  "durationMs": 25
+}

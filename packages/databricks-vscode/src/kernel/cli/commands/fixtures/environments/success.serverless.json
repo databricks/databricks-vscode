@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "command": "environments setup-local",
+  "ok": true,
+  "mode": "default",
+  "dryRun": false,
+  "compute": {
+    "source": "serverless",
+    "serverlessVersion": "v4",
+    "envKey": "serverless/serverless-v4"
+  },
+  "resolved": {
+    "pythonVersion": "3.12",
+    "dbconnectVersion": "17.3.14",
+    "artifactSource": "network"
+  },
+  "greenfield": true,
+  "venvPath": ".venv",
+  "pythonResolution": "uv_install_succeeded",
+  "phases": [
+    {
+      "phase": "preflight",
+      "status": "ok"
+    },
+    {
+      "phase": "resolve",
+      "status": "ok"
+    },
+    {
+      "phase": "fetch",
+      "status": "ok"
+    },
+    {
+      "phase": "merge",
+      "status": "ok"
+    },
+    {
+      "phase": "provision",
+      "status": "ok"
+    },
+    {
+      "phase": "validate",
+      "status": "ok"
+    }
+  ],
+  "warnings": [],
+  "error": null,
+  "durationMs": 12096
+}

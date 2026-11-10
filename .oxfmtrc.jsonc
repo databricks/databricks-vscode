@@ -1,0 +1,27 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "printWidth": 100,
+    "tabWidth": 4,
+    "quoteProps": "consistent",
+    // On top of .gitignore (build output, node_modules, the bundled CLI, e2e
+    // artifacts): files a tool writes, or that copy something else verbatim.
+    "ignorePatterns": [
+        // Vendored Yarn, and the lockfile it writes.
+        ".yarn/",
+        "yarn.lock",
+        // Generated: `generate:telemetry`, `generate:notice`, `yarn ratchet --update`.
+        "packages/databricks-vscode/telemetry.json",
+        "packages/databricks-vscode/NOTICE.md",
+        "ratchet-baseline.json",
+        // The old extension's manifest, state and telemetry, as extracted.
+        "packages/databricks-vscode/src/test/contract/oldManifest.json",
+        "packages/databricks-vscode/src/test/contract/oldTelemetry.ts",
+        "packages/databricks-vscode/src/test/contract/fixtures/oldState.json",
+        // A copy of vscode-python's apiTypes.ts.
+        "packages/databricks-vscode/src/features/python/msPythonApi.ts",
+        // Golden CLI output.
+        "packages/databricks-vscode/src/kernel/cli/commands/fixtures/",
+        // Workspaces the e2e specs open, as users would have them.
+        "packages/databricks-vscode-e2e/src/resources/seed/",
+    ],
+}

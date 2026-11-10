@@ -1,0 +1,93 @@
+import path from "node:path";
+import * as fs from "fs/promises";
+import assert from "node:assert";
+import { CustomTreeSection } from "wdio-vscode-service";
+import { createProjectWithJob, getUniqueResourceName } from "./utils/bundle-fixtures.ts";
+import { getLocalFolderTreeItem, waitForInput, waitForLogin } from "./utils/configuration.ts";
+import { dismissNotifications } from "./utils/dismiss-notifications.ts";
+import { getResourceViewItem } from "./utils/explorer.ts";
+import { getViewSection } from "./utils/view.ts";
+
+/*
+ * Ported from the frozen suite. Only the imports differ (the helpers live in
+ * several files here), and `jobs` has a type.
+ */
+describe("Bundle in a sub folder", async function () {
+    this.timeout(3 * 60 * 1000);
+
+    const folders = ["nested1", path.normalize("double/nested2")];
+    const jobs: Record<string, { name?: string }> = {};
+
+    before(async () => {
+        assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
+        for (const dir of folders) {
+            const projectDir = path.join(process.env.WORKSPACE_PATH!, dir);
+            await fs.mkdir(projectDir, { recursive: true });
+            const job = await createProjectWithJob(
+                getUniqueResourceName(dir),
+                projectDir,
+                process.env.TEST_DEFAULT_CLUSTER_ID!,
+            );
+            jobs[dir] = job;
+        }
+    });
+
+    for (const folder of folders) {
+        it(`should select the sub folder ${folder} with a project`, async () => {
+            if (folder === "nested1") {
+                console.log("Selecting Databricks Project Folder through the welcome screen UI");
+                const section = await getViewSection("PROJECT");
+                const chooseProjectButton = await browser.waitUntil(async () => {
+                    const welcome = await section!.findWelcomeContent();
+                    const buttons = await welcome!.getButtons();
+                    for (const button of buttons) {
+                        const title = await button.getTitle();
+                        if (title === "Choose a project") {
+                            return button;
+                        }
+                    }
+                });
+                assert(chooseProjectButton, "'Choose a project' button doesn't exist");
+                await chooseProjectButton.elem.click();
+            } else {
+                console.log("Selecting Databricks Project Folder though a tree item command");
+                await dismissNotifications();
+                const localFolderItem = await getLocalFolderTreeItem("nested1");
+                await localFolderItem!.select();
+            }
+
+            const subFoldersInput = await waitForInput();
+            assert.ok(
+                await subFoldersInput.findQuickPick(folder),
+                `Quick pick for ${folder} not found`,
+            );
+            await subFoldersInput.selectQuickPick(folder);
+
+            await waitForLogin("DEFAULT");
+        });
+
+        it(`should show a Local Folder configuration item for ${folder}`, async () => {
+            const localFolderItem = await getLocalFolderTreeItem(folder);
+            assert.ok(localFolderItem, "Local Folder configuration item not found");
+        });
+
+        it(`should show a job in the resource explorer for ${folder}`, async () => {
+            const resourceExplorerView = (await getViewSection("PROJECT")) as CustomTreeSection;
+            await browser.waitUntil(
+                async () => {
+                    const job = await getResourceViewItem(
+                        resourceExplorerView,
+                        "Jobs",
+                        jobs[folder]!.name!,
+                    );
+                    return job !== undefined;
+                },
+                {
+                    timeout: 20_000,
+                    interval: 2_000,
+                    timeoutMsg: `Job view item with name ${jobs[folder]!.name} not found`,
+                },
+            );
+        });
+    }
+});

@@ -1,0 +1,42 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            // Does nothing when bin/ already holds the version package.json pins.
+            "label": "Fetch Databricks CLI",
+            "type": "shell",
+            "command": "yarn",
+            "args": ["run", "fetch:cli"]
+        },
+        {
+            "label": "NPM watch",
+            "type": "npm",
+            "script": "watch",
+            "problemMatcher": "$tsc-watch",
+            "isBackground": true,
+            "presentation": {
+                "reveal": "never",
+                "group": "watchers"
+            }
+        },
+        {
+            "label": "NPM build",
+            "type": "npm",
+            "script": "build",
+            "dependsOn": ["Fetch Databricks CLI"],
+            "problemMatcher": "$tsc",
+            "presentation": {
+                "reveal": "always",
+                "group": "build"
+            }
+        },
+        {
+            "label": "Build",
+            "dependsOn": ["Fetch Databricks CLI", "NPM watch"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

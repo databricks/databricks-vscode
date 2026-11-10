@@ -1,0 +1,68 @@
+name: Create Release PR
+
+# Run it from the release branch ("Use workflow from: release/3.x"). It sets the
+# version and renames the CHANGELOG's notes to the release's (`yarn
+# release:version`), then opens a pull request into that branch. Merging it
+# makes the draft release (create-release.yml).
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Release version, x.y.z (3.1.N while 3.x is in pre-release)"
+                required: true
+                type: string
+
+jobs:
+    release-pr:
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: linux-ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        env:
+            VERSION: ${{ inputs.version }}
+            BASE: ${{ github.ref_name }}
+        steps:
+            - name: Check the branch
+              run: |
+                  if [[ "$BASE" != release/3.* ]]; then
+                      echo "::error::Run this from a release/3.* branch, not $BASE."
+                      exit 1
+                  fi
+            # Full history, as in 2.x.
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  fetch-depth: 0
+                  # A pull request opened with GITHUB_TOKEN runs no workflows, so the bot's
+                  # token pushes the branch and opens it, as 2.x's update-cli-version.yml does.
+                  token: ${{ secrets.DECO_GITHUB_TOKEN }}
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .nvmrc
+            - name: Obtain JFrog OIDC token
+              run: bash .github/scripts/jfrog-oidc-token.sh
+            - name: Configure JFrog npm registry
+              run: bash .github/scripts/configure-npm.sh
+            - run: yarn install --immutable
+            - run: yarn release:version "$VERSION"
+            # The dependencies' notices, as of this release, as 2.x's release pull request does.
+            - run: yarn generate:notice
+            - name: Open the pull request
+              env:
+                  GH_TOKEN: ${{ secrets.DECO_GITHUB_TOKEN }}
+              run: |
+                  # The release's notes, without their heading, as the pull request's description.
+                  notes=$(mktemp)
+                  awk -v heading="# Release: v$VERSION" 'found && /^# /{exit} found{print} $0 == heading{found=1}' \
+                      packages/databricks-vscode/CHANGELOG.md > "$notes"
+                  # A branch of this run's own, as in 2.x, so a re-run doesn't push onto an earlier run's.
+                  branch="releases/v$VERSION-$(git rev-parse --short HEAD)-$(date +%s)"
+                  git config user.name "releasebot"
+                  git config user.email "noreply@github.com"
+                  git switch -c "$branch"
+                  git add packages/databricks-vscode/package.json packages/databricks-vscode-types/package.json \
+                      packages/databricks-vscode/CHANGELOG.md packages/databricks-vscode/NOTICE.md
+                  git commit -m "Release: v$VERSION"
+                  git push origin "$branch"
+                  gh pr create --base "$BASE" --head "$branch" --title "Release: v$VERSION" --body-file "$notes"

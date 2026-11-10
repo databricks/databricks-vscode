@@ -1,0 +1,15 @@
+bundle:
+  name: complex_variable_bundle
+variables:
+  cluster:
+    description: The job cluster
+    type: complex
+    default:
+      spark_version: 13.3.x-scala2.12
+      num_workers: 1
+targets:
+  dev_test:
+    mode: development
+    default: true
+    workspace:
+      host: https://mock.databricks.test

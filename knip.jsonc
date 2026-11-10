@@ -1,0 +1,41 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    // System tools the tests spawn.
+    "ignoreBinaries": ["uv", "openssl", "Xvfb"],
+    "workspaces": {
+        ".": {
+            // `node --test 'scripts/**/*.test.mjs'` in package.json.
+            "entry": ["scripts/**/*.test.mjs"],
+        },
+        // package.json `main` (dist/extension.js) maps to src/extension.ts, and
+        // the vitest plugin adds the test files. `contributes` names icons only.
+        "packages/databricks-vscode": {
+            "entry": [
+                // Loaded by the webview pages (resources/webview-ui/*.html).
+                "resources/webview-ui/*.js",
+                // Run by package.json scripts (`node --use-system-ca scripts/...`).
+                "scripts/*.mjs",
+            ],
+            "project": ["src/**/*.ts", "scripts/**/*.mjs", "resources/webview-ui/*.js"],
+            // A copy of vscode-python's apiTypes.ts; its exports stay as upstream has them.
+            "ignore": ["src/features/python/msPythonApi.ts"],
+            // UnityCatalogDetailPanel reads them from node_modules into the
+            // webview; @types/vscode types the `vscode` module the host provides;
+            // dependency-cruiser loads @swc/core for `parser: "swc"`.
+            "ignoreDependencies": [
+                "markdown-it",
+                "@highlightjs/cdn-assets",
+                "@types/vscode",
+                "@swc/core",
+            ],
+        },
+        "packages/databricks-vscode-e2e": {
+            // The specs wdio.conf.ts names, its mock variant (mock/run-e2e.sh),
+            // and the mock workspace server.
+            "entry": ["src/**/*.e2e.ts", "wdio.mock.conf.ts", "mock/**/*.mjs"],
+            "project": ["src/**/*.ts", "mock/**/*.{mjs,ts}", "*.ts"],
+            // wdio.conf.ts selects it with `runner: "local"`.
+            "ignoreDependencies": ["@wdio/local-runner"],
+        },
+    },
+}

@@ -1,0 +1,7 @@
+{
+    "files": [],
+    "references": [
+        { "path": "packages/databricks-vscode-types" },
+        { "path": "packages/databricks-vscode" }
+    ]
+}

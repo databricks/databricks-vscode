@@ -1,0 +1,36 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "name": "databricks-vscode.git",
+        },
+        {
+            "path": "packages/databricks-vscode",
+            "name": "Extension",
+        },
+        {
+            "path": "packages/databricks-vscode-types",
+            "name": "Extension Types",
+        },
+    ],
+    "settings": {
+        // The build tasks are npm scripts (Extension/.vscode/tasks.json).
+        "typescript.tsc.autoDetect": "off",
+        // Its Network.enable can abort a debugged extension host as it starts (VS Code 1.142).
+        "debug.javascript.enableNetworkView": false,
+        // Oxfmt, with the repo's .oxfmtrc.jsonc (`yarn fmt`).
+        "[typescript]": {
+            "editor.defaultFormatter": "oxc.oxc-vscode",
+            "editor.formatOnSave": true,
+        },
+        "[javascript]": {
+            "editor.defaultFormatter": "oxc.oxc-vscode",
+            "editor.formatOnSave": true,
+        },
+        "[json]": { "editor.defaultFormatter": "oxc.oxc-vscode", "editor.formatOnSave": true },
+        "[jsonc]": { "editor.defaultFormatter": "oxc.oxc-vscode", "editor.formatOnSave": true },
+    },
+    "extensions": {
+        "recommendations": ["oxc.oxc-vscode"],
+    },
+}

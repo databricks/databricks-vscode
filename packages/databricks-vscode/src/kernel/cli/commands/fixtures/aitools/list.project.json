@@ -1,0 +1,344 @@
+{
+  "release": "0.2.10",
+  "skills": [
+    {
+      "name": "databricks-agent-bricks",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-ai-functions",
+      "latest_version": "0.2.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.2.0"
+      }
+    },
+    {
+      "name": "databricks-ai-runtime",
+      "latest_version": "0.1.0",
+      "experimental": true,
+      "installed": {}
+    },
+    {
+      "name": "databricks-aibi-dashboards",
+      "latest_version": "0.2.1",
+      "experimental": false,
+      "installed": {
+        "project": "0.2.1"
+      }
+    },
+    {
+      "name": "databricks-app-design",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-apps",
+      "latest_version": "0.1.2",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.2"
+      }
+    },
+    {
+      "name": "databricks-apps-python",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-core",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-dabs",
+      "latest_version": "0.0.1",
+      "experimental": false,
+      "installed": {
+        "project": "0.0.1"
+      }
+    },
+    {
+      "name": "databricks-data-discovery",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-dbsql",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-docs",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-execution-compute",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-genie",
+      "latest_version": "0.0.1",
+      "experimental": true,
+      "installed": {}
+    },
+    {
+      "name": "databricks-iceberg",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-jobs",
+      "latest_version": "0.2.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.2.0"
+      }
+    },
+    {
+      "name": "databricks-lakebase",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-lakeflow-connect",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-metric-views",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-ml-training",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-mlflow-evaluation",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-model-serving",
+      "latest_version": "0.4.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.4.0"
+      }
+    },
+    {
+      "name": "databricks-pipelines",
+      "latest_version": "0.3.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.3.0"
+      }
+    },
+    {
+      "name": "databricks-python-sdk",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-serverless-migration",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-spark-structured-streaming",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-synthetic-data-gen",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-unity-catalog",
+      "latest_version": "0.3.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.3.0"
+      }
+    },
+    {
+      "name": "databricks-unstructured-pdf-generation",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-vector-search",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "databricks-zerobus-ingest",
+      "latest_version": "0.1.0",
+      "experimental": false,
+      "installed": {
+        "project": "0.1.0"
+      }
+    },
+    {
+      "name": "spark-python-data-source",
+      "latest_version": "0.1.0",
+      "experimental": true,
+      "installed": {}
+    }
+  ],
+  "summary": {
+    "global": {
+      "installed": 0,
+      "total": 32
+    },
+    "project": {
+      "installed": 29,
+      "total": 32
+    }
+  },
+  "agents": [
+    {
+      "name": "claude-code",
+      "display_name": "Claude Code",
+      "managed": true,
+      "detected": true,
+      "supports_project_scope": true,
+      "installed": {}
+    },
+    {
+      "name": "cursor",
+      "display_name": "Cursor",
+      "managed": false,
+      "detected": false,
+      "supports_project_scope": false,
+      "installed": {}
+    },
+    {
+      "name": "codex",
+      "display_name": "Codex CLI",
+      "managed": true,
+      "detected": true,
+      "supports_project_scope": false,
+      "installed": {}
+    },
+    {
+      "name": "opencode",
+      "display_name": "OpenCode",
+      "managed": false,
+      "detected": false,
+      "supports_project_scope": false,
+      "installed": {}
+    },
+    {
+      "name": "copilot",
+      "display_name": "GitHub Copilot",
+      "managed": true,
+      "detected": false,
+      "supports_project_scope": false,
+      "installed": {}
+    },
+    {
+      "name": "antigravity",
+      "display_name": "Antigravity",
+      "managed": false,
+      "detected": false,
+      "supports_project_scope": false,
+      "installed": {}
+    },
+    {
+      "name": "pi",
+      "display_name": "Pi",
+      "managed": false,
+      "detected": false,
+      "supports_project_scope": true,
+      "installed": {}
+    },
+    {
+      "name": "gemini",
+      "display_name": "Gemini CLI",
+      "managed": false,
+      "detected": false,
+      "supports_project_scope": true,
+      "installed": {}
+    },
+    {
+      "name": "goose",
+      "display_name": "Goose",
+      "managed": false,
+      "detected": false,
+      "supports_project_scope": true,
+      "installed": {
+        "project": {
+          "delivery": "skills",
+          "version": "0.2.10"
+        }
+      }
+    }
+  ]
+}

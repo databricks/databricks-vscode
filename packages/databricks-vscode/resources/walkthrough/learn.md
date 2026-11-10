@@ -1,0 +1,1 @@
+Chats stay with the window and folder they were started in, so open the project folder before you start a chat. [Explore extension settings](https://docs.databricks.com/dev-tools/vscode-ext/settings) and [Run tests on a cluster](https://docs.databricks.com/dev-tools/vscode-ext/pytest) cover the rest.

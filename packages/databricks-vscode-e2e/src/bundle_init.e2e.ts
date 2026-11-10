@@ -1,0 +1,159 @@
+import assert from "node:assert";
+import { Workbench, sleep, type CustomTreeSection } from "wdio-vscode-service";
+import { Key } from "webdriverio";
+import { getUniqueResourceName } from "./utils/bundle-fixtures.ts";
+import { getLocalFolderTreeItem, waitForInput, waitForLogin } from "./utils/configuration.ts";
+import { dismissNotifications } from "./utils/dismiss-notifications.ts";
+import { getTabByTitle } from "./utils/editor.ts";
+import { getViewSection } from "./utils/view.ts";
+import { waitForResourcesGroup } from "./utils/explorer.ts";
+
+/*
+ * Ported from the frozen suite. The imports differ, and so does one
+ * precondition: this harness doesn't set DATABRICKS_HOST. The window is
+ * connected with the [DEFAULT] profile, so the wizard asks only for the
+ * parent folder and uses that profile (it asks for a host and a profile only
+ * when the window isn't connected).
+ */
+describe("Bundle Init", async function () {
+    let workbench: Workbench;
+    let projectName: string;
+
+    this.timeout(3 * 60 * 1000);
+
+    before(async function () {
+        assert(
+            process.env.TEST_DEFAULT_CLUSTER_ID,
+            "TEST_DEFAULT_CLUSTER_ID env var doesn't exist",
+        );
+        assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH env var doesn't exist");
+        workbench = await browser.getWorkbench();
+        await dismissNotifications();
+    });
+
+    it("should wait for extension activation", async () => {
+        const section = await getViewSection("PROJECT");
+        assert(section);
+    });
+
+    it("should initialize new project", async function () {
+        // Until the window is connected, the wizard asks for a host first.
+        await waitForLogin("DEFAULT");
+        await browser.executeWorkbench((vscode) => {
+            vscode.commands.executeCommand("databricks.bundle.initNewProject");
+        });
+
+        projectName = getUniqueResourceName("init_test");
+
+        // Create the project inside the open workspace, so the extension makes it
+        // the active project in place. A project outside the workspace is opened
+        // with a window reload, and on VS Code 1.104+ a reload cancels the
+        // extension test runner, which makes VS Code exit mid-test.
+        const parentDir = process.env.WORKSPACE_PATH!;
+        // The first input is the parent folder: the connected [DEFAULT] profile is used.
+        const parentFolderInput = await waitForInput();
+        // Type in the parentDir value to the input
+        await browser.keys(parentDir.split(""));
+        await sleep(1000);
+        const picks = await parentFolderInput.getQuickPicks();
+        const pick = picks.filter((p) => p.getIndex() === 0)[0];
+        assert(pick, "Parent folder quick pick doesn't have any items");
+        expect(await pick.getLabel()).toBe(parentDir);
+        await pick.select();
+
+        await dismissNotifications();
+
+        // Wait for the databricks cli terminal window to pop up and select all
+        // default options for the default template
+        const editorView = workbench.getEditorView();
+        const title = "Databricks Project Init";
+        const initTab = await getTabByTitle(title);
+        assert(initTab, "Can't find a tab for project-init terminal wizard");
+        await initTab.select();
+
+        // The init wizard runs inside an editor-hosted terminal. Two Windows
+        // races desync it into "Can't complete cli bundle init wizard": (1)
+        // keystrokes fired before the tab is active — or before the xterm holds
+        // keyboard focus — land in the wrong place, and (2) the Python extension
+        // can inject env-setup text into the freshly opened terminal that lands
+        // in the template *search filter* (see
+        // BundleInitWizard.bundleInitInTerminal), so a typed "default-python"
+        // appends to that text, matches no template, and the wizard stalls. The
+        // terminal buffer isn't reliably readable via the wdio API, but the
+        // active-tab title is — gate on the init tab being active, move focus
+        // into the terminal, then clear the filter before typing.
+        await browser.waitUntil(
+            async () => {
+                const activeTab = await editorView.getActiveTab();
+                return (await activeTab?.getTitle()) === title;
+            },
+            {
+                timeout: 20_000,
+                interval: 1_000,
+                timeoutMsg: "Init wizard terminal tab did not become active",
+            },
+        );
+        await sleep(3000);
+
+        // Move keyboard focus into the editor-hosted terminal's input so the
+        // wizard keystrokes below aren't swallowed by the editor-tab chrome.
+        // Return the command so executeWorkbench awaits focus completing.
+        await browser.executeWorkbench((vscode) => {
+            return vscode.commands.executeCommand("workbench.action.terminal.focus");
+        });
+        await sleep(1000);
+
+        // Clear the filter before typing (see above); a no-op when it's empty.
+        // Over-provision the backspaces so even a long injected activation line
+        // (a Windows venv/conda activate command with an absolute path) is
+        // fully removed rather than leaving a prefix the template name appends
+        // to.
+        await browser.keys(Array.from({ length: 200 }, () => Key.Backspace));
+        await sleep(1000);
+
+        //select temaplate type
+        await browser.keys("default-python".split(""));
+        await sleep(3000);
+        await browser.keys([Key.Enter]);
+        //enter project name temaplate type
+        await browser.keys(projectName.split(""));
+        await sleep(3000);
+        await browser.keys([Key.Enter]);
+        await browser.waitUntil(
+            async () => {
+                const activeTab = await editorView.getActiveTab();
+                if ((await activeTab?.getTitle()) !== title) {
+                    return true;
+                }
+                await browser.keys([Key.Enter]);
+            },
+            {
+                timeout: 40_000,
+                interval: 2_000,
+                timeoutMsg: "Can't complete cli bundle init wizard",
+            },
+        );
+
+        const openProjectFolderInput = await waitForInput();
+        await openProjectFolderInput.selectQuickPick(projectName);
+
+        await browser.waitUntil(
+            async () => (await getLocalFolderTreeItem(projectName)) !== undefined,
+            {
+                timeout: 60_000,
+                interval: 2_000,
+                timeoutMsg: "The new project didn't become the active project",
+            },
+        );
+    });
+
+    it("should wait for connection", async () => {
+        await waitForLogin("DEFAULT");
+    });
+
+    it("should find the bundle's resources in the Project view", async function () {
+        const section = await getViewSection("PROJECT");
+        assert(section);
+        await waitForResourcesGroup(section as CustomTreeSection);
+    });
+});

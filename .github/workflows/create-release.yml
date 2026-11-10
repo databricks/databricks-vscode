@@ -1,0 +1,108 @@
+name: Create Draft Release
+
+# A merged release pull request (release-pr.yml) leaves `# Release: v<version>`
+# at the top of the CHANGELOG. On a push to a release branch with such a
+# CHANGELOG and no release for that version yet, this packages the VSIXs and
+# drafts the GitHub release, marked as a pre-release while 3.x is in
+# pre-release. It reads the files, not the merge commit's message, so it works
+# however the pull request was merged.
+on:
+    push:
+        branches: ["release/3.*"]
+    workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+    decide:
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: linux-ubuntu-latest
+        permissions:
+            # Draft releases are listed only with push access.
+            contents: write
+        outputs:
+            version: ${{ steps.decide.outputs.version }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .nvmrc
+            - id: decide
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  version=$(node -p 'require("./packages/databricks-vscode/package.json").version')
+                  if [[ "$(head -n 1 packages/databricks-vscode/CHANGELOG.md)" != "# Release: v$version" ]]; then
+                      echo "The CHANGELOG doesn't start with the notes of $version: no release."
+                      exit 0
+                  fi
+                  # Assigned first, so a failed listing fails the job: GitHub allows two drafts with one tag.
+                  tags=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[].tag_name')
+                  if grep -qxF "release-v$version" <<< "$tags"; then
+                      echo "release-v$version already has a release or a draft."
+                      exit 0
+                  fi
+                  echo "Drafting release-v$version."
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    create-build-artifacts:
+        needs: decide
+        if: needs.decide.outputs.version != ''
+        permissions:
+            contents: read
+            id-token: write
+        uses: ./.github/workflows/create-build-artifacts.yml
+
+    create-release:
+        needs: [decide, create-build-artifacts]
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: linux-ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              with:
+                  name: databricks
+                  path: vsix
+            # Publishing checks only the file names, which a build under
+            # another extension ID still matches: check each manifest before the draft.
+            - name: Check the VSIXs' manifests
+              env:
+                  VERSION: ${{ needs.decide.outputs.version }}
+              run: |
+                  count=0
+                  for f in vsix/*.vsix; do
+                      count=$((count + 1))
+                      target=$(basename "$f" ".vsix")
+                      target=${target#databricks-}
+                      target=${target%-"$VERSION"}
+                      manifest=$(unzip -p "$f" extension.vsixmanifest)
+                      identity="Id=\"databricks\" Version=\"$VERSION\" Publisher=\"databricks\" TargetPlatform=\"$target\""
+                      if ! grep -qF "$identity" <<< "$manifest"; then
+                          echo "::error::$f isn't databricks.databricks $VERSION for $target."
+                          exit 1
+                      fi
+                      if ! grep -qF 'Id="Microsoft.VisualStudio.Code.PreRelease" Value="true"' <<< "$manifest"; then
+                          echo "::error::$f isn't packaged as a pre-release."
+                          exit 1
+                      fi
+                  done
+                  if [[ "$count" -ne 6 ]]; then
+                      echo "::error::Expected 6 VSIXs, found $count."
+                      exit 1
+                  fi
+            - name: Draft the release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  VERSION: ${{ needs.decide.outputs.version }}
+              run: |
+                  # The release's notes, without their heading.
+                  notes=$(mktemp)
+                  awk -v heading="# Release: v$VERSION" 'found && /^# /{exit} found{print} $0 == heading{found=1}' \
+                      packages/databricks-vscode/CHANGELOG.md > "$notes"
+                  gh release create "release-v$VERSION" vsix/*.vsix --draft --prerelease --target "$GITHUB_SHA" \
+                      --title "Release: v$VERSION" --notes-file "$notes"

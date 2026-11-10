@@ -1,0 +1,15 @@
+{
+    "name": "ssh-test-probe",
+    "version": "0.0.1",
+    "publisher": "vscode-tests",
+    "main": "./extension.js",
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "extensionKind": [
+        "ui"
+    ],
+    "engines": {
+        "vscode": "^1.95.0"
+    }
+}

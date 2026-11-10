@@ -1,0 +1,8 @@
+bundle:
+  name: empty_bundle
+targets:
+  dev_test:
+    mode: development
+    default: true
+    workspace:
+      host: https://mock.databricks.test
