@@ -1,0 +1,12 @@
+{
+  "scope": "project",
+  "agents": [
+    {
+      "name": "copilot",
+      "delivery": "skip",
+      "status": "skipped",
+      "error_category": "UNSUPPORTED_SCOPE",
+      "message": "GitHub Copilot is user-only; project scope is not supported"
+    }
+  ]
+}

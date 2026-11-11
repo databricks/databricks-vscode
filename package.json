@@ -1,0 +1,46 @@
+{
+    "name": "databricks-vscode-monorepo",
+    "private": true,
+    "workspaces": [
+        "packages/*"
+    ],
+    "scripts": {
+        "build": "tsc -b",
+        "clean": "tsc -b --clean",
+        "dev": "yarn build && yarn workspace databricks fetch:cli && code --extensionDevelopmentPath=\"$PROJECT_CWD/packages/databricks-vscode\" && tsc -b --watch --preserveWatchOutput",
+        "preview": "node scripts/preview.mjs",
+        "preview:remote-vsix": "node scripts/sessionVsix.mjs",
+        "test": "yarn workspace databricks test && yarn test:scripts",
+        "test:scripts": "node --test 'scripts/**/*.test.mjs'",
+        "typecheck": "yarn build && yarn workspace databricks typecheck && yarn workspace databricks-vscode-e2e typecheck",
+        "check": "yarn fmt:check && tsc -b && yarn workspace databricks typecheck && node --test 'scripts/**/*.test.mjs' && node scripts/ratchet.mjs",
+        "verify": "yarn check && yarn test && yarn workspace databricks-vscode-e2e typecheck && yarn package",
+        "test:e2e": "yarn build && yarn workspace databricks fetch:cli && yarn workspace databricks-vscode-e2e test",
+        "test:e2e:spec": "bash packages/databricks-vscode-e2e/run-spec.sh mock",
+        "test:e2e:spec:real": "bash packages/databricks-vscode-e2e/run-spec.sh real",
+        "package": "yarn build && yarn workspace databricks fetch:cli && yarn workspace databricks package",
+        "release:version": "node scripts/releaseVersion.mjs",
+        "generate:notice": "node scripts/generateNotice.mjs",
+        "lint": "oxlint --deny-warnings",
+        "lint:fix": "oxlint --fix --deny-warnings",
+        "fmt": "oxfmt",
+        "fmt:check": "oxfmt --check",
+        "lint:deps": "yarn workspace databricks lint:deps",
+        "lint:unused": "knip",
+        "lint:dupes": "jscpd",
+        "ratchet": "node scripts/ratchet.mjs"
+    },
+    "devDependencies": {
+        "@types/node": "^24.13.6",
+        "jscpd": "^4.3.0",
+        "knip": "^6.38.0",
+        "oxfmt": "0.72.0",
+        "oxlint": "^1.85.0",
+        "oxlint-tsgolint": "^7.0.2003",
+        "typescript": "^7.0.2"
+    },
+    "resolutions": {
+        "wdio-vscode-service/@vscode/test-electron": "^3.1.0"
+    },
+    "packageManager": "yarn@4.18.1"
+}

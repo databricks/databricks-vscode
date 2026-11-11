@@ -1,0 +1,13 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "dist",
+        "removeComments": true,
+        "module": "node20",
+        "moduleResolution": "node16"
+    },
+    "include": ["src"],
+    "exclude": ["src/**/*.test.ts", "src/test-support", "src/test"],
+    "references": [{ "path": "../databricks-vscode-types" }]
+}

@@ -1,0 +1,17 @@
+bundle:
+  name: two_targets_bundle
+variables:
+  greeting:
+    default: hello
+targets:
+  dev_test:
+    mode: development
+    default: true
+    workspace:
+      host: https://mock.databricks.test
+  dev_test2:
+    mode: development
+    workspace:
+      host: https://mock.databricks.test
+    variables:
+      greeting: bonjour

@@ -1,0 +1,18 @@
+{
+    "minLines": 20,
+    "path": ["packages", "scripts"],
+    "format": ["typescript", "javascript"],
+    "ignore": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/bin/**",
+        "**/.wdio-vscode-service/**",
+        "**/logs/**",
+        "**/*.d.ts",
+        "**/features/python/setup/uv/fixtures/setupLocalResults.ts"
+    ],
+    "gitignore": true,
+    "absolute": false,
+    "reporters": ["console"],
+    "exitCode": 0
+}

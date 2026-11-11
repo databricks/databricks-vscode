@@ -1,0 +1,13 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "composite": false,
+        "declaration": false,
+        "noEmit": true,
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "resolveJsonModule": true,
+        "lib": ["ES2022", "ES2023.Array"]
+    },
+    "include": ["src", "vitest.config.mts"]
+}

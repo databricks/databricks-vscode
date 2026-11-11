@@ -1,0 +1,31 @@
+{
+  "comment": "The state databricks.databricks 2.20.0 leaves behind in a window with one bundle project, in the shapes its StateStorage (src/vscode-objs/StateStorage.ts) and QuickStart.ts write. ${ROOT} is the project's folder. Every key the old extension declares is here, with a value it can write. Also databricks.unityGateway.savedProfile, which 2.21.0 added for the Unity Gateway sign-in.",
+  "workspace": {
+    "databricks.activeProjectPath": "${ROOT}",
+    "databricks.bundle.target": "prod",
+    "databricks.bundle.overrides": {"prod": {"authProfile": "DEFAULT", "clusterId": "c-old"}},
+    "databricks.wsfs.skipSwitchToWorkspace": true,
+    "databricks.autocompletion.skipConfigure": true,
+    "databricks.fixedUUID": "6f1c2a3b-9d8e-4f00-a1b2-c3d4e5f60718",
+    "databricks.unityCatalog.favorites": [
+      {"kind": "catalog", "fullName": "main"},
+      {"kind": "table", "fullName": "main.default.trips"},
+      {"kind": "modelVersion", "fullName": "main.default.model", "version": 3}
+    ],
+    "databricks.pythonSetup.setupState": {"envKey": "serverless/serverless-v4", "pythonVersion": "3.12", "timestamp": "2026-09-30T10:00:00.000Z"},
+    "databricks.bundle.hideTerraformEngineWarning": true
+  },
+  "global": {
+    "databricks.fixedRandom": 0.4242,
+    "databricks.lastInstalledExtensionVersion": "2.20.0",
+    "databricks.quickstart-shown": true,
+    "databricks.aitools.installLocation": "global",
+    "databricks.aitools.hideInstallPrompt": true,
+    "databricks.debugging.skipDatabricksSdkInstallForEnvs": ["/home/me/.venv"],
+    "databricks.unityGateway.savedProfile": {"profile": "ug", "host": "https://b.cloud.databricks.com/", "workspaceId": "1234"}
+  },
+  "files": {
+    ".databricks/bundle/prod/vscode.overrides.json": {"authProfile": "DEFAULT", "clusterId": "c-1", "useClusterOverride": true, "somethingNewer": {"kept": true}},
+    ".databricks/bundle/prod/vscode.bundlevars.json": {"catalog": "dev_catalog"}
+  }
+}

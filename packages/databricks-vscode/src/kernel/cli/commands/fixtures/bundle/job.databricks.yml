@@ -1,0 +1,30 @@
+bundle:
+  name: job_bundle
+targets:
+  dev_test:
+    mode: development
+    default: true
+    workspace:
+      host: https://mock.databricks.test
+    resources:
+      jobs:
+        vscode_integration_test:
+          name: integration_job
+          job_clusters:
+            - job_cluster_key: job_cluster
+              new_cluster:
+                spark_version: 13.3.x-scala2.12
+                node_type_id: Standard_D3_v2
+                num_workers: 1
+          tasks:
+            - task_key: notebook_task
+              description: Runs the notebook
+              notebook_task:
+                notebook_path: src/notebook.ipynb
+              job_cluster_key: job_cluster
+            - task_key: python_task
+              depends_on:
+                - task_key: notebook_task
+              spark_python_task:
+                python_file: src/main.py
+              job_cluster_key: job_cluster

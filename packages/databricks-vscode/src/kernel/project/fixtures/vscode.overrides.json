@@ -1,0 +1,10 @@
+{
+    "authProfile": "DEFAULT",
+    "clusterId": "0123-456789-abcdefgh",
+    "useClusterOverride": true,
+    "serverless": false,
+    "serverlessVersion": "4",
+    "someFutureKey": {
+        "nested": [1, 2]
+    }
+}

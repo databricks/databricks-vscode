@@ -1,0 +1,41 @@
+node_modules/
+
+# Agents (the skills in .claude/skills/ are symlinks into .agents/skills/, committed)
+.claude/*
+!.claude/skills/
+
+# Yarn 4 (zero-installs disabled)
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+.DS_Store
+
+# TypeScript build output
+dist/
+*.tsbuildinfo
+
+# e2e artifacts
+.wdio-vscode-service/
+packages/databricks-vscode-e2e/logs/
+
+# The bundled Databricks CLI (yarn workspace databricks fetch:cli)
+packages/databricks-vscode/bin/
+
+# VSIX packages (yarn package)
+packages/databricks-vscode/.build/
+__pycache__/
+
+# Packaging writes telemetry.json into the VSIX; this is generate:telemetry's copy, to read
+packages/databricks-vscode/telemetry.json
+
+# Stryker mutation testing (yarn workspace databricks mutation)
+.stryker-tmp/
+packages/databricks-vscode/reports/
+
+# IDEs
+.idea

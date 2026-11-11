@@ -1,0 +1,10 @@
+{
+  "scope": "project",
+  "agents": [
+    {
+      "name": "goose",
+      "delivery": "skills",
+      "status": "installed"
+    }
+  ]
+}

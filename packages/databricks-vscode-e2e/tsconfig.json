@@ -1,0 +1,21 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "lib": ["ES2022", "DOM"],
+        "types": [
+            "node",
+            "mocha",
+            "@wdio/globals/types",
+            "@wdio/mocha-framework",
+            "wdio-vscode-service"
+        ],
+        "composite": false,
+        "declaration": false,
+        "noEmit": true,
+        "allowImportingTsExtensions": true
+    },
+    "include": ["src", "wdio.conf.ts", "wdio-utils.d.ts"],
+    "references": [{ "path": "../databricks-vscode" }]
+}

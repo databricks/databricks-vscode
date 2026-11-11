@@ -1,0 +1,45 @@
+{
+  "bundle": {
+    "deployment": {
+      "lock": {
+        "enabled": false
+      }
+    },
+    "environment": "dev_test",
+    "git": {
+      "bundle_root_path": "."
+    },
+    "mode": "development",
+    "name": "empty_bundle",
+    "target": "dev_test"
+  },
+  "presets": {
+    "jobs_max_concurrent_runs": 4,
+    "name_prefix": "[dev e2e] ",
+    "pipelines_development": true,
+    "tags": {
+      "dev": "e2e"
+    },
+    "trigger_pause_status": "PAUSED"
+  },
+  "sync": {
+    "paths": [
+      "."
+    ]
+  },
+  "workspace": {
+    "artifact_path": "/Workspace/Users/e2e@example.com/.bundle/empty_bundle/dev_test/artifacts",
+    "current_user": {
+      "domain_friendly_name": "e2e",
+      "id": "1",
+      "short_name": "e2e",
+      "userName": "e2e@example.com"
+    },
+    "file_path": "/Workspace/Users/e2e@example.com/.bundle/empty_bundle/dev_test/files",
+    "host": "https://mock.databricks.test",
+    "profile": "DEFAULT",
+    "resource_path": "/Workspace/Users/e2e@example.com/.bundle/empty_bundle/dev_test/resources",
+    "root_path": "/Workspace/Users/e2e@example.com/.bundle/empty_bundle/dev_test",
+    "state_path": "/Workspace/Users/e2e@example.com/.bundle/empty_bundle/dev_test/state"
+  }
+}

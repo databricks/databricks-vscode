@@ -1,0 +1,10 @@
+# The session's folder holds a bundle, as the tunnel's default folder does.
+# The target names no host: the CLI falls back to the session's
+# DATABRICKS_HOST, so the target guard lets its bundle commands run.
+bundle:
+  name: remote_mode
+
+targets:
+  dev:
+    default: true
+    mode: development

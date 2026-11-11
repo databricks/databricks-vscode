@@ -1,0 +1,4 @@
+# False positives in the vendored Yarn release (base64 wasm / minified code),
+# verified identical to https://repo.yarnpkg.com/4.18.1/packages/yarnpkg-cli/bin/yarn.js
+.yarn/releases/yarn-4.18.1.cjs:aws-access-token:150
+.yarn/releases/yarn-4.18.1.cjs:azure-openai-api-key:609

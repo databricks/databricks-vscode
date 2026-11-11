@@ -1,0 +1,35 @@
+{
+    "name": "databricks-vscode-e2e",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "typecheck": "tsc -p .",
+        "test": "wdio run ./wdio.conf.ts",
+        "test:e2e:mock": "bash mock/run-e2e.sh"
+    },
+    "devDependencies": {
+        "@databricks/sdk-auth": "0.54.0",
+        "@databricks/sdk-clusters": "0.52.4",
+        "@databricks/sdk-core": "0.51.2",
+        "@databricks/sdk-jobs": "0.57.4",
+        "@databricks/sdk-options": "0.51.3",
+        "@databricks/sdk-scim": "0.51.3",
+        "@types/lodash": "^4.17.25",
+        "@types/mocha": "^10.0.10",
+        "@types/node": "^24.13.6",
+        "@wdio/cli": "^9.32.0",
+        "@wdio/globals": "^9.31.3",
+        "@wdio/local-runner": "^9.32.0",
+        "@wdio/logger": "^9.29.1",
+        "@wdio/mocha-framework": "^9.32.0",
+        "@wdio/spec-reporter": "^9.32.0",
+        "@wdio/utils": "^9.32.0",
+        "expect-webdriverio": "^6.1.0",
+        "lodash": "^4.18.1",
+        "typescript": "^7.0.2",
+        "wdio-vscode-service": "^8.0.0",
+        "webdriverio": "^9.32.0",
+        "yaml": "^2.9.1"
+    }
+}

@@ -1,0 +1,149 @@
+name: check
+
+on:
+    pull_request:
+    push:
+        branches: ["release/3.x"]
+
+# Every job runs on Databricks' protected runners and installs npm packages through JFrog, as
+# 2.x's workflows do: .github/scripts/ exchanges the job's OIDC token for a JFrog one.
+
+jobs:
+    check:
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: linux-ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  # The ratchet lists a pull request's changed files first, from the
+                  # merge base with the base branch.
+                  fetch-depth: 0
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .nvmrc
+            - name: Obtain JFrog OIDC token
+              run: bash .github/scripts/jfrog-oidc-token.sh
+            - name: Configure JFrog npm registry
+              run: bash .github/scripts/configure-npm.sh
+            - run: yarn install --immutable
+            # With CI set, features/ssh/transfer.test.ts runs and needs the CLI.
+            - run: yarn workspace databricks fetch:cli
+            # Formatting (oxfmt), build, typecheck, then `yarn ratchet`: oxlint, the fast unit tests,
+            # and the metrics in ratchet-baseline.json. The activation metric is measured only on
+            # the setup scripts/perf/activationMetric.mjs describes (ACTIVATION_SETUP), which then
+            # needs PERF_VSCODE and the pinned extension pack members (DATABRICKS_E2E_EXTENSIONS);
+            # other runners skip it.
+            - run: yarn check
+
+    # One yarn command per job, so a pull request shows which one failed. fmt and build
+    # repeat steps of `yarn check`; test and typecheck run what it skips.
+    fmt:
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: linux-ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .nvmrc
+            - name: Obtain JFrog OIDC token
+              run: bash .github/scripts/jfrog-oidc-token.sh
+            - name: Configure JFrog npm registry
+              run: bash .github/scripts/configure-npm.sh
+            - run: yarn install --immutable
+            # `yarn fmt` rewrites the files; CI only checks them.
+            - run: yarn fmt:check
+
+    build:
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: linux-ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .nvmrc
+            - name: Obtain JFrog OIDC token
+              run: bash .github/scripts/jfrog-oidc-token.sh
+            - name: Configure JFrog npm registry
+              run: bash .github/scripts/configure-npm.sh
+            - run: yarn install --immutable
+            - run: yarn build
+
+    test:
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: linux-ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .nvmrc
+            - name: Obtain JFrog OIDC token
+              run: bash .github/scripts/jfrog-oidc-token.sh
+            - name: Configure JFrog npm registry
+              run: bash .github/scripts/configure-npm.sh
+            - run: yarn install --immutable
+            # With CI set, features/ssh/transfer.test.ts runs and needs the CLI.
+            - run: yarn workspace databricks fetch:cli
+            # Every unit and contract test, with features/python/python.test.ts and the budgets in
+            # src/test/budgets/ that `yarn check` skips, and the scripts/ tests.
+            - run: yarn test
+
+    # The same tests on Windows, which 2.x's unit tests also run on.
+    test-windows:
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: windows-server-latest
+        permissions:
+            contents: read
+            id-token: write
+        defaults:
+            run:
+                shell: bash
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .nvmrc
+            - name: Obtain JFrog OIDC token
+              run: bash .github/scripts/jfrog-oidc-token.sh
+            - name: Configure JFrog npm registry
+              run: bash .github/scripts/configure-npm.sh
+            - run: yarn install --immutable
+            - run: yarn workspace databricks fetch:cli
+            - run: yarn test
+
+    typecheck:
+        runs-on:
+            group: databricks-protected-runner-group
+            labels: linux-ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .nvmrc
+            - name: Obtain JFrog OIDC token
+              run: bash .github/scripts/jfrog-oidc-token.sh
+            - name: Configure JFrog npm registry
+              run: bash .github/scripts/configure-npm.sh
+            - run: yarn install --immutable
+            # The build, the extension's tests and the e2e package, which `yarn check` doesn't
+            # typecheck.
+            - run: yarn typecheck
