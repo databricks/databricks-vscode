@@ -1,5 +1,11 @@
 import * as assert from "assert";
-import {CancellationTokenSource, commands, Uri, window} from "vscode";
+import {
+    CancellationTokenSource,
+    commands,
+    extensions,
+    Uri,
+    window,
+} from "vscode";
 import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 import {promisify} from "node:util";
 import {execFile as execFileCb} from "node:child_process";
@@ -27,6 +33,7 @@ import {ProfileAuthProvider} from "../configuration/auth/AuthProvider";
 import {isMatch} from "lodash";
 import {removeUndefinedKeys} from "../utils/envVarGenerators";
 import {writeFileSync} from "fs";
+import {getCopilotShimDir} from "../utils/hostUtils";
 
 const execFile = promisify(execFileCb);
 // Mirror CliWrapper.cliPath: the bundled binary is `databricks.exe` on Windows.
@@ -696,6 +703,55 @@ token = dapitest5678
                 cli.getSetupLocalEnvVars(authProvider, undefined)
             )
         );
+    });
+
+    describe("aitoolsEnv", () => {
+        const originalGetExtension = extensions.getExtension;
+        const originalLocalAppData = process.env.LOCALAPPDATA;
+
+        function stubCopilotChat(installed: boolean) {
+            const configsSpy = spy(workspaceConfigs);
+            mocks.push(configsSpy);
+            when(configsSpy.copilotCliCommandEnabled).thenReturn(true);
+            when(configsSpy.aiFeaturesDisabled).thenReturn(false);
+            (extensions as any).getExtension = (id: string) =>
+                id === "GitHub.copilot-chat" && installed ? {} : undefined;
+        }
+
+        afterEach(() => {
+            (extensions as any).getExtension = originalGetExtension;
+            if (originalLocalAppData === undefined) {
+                delete process.env.LOCALAPPDATA;
+            } else {
+                process.env.LOCALAPPDATA = originalLocalAppData;
+            }
+        });
+
+        it("puts VS Code's copilot shim on PATH like a terminal", () => {
+            stubCopilotChat(true);
+
+            const env = createCliWrapper().aitoolsEnv();
+
+            const dirs = (env.PATH ?? "").split(path.delimiter);
+            assert.strictEqual(dirs[dirs.length - 1], getCopilotShimDir());
+        });
+
+        it("leaves PATH alone when VS Code doesn't add the shim", () => {
+            stubCopilotChat(false);
+
+            const env = createCliWrapper().aitoolsEnv();
+
+            assert.strictEqual(env.PATH, process.env.PATH);
+        });
+
+        it("passes LOCALAPPDATA through for the shim on Windows", () => {
+            stubCopilotChat(false);
+            process.env.LOCALAPPDATA = "C:\\Users\\me\\AppData\\Local";
+
+            const env = createCliWrapper().aitoolsEnv();
+
+            assert.strictEqual(env.LOCALAPPDATA, process.env.LOCALAPPDATA);
+        });
     });
 
     describe("parseCliVersion", () => {

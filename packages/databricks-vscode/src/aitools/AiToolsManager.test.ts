@@ -18,9 +18,12 @@ import {Telemetry} from "../telemetry";
 import {Events} from "../telemetry/constants";
 import {
     AiToolsManager,
+    COPILOT_AGENT_ID,
+    COPILOT_CLI_NOT_INSTALLED,
     CURSOR_AGENT_ID,
     StateFileLoader,
 } from "./AiToolsManager";
+import {CopilotCliStatus} from "./copilotShim";
 import {FileUtils, HostUtils} from "../utils";
 
 // State-file loaders passed to createManager, one per scope, standing in for the
@@ -854,6 +857,40 @@ describe(__filename, () => {
             const [, , , cliAgents] = capture(mockCli.aitoolsInstall).last();
             assert.deepStrictEqual(cliAgents, ["claude-code"]);
         });
+
+        it("records a skipped Copilot as an error alongside a plugin-only install", async () => {
+            const {manager, mockCli, stubTelemetry} = setup({
+                project: loadSuccess,
+            });
+
+            await manager.install(
+                "project",
+                "sidePane",
+                [CURSOR_AGENT_ID],
+                undefined,
+                {[COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED}
+            );
+
+            assert.ok(openedCursorPlugin(), "expected the plugin modal");
+            verify(
+                mockCli.aitoolsInstall(
+                    anything(),
+                    anything(),
+                    anything(),
+                    anything()
+                )
+            ).never();
+            const [event] = stubTelemetry.eventsOfType(Events.AITOOLS_INSTALL);
+            assert.deepStrictEqual(event.props, {
+                duration: 0,
+                result: "error",
+                scope: "project",
+                source: "sidePane",
+                agents: [COPILOT_AGENT_ID],
+                cursorPlugin: true,
+                agentErrors: {[COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED},
+            });
+        });
     });
 
     describe("addCursorPlugin", () => {
@@ -1378,6 +1415,163 @@ describe(__filename, () => {
                 true
             );
             assert.strictEqual(manager.shouldPromptInstall, false);
+        });
+    });
+    describe("GitHub Copilot CLI", () => {
+        const SHIM = "/code/bin/copilot-shim/copilot";
+
+        function copilotAgent(installed: boolean): AiToolsAgent {
+            return {
+                name: COPILOT_AGENT_ID,
+                display_name: "GitHub Copilot",
+                managed: true,
+                detected: true,
+                supports_project_scope: true,
+                installed: installed
+                    ? {
+                          global: {
+                              version: "1.0.0",
+                              native_scope: "global",
+                              delivery: "plugin",
+                          },
+                      }
+                    : {},
+            } as AiToolsAgent;
+        }
+
+        function stubCopilotCliStatus(
+            manager: AiToolsManager,
+            status: CopilotCliStatus
+        ) {
+            let calls = 0;
+            (manager as any).copilotCliStatus = async () => {
+                calls++;
+                return status;
+            };
+            return () => calls;
+        }
+
+        it("marks Copilot detected only through the shim", async () => {
+            const {manager, mockCli} = setup();
+            when(mockCli.aitoolsList(anything())).thenResolve(
+                listResult([], [copilotAgent(false)])
+            );
+            stubCopilotCliStatus(manager, {shim: SHIM});
+
+            const [copilot] = await manager.listAgents("global");
+
+            assert.strictEqual(copilot.copilotShim, SHIM);
+        });
+
+        it("leaves Copilot alone when GitHub Copilot CLI is installed", async () => {
+            const {manager, mockCli} = setup();
+            when(mockCli.aitoolsList(anything())).thenResolve(
+                listResult([], [copilotAgent(false)])
+            );
+            stubCopilotCliStatus(manager, "installed");
+
+            const [copilot] = await manager.listAgents("global");
+
+            assert.strictEqual(copilot.copilotShim, undefined);
+        });
+
+        it("does not check once Copilot is installed", async () => {
+            const {manager, mockCli} = setup();
+            when(mockCli.aitoolsList(anything())).thenResolve(
+                listResult([], [copilotAgent(true)])
+            );
+            const calls = stubCopilotCliStatus(manager, {shim: SHIM});
+
+            const [copilot] = await manager.listAgents("global");
+
+            assert.strictEqual(copilot.copilotShim, undefined);
+            assert.strictEqual(calls(), 0);
+        });
+
+        it("marks Copilot in the panel's agents on refresh", async () => {
+            const {manager, mockCli} = setup({global: loadSuccess});
+            when(mockCli.aitoolsList(anything())).thenResolve(
+                listResult([], [copilotAgent(false)])
+            );
+            stubCopilotCliStatus(manager, {shim: SHIM});
+
+            await manager.detectInstall();
+            await manager.resolveInstalled();
+
+            const copilot = manager.model.state.agents.find(
+                (a) => a.id === COPILOT_AGENT_ID
+            );
+            assert.strictEqual(copilot?.copilotShim, SHIM);
+        });
+
+        it("reports installed when the check itself fails", async () => {
+            const {manager, mockCli} = setup();
+            when(mockCli.aitoolsEnv()).thenThrow(new Error("boom"));
+
+            assert.strictEqual(await manager.copilotCliStatus(), "installed");
+        });
+
+        it("records a skipped Copilot alongside the CLI install", async () => {
+            const {manager, mockCli, stubTelemetry} = setup({
+                global: loadSuccess,
+            });
+            when(
+                mockCli.aitoolsInstall(
+                    "global",
+                    anything(),
+                    anything(),
+                    anything()
+                )
+            ).thenResolve({output: installSuccessOutput, error: undefined});
+            when(mockCli.aitoolsList(anything())).thenResolve(listResult([]));
+
+            await manager.install(
+                "global",
+                "sidePane",
+                ["claude-code"],
+                undefined,
+                {
+                    [COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED,
+                }
+            );
+
+            const [, , , cliAgents] = capture(mockCli.aitoolsInstall).last();
+            assert.deepStrictEqual(cliAgents, ["claude-code"]);
+            const [event] = stubTelemetry.eventsOfType(Events.AITOOLS_INSTALL);
+            assert.strictEqual(event.props.result, "error");
+            assert.deepStrictEqual(event.props.agents, [
+                "claude-code",
+                COPILOT_AGENT_ID,
+            ]);
+            assert.deepStrictEqual(event.props.agentErrors, {
+                [COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED,
+            });
+        });
+
+        it("records a skipped Copilot without running the CLI when nothing is left", async () => {
+            const {manager, mockCli, stubTelemetry} = setup();
+
+            await manager.install("global", "initModal", [], undefined, {
+                [COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED,
+            });
+
+            verify(
+                mockCli.aitoolsInstall(
+                    anything(),
+                    anything(),
+                    anything(),
+                    anything()
+                )
+            ).never();
+            const [event] = stubTelemetry.eventsOfType(Events.AITOOLS_INSTALL);
+            assert.deepStrictEqual(event.props, {
+                duration: 0,
+                result: "error",
+                scope: "global",
+                source: "initModal",
+                agents: [COPILOT_AGENT_ID],
+                agentErrors: {[COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED},
+            });
         });
     });
 });

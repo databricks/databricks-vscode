@@ -1863,6 +1863,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/which@npm:^3.0.4":
+  version: 3.0.4
+  resolution: "@types/which@npm:3.0.4"
+  checksum: 2eed998c2471862d95c150e2a8bc806e395215ea963db6e3e5df389884decccb6d448b6a5a352de5263866179835651fd145110b3b79f5e568a90bc8662acd50
+  languageName: node
+  linkType: hard
+
 "@types/ws@npm:^8.5.11":
   version: 8.18.1
   resolution: "@types/ws@npm:8.18.1"
@@ -4086,6 +4093,7 @@ __metadata:
     "@types/tmp": ^0.2.6
     "@types/triple-beam": ^1.3.5
     "@types/vscode": 1.104.0
+    "@types/which": ^3.0.4
     "@types/ws": ^8.5.11
     "@types/yargs": ^17.0.32
     "@typescript-eslint/eslint-plugin": ^8.62.0
@@ -4127,6 +4135,7 @@ __metadata:
     vsce: ^2.15.0
     wdio-video-reporter: ^6.2.0
     wdio-vscode-service: ^8.0.0
+    which: ^6.0.1
     winston: ^3.11.0
     ws: ^8.18.0
     yaml: ^2.8.3
@@ -10750,7 +10759,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"which@npm:^6.0.0":
+"which@npm:^6.0.0, which@npm:^6.0.1":
   version: 6.0.1
   resolution: "which@npm:6.0.1"
   dependencies:

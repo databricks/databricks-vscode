@@ -120,6 +120,16 @@ describe(__filename, () => {
             );
         });
 
+        it("reports a missing CLI for an agent detected only via the shim", () => {
+            assert.strictEqual(
+                agentInstallBlockReason(
+                    {...statusAgent(true, true), copilotShim: "/shim/copilot"},
+                    "global"
+                ),
+                "cliNotInstalled"
+            );
+        });
+
         it("does not block a detected, scope-supported agent", () => {
             assert.strictEqual(
                 agentInstallBlockReason(statusAgent(true, true), "project"),

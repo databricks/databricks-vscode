@@ -31,16 +31,26 @@ export interface AiToolsAgentStatus {
      * The row annotates its version with "skills only" in this case.
      */
     skillsOnly?: boolean;
+    /**
+     * Set when GitHub Copilot was detected only through VS Code's `copilot`
+     * shim: GitHub Copilot CLI isn't installed, and running this shim in a
+     * terminal installs it.
+     */
+    copilotShim?: string;
 }
 
-export type AgentInstallBlockReason = "notDetected" | "scopeUnsupported";
+export type AgentInstallBlockReason =
+    | "notDetected"
+    | "scopeUnsupported"
+    | "cliNotInstalled";
 
 /**
  * Why an agent can't be installed at `scope`, or undefined if it can. Shared by
  * the install picker (`describeAgent` in AiToolsCommands) and the Agents tree
  * (`describeAgentRow` in AiToolsComponent) so both surfaces stay in lockstep.
  * `supportsProjectScope` only gates the `project` scope; not-detected is checked
- * first.
+ * first. `cliNotInstalled` stays selectable: installing then offers to install
+ * the agent's CLI.
  */
 export function agentInstallBlockReason(
     agent: AiToolsAgentStatus,
@@ -51,6 +61,9 @@ export function agentInstallBlockReason(
     }
     if (scope === "project" && !agent.supportsProjectScope) {
         return "scopeUnsupported";
+    }
+    if (agent.copilotShim !== undefined) {
+        return "cliNotInstalled";
     }
     return undefined;
 }

@@ -6,7 +6,13 @@ import {
     type window,
 } from "vscode";
 import {logging} from "@databricks/sdk-experimental";
-import {AiToolsManager, CURSOR_AGENT_ID} from "./AiToolsManager";
+import {
+    AiToolsManager,
+    COPILOT_AGENT_ID,
+    COPILOT_CLI_NOT_INSTALLED,
+    CURSOR_AGENT_ID,
+} from "./AiToolsManager";
+import {CopilotCliStatus} from "./copilotShim";
 import {AiToolsAgentStatus, agentInstallBlockReason} from "./AiToolsModel";
 import {AiToolsScope, ProcessError} from "../cli/CliWrapper";
 import {AiToolsInstallSource} from "../telemetry/constants";
@@ -63,6 +69,14 @@ export function describeAgent(
             picked: false,
         };
     }
+    if (reason === "cliNotInstalled") {
+        // Selectable, so choosing it offers to install the CLI.
+        return {
+            description: `${agent.displayName} CLI not installed`,
+            disabled: false,
+            picked: false,
+        };
+    }
     return {description: "Detected", disabled: false, picked: true};
 }
 
@@ -76,6 +90,8 @@ export interface AiToolsPrompter {
     showWarningMessage: (typeof window)["showWarningMessage"];
     showErrorMessage: (typeof window)["showErrorMessage"];
     createQuickPick: (typeof window)["createQuickPick"];
+    createTerminal: (typeof window)["createTerminal"];
+    onDidCloseTerminal: (typeof window)["onDidCloseTerminal"];
 }
 
 export class AiToolsCommands implements Disposable {
@@ -206,11 +222,121 @@ export class AiToolsCommands implements Disposable {
         if (agents.length === 0) {
             return;
         }
-        await this.withProgress(
-            "Installing Databricks AI tools",
-            "Failed to install Databricks AI tools.",
-            (token) => this.aiToolsManager.install(scope, source, agents, token)
+        const install = (
+            selected: string[],
+            skipped?: Record<string, string>
+        ) =>
+            this.withProgress(
+                "Installing Databricks AI tools",
+                "Failed to install Databricks AI tools.",
+                (token) =>
+                    this.aiToolsManager.install(
+                        scope,
+                        source,
+                        selected,
+                        token,
+                        skipped
+                    )
+            );
+        const copilot = agents.includes(COPILOT_AGENT_ID)
+            ? await this.aiToolsManager.copilotCliStatus()
+            : "installed";
+        if (copilot === "installed") {
+            await install(agents);
+            return;
+        }
+        // Not awaited: the other agents install while the warning shows.
+        this.warnCopilotCliNotInstalled(copilot, false, () =>
+            install([COPILOT_AGENT_ID])
+        ).catch((e) => this.reportCopilotCliInstallerError(e));
+        await install(
+            agents.filter((a) => a !== COPILOT_AGENT_ID),
+            {[COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED}
         );
+    }
+
+    /**
+     * Warn that Databricks AI tools weren't installed for GitHub Copilot
+     * because GitHub Copilot CLI isn't installed. With VS Code's shim, offer to
+     * install the CLI and then `retry`. `modal` is for when Copilot was all the
+     * user asked for.
+     */
+    private async warnCopilotCliNotInstalled(
+        status: Exclude<CopilotCliStatus, "installed">,
+        modal: boolean,
+        retry: () => Promise<void>
+    ): Promise<void> {
+        const message = modal
+            ? "Databricks AI tools can't be installed for GitHub Copilot because GitHub Copilot CLI is not installed."
+            : "Databricks AI tools were not installed for GitHub Copilot because GitHub Copilot CLI is not installed.";
+        const detail = "Install GitHub Copilot CLI, then try again.";
+        const installCli = "Install GitHub Copilot CLI";
+        // Notifications have no `detail`, so fold it into the message.
+        const choice = await this.prompter.showWarningMessage(
+            modal ? message : `${message} ${detail}`,
+            modal ? {modal, detail} : {},
+            // Without the shim there's nothing for the button to run.
+            ...(status === "missing" ? [] : [installCli])
+        );
+        if (choice === installCli && status !== "missing") {
+            this.openCopilotCliInstaller(status.shim, retry);
+        }
+    }
+
+    /**
+     * Run VS Code's shim as a terminal's process: without a Copilot CLI to
+     * forward to, it offers to install one. Once the terminal closes, offer
+     * `retry` if the CLI is now usable.
+     */
+    private openCopilotCliInstaller(shim: string, retry: () => Promise<void>) {
+        const recordEvent = this.aiToolsManager.startCopilotCliInstall();
+        const terminal = this.prompter.createTerminal({
+            name: "Install GitHub Copilot CLI",
+            shellPath: shim,
+            // Any argument works; once installed, the shim runs the CLI with it.
+            shellArgs: ["--version"],
+            // Keeps the Python extensions from typing venv activation into it.
+            hideFromUser: true,
+        });
+        terminal.show();
+        const listener = this.prompter.onDidCloseTerminal((closed) => {
+            if (closed !== terminal) {
+                return;
+            }
+            listener.dispose();
+            this.afterCopilotCliInstaller(recordEvent, retry).catch((e) =>
+                this.reportCopilotCliInstallerError(e)
+            );
+        });
+        this.disposables.push(listener);
+    }
+
+    private async afterCopilotCliInstaller(
+        recordEvent: ReturnType<AiToolsManager["startCopilotCliInstall"]>,
+        retry: () => Promise<void>
+    ) {
+        const installed =
+            (await this.aiToolsManager.copilotCliStatus()) === "installed";
+        recordEvent({installed});
+        if (!installed) {
+            return;
+        }
+        const install = "Install";
+        const choice = await this.prompter.showInformationMessage(
+            "GitHub Copilot CLI is installed. Install Databricks AI tools for GitHub Copilot?",
+            install
+        );
+        if (choice === install) {
+            await retry();
+        }
+    }
+
+    private reportCopilotCliInstallerError(e: unknown) {
+        logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+            "Failed to install GitHub Copilot CLI",
+            e
+        );
+        this.prompter.showErrorMessage("Failed to install GitHub Copilot CLI.");
     }
 
     /**
@@ -415,11 +541,32 @@ export class AiToolsCommands implements Disposable {
                 return;
             }
             const agentId = node.id.slice(prefix.length);
-            await this.withProgress(
-                "Installing Databricks AI tools agent",
-                "Failed to install Databricks AI tools agent.",
-                (token) => this.aiToolsManager.installAgent(agentId, token)
-            );
+            const install = () =>
+                this.withProgress(
+                    "Installing Databricks AI tools agent",
+                    "Failed to install Databricks AI tools agent.",
+                    (token) => this.aiToolsManager.installAgent(agentId, token)
+                );
+            if (agentId === COPILOT_AGENT_ID) {
+                const status = await this.aiToolsManager.copilotCliStatus();
+                const scope = this.aiToolsManager.model.installLocation;
+                if (status !== "installed") {
+                    if (scope !== undefined) {
+                        this.aiToolsManager.recordSkippedInstall(
+                            scope,
+                            "sidePane",
+                            {[COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED}
+                        );
+                    }
+                    await this.warnCopilotCliNotInstalled(
+                        status,
+                        true,
+                        install
+                    );
+                    return;
+                }
+            }
+            await install();
         };
     }
 }

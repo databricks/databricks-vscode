@@ -8,11 +8,18 @@ import {
     ProgressOptions,
     QuickPick,
     QuickPickItem,
+    Terminal,
+    TerminalOptions,
 } from "vscode";
 import {anything, capture, instance, mock, verify, when} from "ts-mockito";
 import {ProcessError} from "../cli/CliWrapper";
-import {AiToolsManager, CURSOR_AGENT_ID} from "./AiToolsManager";
-import {AiToolsAgentStatus} from "./AiToolsModel";
+import {
+    AiToolsManager,
+    COPILOT_AGENT_ID,
+    COPILOT_CLI_NOT_INSTALLED,
+    CURSOR_AGENT_ID,
+} from "./AiToolsManager";
+import {AiToolsAgentStatus, AiToolsModel} from "./AiToolsModel";
 import {AiToolsCommands, AiToolsPrompter} from "./AiToolsCommands";
 import {HostUtils} from "../utils";
 
@@ -118,7 +125,12 @@ class FakePrompter implements AiToolsPrompter {
     > = [];
     // Response for the next info/warning message; shift()ed per call.
     readonly messageResponses: Array<string | undefined> = [];
-    readonly shownMessages: Array<{message: string; items: string[]}> = [];
+    readonly shownMessages: Array<{
+        message: string;
+        items: string[];
+        modal?: boolean;
+        detail?: string;
+    }> = [];
 
     // Run the progress task synchronously with a non-cancelled token, skipping
     // the real notification UI.
@@ -134,19 +146,53 @@ class FakePrompter implements AiToolsPrompter {
 
     showInformationMessage(
         message: string,
-        _options: MessageOptions,
         ...items: string[]
+    ): Thenable<string | undefined>;
+    showInformationMessage(
+        message: string,
+        options: MessageOptions,
+        ...items: string[]
+    ): Thenable<string | undefined>;
+    showInformationMessage(
+        message: string,
+        optionsOrItem?: MessageOptions | string,
+        ...rest: string[]
     ): Thenable<string | undefined> {
-        this.shownMessages.push({message, items});
+        const options =
+            typeof optionsOrItem === "object" ? optionsOrItem : undefined;
+        const items =
+            typeof optionsOrItem === "string" ? [optionsOrItem, ...rest] : rest;
+        this.shownMessages.push({
+            message,
+            items,
+            ...(options ? {modal: options.modal, detail: options.detail} : {}),
+        });
         return Promise.resolve(this.messageResponses.shift());
     }
 
     showWarningMessage(
         message: string,
-        _options: MessageOptions,
         ...items: string[]
+    ): Thenable<string | undefined>;
+    showWarningMessage(
+        message: string,
+        options: MessageOptions,
+        ...items: string[]
+    ): Thenable<string | undefined>;
+    showWarningMessage(
+        message: string,
+        optionsOrItem?: MessageOptions | string,
+        ...rest: string[]
     ): Thenable<string | undefined> {
-        this.shownMessages.push({message, items});
+        const options =
+            typeof optionsOrItem === "object" ? optionsOrItem : undefined;
+        const items =
+            typeof optionsOrItem === "string" ? [optionsOrItem, ...rest] : rest;
+        this.shownMessages.push({
+            message,
+            items,
+            ...(options ? {modal: options.modal, detail: options.detail} : {}),
+        });
         return Promise.resolve(this.messageResponses.shift());
     }
 
@@ -164,10 +210,47 @@ class FakePrompter implements AiToolsPrompter {
         optionsOrItem?: MessageOptions | string,
         ...rest: string[]
     ): Thenable<string | undefined> {
+        const options =
+            typeof optionsOrItem === "object" ? optionsOrItem : undefined;
         const items =
             typeof optionsOrItem === "string" ? [optionsOrItem, ...rest] : rest;
-        this.shownMessages.push({message, items});
+        this.shownMessages.push({
+            message,
+            items,
+            ...(options ? {modal: options.modal, detail: options.detail} : {}),
+        });
         return Promise.resolve(this.messageResponses.shift());
+    }
+
+    readonly createdTerminals: TerminalOptions[] = [];
+    shownTerminals = 0;
+    private closeListeners: Array<(t: Terminal) => unknown> = [];
+
+    // The real API is overloaded; the code under test only uses the options
+    // form.
+    createTerminal(...args: unknown[]): Terminal {
+        this.createdTerminals.push(args[0] as TerminalOptions);
+        const terminal = {
+            show: () => this.shownTerminals++,
+        } as unknown as Terminal;
+        this.terminals.push(terminal);
+        return terminal;
+    }
+    readonly terminals: Terminal[] = [];
+
+    onDidCloseTerminal = ((listener: (t: Terminal) => unknown) => {
+        this.closeListeners.push(listener);
+        return {
+            dispose: () => {
+                this.closeListeners = this.closeListeners.filter(
+                    (l) => l !== listener
+                );
+            },
+        };
+    }) as AiToolsPrompter["onDidCloseTerminal"];
+
+    closeTerminal(terminal: Terminal) {
+        [...this.closeListeners].forEach((l) => l(terminal));
     }
 
     createQuickPick<T extends QuickPickItem>(): QuickPick<T> {
@@ -200,6 +283,9 @@ function setup() {
     const mockManager = mock(AiToolsManager);
     when(mockManager.hasProjectFolder).thenReturn(true);
     when(mockManager.listAgents(anything())).thenResolve([]);
+    when(mockManager.copilotCliStatus()).thenResolve("installed");
+    when(mockManager.startCopilotCliInstall()).thenReturn(() => {});
+    when(mockManager.model).thenReturn(new AiToolsModel("global"));
 
     const prompter = new FakePrompter();
 
@@ -391,6 +477,32 @@ describe(__filename, () => {
         assert.deepStrictEqual(agents, ["claude-code"]);
     });
 
+    it("leaves an agent whose CLI isn't installed selectable but unchecked", async () => {
+        const {commands, mockManager, behaviors, quickPicks} = setup();
+        when(mockManager.listAgents("global")).thenResolve([
+            agent("claude-code", "Claude Code", true),
+            {
+                ...agent(COPILOT_AGENT_ID, "GitHub Copilot", true),
+                copilotShim: "/shim/copilot",
+            },
+        ]);
+        behaviors.push(selectScope("global"));
+        behaviors.push((pick) => ({selected: pick.selectedItems}));
+
+        await commands.installCommand()("sidePane");
+
+        const copilot = quickPicks[1].items.find(
+            (i) => (i as any).agentId === COPILOT_AGENT_ID
+        )!;
+        assert.strictEqual((copilot as any).disabled, false);
+        assert.strictEqual(
+            copilot.description,
+            "GitHub Copilot CLI not installed"
+        );
+        const [, , agents] = capture(mockManager.install).last();
+        assert.deepStrictEqual(agents, ["claude-code"]);
+    });
+
     it("allows a scope-unsupported agent at global scope", async () => {
         const {commands, mockManager, behaviors, quickPicks} = setup();
         when(mockManager.listAgents("global")).thenResolve([
@@ -463,6 +575,373 @@ describe(__filename, () => {
         await commands.installCommand()("sidePane");
 
         verify(mockManager.listAgents("project")).once();
+    });
+
+    describe("Copilot CLI check", () => {
+        const SHIM =
+            "/Applications/Visual Studio Code.app/bin/copilot-shim/copilot";
+        const shim = {shim: SHIM};
+        const INSTALL_CLI = "Install GitHub Copilot CLI";
+        const SKIPPED = {[COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED};
+
+        function setupWithCopilot(
+            agentIds = ["claude-code", COPILOT_AGENT_ID]
+        ) {
+            const ctx = setup();
+            when(ctx.mockManager.listAgents("global")).thenResolve(
+                agentIds.map((id) => agent(id, id, true))
+            );
+            ctx.behaviors.push(selectScope("global"));
+            ctx.behaviors.push((pick) => ({selected: pick.selectedItems}));
+            return ctx;
+        }
+
+        function copilotWarnings(prompter: FakePrompter) {
+            return prompter.shownMessages.filter((m) =>
+                m.message.includes("GitHub Copilot CLI is not installed")
+            );
+        }
+
+        function installedPrompts(prompter: FakePrompter) {
+            return prompter.shownMessages.filter((m) =>
+                m.message.startsWith("GitHub Copilot CLI is installed.")
+            );
+        }
+
+        // Let fire-and-forget follow-ups run.
+        const settle = async () => {
+            for (let i = 0; i < 10; i++) {
+                await new Promise((r) => setImmediate(r));
+            }
+        };
+
+        it("runs the shim as the installer terminal's process", async () => {
+            const {commands, mockManager, prompter} = setupWithCopilot();
+            when(mockManager.copilotCliStatus()).thenResolve(shim);
+            prompter.messageResponses.push(INSTALL_CLI);
+
+            await commands.installCommand()("sidePane");
+            await settle();
+
+            assert.strictEqual(prompter.createdTerminals.length, 1);
+            const [options] = prompter.createdTerminals;
+            assert.strictEqual(options.shellPath, SHIM);
+            assert.deepStrictEqual(options.shellArgs, ["--version"]);
+            assert.strictEqual(options.hideFromUser, true);
+            assert.strictEqual(prompter.shownTerminals, 1);
+        });
+
+        describe("batch install", () => {
+            it("installs Copilot when GitHub Copilot CLI is installed", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+
+                await commands.installCommand()("sidePane");
+
+                const [, , agents, , skipped] = capture(
+                    mockManager.install
+                ).last();
+                assert.deepStrictEqual(agents, [
+                    "claude-code",
+                    COPILOT_AGENT_ID,
+                ]);
+                assert.strictEqual(skipped, undefined);
+                assert.deepStrictEqual(copilotWarnings(prompter), []);
+            });
+
+            it("skips Copilot behind the shim and warns with a non-modal CTA", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+                when(mockManager.copilotCliStatus()).thenResolve(shim);
+
+                await commands.installCommand()("sidePane");
+
+                const [, , agents, , skipped] = capture(
+                    mockManager.install
+                ).last();
+                assert.deepStrictEqual(agents, ["claude-code"]);
+                assert.deepStrictEqual(skipped, SKIPPED);
+                const [warning] = copilotWarnings(prompter);
+                assert.ok(warning);
+                assert.notStrictEqual(warning.modal, true);
+                assert.ok(warning.message.endsWith("then try again."));
+                assert.deepStrictEqual(warning.items, [INSTALL_CLI]);
+                // Nothing runs unless the user asks.
+                assert.strictEqual(prompter.createdTerminals.length, 0);
+            });
+
+            it("offers to install Copilot once the installer succeeds", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+                when(mockManager.copilotCliStatus()).thenResolve(
+                    shim,
+                    "installed"
+                );
+                const recorded: unknown[] = [];
+                when(mockManager.startCopilotCliInstall()).thenReturn((p) =>
+                    recorded.push(p)
+                );
+                prompter.messageResponses.push(INSTALL_CLI, "Install");
+
+                await commands.installCommand()("sidePane");
+                await settle();
+                assert.deepStrictEqual(installedPrompts(prompter), []);
+                prompter.closeTerminal(prompter.terminals[0]);
+                await settle();
+
+                assert.deepStrictEqual(recorded, [{installed: true}]);
+                assert.strictEqual(installedPrompts(prompter).length, 1);
+                const [scope, source, agents, , skipped] = capture(
+                    mockManager.install
+                ).last();
+                assert.deepStrictEqual(
+                    [scope, source, agents, skipped],
+                    ["global", "sidePane", [COPILOT_AGENT_ID], undefined]
+                );
+            });
+
+            it("offers nothing when the installer didn't install the CLI", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+                when(mockManager.copilotCliStatus()).thenResolve(shim);
+                const recorded: unknown[] = [];
+                when(mockManager.startCopilotCliInstall()).thenReturn((p) =>
+                    recorded.push(p)
+                );
+                prompter.messageResponses.push(INSTALL_CLI);
+
+                await commands.installCommand()("sidePane");
+                await settle();
+                prompter.closeTerminal(prompter.terminals[0]);
+                await settle();
+
+                assert.deepStrictEqual(recorded, [{installed: false}]);
+                assert.deepStrictEqual(installedPrompts(prompter), []);
+            });
+
+            it("does not install Copilot when the user declines afterwards", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+                when(mockManager.copilotCliStatus()).thenResolve(
+                    shim,
+                    "installed"
+                );
+                // Dismiss the "GitHub Copilot CLI is installed" prompt.
+                prompter.messageResponses.push(INSTALL_CLI, undefined);
+
+                await commands.installCommand()("sidePane");
+                await settle();
+                prompter.closeTerminal(prompter.terminals[0]);
+                await settle();
+
+                assert.strictEqual(installedPrompts(prompter).length, 1);
+                verify(
+                    mockManager.install(
+                        anything(),
+                        anything(),
+                        anything(),
+                        anything(),
+                        anything()
+                    )
+                ).once();
+            });
+
+            it("reports a failure after the installer terminal closes", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+                let calls = 0;
+                when(mockManager.copilotCliStatus()).thenCall(async () => {
+                    if (calls++ === 0) {
+                        return shim;
+                    }
+                    throw new Error("boom");
+                });
+                prompter.messageResponses.push(INSTALL_CLI);
+
+                await commands.installCommand()("sidePane");
+                await settle();
+                prompter.closeTerminal(prompter.terminals[0]);
+                await settle();
+
+                assert.ok(
+                    prompter.shownMessages.some(
+                        (m) =>
+                            m.message ===
+                            "Failed to install GitHub Copilot CLI."
+                    )
+                );
+            });
+
+            it("ignores other terminals closing", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+                when(mockManager.copilotCliStatus()).thenResolve(
+                    shim,
+                    "installed"
+                );
+                prompter.messageResponses.push(INSTALL_CLI);
+
+                await commands.installCommand()("sidePane");
+                await settle();
+                prompter.closeTerminal({} as Terminal);
+                await settle();
+
+                verify(mockManager.copilotCliStatus()).once();
+            });
+
+            it("does not wait on the notification before installing", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+                when(mockManager.copilotCliStatus()).thenResolve(shim);
+                // The user never answers the notification.
+                prompter.messageResponses.push(new Promise(() => {}) as any);
+
+                await commands.installCommand()("sidePane");
+
+                const [, , agents] = capture(mockManager.install).last();
+                assert.deepStrictEqual(agents, ["claude-code"]);
+            });
+
+            it("skips Copilot with no CTA when copilot is not on PATH", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot();
+                when(mockManager.copilotCliStatus()).thenResolve("missing");
+
+                await commands.installCommand()("sidePane");
+
+                const [, , agents] = capture(mockManager.install).last();
+                assert.deepStrictEqual(agents, ["claude-code"]);
+                const [warning] = copilotWarnings(prompter);
+                assert.ok(warning);
+                assert.deepStrictEqual(warning.items, []);
+            });
+
+            it("passes the skip on when Copilot was the only agent", async () => {
+                const {commands, mockManager, prompter} = setupWithCopilot([
+                    COPILOT_AGENT_ID,
+                ]);
+                when(mockManager.copilotCliStatus()).thenResolve(shim);
+
+                await commands.installCommand()("sidePane");
+
+                // The manager records the skip without running the CLI.
+                const [, , agents, , skipped] = capture(
+                    mockManager.install
+                ).last();
+                assert.deepStrictEqual(agents, []);
+                assert.deepStrictEqual(skipped, SKIPPED);
+                assert.strictEqual(copilotWarnings(prompter).length, 1);
+            });
+
+            it("does not check Copilot when it isn't selected", async () => {
+                const {commands, mockManager} = setupWithCopilot([
+                    "claude-code",
+                ]);
+
+                await commands.installCommand()("sidePane");
+
+                verify(mockManager.copilotCliStatus()).never();
+            });
+        });
+
+        describe("single-agent install", () => {
+            const copilotNode = {id: `AITOOLS.agent.${COPILOT_AGENT_ID}`};
+
+            it("installs Copilot when GitHub Copilot CLI is installed", async () => {
+                const {commands, mockManager, prompter} = setup();
+
+                await commands.installAgentCommand()(copilotNode);
+
+                const [agentId] = capture(mockManager.installAgent).last();
+                assert.strictEqual(agentId, COPILOT_AGENT_ID);
+                assert.deepStrictEqual(copilotWarnings(prompter), []);
+            });
+
+            it("shows a warning modal and records the skip behind the shim", async () => {
+                const {commands, mockManager, prompter} = setup();
+                when(mockManager.copilotCliStatus()).thenResolve(shim);
+
+                await commands.installAgentCommand()(copilotNode);
+
+                verify(
+                    mockManager.installAgent(anything(), anything())
+                ).never();
+                verify(
+                    mockManager.recordSkippedInstall(
+                        "global",
+                        "sidePane",
+                        anything()
+                    )
+                ).once();
+                const [, , skipped] = capture(
+                    mockManager.recordSkippedInstall
+                ).last();
+                assert.deepStrictEqual(skipped, SKIPPED);
+                const [warning] = copilotWarnings(prompter);
+                assert.ok(warning);
+                assert.strictEqual(warning.modal, true);
+                assert.strictEqual(
+                    warning.detail,
+                    "Install GitHub Copilot CLI, then try again."
+                );
+                assert.deepStrictEqual(warning.items, [INSTALL_CLI]);
+                assert.strictEqual(prompter.createdTerminals.length, 0);
+            });
+
+            it("installs Copilot once the installer from the modal succeeds", async () => {
+                const {commands, mockManager, prompter} = setup();
+                when(mockManager.copilotCliStatus()).thenResolve(
+                    shim,
+                    "installed"
+                );
+                prompter.messageResponses.push(INSTALL_CLI, "Install");
+
+                await commands.installAgentCommand()(copilotNode);
+                verify(
+                    mockManager.installAgent(anything(), anything())
+                ).never();
+                prompter.closeTerminal(prompter.terminals[0]);
+                await settle();
+
+                const [agentId] = capture(mockManager.installAgent).last();
+                assert.strictEqual(agentId, COPILOT_AGENT_ID);
+            });
+
+            it("records no skip without an install location", async () => {
+                const {commands, mockManager, prompter} = setup();
+                when(mockManager.copilotCliStatus()).thenResolve(shim);
+                when(mockManager.model).thenReturn(new AiToolsModel(undefined));
+
+                await commands.installAgentCommand()(copilotNode);
+
+                verify(
+                    mockManager.recordSkippedInstall(
+                        anything(),
+                        anything(),
+                        anything()
+                    )
+                ).never();
+                assert.strictEqual(copilotWarnings(prompter).length, 1);
+            });
+
+            it("shows the modal with no CTA when copilot is not on PATH", async () => {
+                const {commands, mockManager, prompter} = setup();
+                when(mockManager.copilotCliStatus()).thenResolve("missing");
+
+                await commands.installAgentCommand()(copilotNode);
+
+                verify(
+                    mockManager.installAgent(anything(), anything())
+                ).never();
+                const [warning] = copilotWarnings(prompter);
+                assert.strictEqual(warning.modal, true);
+                assert.deepStrictEqual(warning.items, []);
+            });
+
+            it("does not check Copilot for other agents", async () => {
+                const {commands, mockManager} = setup();
+                when(
+                    mockManager.installAgent(anything(), anything())
+                ).thenResolve();
+
+                await commands.installAgentCommand()({
+                    id: "AITOOLS.agent.codex",
+                });
+
+                verify(mockManager.copilotCliStatus()).never();
+            });
+        });
     });
 
     describe("installAgentCommand", () => {
