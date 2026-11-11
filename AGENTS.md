@@ -22,6 +22,13 @@ A stale binary rejects subcommands the extension expects and aborts activation, 
 the configuration view sits on "Initializing..." instead of reporting an error. In a
 development checkout the extension warns about the mismatch on startup.
 
+## Checking UI changes in a real VS Code
+
+To see a change working, or to reproduce a UI bug, drive a live VS Code through
+the `wdio` MCP server (configured in `.mcp.json`) instead of guessing from the code.
+Follow [.claude/skills/vscode-ui-testing/SKILL.md](.claude/skills/vscode-ui-testing/SKILL.md);
+it starts a session with `yarn workspace databricks run agent:session start`.
+
 ## Code conventions
 
 Read [CODE_CONVENTIONS.md](CODE_CONVENTIONS.md) before you:

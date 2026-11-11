@@ -2131,19 +2131,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vscode/test-electron@npm:^2.4.1":
-  version: 2.5.2
-  resolution: "@vscode/test-electron@npm:2.5.2"
-  dependencies:
-    http-proxy-agent: ^7.0.2
-    https-proxy-agent: ^7.0.5
-    jszip: ^3.10.1
-    ora: ^8.1.0
-    semver: ^7.6.2
-  checksum: 439d8a1c89008f1df67a7b1f30899e0033ebeab15d440493dc31aa4b7b8b37a7da3c154b1ab71fe7a7feddcc76e2ede847cead51ff4608988fcccab339729b87
-  languageName: node
-  linkType: hard
-
 "@vscode/test-electron@npm:^3.1.0":
   version: 3.1.0
   resolution: "@vscode/test-electron@npm:3.1.0"

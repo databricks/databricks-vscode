@@ -47,6 +47,7 @@
         "json5": "2.2.2",
         "path-scurry": "^2.0.0",
         "jws": "^4.0.1",
+        "wdio-vscode-service/@vscode/test-electron": "^3.1.0",
         "@databricks/sdk-experimental@^0.18.0": "patch:@databricks/sdk-experimental@npm:0.18.0#.yarn/patches/@databricks-sdk-experimental-npm-0.18.0-eaa822207a.patch"
     }
 }
