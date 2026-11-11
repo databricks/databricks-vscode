@@ -106,9 +106,10 @@ export interface ConnectionAttempt {
 }
 
 /**
- * The choice for windows without a project: a profile, or an explicit
+ * The last choice for windows without a project: a profile, or an explicit
  * sign-out. Global, because an empty window has no stable workspace
- * state.
+ * state. Every window shares it, so a window reads it once and then keeps
+ * its own (`ConnectionService.noProjectChoice`).
  */
 export const NO_PROJECT_CHOICE = stateKey<SavedChoice | undefined>(
     "databricks.connection.noProjectChoice",
@@ -190,6 +191,8 @@ export class ConnectionService implements Disposable {
     private signIns = 0;
     /** A background resolution was skipped while a login ran: its result is due once the login ends. */
     private resolvedDuringSignIn = false;
+    /** This window's no-project choice, once read: another window's choice doesn't move it. */
+    private windowChoice?: { readonly value: SavedChoice | undefined };
 
     constructor(private readonly deps: ConnectionServiceDeps) {}
 
@@ -220,7 +223,7 @@ export class ConnectionService implements Disposable {
             return undefined;
         }
         const resolution = resolveConnection({
-            saved: this.deps.state.get(NO_PROJECT_CHOICE),
+            saved: this.noProjectChoice(),
             envProfile: this.deps.env.DATABRICKS_CONFIG_PROFILE || undefined,
             profiles: snapshot.profiles,
             defaultProfileSetting: snapshot.defaultProfile,
@@ -359,7 +362,7 @@ export class ConnectionService implements Disposable {
                 }
                 await this.deps.project!.saveProfile(profile);
             } else {
-                await this.deps.state.set(NO_PROJECT_CHOICE, { profile });
+                await this.saveNoProjectChoice({ profile });
             }
             // Re-read: the CLI may have just written the profile.
             await this.deps.profiles.refresh("profile chosen").catch(() => {});
@@ -372,7 +375,7 @@ export class ConnectionService implements Disposable {
         if (project !== undefined) {
             return { profile: project.savedProfile, signedOut: project.signedOut === true };
         }
-        const saved = this.deps.state.get(NO_PROJECT_CHOICE);
+        const saved = this.noProjectChoice();
         return {
             profile: saved !== undefined && "profile" in saved ? saved.profile : undefined,
             signedOut: saved !== undefined && "signedOut" in saved,
@@ -395,8 +398,7 @@ export class ConnectionService implements Disposable {
                     await this.deps.project!.saveSignedOut(before.signedOut);
                 }
             } else {
-                await this.deps.state.set(
-                    NO_PROJECT_CHOICE,
+                await this.saveNoProjectChoice(
                     before.signedOut
                         ? { signedOut: true }
                         : before.profile !== undefined
@@ -417,7 +419,7 @@ export class ConnectionService implements Disposable {
             if (project !== undefined) {
                 await this.deps.project!.saveSignedOut(true);
             } else {
-                await this.deps.state.set(NO_PROJECT_CHOICE, { signedOut: true });
+                await this.saveNoProjectChoice({ signedOut: true });
             }
         } finally {
             this.explicit--;
@@ -434,6 +436,18 @@ export class ConnectionService implements Disposable {
                 () => {},
             ),
         );
+    }
+
+    /** Read from global state once: the last choice of any window, when this one opened. */
+    private noProjectChoice(): SavedChoice | undefined {
+        this.windowChoice ??= { value: this.deps.state.get(NO_PROJECT_CHOICE) };
+        return this.windowChoice.value;
+    }
+
+    /** This window's choice, saved for windows opened later too. */
+    private async saveNoProjectChoice(choice: SavedChoice | undefined): Promise<void> {
+        await this.deps.state.set(NO_PROJECT_CHOICE, choice);
+        this.windowChoice = { value: choice };
     }
 
     /**
@@ -510,7 +524,7 @@ export class ConnectionService implements Disposable {
         const resolution = resolveConnection({
             session: identity.kind === "session" ? identity.credentials : undefined,
             project,
-            saved: this.deps.state.get(NO_PROJECT_CHOICE),
+            saved: this.noProjectChoice(),
             envProfile: this.deps.env.DATABRICKS_CONFIG_PROFILE || undefined,
             profiles: snapshot.profiles,
             defaultProfileSetting: snapshot.defaultProfile,
