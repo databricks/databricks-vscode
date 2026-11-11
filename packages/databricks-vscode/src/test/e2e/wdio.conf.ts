@@ -8,7 +8,6 @@ import assert from "assert";
 import fs from "fs/promises";
 import {Config, WorkspaceClient} from "@databricks/sdk-experimental";
 import * as ElementCustomCommands from "./customCommands/elementCustomCommands.ts";
-import {execFile as execFileCb} from "node:child_process";
 import {
     cpSync,
     mkdirSync,
@@ -22,7 +21,6 @@ import packageJson from "../../../package.json" with {type: "json"};
 import {sleep} from "wdio-vscode-service";
 import {glob, globSync} from "glob";
 import {getUniqueResourceName} from "./utils/commonUtils.ts";
-import {promisify} from "node:util";
 import {
     specFileRetriesForPlatform,
     specFileRetriesDelayForPlatform,
@@ -32,27 +30,16 @@ import {
 } from "../retry.ts";
 import {SpecRetryTracker} from "../SpecRetryTracker.ts";
 import {prepareSshEditor} from "./utils/sshE2eUtils.ts";
+import {
+    codeCliForBinary,
+    E2E_USER_SETTINGS,
+    execFile,
+    installExtensions,
+    stripTsxImportInWorker,
+} from "./utils/vscodeLaunch.ts";
 
-// WebdriverIO v9 loads TypeScript by injecting `--import <tsx loader>` into
-// NODE_OPTIONS for every worker process. wdio-vscode-service installs the
-// Databricks extension by spawning the VS Code (Electron) `code` CLI, which
-// inherits that NODE_OPTIONS — and Electron hard-rejects `--import` in
-// NODE_OPTIONS ("Code.exe: --import is not allowed in NODE_OPTIONS"). The
-// extension install then fails and every spec dies with `Can't find view
-// control "CONFIGURATION"`. By the time this config module loads, tsx has
-// already registered its loader in-process, so we can strip `--import` from
-// the environment that child processes inherit without breaking transpilation.
-// Only do this in workers (WDIO_WORKER_ID is set): the launcher must keep
-// `--import` in NODE_OPTIONS so the workers it spawns still get tsx.
-if (
-    process.env.WDIO_WORKER_ID &&
-    process.env.NODE_OPTIONS?.includes("--import")
-) {
-    process.env.NODE_OPTIONS = process.env.NODE_OPTIONS.replace(
-        /\s*--import(?:=|\s+)\S+/g,
-        ""
-    ).trim();
-}
+// See stripTsxImportInWorker: Electron rejects the tsx `--import` loader.
+stripTsxImportInWorker();
 
 const TEST_ROOT = process.env.TEST_E2E_ROOT || tmpdir();
 const TEST_LOGS = process.env.TEST_E2E_ROOT
@@ -101,62 +88,6 @@ const SSH_E2E_ENABLED = process.env.TEST_SSH_E2E === "true";
  * symlinked temp root, a case-insensitive filesystem.
  */
 const isSshSpec = (spec: string) => path.basename(spec) === SSH_SPEC_FILE;
-
-const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
-
-export function escapeCommand(arg: string): string {
-    // Escape meta chars
-    arg = `"${arg}"`.replace(metaCharsRegExp, "^$1");
-    return arg;
-}
-
-export function escapeArgument(arg: string): string {
-    // Convert to string
-    arg = `${arg}`;
-
-    // Algorithm below is based on https://qntm.org/cmd
-
-    // Sequence of backslashes followed by a double quote:
-    // double up all the backslashes and escape the double quote
-    arg = arg.replace(/(\\*)"/g, '$1$1\\"');
-
-    // Sequence of backslashes followed by the end of the string
-    // (which will become a double quote later):
-    // double up all the backslashes
-    arg = arg.replace(/(\\*)$/, "$1$1");
-
-    // All other backslashes occur literally
-
-    // Quote the whole thing:
-    arg = `"${arg}"`;
-
-    // Escape meta chars
-    arg = arg.replace(metaCharsRegExp, "^$1");
-
-    return arg;
-}
-
-const execFile = async (
-    file: string,
-    args: string[],
-    options: any = {}
-): Promise<{
-    stdout: string;
-    stderr: string;
-}> => {
-    if (process.platform === "win32") {
-        const realArgs = [escapeCommand(file)]
-            .concat(args.map(escapeArgument).join(" "))
-            .join(" ");
-
-        file = "cmd.exe";
-        args = ["/d", "/s", "/c", `"${realArgs}"`];
-        console.log("execFile", file, args);
-        options = {...options, windowsVerbatimArguments: true};
-    }
-    const res = await promisify(execFileCb)(file, args, options);
-    return {stdout: res.stdout.toString(), stderr: res.stderr.toString()};
-};
 
 export const config: WebdriverIO.Config = {
     //
@@ -252,24 +183,7 @@ export const config: WebdriverIO.Config = {
                     ...(process.platform === "linux" ? {logLevel: "3"} : {}),
                 },
                 workspacePath: WORKSPACE_PATH,
-                userSettings: {
-                    "editor.fontSize": 14,
-                    "files.simpleDialog.enable": true,
-                    "workbench.editor.enablePreview": true,
-                    "window.newWindowDimensions": "default",
-                    "window.openFoldersInNewWindow": "off",
-                    "extensions.autoCheckUpdates": false,
-                    "extensions.autoUpdate": false,
-                    // ms-python.python is a hard extensionDependency, so its
-                    // language server always loads. In the headless CI display
-                    // the Jedi server repeatedly fails to connect and crashes,
-                    // and its "Python Jedi server crashed" toasts overlay UI
-                    // targets (e.g. the Output-channel <select title="Tasks">),
-                    // intercepting clicks. We don't need language features in
-                    // e2e, so disable the server (and experiments) at the source.
-                    "python.languageServer": "None",
-                    "python.experiments.enabled": false,
-                },
+                userSettings: E2E_USER_SETTINGS,
             },
         });
         // Existing specs keep their original editor; only SSH needs a newer Remote SSH host.
@@ -551,21 +465,7 @@ export const config: WebdriverIO.Config = {
         const sshTest = specs.some(isSshSpec);
         const binary: string = capabilities["wdio:vscodeOptions"]
             .binary as string;
-        let cli: string = "";
-        switch (process.platform) {
-            case "linux":
-            case "win32":
-                cli = path.resolve(binary, "..", "bin", "code");
-                break;
-            case "darwin":
-                cli = path.resolve(
-                    binary,
-                    "..",
-                    "..",
-                    "Resources/app/bin/code"
-                );
-                break;
-        }
+        const cli = codeCliForBinary(binary);
         // When EXTENSION_VSIX_DIR is set (CI with vendored VSIX files),
         // resolve extensions from that directory instead of the marketplace.
         const vsixDir = process.env.EXTENSION_VSIX_DIR;
@@ -594,26 +494,8 @@ export const config: WebdriverIO.Config = {
             console.log(`Using vendored VSIX for ${extId}: ${vsix}`);
             return path.resolve(vsixDir, vsix);
         };
-        // wdio only logs a beforeSession rejection, so the CLI's own output is
-        // the only explanation of an install failure that reaches the job log.
-        const install = async (args: string[]) => {
-            try {
-                const res = await execFile(cli, [
-                    "--extensions-dir",
-                    EXTENSIONS_DIR,
-                    ...args,
-                    "--force",
-                ]);
-                console.log(res.stdout, res.stderr);
-            } catch (e) {
-                const {stdout, stderr} = e as {
-                    stdout?: string;
-                    stderr?: string;
-                };
-                console.log(stdout ?? "", stderr ?? "");
-                throw e;
-            }
-        };
+        const install = (args: string[]) =>
+            installExtensions(cli, EXTENSIONS_DIR, args);
 
         console.log("running vscode cli");
         await install([

@@ -30,3 +30,6 @@ docs/
 *.ipr
 *.iws
 .idea_modules/
+
+# WebdriverIO MCP traces (start_session/attach_session with trace: true)
+.trace/

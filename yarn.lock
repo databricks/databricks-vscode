@@ -2138,19 +2138,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vscode/test-electron@npm:2.5.2":
-  version: 2.5.2
-  resolution: "@vscode/test-electron@npm:2.5.2"
-  dependencies:
-    http-proxy-agent: ^7.0.2
-    https-proxy-agent: ^7.0.5
-    jszip: ^3.10.1
-    ora: ^8.1.0
-    semver: ^7.6.2
-  checksum: 439d8a1c89008f1df67a7b1f30899e0033ebeab15d440493dc31aa4b7b8b37a7da3c154b1ab71fe7a7feddcc76e2ede847cead51ff4608988fcccab339729b87
-  languageName: node
-  linkType: hard
-
 "@vscode/test-electron@npm:^3.1.0":
   version: 3.1.0
   resolution: "@vscode/test-electron@npm:3.1.0"
@@ -2161,19 +2148,6 @@ __metadata:
     ora: ^8.1.0
     semver: ^7.6.2
   checksum: 39ac3edc476204d04c2123cd5600803255ff5a1c1c07a34cfad0df2f2fa9ed87ab5bfd71d21a0974cc6aacf4a5335c4240bb0462f4291d47f01c7d0019e7ca24
-  languageName: node
-  linkType: hard
-
-"@vscode/test-electron@patch:@vscode/test-electron@npm:2.5.2#.yarn/patches/@vscode-test-electron-npm-2.5.2-7b7f19ec88.patch::locator=%40databricks%2Fdatabricks-vscode%40workspace%3A.":
-  version: 2.5.2
-  resolution: "@vscode/test-electron@patch:@vscode/test-electron@npm%3A2.5.2#.yarn/patches/@vscode-test-electron-npm-2.5.2-7b7f19ec88.patch::version=2.5.2&hash=7b74bd&locator=%40databricks%2Fdatabricks-vscode%40workspace%3A."
-  dependencies:
-    http-proxy-agent: ^7.0.2
-    https-proxy-agent: ^7.0.5
-    jszip: ^3.10.1
-    ora: ^8.1.0
-    semver: ^7.6.2
-  checksum: 94d69e5ef427945d8a06abef9773bcc215bf694fcfc966f6449048e6414c3500225b9e9b5b1a96730342ca776830534bdeb37ab691b9492cbdba9b391fad884f
   languageName: node
   linkType: hard
 

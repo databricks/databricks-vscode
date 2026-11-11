@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "wdio": {
+            "command": "npx",
+            "args": ["-y", "@wdio/mcp@4.1.0"],
+            "env": {
+                "WDIO_LOG_LEVEL": "silent",
+                "WDIO_MCP_TOOLS": "all"
+            }
+        }
+    }
+}
