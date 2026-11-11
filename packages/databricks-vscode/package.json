@@ -42,6 +42,10 @@
         "lint:deps": "depcruise src --output-type err-long",
         "generate:telemetry": "node scripts/generateTelemetry.mjs",
         "fetch:cli": "node --use-system-ca scripts/fetchCli.mjs",
+        "package:cli:fetch": "node --use-system-ca scripts/fetchCli.mjs",
+        "test:integ:extension": "node --use-system-ca ../../scripts/integration/e2e.mjs",
+        "test:integ:sdk": "node --use-system-ca ../../scripts/integration/sdk.mjs",
+        "ts-node": "node",
         "package": "node --use-system-ca scripts/packageVsix.mjs --pre-release"
     },
     "dependencies": {

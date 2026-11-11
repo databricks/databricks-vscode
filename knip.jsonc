@@ -4,8 +4,9 @@
     "ignoreBinaries": ["uv", "openssl", "Xvfb"],
     "workspaces": {
         ".": {
-            // `node --test 'scripts/**/*.test.mjs'` in package.json.
-            "entry": ["scripts/**/*.test.mjs"],
+            // `node --test 'scripts/**/*.test.mjs'` in package.json, and the integration tests'
+            // entry points, which packages/databricks-vscode's test:integ:* scripts run.
+            "entry": ["scripts/**/*.test.mjs", "scripts/integration/{e2e,sdk}.mjs"],
         },
         // package.json `main` (dist/extension.js) maps to src/extension.ts, and
         // the vitest plugin adds the test files. `contributes` names icons only.

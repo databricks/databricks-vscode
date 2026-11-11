@@ -32,6 +32,11 @@ Paths without a package prefix are in `packages/databricks-vscode/`.
   profile in `DATABRICKS_CONFIG_FILE`, plus `TEST_*` variables for some specs.
   `yarn test:e2e:spec:real [<name>] --profile <cli-profile>` needs the same, but makes the `[DEFAULT]` from a CLI profile.
 - `ssh_connection.ucws`: opt-in (`TEST_SSH_E2E=true`), needs Serverless SSH compute; it can't pass against the mock.
+- The integration tests (`.github/workflows/integration-tests.yml`, the "Integration Tests" check, as on 2.x): each e2e
+  spec, then the SDK clients (`src/test/integration-sdk/`), against real workspaces. The CI calls these scripts of
+  `packages/databricks-vscode` by name, so keep them: `ts-node scripts/list_integration_tests.ts` (the spec matrix),
+  `test:integ:extension --spec <path>`, `package:cli:fetch` and `test:integ:sdk`. They take a workspace from
+  `DATABRICKS_HOST` and a token or service principal, plus `TEST_DEFAULT_CLUSTER_ID` (`scripts/integration/`).
 
 Use `yarn check`, `yarn test` and the mock suite instead. If a change really needs the real e2e run, say so in your report.
 
