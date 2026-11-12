@@ -135,16 +135,17 @@ describe("pathWithShimDir and withShimOnPath", () => {
     });
 });
 
-// Lookup, symlinks and the shim check against real files. POSIX only: the fakes are shell scripts.
+// Lookup, symlinks and the shim check against real files, on this platform.
+// The probe is stubbed, so the fakes never run: they only need the name and
+// mode the lookup accepts as executable (`copilot.exe` on Windows, as the shim
+// ships there; mode 755 elsewhere).
 describe("on disk", function () {
-    if (process.platform === "win32") {
-        return;
-    }
     const shimDir = path.join("code", "bin", "copilot-shim");
-    const addCopilot = (root: string, dir: string, exitCode: number) => {
-        const file = path.join(root, dir, "copilot");
+    const binaryName = process.platform === "win32" ? "copilot.exe" : "copilot";
+    const addCopilot = (root: string, dir: string) => {
+        const file = path.join(root, dir, binaryName);
         fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, `#!/bin/sh\nexit ${exitCode}\n`);
+        fs.writeFileSync(file, "");
         fs.chmodSync(file, 0o755);
         return file;
     };
@@ -157,7 +158,7 @@ describe("on disk", function () {
 
     it("reports a shim that the probe rejects", async () => {
         const tmp = newDir();
-        const shim = addCopilot(tmp.dir, shimDir, 127);
+        const shim = addCopilot(tmp.dir, shimDir);
         const status = await getCopilotCliStatus({
             env: envOf(tmp.dir, shimDir),
             probe: async () => false,
@@ -167,7 +168,7 @@ describe("on disk", function () {
 
     it("treats a shim that the probe accepts as installed", async () => {
         const tmp = newDir();
-        addCopilot(tmp.dir, shimDir, 0);
+        addCopilot(tmp.dir, shimDir);
         expect(
             await getCopilotCliStatus({ env: envOf(tmp.dir, shimDir), probe: async () => true }),
         ).toBe("installed");
@@ -175,9 +176,9 @@ describe("on disk", function () {
 
     it("recognises a shim through a symlink", async () => {
         const tmp = newDir();
-        const shim = addCopilot(tmp.dir, shimDir, 127);
+        const shim = addCopilot(tmp.dir, shimDir);
         fs.mkdirSync(path.join(tmp.dir, "links"));
-        const link = path.join(tmp.dir, "links", "copilot");
+        const link = path.join(tmp.dir, "links", binaryName);
         fs.symlinkSync(shim, link);
         expect(
             await getCopilotCliStatus({ env: envOf(tmp.dir, "links"), probe: async () => false }),
@@ -186,8 +187,8 @@ describe("on disk", function () {
 
     it("prefers a real Copilot CLI earlier on PATH, without probing", async () => {
         const tmp = newDir();
-        addCopilot(tmp.dir, shimDir, 127);
-        addCopilot(tmp.dir, "usr", 1);
+        addCopilot(tmp.dir, shimDir);
+        addCopilot(tmp.dir, "usr");
         expect(
             await getCopilotCliStatus({
                 env: envOf(tmp.dir, "usr", shimDir),
@@ -198,6 +199,7 @@ describe("on disk", function () {
 
     it("skips a file on PATH that isn't executable", async () => {
         const tmp = newDir();
+        // Without the execute bit, or on Windows without a PATHEXT extension.
         tmp.write(path.join("usr", "copilot"), "not executable");
         expect(await getCopilotCliStatus({ env: envOf(tmp.dir, "usr"), probe: neverProbed })).toBe(
             "missing",
