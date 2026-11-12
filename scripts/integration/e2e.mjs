@@ -5,10 +5,10 @@
 // It turns the credentials into a `ci` profile, starts TEST_DEFAULT_CLUSTER_ID if it isn't
 // running, installs uv for the Databricks Connect specs if it's missing, then runs
 // `run-spec.sh real <spec> --profile ci`, which signs the spec in with a two-hour token of that
-// profile and revokes it at the end. The spec gets a temp folder of its own, which VS Code's user
-// data is in; the e2e logs and VS Code's (with the extension's) are copied to
-// packages/databricks-vscode/logs, where the CI collects them. EXTENSION_VSIX_DIR, a folder of the
-// extension pack's VSIXs, becomes DATABRICKS_E2E_EXTENSIONS.
+// profile and revokes it at the end. The e2e logs, and VS Code's (with the extension's) from the
+// user data the run leaves in the temp folder, are copied to packages/databricks-vscode/logs, where
+// the CI collects them. EXTENSION_VSIX_DIR, a folder of the extension pack's VSIXs, becomes
+// DATABRICKS_E2E_EXTENSIONS.
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -35,17 +35,12 @@ if (specArg === undefined) {
 // run-spec.sh takes the spec's path in the e2e package.
 const spec = path.relative(e2eDir, path.resolve(process.cwd(), specArg)).split(path.sep).join("/");
 
-// RUNNER_TEMP on a GitHub runner: there, Windows' TEMP is a short (8.3) path, which VS Code and
-// Node spell differently.
-const runDir = fs.realpathSync.native(
-    fs.mkdtempSync(path.join(process.env.RUNNER_TEMP || os.tmpdir(), "dbx-integ-")),
-);
+const runDir = fs.mkdtempSync(path.join(os.tmpdir(), "databricks-vscode-integ-"));
 const configFile = path.join(runDir, "databrickscfg");
 fs.writeFileSync(configFile, ciConfigFile(process.env), { mode: 0o600 });
 const env = childEnv(process.env, configFile);
-const tempDir = path.join(runDir, "tmp");
-fs.mkdirSync(tempDir);
-env.TMPDIR = env.TEMP = env.TMP = tempDir;
+// What the temp folder held before the run: VS Code's user data is in a folder the run adds.
+const tempBefore = new Set(fs.readdirSync(os.tmpdir()));
 env.DATABRICKS_E2E_EXTENSIONS ??= extensionSources(process.env.EXTENSION_VSIX_DIR);
 if (env.DATABRICKS_E2E_EXTENSIONS === undefined) {
     delete env.DATABRICKS_E2E_EXTENSIONS;
@@ -83,7 +78,12 @@ try {
     if (fs.existsSync(logs)) {
         fs.cpSync(logs, path.join(extensionDir, "logs"), { recursive: true });
     }
-    for (const [i, dir] of vscodeLogDirs(tempDir).entries()) {
+    const added = fs
+        .readdirSync(os.tmpdir())
+        .filter((name) => !tempBefore.has(name) || name === "databricks-vscode-e2e")
+        .map((name) => path.join(os.tmpdir(), name))
+        .filter((dir) => dir !== runDir);
+    for (const [i, dir] of added.flatMap((d) => vscodeLogDirs(d)).entries()) {
         fs.cpSync(dir, path.join(extensionDir, "logs", `vscode-${i + 1}`), { recursive: true });
     }
     fs.rmSync(runDir, { recursive: true, force: true });
@@ -91,12 +91,19 @@ try {
 process.exit(status);
 
 /**
- * The logs folders of the VS Code user data under `dir` (`<user data>/settings/logs`, a few levels
+ * The logs folders of the VS Code user data in `dir` (`<user data>/settings/logs`, up to two levels
  * down): VS Code's own, the extension host's, and each extension's, with this one's.
  */
-function vscodeLogDirs(dir, depth = 3) {
+function vscodeLogDirs(dir, depth = 2) {
     const found = [];
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        // A file, or a folder that's gone or not ours to read.
+        return found;
+    }
+    for (const entry of entries) {
         if (!entry.isDirectory()) {
             continue;
         }
