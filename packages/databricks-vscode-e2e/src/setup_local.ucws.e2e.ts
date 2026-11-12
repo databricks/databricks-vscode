@@ -197,20 +197,20 @@ describe("Set up local Python environment (uv) on serverless", async function ()
         // compute without re-prompting.
         await executeCommandWhenAvailable("Databricks: Configure compute");
         const computeInput = await waitForQuickInput();
-        await computeInput.selectQuickPick("Serverless");
+        await acceptFocusedQuickPick(computeInput, "Serverless");
 
         // The version picker lists candidates best-first (the recommended one is
         // starred at index 0). Take the recommendation rather than pinning a
         // version string, which drifts as new serverless versions ship.
         const versionInput = await waitForQuickInput();
-        // Its options come once the Python extension has found the machine's environments,
-        // which can take a minute on a small CI runner; selectQuickPick waits only 15 seconds.
+        // Its options can come a while after it opens: wait up to two minutes.
         await browser.waitUntil(async () => (await versionInput.getQuickPicks()).length > 0, {
             timeout: 120_000,
             interval: 1_000,
             timeoutMsg: "The serverless environment version picker listed no versions",
         });
-        await versionInput.selectQuickPick(0);
+        // The recommended one: the first row, which is focused.
+        await acceptFocusedQuickPick(versionInput, "");
     });
 
     it("should set up the environment with uv (setup-local)", async () => {
