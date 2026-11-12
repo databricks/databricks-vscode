@@ -9,6 +9,7 @@ import {
 } from "./utils/bundle-fixtures.ts";
 import {
     executeCommandWhenAvailable,
+    waitForConfigSurface,
     waitForLogin,
     waitForNotification,
 } from "./utils/configuration.ts";
@@ -191,6 +192,11 @@ describe("Set up local Python environment (uv) on serverless", async function ()
             // eslint-disable-next-line @typescript-eslint/naming-convention
             process.env.DATABRICKS_LOCALENV_AUTO_INSTALL_UV = "1";
         });
+
+        // Choosing Serverless asks for a version only once the uv setup is the
+        // project's surface, which waits for the Python extension: on a small CI
+        // runner, a minute after sign-in. So wait for its row first.
+        await waitForConfigSurface("Set up Python environment", "Python Environment", 120_000);
 
         // Attach serverless. Selecting serverless prompts for (and persists) the
         // environment version up front, so the subsequent setup run resolves
