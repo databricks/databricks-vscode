@@ -1,6 +1,6 @@
 {
   "activation.extensionHostMs": {"direction": "lower", "lockIn": false, "tolerance": "10%", "value": 838},
-  "bundle.distJsBytes": {"direction": "lower", "lockIn": false, "tolerance": "2%", "value": 1064177},
+  "bundle.distJsBytes": {"direction": "lower", "lockIn": false, "tolerance": "2%", "value": 1094690},
   "jscpd.clones": {"direction": "lower", "lockIn": true, "tolerance": 0, "value": 0},
   "jscpd.duplicatedLines": {"direction": "lower", "lockIn": false, "tolerance": 0, "value": 0},
   "lint.disableComments": {"direction": "lower", "lockIn": true, "tolerance": 0, "value": 54},

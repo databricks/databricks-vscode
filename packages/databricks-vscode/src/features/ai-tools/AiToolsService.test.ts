@@ -12,6 +12,8 @@ import {
     HIDE_INSTALL_PROMPT,
     INSTALL_LOCATION,
 } from "./AiToolsService";
+import type { CopilotCliStatus } from "./copilotShim";
+import { COPILOT_AGENT_ID, COPILOT_CLI_NOT_INSTALLED } from "./model";
 
 const FIXTURES = path.join(__dirname, "../../kernel/cli/commands/fixtures/aitools");
 const fixture = (name: string) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");
@@ -52,6 +54,7 @@ function setup(
         project?: boolean;
         isCursor?: boolean;
         readFile?: (p: string) => Promise<unknown>;
+        copilot?: CopilotCliStatus;
     } = {},
 ) {
     const tmp = newDir();
@@ -66,6 +69,9 @@ function setup(
     const opened: unknown[] = [];
     let openFails = false;
     let folder: string | undefined = options.project === false ? undefined : project;
+    const copilot: { status: CopilotCliStatus; error?: Error } = {
+        status: options.copilot ?? "installed",
+    };
     const service = new AiToolsService({
         cli,
         env: () => ({ DATABRICKS_CLI_UPSTREAM: "databricks-vscode" }),
@@ -80,6 +86,12 @@ function setup(
             }
             opened.push(true);
         },
+        copilotCliStatus: async () => {
+            if (copilot.error !== undefined) {
+                throw copilot.error;
+            }
+            return copilot.status;
+        },
         telemetry: new Telemetry(reporter),
         log,
     });
@@ -92,6 +104,7 @@ function setup(
         reporter,
         log,
         opened,
+        copilot,
         home,
         project,
         install,
@@ -525,5 +538,113 @@ describe("AiToolsService: update and uninstall", () => {
         await s.service.uninstall();
         await s.service.update();
         expect(s.runner.calls).toEqual([]);
+    });
+});
+
+describe("AiToolsService: GitHub Copilot CLI", () => {
+    const COPILOT = {
+        name: "copilot",
+        display_name: "GitHub Copilot",
+        managed: true,
+        detected: true,
+        supports_project_scope: true,
+        installed: {},
+    };
+    const SHIM = "/code/bin/copilot-shim/copilot";
+    const listWith = (agents: unknown[]) => list(undefined, { agents });
+
+    it("marks Copilot detected only through the shim", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        s.runner.on(["aitools", "list"], { stdout: listWith([COPILOT]) });
+
+        const [copilot] = await s.service.listAgents("global");
+
+        expect(copilot!.copilotShim).toBe(SHIM);
+    });
+
+    it("leaves Copilot alone when GitHub Copilot CLI is installed", async () => {
+        const s = setup({ copilot: "installed" });
+        s.runner.on(["aitools", "list"], { stdout: listWith([COPILOT]) });
+
+        const [copilot] = await s.service.listAgents("global");
+
+        expect(copilot!.copilotShim).toBeUndefined();
+    });
+
+    it("doesn't mark Copilot once it's installed in the scope", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        s.install(s.home);
+        s.runner.on(["aitools", "list"], {
+            stdout: listWith([
+                { ...COPILOT, installed: { global: { version: "1.0.0", delivery: "plugin" } } },
+            ]),
+        });
+        await s.service.refresh();
+
+        expect(s.service.state.value.agents[0]!.copilotShim).toBeUndefined();
+    });
+
+    it("marks Copilot in the state the panel reads on refresh", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        s.install(s.home);
+        s.runner.on(["aitools", "list"], { stdout: list("global", { agents: [COPILOT] }) });
+
+        await s.service.refresh();
+
+        expect(s.service.state.value.agents).toEqual([
+            expect.objectContaining({ id: "copilot", copilotShim: SHIM }),
+        ]);
+    });
+
+    it("reads a failing check as installed, so the CLI reports the problem", async () => {
+        const s = setup();
+        s.copilot.error = new Error("boom");
+
+        expect(await s.service.copilotCliStatus()).toBe("installed");
+    });
+
+    it("records a skipped Copilot as an error, next to the agents that installed", async () => {
+        const s = setup();
+        s.install(s.home);
+        s.runner.on(["aitools", "install"], { stdout: fixture("install.success.json") });
+        s.runner.on(["aitools", "list"], { stdout: list("global") });
+
+        await s.service.install("global", "sidePane", ["claude-code"], undefined, {
+            [COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED,
+        });
+
+        expect(s.events("aitoolsInstall")[0]!.properties).toMatchObject({
+            result: "error",
+            scope: "global",
+            source: "sidePane",
+            agents: '["claude-code","copilot"]',
+            agentErrors: '{"copilot":"COPILOT_CLI_NOT_INSTALLED"}',
+        });
+    });
+
+    it("records the skip without running the CLI when Copilot was the only agent", async () => {
+        const s = setup();
+
+        await s.service.install("global", "sidePane", [], undefined, {
+            [COPILOT_AGENT_ID]: COPILOT_CLI_NOT_INSTALLED,
+        });
+
+        expect(s.runner.calls).toEqual([]);
+        expect(s.events("aitoolsInstall")[0]!.properties).toMatchObject({
+            result: "error",
+            agents: '["copilot"]',
+            agentErrors: '{"copilot":"COPILOT_CLI_NOT_INSTALLED"}',
+        });
+    });
+
+    it("records the installer run with its outcome", async () => {
+        const s = setup();
+
+        const record = s.service.startCopilotCliInstall();
+        record({ installed: true });
+
+        expect(s.events("aitoolsCopilotCliInstall")[0]!.properties).toMatchObject({
+            installed: "true",
+        });
     });
 });

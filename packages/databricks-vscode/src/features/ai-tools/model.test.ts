@@ -40,6 +40,14 @@ describe("agentInstallBlockReason", () => {
     it("does not block a detected, scope-supported agent", () => {
         expect(agentInstallBlockReason(agent(), "project")).toBeUndefined();
     });
+
+    it("keeps an agent detected only through the Copilot shim installable, as CLI-missing", () => {
+        const shimmed = agent({ copilotShim: "/shim/copilot" });
+        expect(agentInstallBlockReason(shimmed, "global")).toBe("cliNotInstalled");
+        expect(agentInstallBlockReason({ ...shimmed, detected: false }, "global")).toBe(
+            "notDetected",
+        );
+    });
 });
 
 describe("updateStatusOf", () => {

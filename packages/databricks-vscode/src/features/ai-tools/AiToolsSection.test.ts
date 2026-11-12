@@ -114,6 +114,36 @@ describe("AiToolsSection", () => {
         ]);
     });
 
+    it("keeps an agent whose CLI isn't installed installable, with a CLI-missing row", () => {
+        const { agents } = children(
+            section({
+                installLocation: "global",
+                agents: [
+                    agent({
+                        id: "copilot",
+                        displayName: "GitHub Copilot",
+                        copilotShim: "/shim/copilot",
+                    }),
+                ],
+            }),
+        );
+        expect(agents.map((a) => [a.label, a.description, a.contextValue])).toEqual([
+            [
+                "GitHub Copilot",
+                "CLI not installed",
+                "databricks.configuration.aitools.agent.notInstalled",
+            ],
+        ]);
+        expect(agents[0]!.tooltip).toBe(
+            "GitHub Copilot CLI is not installed. Install to set it up first.",
+        );
+        expect(agents[0]!.command).toEqual({
+            title: "Install AI tools for this agent",
+            command: "databricks.aitools.installAgent",
+            arguments: [{ id: "AITOOLS.agent.copilot" }],
+        });
+    });
+
     it("renders each agent's state", () => {
         const { agents } = children(
             section({

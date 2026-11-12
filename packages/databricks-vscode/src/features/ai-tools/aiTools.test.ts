@@ -1,14 +1,16 @@
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AI_TOOLS_INSTALLED } from "../../kernel/aitools/commands";
 import { registerFeatures, startFeatures } from "../../kernel/feature";
 import { ACTIVE_PROJECT_PATH } from "../../kernel/project/ProjectService";
 import { MutableState, when } from "../../platform/reactive";
 import { StateStore } from "../../platform/state";
-import { fakeFeatureHost, fakeKernel, fakeMemento } from "../../test-support/fakes";
+import { fakeFeatureHost, fakeKernel, fakeMemento, fakeSettings } from "../../test-support/fakes";
 import { FakeFileEvents } from "../../test-support/fakeFiles";
 import { SERVERLESS_SESSION } from "../../test-support/sessionEnv";
 import { useTempDirs } from "../../test-support/tempDir";
-import { host as vscode } from "../../test-support/vscode";
+import { env, host as vscode } from "../../test-support/vscode";
+import { copilotShimDir } from "./copilotShim";
 import {
     AITOOLS_INSTALL_PROMPT_HIDDEN,
     AITOOLS_INSTALLED,
@@ -22,7 +24,15 @@ const STATE_FILE = ".databricks/aitools/skills/.state.json";
 
 /** The real kernel with the AI tools feature, a temporary home folder and, with `project`, an open bundle. */
 async function setup(
-    options: { project?: boolean; installed?: "home" | "project"; session?: boolean } = {},
+    options: {
+        project?: boolean;
+        installed?: "home" | "project";
+        session?: boolean;
+        /** Installs Copilot Chat, which puts VS Code's `copilot` shim on terminals' PATH. */
+        copilotChat?: boolean;
+        /** `chat.*` settings, such as `chat.copilotCliCommand.enabled`. */
+        chat?: Record<string, unknown>;
+    } = {},
 ) {
     const t = tempDir();
     vi.stubEnv("HOME", t.path("home"));
@@ -40,10 +50,18 @@ async function setup(
         t.write(`${options.installed}/${STATE_FILE}`, "{}");
     }
     vscode.folders = folders;
+    if (options.copilotChat) {
+        vscode.extensions.set("GitHub.copilot-chat", {
+            isActive: false,
+            exports: {},
+            activate: async () => ({}),
+        });
+    }
     const kernel = fakeKernel({
         folders: new MutableState<readonly string[]>(folders),
         files: new FakeFileEvents(),
         ...(options.session ? { host: SERVERLESS_SESSION } : {}),
+        ...(options.chat ? { settings: fakeSettings(options.chat) } : {}),
     });
     kernel.runner.on(["aitools", "list"], {
         stdout: JSON.stringify({ release: "0.2.10", skills: [], agents: [] }),
@@ -155,6 +173,38 @@ describe("the AI tools feature", () => {
         expect(kernel.runner.calls.find((c) => c.args[1] === "list")?.options.cwd).toBe(
             t.path("repo/sub"),
         );
+    });
+
+    describe("the copilot shim on the CLI's PATH", () => {
+        const shimDir = () => copilotShimDir(env.appRoot, process.execPath);
+        const listPath = (s: Awaited<ReturnType<typeof setup>>) =>
+            s.kernel.runner.calls.find((c) => c.args[1] === "list")!.options.env!.PATH;
+
+        it("comes last, as in a terminal, when Copilot Chat is installed", async () => {
+            const s = await setup({ installed: "home", copilotChat: true });
+            await vi.waitFor(() => expect(listPath(s)).toBeDefined());
+            expect((listPath(s) ?? "").split(path.delimiter).at(-1)).toBe(shimDir());
+        });
+
+        it("isn't added when Copilot Chat isn't installed", async () => {
+            const s = await setup({ installed: "home" });
+            await vi.waitFor(() =>
+                expect(s.kernel.runner.calls.some((c) => c.args[1] === "list")).toBe(true),
+            );
+            expect((listPath(s) ?? "").split(path.delimiter)).not.toContain(shimDir());
+        });
+
+        it("isn't added when chat.copilotCliCommand.enabled is off", async () => {
+            const s = await setup({
+                installed: "home",
+                copilotChat: true,
+                chat: { "chat.copilotCliCommand.enabled": false },
+            });
+            await vi.waitFor(() =>
+                expect(s.kernel.runner.calls.some((c) => c.args[1] === "list")).toBe(true),
+            );
+            expect((listPath(s) ?? "").split(path.delimiter)).not.toContain(shimDir());
+        });
     });
 
     it("does nothing at activation in a session window", async () => {

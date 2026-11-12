@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import { commands, env, workspace } from "vscode";
 import { AI_TOOLS_INSTALLED } from "../../kernel/aitools/commands";
+import { COPILOT_CHAT } from "../../kernel/extensionDependencies";
 import type { Feature, FeatureContext } from "../../kernel/feature";
 import { contextKey } from "../../platform/contextKeys";
 import { Emitter } from "../../platform/event";
@@ -9,6 +10,13 @@ import { when } from "../../platform/reactive";
 import { AiToolsCommands } from "./AiToolsCommands";
 import { AiToolsSection, INSTALL, INSTALL_AGENT, RELOAD } from "./AiToolsSection";
 import { AiToolsService, CURSOR_PLUGIN_ID, HIDE_INSTALL_PROMPT } from "./AiToolsService";
+import {
+    copilotShimDir,
+    getCopilotCliStatus,
+    probeCopilotCli,
+    shimOnTerminalPath,
+    withShimOnPath,
+} from "./copilotShim";
 import { AI_TOOLS_EVENTS } from "./telemetry";
 
 const CHECK_FOR_UPDATES = "databricks.aitools.checkForUpdates";
@@ -64,9 +72,26 @@ export const aiTools: Feature = {
     register(ctx) {
         const { kernel } = ctx;
         const isCursor = env.uriScheme === "cursor";
+        // The PATH an integrated terminal gets, so `copilot` can be VS Code's shim.
+        const shimDir = copilotShimDir(env.appRoot, process.execPath);
+        const aiToolsEnv = (): Record<string, string> => {
+            const child = kernel.childEnv({ connection: null, cli: true });
+            const onPath = shimOnTerminalPath(
+                kernel.settings,
+                kernel.extensionDependencies.available(COPILOT_CHAT),
+            );
+            return onPath ? withShimOnPath(child, shimDir) : child;
+        };
         const service = new AiToolsService({
             cli: kernel.cli,
-            env: () => kernel.childEnv({ connection: null, cli: true }),
+            env: aiToolsEnv,
+            copilotCliStatus: () => {
+                const childEnv = aiToolsEnv();
+                return getCopilotCliStatus({
+                    env: childEnv,
+                    probe: (binary) => probeCopilotCli(kernel.processes, binary, childEnv),
+                });
+            },
             state: kernel.state,
             projectFolder: () =>
                 kernel.project.active.value?.root ?? workspace.workspaceFolders?.[0]?.uri.fsPath,
@@ -99,6 +124,7 @@ export const aiTools: Feature = {
         };
         ctx.subscriptions.push(
             service,
+            ui,
             changed,
             service.state.onDidChange(() => {
                 syncKeys();
