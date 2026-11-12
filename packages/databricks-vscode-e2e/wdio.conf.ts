@@ -292,6 +292,9 @@ const vscodeCapability = (
             // No spec tests a language server, and the pinned Python extension's crashes on a
             // newer Python (the Windows runner's) fill the notifications the specs read.
             "python.languageServer": "None",
+            // A tree's sticky scroll pins a copy of an expanded row to the top, with the row's label
+            // but no level, which the helpers then find instead of the row.
+            "workbench.tree.enableStickyScroll": false,
             ...extra.userSettings,
         },
     },
