@@ -8,6 +8,11 @@ import {Time, TimeUnits} from "@databricks/sdk-experimental";
  */
 export type PythonEnvironmentSetupMode = "auto" | "manual";
 
+type AllowedExtensions = Record<
+    string,
+    boolean | string | string[] | undefined
+>;
+
 export const workspaceConfigs = {
     get maxFieldLength() {
         return (
@@ -275,6 +280,26 @@ export const workspaceConfigs = {
                 );
             })
             .map((key) => `databricks.${key}` as const);
+    },
+
+    get allowedExtensions() {
+        const value = workspace
+            .getConfiguration("extensions")
+            .get<unknown>("allowed");
+        // Like VS Code, treat anything that isn't a plain object (unset, the
+        // string "*", null, arrays) as allow-all.
+        if (
+            typeof value !== "object" ||
+            value === null ||
+            Array.isArray(value)
+        ) {
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            return {"*": true} as AllowedExtensions;
+        }
+        // VS Code matches keys case-insensitively by lowercasing them.
+        return Object.fromEntries(
+            Object.entries(value).map(([key, v]) => [key.toLowerCase(), v])
+        ) as AllowedExtensions;
     },
 };
 
