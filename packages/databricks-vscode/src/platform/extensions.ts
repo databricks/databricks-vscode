@@ -133,22 +133,29 @@ export class ExtensionDependencies implements Disposable {
     /**
      * Starts the extension if it isn't running, waits until it's ready, and
      * resolves with its API: undefined when it isn't available or fails to
-     * start (logged). VS Code shares one activation between callers, so
-     * nothing is cached here.
+     * start (logged). One that starts but doesn't get ready is still used
+     * (logged): ms-python's readiness fails when its language server can't
+     * start, and the rest of its API works. VS Code shares one activation
+     * between callers, so nothing is cached here.
      */
     async activate<T>(dep: ExtensionDependency): Promise<T | undefined> {
         const extension = this.host.get(dep.id);
         if (extension === undefined) {
             return undefined;
         }
+        let exports: unknown;
         try {
-            const exports = extension.isActive ? extension.exports : await extension.activate();
-            await dep.ready?.(exports);
-            return exports as T;
+            exports = extension.isActive ? extension.exports : await extension.activate();
         } catch (e) {
             this.log.error(`Can't load the ${dep.name} extension`, e);
             return undefined;
         }
+        try {
+            await dep.ready?.(exports);
+        } catch (e) {
+            this.log.warn(`The ${dep.name} extension started with errors`, e);
+        }
+        return exports as T;
     }
 
     /**
