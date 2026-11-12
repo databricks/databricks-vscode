@@ -7,8 +7,12 @@ import {
     hostCliCommand,
     hostIde,
     isHostCliOnPath,
+    isRemoteSshAllowed,
     remoteSshExtension,
 } from "./host";
+
+const VSCODE_SSH = "ms-vscode-remote.remote-ssh";
+const CURSOR_SSH = "anysphere.remote-ssh";
 
 const log = fakeLog();
 
@@ -107,6 +111,83 @@ describe("the PATH probe", () => {
                 timeoutMs: 5,
             }),
         ).toBe(true);
+    });
+});
+
+describe("whether extensions.allowed lets Remote-SSH run", () => {
+    it.each<[string, unknown]>([
+        ["the setting is unset", undefined],
+        ['the setting is the string "*"', "*"],
+        ["all extensions are allowed", { "*": true }],
+        ["the publisher is allowed", { "*": false, "ms-vscode-remote": true }],
+        [
+            'Microsoft is allowed through the "microsoft" special case',
+            { "*": false, "microsoft": true },
+        ],
+        ["the extension is allowed", { "*": false, [VSCODE_SSH]: true }],
+        [
+            "only stable releases of the extension are allowed",
+            { "*": false, [VSCODE_SSH]: "stable" },
+        ],
+        [
+            "specific versions of the extension are allowed",
+            { "*": false, [VSCODE_SSH]: ["0.120.0"] },
+        ],
+        [
+            "the extension is allowed though its publisher is blocked",
+            { "*": true, "ms-vscode-remote": false, [VSCODE_SSH]: true },
+        ],
+        [
+            "only unrelated extensions are blocked",
+            { "*": true, "other-publisher": false, "other.ext": false },
+        ],
+        ["the setting is null", null],
+        ["the setting is an array", [VSCODE_SSH]],
+        [
+            "the extension is allowed with different casing",
+            { "*": false, [VSCODE_SSH.toUpperCase()]: true },
+        ],
+        ["Microsoft is allowed with different casing", { "*": false, "Microsoft": true }],
+    ])("allows it in VS Code when %s", (_name, allowed) => {
+        expect(isRemoteSshAllowed("vscode", allowed)).toBe(true);
+    });
+
+    it.each<[string, unknown]>([
+        ["all extensions are blocked", { "*": false }],
+        [
+            "only unrelated extensions are allowed",
+            { "*": false, "other-publisher": true, "anysphere": true },
+        ],
+        [
+            "the extension is blocked though its publisher is allowed",
+            { "*": false, "ms-vscode-remote": true, [VSCODE_SSH]: false },
+        ],
+        [
+            "the extension is blocked though Microsoft is allowed",
+            { "*": false, "microsoft": true, [VSCODE_SSH]: false },
+        ],
+        [
+            "the extension is blocked under an allow-all wildcard",
+            { "*": true, [VSCODE_SSH]: false },
+        ],
+        [
+            "the publisher is blocked under an allow-all wildcard",
+            { "*": true, "ms-vscode-remote": false },
+        ],
+        ["Microsoft is blocked under an allow-all wildcard", { "*": true, "microsoft": false }],
+        [
+            "the extension is blocked with different casing",
+            { "*": true, [VSCODE_SSH.toUpperCase()]: false },
+        ],
+    ])("blocks it in VS Code when %s", (_name, allowed) => {
+        expect(isRemoteSshAllowed("vscode", allowed)).toBe(false);
+    });
+
+    it("checks Cursor's extension and publisher in Cursor, not VS Code's or Microsoft's", () => {
+        expect(isRemoteSshAllowed("cursor", { "*": false, [VSCODE_SSH]: true })).toBe(false);
+        expect(isRemoteSshAllowed("cursor", { "*": false, "microsoft": true })).toBe(false);
+        expect(isRemoteSshAllowed("cursor", { "*": false, "anysphere": true })).toBe(true);
+        expect(isRemoteSshAllowed("cursor", { "*": true, [CURSOR_SSH]: false })).toBe(false);
     });
 });
 
