@@ -62,10 +62,16 @@ describe("Quickstart and logs", async function () {
                     if ((await output.getCurrentChannel()) !== "Databricks Logs") {
                         await output.selectChannel("Databricks Logs");
                     }
-                    // The view renders only what fits the panel's width.
-                    return (await output.getText())
-                        .join("\n")
-                        .includes("[Extension] Activated databricks");
+                    // The view renders only the lines in sight, and a real workspace's log has
+                    // scrolled the activation line out of it; the channel's log file has them all.
+                    return await browser.executeWorkbench(async (vscode) => {
+                        await vscode.commands.executeCommand(
+                            "workbench.action.openActiveLogOutputFile",
+                        );
+                        return (vscode.window.activeTextEditor?.document.getText() ?? "").includes(
+                            "[Extension] Activated databricks",
+                        );
+                    });
                 } catch {
                     return false;
                 }
@@ -76,5 +82,6 @@ describe("Quickstart and logs", async function () {
                 timeoutMsg: 'The "Databricks Logs" channel has no activation line',
             },
         );
+        await closeAllEditors();
     });
 });

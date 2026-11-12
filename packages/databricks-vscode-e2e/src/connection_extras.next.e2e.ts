@@ -8,6 +8,7 @@ import {
 } from "./utils/bundle-fixtures.ts";
 import { waitForLogin } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
+import { samePath } from "./utils/paths.ts";
 
 /**
  * Three window-level features no frozen spec covers. The
@@ -45,7 +46,10 @@ describe("Configuration file, public API and terminal environment", async functi
                 ),
             { timeout: 20_000, timeoutMsg: "No editor opened" },
         );
-        assert.strictEqual(path.resolve(opened), path.resolve(process.env.DATABRICKS_CONFIG_FILE!));
+        assert(
+            samePath(opened, process.env.DATABRICKS_CONFIG_FILE!),
+            `${opened} isn't ${process.env.DATABRICKS_CONFIG_FILE}`,
+        );
         await (await browser.getWorkbench()).getEditorView().closeAllEditors();
     });
 
@@ -152,9 +156,9 @@ describe("Configuration file, public API and terminal environment", async functi
         );
         const [upstream, pathValue] = text.replace(/^﻿/, "").trim().split("|");
         assert.strictEqual(upstream, "databricks-vscode-terminal");
-        const entries = pathValue!.split(path.delimiter).map((p) => path.resolve(p));
+        const entries = pathValue!.split(path.delimiter);
         assert(
-            entries.includes(path.resolve(extensionPath, "bin")),
+            entries.some((p) => samePath(p, path.join(extensionPath, "bin"))),
             `PATH has no ${path.join(extensionPath, "bin")}: ${pathValue}`,
         );
     });

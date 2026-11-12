@@ -19,7 +19,8 @@ import { expandRows, getViewSection, rowTexts, viewTitles } from "./utils/view.t
  * the session's credentials; Unity Catalog lists without signing in; the
  * session's interpreter becomes the active one; no AI tools prompt appears;
  * and the tunnel refuses, saying what to do instead. Skipped when the
- * profile has neither a token nor M2M credentials.
+ * profile has neither a token nor M2M credentials, and on Windows, where no
+ * session window runs: its extension host is on the compute, which runs Linux.
  */
 
 const SHOWN = ["Connection", "Project", "Unity Catalog"];
@@ -30,7 +31,7 @@ describe("Remote mode", async function () {
     this.timeout(3 * 60 * 1000);
 
     before(function () {
-        if (process.env.DATABRICKS_REMOTE_ENV !== "1") {
+        if (process.platform === "win32" || process.env.DATABRICKS_REMOTE_ENV !== "1") {
             // The profile has no PAT or M2M credentials to give the session.
             this.skip();
         }

@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import path from "node:path";
 import { CustomTreeSection, InputBox, type Notification, TreeItem } from "wdio-vscode-service";
+import { vscodePath } from "./paths.ts";
 import { getViewSection, type ViewSectionType } from "./view.ts";
 import { waitUntilSeen } from "./wait.ts";
 
@@ -69,7 +70,8 @@ export async function getLocalFolderTreeItem(folder: string) {
         if ((await item.getLabel()).toLowerCase().includes("local folder")) {
             const descPath = path.normalize((await item.getDescription())!);
             console.log("Local Folder description:", descPath);
-            if (descPath.includes(folder)) {
+            // VS Code spells a Windows drive letter in lower case.
+            if (vscodePath(descPath).includes(vscodePath(folder))) {
                 return item as TreeItem;
             }
         }
