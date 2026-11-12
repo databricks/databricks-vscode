@@ -141,6 +141,13 @@ describe("whether extensions.allowed lets Remote-SSH run", () => {
             "only unrelated extensions are blocked",
             { "*": true, "other-publisher": false, "other.ext": false },
         ],
+        ["the setting is null", null],
+        ["the setting is an array", [VSCODE_SSH]],
+        [
+            "the extension is allowed with different casing",
+            { "*": false, [VSCODE_SSH.toUpperCase()]: true },
+        ],
+        ["Microsoft is allowed with different casing", { "*": false, "Microsoft": true }],
     ])("allows it in VS Code when %s", (_name, allowed) => {
         expect(isRemoteSshAllowed("vscode", allowed)).toBe(true);
     });
@@ -168,6 +175,10 @@ describe("whether extensions.allowed lets Remote-SSH run", () => {
             { "*": true, "ms-vscode-remote": false },
         ],
         ["Microsoft is blocked under an allow-all wildcard", { "*": true, "microsoft": false }],
+        [
+            "the extension is blocked with different casing",
+            { "*": true, [VSCODE_SSH.toUpperCase()]: false },
+        ],
     ])("blocks it in VS Code when %s", (_name, allowed) => {
         expect(isRemoteSshAllowed("vscode", allowed)).toBe(false);
     });

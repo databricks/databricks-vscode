@@ -72,8 +72,9 @@ export function remoteSshExtension(ide: SshIde): ExtensionDependency {
 }
 
 /**
- * VS Code's `extensions.allowed` policy. Unset or the string `"*"` allows
- * everything; otherwise keys are extension IDs, publishers or `"*"`, and only
+ * VS Code's `extensions.allowed` policy. Anything but a plain object (unset,
+ * the string `"*"`, null, an array) allows everything; otherwise keys are
+ * extension IDs, publishers or `"*"`, matched case-insensitively, and only
  * `false` blocks: other values restrict versions or release channels.
  */
 export const EXTENSIONS_ALLOWED = setting<unknown>("extensions", "allowed", undefined);
@@ -85,10 +86,13 @@ export const EXTENSIONS_ALLOWED = setting<unknown>("extensions", "allowed", unde
  * Microsoft's extensions whatever their publisher ID; Cursor's isn't one.
  */
 export function isRemoteSshAllowed(ide: SshIde, allowed: unknown): boolean {
-    if (typeof allowed !== "object" || allowed === null) {
+    if (typeof allowed !== "object" || allowed === null || Array.isArray(allowed)) {
         return true;
     }
-    const rules = allowed as Readonly<Record<string, unknown>>;
+    // VS Code lowercases the keys; extension IDs are lowercase already.
+    const rules: Readonly<Record<string, unknown>> = Object.fromEntries(
+        Object.entries(allowed).map(([key, value]) => [key.toLowerCase(), value]),
+    );
     const { id } = remoteSshExtension(ide);
     if (rules[id] !== undefined) {
         return rules[id] !== false;
