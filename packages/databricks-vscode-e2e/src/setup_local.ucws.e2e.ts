@@ -203,6 +203,13 @@ describe("Set up local Python environment (uv) on serverless", async function ()
         // starred at index 0). Take the recommendation rather than pinning a
         // version string, which drifts as new serverless versions ship.
         const versionInput = await waitForQuickInput();
+        // Its options come once the Python extension has found the machine's environments,
+        // which can take a minute on a small CI runner; selectQuickPick waits only 15 seconds.
+        await browser.waitUntil(async () => (await versionInput.getQuickPicks()).length > 0, {
+            timeout: 120_000,
+            interval: 1_000,
+            timeoutMsg: "The serverless environment version picker listed no versions",
+        });
         await versionInput.selectQuickPick(0);
     });
 

@@ -108,16 +108,26 @@ export async function findUCItem(
  * VS Code virtual lists only render the ~25 rows inside the scroll window, so
  * keeping the parent pinned to the top keeps its immediate children rendered.
  */
-async function getStableChildren(current: TreeItem, pathLabel: string): Promise<TreeItem[]> {
+async function getStableChildren(
+    section: CustomTreeSection,
+    item: TreeItem,
+    label: string,
+    pathLabel: string,
+): Promise<TreeItem[]> {
+    const level = await item.elem.getAttribute("aria-level");
+    let current = item;
+    // The row, found again before each use: see `sameRow`.
+    const row = async () => (current = await sameRow(section, current, label, level));
+
     // Bring item into view before interacting with it
-    await current.elem.scrollIntoView({ block: "start" });
+    await (await row()).elem.scrollIntoView({ block: "start" });
     await browser.pause(200);
 
     // Trigger expansion once before the retry loop.  If aria-expanded
     // lags behind the click during lazy loading, the expand() call
     // inside getChildren() would otherwise toggle the item closed on
     // every retry.
-    await (current as any).expand();
+    await ((await row()) as any).expand();
     await browser.pause(500);
 
     // Number of consecutive polls the child count must stay unchanged before we
@@ -131,10 +141,10 @@ async function getStableChildren(current: TreeItem, pathLabel: string): Promise<
         async () => {
             // Re-scroll the item to the top of the viewport on every retry so
             // its immediate children stay within the rendered scroll window.
-            await current.elem.scrollIntoView({ block: "start" });
+            await (await row()).elem.scrollIntoView({ block: "start" });
             await browser.pause(100);
             // getChildren() calls expand() internally then queries DOM rows
-            children = await (current as any).getChildren();
+            children = await ((await row()) as any).getChildren();
 
             if (children.length > 0 && children.length === lastCount) {
                 stableReads += 1;
@@ -156,6 +166,31 @@ async function getStableChildren(current: TreeItem, pathLabel: string): Promise<
 }
 
 /**
+ * `item` if its element still shows `label`, else the rendered row at the same level that does.
+ * The tree's list reuses a row's element for another row as it scrolls and as rows load, so an
+ * element found earlier can show another catalog by now, and expanding it opens that one.
+ */
+async function sameRow(
+    section: CustomTreeSection,
+    item: TreeItem,
+    label: string,
+    level: string | null,
+): Promise<TreeItem> {
+    if ((await item.getLabel().catch(() => undefined)) === label) {
+        return item;
+    }
+    for (const row of await section.getVisibleItems()) {
+        if (
+            (await row.getLabel()) === label &&
+            (await row.elem.getAttribute("aria-level")) === level
+        ) {
+            return row as TreeItem;
+        }
+    }
+    throw new Error(`The row "${label}" is no longer rendered`);
+}
+
+/**
  * Expands items along `path` one level at a time and returns the children of
  * the final item.  This replaces `section.openItem(...)` which internally calls
  * `findItem()` — a method that always resets scroll to Home and only inspects
@@ -172,7 +207,7 @@ export async function openUCPath(
 
     for (let i = 0; i < path.length; i++) {
         const pathLabel = path.slice(0, i + 1).join(".");
-        const children = await getStableChildren(current, pathLabel);
+        const children = await getStableChildren(section, current, path[i]!, pathLabel);
 
         if (i === path.length - 1) {
             return children;
