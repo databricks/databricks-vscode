@@ -1108,6 +1108,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@isaacs/nonrecursive-glob-match@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "@isaacs/nonrecursive-glob-match@npm:1.1.0"
+  checksum: 6985982c2d84de5af54369b77f973a1829e5e2313749b4438445f5b23bd054d2e84763a32eccc41fd71a1b28327d489df9f5c49d0a35cce853494913d993ae18
+  languageName: node
+  linkType: hard
+
 "@istanbuljs/load-nyc-config@npm:^1.0.0":
   version: 1.1.0
   resolution: "@istanbuljs/load-nyc-config@npm:1.1.0"
@@ -3152,6 +3159,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"brace-expansion@npm:^5.0.12":
+  version: 5.0.13
+  resolution: "brace-expansion@npm:5.0.13"
+  dependencies:
+    balanced-match: ^4.0.2
+  checksum: 49743d9893b83fff58bfcd009399f8741ddd1f2416b4ffa10230041c1d7e9193650be19e4be254bba770703ec5fbac5e8d6e47b411c91d599256e58e52e474cb
+  languageName: node
+  linkType: hard
+
 "brace-expansion@npm:^5.0.2, brace-expansion@npm:^5.0.5":
   version: 5.0.9
   resolution: "brace-expansion@npm:5.0.9"
@@ -4116,7 +4132,7 @@ __metadata:
     eslint: ^10.6.0
     eslint-plugin-local-rules: ^3.0.2
     fs-extra: ^11.2.0
-    glob: ^13.0.6
+    glob: ^14.0.2
     highlight.js: ^11.10.0
     lodash: ^4.18.1
     markdown-it: ^15.0.1
@@ -5930,6 +5946,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"glob@npm:^14.0.2":
+  version: 14.0.2
+  resolution: "glob@npm:14.0.2"
+  dependencies:
+    minimatch: ^11.0.0
+    minipass: ^7.1.3
+    path-scurry: ^3.0.0
+  checksum: 609e6634e6c8ba73aaffc79aa37b137815c1623162a9996a2a90a7839ac85b5f3224c3ddd570ea0db3e623023c71f43b0f093273593411b19793bd59b840443a
+  languageName: node
+  linkType: hard
+
 "glob@npm:^7.0.6, glob@npm:^7.1.3, glob@npm:^7.1.4":
   version: 7.2.3
   resolution: "glob@npm:7.2.3"
@@ -7583,6 +7610,16 @@ __metadata:
   dependencies:
     brace-expansion: ^5.0.2
   checksum: 896a87685c0d376e7679e99c37072f92eeb0df003d63cd422e8fc48ea727108d9f722531a0a8d23fe7d776faccaca424d5765e7af3b0c5e1dfb73fabcc60f612
+  languageName: node
+  linkType: hard
+
+"minimatch@npm:^11.0.0":
+  version: 11.0.8
+  resolution: "minimatch@npm:11.0.8"
+  dependencies:
+    "@isaacs/nonrecursive-glob-match": ^1.1.0
+    brace-expansion: ^5.0.12
+  checksum: 4fa5bfa6b03cfd1a08744d7291bbcb1b2fabe5d10b10d8536dfcca60f4a5eb6f0ddcfd04334d64b5119f8d3b340f25c5f4d67a099fc72cb7f46e48ea417bac73
   languageName: node
   linkType: hard
 
