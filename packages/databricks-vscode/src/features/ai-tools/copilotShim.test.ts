@@ -12,6 +12,7 @@ import {
     probeCopilotCli,
     shimOnTerminalPath,
     withShimOnPath,
+    type CopilotCliStatus,
 } from "./copilotShim";
 
 const newDir = useTempDirs();
@@ -155,6 +156,14 @@ describe("on disk", function () {
     const neverProbed = async () => {
         throw new Error("the probe should not run");
     };
+    // Windows paths are case-insensitive: the lookup finds `copilot.exe` as
+    // `copilot.EXE`, with PATHEXT's spelling.
+    const comparable = (status: CopilotCliStatus) =>
+        typeof status === "object" && process.platform === "win32"
+            ? { shim: status.shim.toLowerCase() }
+            : status;
+    const expectShim = (status: CopilotCliStatus, shim: string) =>
+        expect(comparable(status)).toEqual(comparable({ shim }));
 
     it("reports a shim that the probe rejects", async () => {
         const tmp = newDir();
@@ -163,7 +172,7 @@ describe("on disk", function () {
             env: envOf(tmp.dir, shimDir),
             probe: async () => false,
         });
-        expect(status).toEqual({ shim });
+        expectShim(status, shim);
     });
 
     it("treats a shim that the probe accepts as installed", async () => {
@@ -180,9 +189,10 @@ describe("on disk", function () {
         fs.mkdirSync(path.join(tmp.dir, "links"));
         const link = path.join(tmp.dir, "links", binaryName);
         fs.symlinkSync(shim, link);
-        expect(
+        expectShim(
             await getCopilotCliStatus({ env: envOf(tmp.dir, "links"), probe: async () => false }),
-        ).toEqual({ shim: link });
+            link,
+        );
     });
 
     it("prefers a real Copilot CLI earlier on PATH, without probing", async () => {
