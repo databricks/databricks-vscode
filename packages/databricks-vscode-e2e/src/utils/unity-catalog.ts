@@ -114,8 +114,9 @@ async function getStableChildren(
 ): Promise<TreeItem[]> {
     const level = await item.elem.getAttribute("aria-level");
     let current = item;
-    // The row, found again before each use (see `sameRow`), and brought into view again if
-    // it has left the rendered rows.
+    // The row, found again before each use (see `sameRow`), and brought into view with the
+    // view's Filter only if it has left the rendered rows: the Filter's fuzzy match can land on
+    // another row whose name has the same letters.
     const row = async () => {
         try {
             current = await sameRow(section, current, label, level);
@@ -125,9 +126,6 @@ async function getStableChildren(
         }
         return current;
     };
-
-    // Bring item into view before interacting with it
-    await revealUCRow(label);
 
     // Trigger expansion once before the retry loop.  If aria-expanded
     // lags behind the click during lazy loading, the expand() call
@@ -196,9 +194,7 @@ async function scrollRowToTop(section: CustomTreeSection, label: string): Promis
     let lastFirst: string | undefined;
     let stuck = 0;
     for (let i = 0; i < 60 && stuck < 3; i++) {
-        const labels = await Promise.all(
-            (await section.getVisibleItems()).map((r) => r.getLabel()),
-        );
+        const labels = await renderedLabels(section);
         if (labels.indexOf(label) <= 0) {
             return;
         }
@@ -210,6 +206,18 @@ async function scrollRowToTop(section: CustomTreeSection, label: string): Promis
         });
         await browser.pause(250);
     }
+}
+
+/** The rendered rows' labels, top to bottom, in one round trip rather than one per row. */
+async function renderedLabels(section: CustomTreeSection): Promise<string[]> {
+    const list = await section.elem.$(".monaco-list").getElement();
+    return browser.execute(
+        (el: HTMLElement) =>
+            Array.from(el.querySelectorAll<HTMLElement>(".monaco-list-row"))
+                .sort((a, b) => Number(a.dataset.index) - Number(b.dataset.index))
+                .map((r) => r.querySelector(".label-name")?.textContent ?? ""),
+        list as unknown as HTMLElement,
+    );
 }
 
 /**
