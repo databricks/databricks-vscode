@@ -20,6 +20,9 @@ if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
   exit 1
 fi
 
+# Mask the token before it reaches $GITHUB_ENV, otherwise every later step
+# prints it in its env block in the (public) run logs.
+echo "::add-mask::${ACCESS_TOKEN}"
 echo "JFROG_ACCESS_TOKEN=${ACCESS_TOKEN}" >> "$GITHUB_ENV"
 
 echo "JFrog OIDC token obtained successfully"
