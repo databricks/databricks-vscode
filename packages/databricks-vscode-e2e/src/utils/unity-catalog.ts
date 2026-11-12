@@ -40,10 +40,8 @@ export async function getUCSection(timeoutMs = 30_000): Promise<CustomTreeSectio
  * bottom and then page up until the item appears.
  *
  * Changed from the old helper: it presses End before its
- * first look, not after. The specs call `scrollIntoView()` on the row this
- * returns; in VS Code 1.140 that scrolls a row near the top of the list out
- * of the rendered window, and the element is reused for another row. After a
- * pin, the first `system` row is the copy under Favorites, at the top.
+ * first look, not after. After a pin, the first `system` row is the copy
+ * under Favorites, at the top.
  */
 export async function findUCItem(
     section: CustomTreeSection,
@@ -104,9 +102,9 @@ export async function findUCItem(
  *
  * To avoid that race we require the child count to be non-zero AND unchanged for
  * several consecutive polls before accepting the result, so the whole batch has
- * landed.  The parent is re-scrolled to the top of the viewport on every poll:
+ * landed.  The parent is scrolled to the top of the viewport first (`revealUCRow`):
  * VS Code virtual lists only render the ~25 rows inside the scroll window, so
- * keeping the parent pinned to the top keeps its immediate children rendered.
+ * keeping the parent at the top keeps its immediate children rendered.
  */
 async function getStableChildren(
     section: CustomTreeSection,
@@ -116,12 +114,20 @@ async function getStableChildren(
 ): Promise<TreeItem[]> {
     const level = await item.elem.getAttribute("aria-level");
     let current = item;
-    // The row, found again before each use: see `sameRow`.
-    const row = async () => (current = await sameRow(section, current, label, level));
+    // The row, found again before each use (see `sameRow`), and brought into view again if
+    // it has left the rendered rows.
+    const row = async () => {
+        try {
+            current = await sameRow(section, current, label, level);
+        } catch {
+            await revealUCRow(label);
+            current = await sameRow(section, current, label, level);
+        }
+        return current;
+    };
 
     // Bring item into view before interacting with it
-    await (await row()).elem.scrollIntoView({ block: "start" });
-    await browser.pause(200);
+    await revealUCRow(label);
 
     // Trigger expansion once before the retry loop.  If aria-expanded
     // lags behind the click during lazy loading, the expand() call
@@ -139,10 +145,8 @@ async function getStableChildren(
 
     await browser.waitUntil(
         async () => {
-            // Re-scroll the item to the top of the viewport on every retry so
-            // its immediate children stay within the rendered scroll window.
-            await (await row()).elem.scrollIntoView({ block: "start" });
-            await browser.pause(100);
+            // Keep the row at the top, so the children loading below it stay rendered.
+            await scrollRowToTop(section, label);
             // getChildren() calls expand() internally then queries DOM rows
             children = await ((await row()) as any).getChildren();
 
@@ -163,6 +167,49 @@ async function getStableChildren(
     );
 
     return children;
+}
+
+/**
+ * Scrolls the UNITY CATALOG view to its first row labelled `label`, with the view's Filter (VS
+ * Code's tree find, which reveals the first match). It moves VS Code's list as the list expects;
+ * scrolling the DOM (`scrollIntoView`) doesn't, and on a workspace with hundreds of catalogs above
+ * `system` the rows found then showed other catalogs, or none.
+ */
+async function revealUCRow(label: string): Promise<void> {
+    await browser.executeWorkbench(async (vscode) => {
+        await vscode.commands.executeCommand("databricks.unityCatalog.filter");
+    });
+    await browser.pause(300);
+    await browser.keys([process.platform === "darwin" ? "Meta" : "Control", "a"]);
+    await browser.keys(["Backspace", ...label.split("")]);
+    await browser.pause(500);
+    // Closing the find widget keeps the rows where it scrolled them, and the view focused.
+    await browser.keys(["Escape"]);
+    await browser.pause(300);
+}
+
+/**
+ * Scrolls the view a line at a time until the rendered row labelled `label` is the first, so its
+ * children below it are rendered too; it stops when the list doesn't scroll further.
+ */
+async function scrollRowToTop(section: CustomTreeSection, label: string): Promise<void> {
+    let lastFirst: string | undefined;
+    let stuck = 0;
+    for (let i = 0; i < 60 && stuck < 3; i++) {
+        const labels = await Promise.all(
+            (await section.getVisibleItems()).map((r) => r.getLabel()),
+        );
+        if (labels.indexOf(label) <= 0) {
+            return;
+        }
+        // The list renders a scroll a moment later, so it's stuck only when several look the same.
+        stuck = labels[0] === lastFirst ? stuck + 1 : 0;
+        lastFirst = labels[0];
+        await browser.executeWorkbench(async (vscode) => {
+            await vscode.commands.executeCommand("list.scrollDown");
+        });
+        await browser.pause(250);
+    }
 }
 
 /**
