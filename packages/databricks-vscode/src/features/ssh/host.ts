@@ -5,6 +5,7 @@ import { REMOTE_SSH_CURSOR, REMOTE_SSH_VSCODE } from "../../kernel/extensionDepe
 import type { ExtensionDependency } from "../../platform/extensions";
 import type { Logger } from "../../platform/log";
 import type { ProcessRunner } from "../../platform/process";
+import { setting } from "../../platform/settings";
 
 /*
  * The editor the tunnel opens its remote window in, and the two things that
@@ -68,6 +69,37 @@ async function isFile(file: string): Promise<boolean> {
 /** The Remote-SSH extension the CLI configures and opens the window with, per editor. */
 export function remoteSshExtension(ide: SshIde): ExtensionDependency {
     return ide === "cursor" ? REMOTE_SSH_CURSOR : REMOTE_SSH_VSCODE;
+}
+
+/**
+ * VS Code's `extensions.allowed` policy. Unset or the string `"*"` allows
+ * everything; otherwise keys are extension IDs, publishers or `"*"`, and only
+ * `false` blocks: other values restrict versions or release channels.
+ */
+export const EXTENSIONS_ALLOWED = setting<unknown>("extensions", "allowed", undefined);
+
+/**
+ * Whether `extensions.allowed` lets the editor's Remote-SSH extension run.
+ * VS Code applies the most specific rule: the extension ID, then its
+ * publisher, then `"*"`. In VS Code the publisher `microsoft` also covers
+ * Microsoft's extensions whatever their publisher ID; Cursor's isn't one.
+ */
+export function isRemoteSshAllowed(ide: SshIde, allowed: unknown): boolean {
+    if (typeof allowed !== "object" || allowed === null) {
+        return true;
+    }
+    const rules = allowed as Readonly<Record<string, unknown>>;
+    const { id } = remoteSshExtension(ide);
+    if (rules[id] !== undefined) {
+        return rules[id] !== false;
+    }
+    const publisher = id.slice(0, id.indexOf("."));
+    const publishers = ide === "cursor" ? [publisher] : ["microsoft", publisher];
+    const publisherRules = publishers.map((p) => rules[p]).filter((r) => r !== undefined);
+    if (publisherRules.length > 0) {
+        return publisherRules.every((r) => r !== false);
+    }
+    return rules["*"] !== false;
 }
 
 /** Where to read how to put the shell command on PATH. */
