@@ -102,6 +102,8 @@ describe("Workspace file system actions", async function () {
         const input = await new InputBox((await browser.getWorkbench()).locatorMap).wait();
         // As the dialog spells its folders: on Windows, `c:\…`.
         await input.setText(vscodePath(file));
+        // As in the download: the dialog takes a moment to read what was typed, longer on Windows.
+        await new Promise((r) => setTimeout(r, 1000));
         await input.confirm();
     }
 

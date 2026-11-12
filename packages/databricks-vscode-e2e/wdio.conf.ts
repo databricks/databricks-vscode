@@ -285,6 +285,9 @@ const vscodeCapability = (
         userSettings: {
             "workbench.startupEditor": "none",
             "telemetry.telemetryLevel": "off",
+            // No spec tests a language server, and the pinned Python extension's crashes on a
+            // newer Python (the Windows runner's) fill the notifications the specs read.
+            "python.languageServer": "None",
             ...extra.userSettings,
         },
     },
