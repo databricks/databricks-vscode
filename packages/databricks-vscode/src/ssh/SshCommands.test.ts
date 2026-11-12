@@ -284,6 +284,16 @@ describe(`${__filename} extensions.allowed`, () => {
             "unrelated extensions are blocked",
             {"*": true, "other-publisher": false, "other.ext": false},
         ],
+        ["the setting is null", null],
+        ["the setting is an array", [VSCODE_SSH]],
+        [
+            "the extension is allowed with different casing",
+            {"*": false, [VSCODE_SSH.toUpperCase()]: true},
+        ],
+        [
+            "Microsoft is allowed with different casing",
+            {"*": false, "Microsoft": true},
+        ],
     ];
     for (const [name, value] of allowedCases) {
         it(`proceeds when ${name}`, async () => {
@@ -319,6 +329,10 @@ describe(`${__filename} extensions.allowed`, () => {
         [
             "Microsoft is blocked under an allow-all wildcard",
             {"*": true, "microsoft": false},
+        ],
+        [
+            "the extension is blocked with different casing",
+            {"*": true, [VSCODE_SSH.toUpperCase()]: false},
         ],
     ];
     for (const [name, value] of blockedCases) {
