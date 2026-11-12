@@ -80,6 +80,11 @@ export class UnityCatalogModel {
                     .sort(compareOwnedFirst);
                 return result.length > 0 ? result : emptyNode("No catalogs found");
             } catch (e) {
+                // A workspace without Unity Catalog: a state to show, not a failure.
+                if (e instanceof ApiError && e.code === "METASTORE_DOES_NOT_EXIST") {
+                    this.log.info(`Unity Catalog: ${e.message}`);
+                    return emptyNode("No Unity Catalog metastore is assigned to this workspace");
+                }
                 return this.errorNode(e, "catalogs");
             }
         });
