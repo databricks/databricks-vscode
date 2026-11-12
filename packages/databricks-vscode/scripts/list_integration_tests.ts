@@ -7,4 +7,11 @@ import { integrationSpecs } from "../../../scripts/integration/lib.mjs";
 
 const packageDir = path.resolve(import.meta.dirname, "..");
 const specDir = path.join(packageDir, "..", "databricks-vscode-e2e", "src");
-console.log(JSON.stringify(integrationSpecs(specDir, packageDir, process.env)));
+// Probe branch: only the Windows native upload probe.
+console.log(
+    JSON.stringify(
+        integrationSpecs(specDir, packageDir, process.env).filter(
+            (s) => s.baseName === "wsfs_native_upload_probe.next",
+        ),
+    ),
+);
