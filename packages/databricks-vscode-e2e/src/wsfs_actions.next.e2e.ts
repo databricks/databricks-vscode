@@ -10,6 +10,7 @@ import {
 import { waitForLogin } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import { openContextMenu } from "./utils/context-menu.ts";
+import { vscodePath } from "./utils/paths.ts";
 import { getViewSection } from "./utils/view.ts";
 import { WorkspaceClient } from "./utils/workspace-client.ts";
 
@@ -99,7 +100,8 @@ describe("Workspace file system actions", async function () {
     /** Types `file` into VS Code's simple open dialog and accepts it. */
     async function answerOpenDialog(file: string) {
         const input = await new InputBox((await browser.getWorkbench()).locatorMap).wait();
-        await input.setText(file);
+        // As the dialog spells its folders: on Windows, `c:\…`.
+        await input.setText(vscodePath(file));
         await input.confirm();
     }
 

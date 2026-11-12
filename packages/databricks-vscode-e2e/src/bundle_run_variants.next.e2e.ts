@@ -102,7 +102,13 @@ describe("Pipeline run variants and cancelling a run", async function () {
     });
 
     async function clickInline(type: "Jobs" | "Pipelines", name: string, label: string) {
-        const item = await getResourceViewItem(explorer, type, name);
+        // The resource's row can show after the Resources group does.
+        const item = await browser
+            .waitUntil(() => getResourceViewItem(explorer, type, name), {
+                timeout: 30_000,
+                interval: 1_000,
+            })
+            .catch(() => undefined);
         assert(item, `${name} isn't in the explorer`);
         await item.elem.moveTo();
         const button = await getActionButton(item, label);
