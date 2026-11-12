@@ -145,11 +145,16 @@ async function ensureClusterRunning(clusterId) {
             `Cluster ${clusterId} is ${state}; ${action === "start" ? "starting it" : "waiting"}.`,
         );
         if (action === "start") {
-            // Waits until the cluster runs.
-            execFileSync(cli, ["clusters", "start", clusterId, "--profile", CI_PROFILE], {
-                env,
-                stdio: "inherit",
-            });
+            // Waits until the cluster runs. The spec jobs run side by side, so another may have
+            // started it since: then this fails, and the next look finds it pending.
+            try {
+                execFileSync(cli, ["clusters", "start", clusterId, "--profile", CI_PROFILE], {
+                    env,
+                    stdio: "inherit",
+                });
+            } catch {
+                await new Promise((resolve) => setTimeout(resolve, 15_000));
+            }
         } else {
             await new Promise((resolve) => setTimeout(resolve, 15_000));
         }
