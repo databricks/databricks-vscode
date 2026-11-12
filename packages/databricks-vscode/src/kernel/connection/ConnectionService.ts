@@ -259,6 +259,29 @@ export class ConnectionService implements Disposable {
     }
 
     /**
+     * Checks a token with SCIM `me` on `host`, before a profile is written with it, so a token
+     * that doesn't work is never saved and the window keeps its connection. Throws what
+     * connecting would.
+     */
+    async checkToken(host: string, token: string, profile: string): Promise<void> {
+        const credentials = credentialsFor(
+            { name: profile, host, authType: "pat", token },
+            this.deps.sources,
+        );
+        await openConnection(
+            {
+                credentials,
+                host,
+                authType: "pat",
+                child: { kind: "profile", host, profile, authType: "pat" },
+            },
+            { kind: "saved" },
+            this.deps,
+            new AbortController().signal,
+        );
+    }
+
+    /**
      * The workspaces of a profile's account, for the workspace choice. Empty
      * when the account has no list to give; undefined when the list failed.
      * The list is optional, so a failure is only logged.

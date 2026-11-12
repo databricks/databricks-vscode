@@ -360,6 +360,9 @@ export class ConnectionCommands {
                 return false;
             case "oauth":
             case "pat":
+                if (choice.kind === "pat") {
+                    await this.checkToken(choice);
+                }
                 await this.createProfile(choice, "workspace");
                 return this.recordSelection(
                     choice.kind === "oauth" ? choice.workspaceSelection : undefined,
@@ -370,6 +373,25 @@ export class ConnectionCommands {
                     choice.workspaceSelection,
                     this.connect(choice.profile.name, choice.profile.host),
                 );
+        }
+    }
+
+    /** As the old wizard did: a token that doesn't work isn't saved, and the window keeps its connection. */
+    private async checkToken(choice: Extract<SignInChoice, { kind: "pat" }>): Promise<void> {
+        try {
+            await window.withProgress(
+                {
+                    location: ProgressLocation.Notification,
+                    title: "Databricks: Checking the Personal Access Token",
+                },
+                () => this.kernel.connection.checkToken(choice.host, choice.token, choice.profile),
+            );
+        } catch (e) {
+            throw new UserFacingError(
+                "PAT_CHECK_FAILED",
+                `Can't login with the provided Personal Access Token: ${errorMessage(e)}`,
+                { cause: e, actions: [{ title: "Retry", run: () => this.carryOut(choice) }] },
+            );
         }
     }
 

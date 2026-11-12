@@ -1134,6 +1134,56 @@ describe("the connection feature", () => {
         expect(vscode.statusBarItems[0]!.text).toBe("Databricks: new");
     });
 
+    it("checks a new PAT before saving it: a token that fails writes nothing and keeps the connection, and Retry checks it again", async () => {
+        const { kernel, settled, run, file, http } = setup();
+        let valid = false;
+        http.on("GET", SCIM_ME, (req) => {
+            if (req.headers.get("Authorization") === "Bearer dapi-typed" && !valid) {
+                return {
+                    status: 401,
+                    body: { error_code: "UNAUTHENTICATED", message: "Invalid access token" },
+                };
+            }
+            return { body: { userName: `user ${req.headers.get("Authorization")}` } };
+        });
+        kernel.start();
+        await settled();
+        const before = fs.readFileSync(file, "utf8");
+        kernel.runner.on(["configure"], (_args, options) => {
+            fs.appendFileSync(file, `\n[new]\nhost = ${A}\ntoken = ${options.input!.trim()}\n`);
+            return {};
+        });
+        let choose!: (choice: string) => void;
+        vscode.nextErrorChoice = new Promise<string>((resolve) => (choose = resolve));
+        const signIn = run("databricks.connection.configureLogin");
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(1));
+        lastInput().accept();
+        await tick();
+        lastInput().accept("Personal Access Token");
+        await tick();
+        lastInput().type("new");
+        lastInput().accept();
+        await tick();
+        lastInput().type("dapi-typed");
+        lastInput().accept();
+        await vi.waitFor(() => expect(vscode.errors).toHaveLength(1));
+
+        expect(vscode.errors[0]!.message).toMatch(
+            /^Can't login with the provided Personal Access Token: .*Invalid access token/,
+        );
+        expect(vscode.errors[0]!.actions).toEqual(["Retry"]);
+        expect(kernel.runner.calls.find((c) => c.args[0] === "configure")).toBeUndefined();
+        expect(fs.readFileSync(file, "utf8")).toBe(before);
+        expect(kernel.connection.connection?.profile).toBe("DEFAULT");
+        expect(kernel.connection.savedChoice()).toEqual({ profile: undefined, signedOut: false });
+
+        valid = true;
+        choose("Retry");
+        await signIn;
+        await vi.waitFor(() => expect(kernel.connection.connection?.profile).toBe("new"));
+        expect(kernel.runner.calls.filter((c) => c.args[0] === "configure")).toHaveLength(1);
+    });
+
     it("saveNewProfile copies the PAT connection through configure", async () => {
         const { kernel, settled, run } = setup();
         kernel.start();
