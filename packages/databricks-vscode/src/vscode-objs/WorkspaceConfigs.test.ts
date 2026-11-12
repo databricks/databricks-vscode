@@ -9,6 +9,38 @@ async function set(section: string, key: string, value?: unknown) {
 }
 
 describe(__filename, () => {
+    describe("Copilot chat settings", () => {
+        // Stubbed: the settings are registered by Copilot Chat, which the test
+        // instance may not have, so they can't be written for real.
+        const original = workspace.getConfiguration;
+        let chat: Record<string, unknown>;
+        beforeEach(() => {
+            chat = {};
+            (workspace as any).getConfiguration = (section?: string) =>
+                section === "chat"
+                    ? {get: (key: string) => chat[key]}
+                    : original(section);
+        });
+        afterEach(() => {
+            (workspace as any).getConfiguration = original;
+        });
+
+        it("treats an unset chat.copilotCliCommand.enabled as on", () => {
+            assert.strictEqual(workspaceConfigs.copilotCliCommandEnabled, true);
+            chat["copilotCliCommand.enabled"] = false;
+            assert.strictEqual(
+                workspaceConfigs.copilotCliCommandEnabled,
+                false
+            );
+        });
+
+        it("treats an unset chat.disableAIFeatures as off", () => {
+            assert.strictEqual(workspaceConfigs.aiFeaturesDisabled, false);
+            chat["disableAIFeatures"] = true;
+            assert.strictEqual(workspaceConfigs.aiFeaturesDisabled, true);
+        });
+    });
+
     describe("proxyStrictSSL", () => {
         async function reset() {
             await set("http", "proxyStrictSSL", undefined);

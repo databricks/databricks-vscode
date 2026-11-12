@@ -462,6 +462,40 @@ describe(__filename, () => {
             assert.strictEqual(row.command, undefined);
         });
 
+        it("keeps an agent whose CLI isn't installed installable", async () => {
+            const model = createModel(
+                "global",
+                "upToDate",
+                "0.2.9",
+                undefined,
+                [
+                    {
+                        ...agent(
+                            "copilot",
+                            "GitHub Copilot",
+                            undefined,
+                            undefined,
+                            {
+                                detected: true,
+                            }
+                        ),
+                        copilotShim: "/shim/copilot",
+                    },
+                ]
+            );
+            const [row] = await getChildrenOf(model, {
+                label: "Agents",
+                id: "AITOOLS.agents",
+            });
+            assert.strictEqual(row.description, "CLI not installed");
+            assert.strictEqual(
+                row.contextValue,
+                "databricks.configuration.aitools.agent.notInstalled"
+            );
+            assert.ok(String(row.tooltip).includes("GitHub Copilot CLI"));
+            assert.notStrictEqual(row.command, undefined);
+        });
+
         it("keeps a global-only agent installable when installed at global scope", async () => {
             const model = createModel(
                 "global",

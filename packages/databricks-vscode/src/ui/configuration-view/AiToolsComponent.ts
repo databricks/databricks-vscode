@@ -47,8 +47,9 @@ function isHiddenAgent(agentId: string): boolean {
  *    agent only received the raw skills);
  *  - blocked: a muted icon + short reason (not detected / scope unsupported),
  *    explained in the tooltip, with no install affordance;
- *  - installable: "Not installed" with the inline install button / clickable
- *    row (see the `agent.notInstalled` context value in package.json).
+ *  - installable: "Not installed" (or "CLI not installed", where installing
+ *    first offers to install the agent's CLI) with the inline install button /
+ *    clickable row (see the `agent.notInstalled` context value in package.json).
  *
  * The blocked decision is shared with the install picker via
  * {@link agentInstallBlockReason} so the two surfaces stay in lockstep.
@@ -91,6 +92,14 @@ function describeAgentRow(
             iconPath: blockedIcon(),
             contextValue: getContextValue("agent.blocked"),
             installable: false,
+        };
+    }
+    if (reason === "cliNotInstalled") {
+        return {
+            description: "CLI not installed",
+            tooltip: `${agent.displayName} CLI is not installed. Install to set it up first.`,
+            contextValue: getContextValue("agent.notInstalled"),
+            installable: true,
         };
     }
     return {

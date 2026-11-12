@@ -35,6 +35,7 @@ export enum Events {
     AITOOLS_UPDATE = "aitoolsUpdate",
     AITOOLS_UNINSTALL = "aitoolsUninstall",
     AITOOLS_CURSOR_PLUGIN_PROMPT = "aitoolsCursorPluginPrompt",
+    AITOOLS_COPILOT_CLI_INSTALL = "aitoolsCopilotCliInstall",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -399,7 +400,7 @@ export class EventTypes {
         },
         agents: {
             comment:
-                'The coding agents whose skills were installed via the CLI (the closed set of agent ids, e.g. ["claude-code","cursor"]). Excludes the Cursor plugin, which is tracked separately by cursorPlugin. Undefined when no explicit selection was made (the CLI acts on every detected agent).',
+                'The coding agents selected for a skills install via the CLI (the closed set of agent ids, e.g. ["claude-code","cursor"]), including any the extension skipped (see agentErrors). Excludes the Cursor plugin, which is tracked separately by cursorPlugin. Undefined when no explicit selection was made (the CLI acts on every detected agent).',
         },
         cursorPlugin: {
             comment:
@@ -411,7 +412,7 @@ export class EventTypes {
         },
         agentErrors: {
             comment:
-                "Per-agent install errors as a map of agent id to its categorical error, for each requested agent that did not install (failed or skipped). Categories are the CLI's closed set, never the free-form per-agent message. Omitted when every requested agent installed.",
+                "Per-agent install errors as a map of agent id to its categorical error, for each requested agent that did not install (failed or skipped). Categories are the CLI's closed set, never the free-form per-agent message, plus COPILOT_CLI_NOT_INSTALLED when the extension skipped GitHub Copilot because GitHub Copilot CLI isn't installed. Omitted when every requested agent installed.",
         },
     };
     [Events.AITOOLS_UPDATE]: EventType<
@@ -455,6 +456,18 @@ export class EventTypes {
         source: {
             comment:
                 "Where the plugin prompt was triggered from: 'initModal' (first-load install prompt) or 'sidePane' (install triggered from the configuration view), both via the install flow, or 'pluginButton' (the standalone add-plugin button on the AI tools row)",
+        },
+    };
+    [Events.AITOOLS_COPILOT_CLI_INSTALL]: EventType<
+        {
+            installed: boolean;
+        } & DurationMeasurement
+    > = {
+        comment:
+            "Ran VS Code's GitHub Copilot CLI installer from the AI tools install flow. Recorded when its terminal closes.",
+        installed: {
+            comment:
+                "true if GitHub Copilot CLI was usable once the installer terminal closed",
         },
     };
     [Events.PYTHON_ENV_SETUP_DETECTED]: EventType<{

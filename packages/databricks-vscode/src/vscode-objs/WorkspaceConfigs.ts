@@ -98,6 +98,27 @@ export const workspaceConfigs = {
         return workspace.getConfiguration("python").get<string>("envFile");
     },
 
+    /**
+     * VS Code's `chat.copilotCliCommand.enabled`: whether its Copilot
+     * integration adds the `copilot` shim to terminals' PATH. Unset means on.
+     */
+    get copilotCliCommandEnabled(): boolean {
+        return (
+            workspace
+                .getConfiguration("chat")
+                .get<boolean>("copilotCliCommand.enabled") !== false
+        );
+    },
+
+    /** VS Code's `chat.disableAIFeatures`, which turns off Copilot. */
+    get aiFeaturesDisabled(): boolean {
+        return (
+            workspace
+                .getConfiguration("chat")
+                .get<boolean>("disableAIFeatures") === true
+        );
+    },
+
     get configureJupyterCellMarkers(): boolean {
         return (
             workspace

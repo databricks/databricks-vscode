@@ -1,9 +1,10 @@
-import {env} from "vscode";
+import {env, extensions} from "vscode";
 import path from "path";
 import {stat} from "fs/promises";
 import {ExecUtils, logging} from "@databricks/sdk-experimental";
 import {cancellableExecFile} from "../cli/CliWrapper";
 import {Loggers} from "../logger";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 /**
  * Cursor identifies itself via env.uriScheme === "cursor",
@@ -70,6 +71,63 @@ export async function getHostCliPath(
         }
     }
     return undefined;
+}
+
+/**
+ * The directory holding the `copilot` shim VS Code ships, mirroring where VS
+ * Code's own Copilot integration looks for it: under `appRoot` on macOS, and
+ * next to the editor executable elsewhere.
+ */
+export function getCopilotShimDir(
+    appRoot: string = env.appRoot,
+    execPath: string = process.execPath,
+    platform: NodeJS.Platform = process.platform
+): string {
+    const p = platform === "win32" ? path.win32 : path.posix;
+    return platform === "darwin"
+        ? p.join(appRoot, "bin", "copilot-shim")
+        : p.join(p.dirname(execPath), "bin", "copilot-shim");
+}
+
+/** The id of the extension that adds VS Code's `copilot` shim to terminals. */
+const COPILOT_CHAT_EXTENSION_ID = "GitHub.copilot-chat";
+
+/**
+ * Whether VS Code puts its `copilot` shim on integrated terminals' PATH: the
+ * Copilot Chat extension does, when it's enabled, AI features aren't turned off
+ * and `chat.copilotCliCommand.enabled` isn't off.
+ */
+export function isCopilotShimOnTerminalPath(): boolean {
+    return (
+        workspaceConfigs.copilotCliCommandEnabled &&
+        !workspaceConfigs.aiFeaturesDisabled &&
+        extensions.getExtension(COPILOT_CHAT_EXTENSION_ID) !== undefined
+    );
+}
+
+/**
+ * `pathEnv` with VS Code's `copilot` shim directory appended when `enabled`,
+ * matching the PATH an integrated terminal gets (appended, so a Copilot CLI
+ * already on PATH wins). Child processes such as the Databricks CLI otherwise
+ * inherit the extension host's PATH, which lacks the shim.
+ */
+export function withCopilotShimOnPath(
+    pathEnv: string | undefined,
+    shimDir: string = getCopilotShimDir(),
+    enabled: boolean = isCopilotShimOnTerminalPath(),
+    platform: NodeJS.Platform = process.platform
+): string | undefined {
+    if (!enabled) {
+        return pathEnv;
+    }
+    const delimiter = platform === "win32" ? ";" : ":";
+    const normalize = (d: string) =>
+        platform === "win32" ? d.toLowerCase().replace(/\\+$/, "") : d;
+    const dirs = (pathEnv ?? "").split(delimiter).filter((d) => d !== "");
+    if (dirs.some((d) => normalize(d) === normalize(shimDir))) {
+        return pathEnv;
+    }
+    return [...dirs, shimDir].join(delimiter);
 }
 
 async function isFile(filePath: string): Promise<boolean> {

@@ -13,6 +13,7 @@ import {
     describeAiToolsInstallFailure,
     summarizeAiToolsInstallErrors,
 } from "./aiToolsInstallOutput";
+import {CopilotCliStatus, getCopilotCliStatus} from "./copilotShim";
 import {Mutex} from "../locking";
 import {StateStorage} from "../vscode-objs/StateStorage";
 import {WorkspaceFolderManager} from "../vscode-objs/WorkspaceFolderManager";
@@ -49,6 +50,12 @@ const CURSOR_PLUGIN_ID = "26723531";
  * CLI, so it's filtered out of any `--agents` selection.
  */
 export const CURSOR_AGENT_ID = "cursor";
+
+/** The GitHub Copilot agent id as reported by `aitools list`. */
+export const COPILOT_AGENT_ID = "copilot";
+
+/** `agentErrors` category for a Copilot install skipped for a missing CLI. */
+export const COPILOT_CLI_NOT_INSTALLED = "COPILOT_CLI_NOT_INSTALLED";
 
 /** Relative path of the aitools state file within an install root. */
 const STATE_FILE_RELATIVE_PATH = path.join(
@@ -355,6 +362,83 @@ export class AiToolsManager implements Disposable {
     }
 
     /**
+     * Whether GitHub Copilot CLI is usable by the `copilot` the CLI will run.
+     * If that can't be determined, reports `"installed"` so the CLI tries and
+     * reports any problem itself.
+     */
+    async copilotCliStatus(): Promise<CopilotCliStatus> {
+        try {
+            return await getCopilotCliStatus(this.cli.aitoolsEnv());
+        } catch (e) {
+            logging.NamedLogger.getOrCreate(Loggers.Extension).error(
+                "Failed to check for GitHub Copilot CLI",
+                e
+            );
+            return "installed";
+        }
+    }
+
+    /**
+     * Mark Copilot with `copilotShim` when `aitools list` detected it only
+     * through VS Code's shim. Skipped once Copilot is installed.
+     */
+    private async withCopilotCliStatus(
+        agents: AiToolsAgentStatus[]
+    ): Promise<AiToolsAgentStatus[]> {
+        const copilot = agents.find(
+            (a) =>
+                a.id === COPILOT_AGENT_ID &&
+                a.detected &&
+                a.version === undefined
+        );
+        if (copilot === undefined) {
+            return agents;
+        }
+        const status = await this.copilotCliStatus();
+        if (typeof status !== "object") {
+            return agents;
+        }
+        return agents.map((a) =>
+            a === copilot ? {...a, copilotShim: status.shim} : a
+        );
+    }
+
+    /** Start timing a run of the Copilot CLI installer terminal. */
+    startCopilotCliInstall() {
+        return this.telemetry.start(Events.AITOOLS_COPILOT_CLI_INSTALL);
+    }
+
+    /**
+     * Record an install the extension skipped before running the CLI, e.g.
+     * Copilot alone without GitHub Copilot CLI. `cursorPlugin` marks a Cursor
+     * plugin prompt that did go ahead.
+     */
+    recordSkippedInstall(
+        scope: AiToolsScope,
+        source: AiToolsInstallSource,
+        skipped: Record<string, string>,
+        cursorPlugin?: boolean
+    ) {
+        const agents = Object.keys(skipped);
+        this.telemetry.recordEvent(Events.AITOOLS_INSTALL, {
+            duration: 0,
+            // The plugin is installed via Cursor's marketplace modal, which we
+            // open but can't confirm the user acted on, so the outcome is only
+            // a possible success. A skipped agent is an error regardless, as
+            // when the CLI runs.
+            result:
+                cursorPlugin && agents.length === 0
+                    ? "possible-success"
+                    : "error",
+            scope,
+            source,
+            agents,
+            ...(cursorPlugin !== undefined ? {cursorPlugin} : {}),
+            ...(agents.length > 0 ? {agentErrors: skipped} : {}),
+        });
+    }
+
+    /**
      * List the coding agents known to the CLI for the given scope (via
      * `aitools list --output json`), used to populate the install-time agent
      * picker. `detected` marks agents already present on the machine so the UI
@@ -364,7 +448,9 @@ export class AiToolsManager implements Disposable {
     async listAgents(scope: AiToolsScope): Promise<AiToolsAgentStatus[]> {
         try {
             const result = await this.cli.aitoolsList(this.cwdForScope(scope));
-            return computeAgentsStatuses(result.agents, scope);
+            return await this.withCopilotCliStatus(
+                computeAgentsStatuses(result.agents, scope)
+            );
         } catch (e) {
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
                 "Failed to list Databricks AI tools agents",
@@ -399,10 +485,13 @@ export class AiToolsManager implements Disposable {
 
         try {
             const result = await this.cli.aitoolsList(this.cwdForScope(scope));
+            const agents = await this.withCopilotCliStatus(
+                computeAgentsStatuses(result.agents, scope)
+            );
             this.model.update({
                 version: result.release,
                 updateStatus: computeUpdateStatus(result.skills, scope),
-                agents: computeAgentsStatuses(result.agents, scope),
+                agents,
             });
         } catch (e) {
             logging.NamedLogger.getOrCreate(Loggers.Extension).error(
@@ -429,16 +518,22 @@ export class AiToolsManager implements Disposable {
      * the selection, we open the plugin modal in parallel (fire-and-forget) and
      * strip `cursor` from the CLI `--agents` list — we never pass
      * `--agents cursor`.
+     *
+     * `skipped` maps agents the caller dropped from `agents` to the category
+     * telemetry records for them.
      */
     @Mutex.synchronise("mutex")
     async install(
         scope: AiToolsScope,
         source: AiToolsInstallSource,
         agents: string[],
-        token?: CancellationToken
+        token?: CancellationToken,
+        skipped: Record<string, string> = {}
     ): Promise<void> {
-        // don't run install without some agents specified
         if (agents.length === 0) {
+            if (Object.keys(skipped).length > 0) {
+                this.recordSkippedInstall(scope, source, skipped);
+            }
             return;
         }
 
@@ -459,17 +554,7 @@ export class AiToolsManager implements Disposable {
             // before the CLI call — passing an empty `--agents` list would make
             // the CLI act on every detected agent, which is not what was chosen.
             if (agentsToInstall.length === 0) {
-                this.telemetry.recordEvent(Events.AITOOLS_INSTALL, {
-                    duration: 0,
-                    // The plugin is installed via Cursor's marketplace modal,
-                    // which we open but can't confirm the user acted on, so the
-                    // outcome is only a possible success.
-                    result: "possible-success",
-                    scope,
-                    source,
-                    agents: [],
-                    cursorPlugin,
-                });
+                this.recordSkippedInstall(scope, source, skipped, cursorPlugin);
                 return;
             }
         }
@@ -480,7 +565,7 @@ export class AiToolsManager implements Disposable {
                 scope,
                 agentsToInstall,
                 recordEvent,
-                {source, cursorPlugin},
+                {source, cursorPlugin, skipped},
                 token
             );
         } finally {
@@ -508,7 +593,11 @@ export class AiToolsManager implements Disposable {
         scope: AiToolsScope,
         agents: string[],
         recordEvent: EventReporter<Events.AITOOLS_INSTALL>,
-        baseProps: {source: AiToolsInstallSource; cursorPlugin?: boolean},
+        baseProps: {
+            source: AiToolsInstallSource;
+            cursorPlugin?: boolean;
+            skipped?: Record<string, string>;
+        },
         token?: CancellationToken,
         @context ctx?: Context
     ): Promise<void> {
@@ -520,10 +609,15 @@ export class AiToolsManager implements Disposable {
         );
 
         const summarizedErrors = summarizeAiToolsInstallErrors(output);
+        const skipped = baseProps.skipped ?? {};
+        const agentErrors = {...skipped, ...summarizedErrors.agentErrors};
         recordEvent({
-            result: error !== undefined ? "error" : "success",
+            result:
+                error !== undefined || Object.keys(skipped).length > 0
+                    ? "error"
+                    : "success",
             scope,
-            agents,
+            agents: [...agents, ...Object.keys(skipped)],
             source: baseProps.source,
             ...(baseProps.cursorPlugin !== undefined
                 ? {cursorPlugin: baseProps.cursorPlugin}
@@ -531,9 +625,7 @@ export class AiToolsManager implements Disposable {
             ...(summarizedErrors.globalErrorCategory !== undefined
                 ? {globalErrorCategory: summarizedErrors.globalErrorCategory}
                 : {}),
-            ...(summarizedErrors.agentErrors !== undefined
-                ? {agentErrors: summarizedErrors.agentErrors}
-                : {}),
+            ...(Object.keys(agentErrors).length > 0 ? {agentErrors} : {}),
         });
 
         if (error !== undefined) {

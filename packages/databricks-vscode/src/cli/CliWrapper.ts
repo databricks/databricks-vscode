@@ -808,11 +808,22 @@ export class CliWrapper {
         return stdout;
     }
 
-    private aitoolsEnv(): Record<string, string | undefined> {
+    /**
+     * Environment for `aitools` commands, which run agent CLIs such as
+     * `copilot`. PATH carries VS Code's `copilot` shim the way integrated
+     * terminals do.
+     */
+    aitoolsEnv(): Record<string, string | undefined> {
+        /* eslint-disable @typescript-eslint/naming-convention */
         return {
             ...EnvVarGenerators.getEnvVarsForCli(),
             ...EnvVarGenerators.getProxyEnvVars(),
+            PATH: HostUtils.withCopilotShimOnPath(process.env.PATH),
+            // On Windows the shim finds the Copilot CLI it installed here, as
+            // VS Code only sees the installer's PATH change after a restart.
+            LOCALAPPDATA: process.env.LOCALAPPDATA,
         };
+        /* eslint-enable @typescript-eslint/naming-convention */
     }
 
     /**
