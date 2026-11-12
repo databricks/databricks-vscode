@@ -40,19 +40,36 @@ if ($dialog -eq $null) {
     exit 2
 }
 Write-Output "dialog: $($dialog.Current.Name)"
-$isName = New-Object System.Windows.Automation.PropertyCondition($A::AutomationIdProperty, "1148")
-$isEdit = New-Object System.Windows.Automation.PropertyCondition($A::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)
-$nameBox = $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.AndCondition($isName, $isEdit)))
-if ($nameBox -eq $null) { Write-Output "no file name box"; exit 3 }
-$nameBox.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($env:PROBE_FILE)
-Write-Output "file name set"
-$isOk = New-Object System.Windows.Automation.PropertyCondition($A::AutomationIdProperty, "1")
-$isButton = New-Object System.Windows.Automation.PropertyCondition($A::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)
-$ok = $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.AndCondition($isOk, $isButton)))
-if ($ok -eq $null) { Write-Output "no default button"; exit 4 }
-Write-Output "button: $($ok.Current.Name)"
-$ok.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-Write-Output "pressed"
+$T = [System.Windows.Automation.TreeScope]::Descendants
+$C = [System.Windows.Automation.ControlType]
+function Of($type) { New-Object System.Windows.Automation.PropertyCondition($A::ControlTypeProperty, $type) }
+function Id($id) { New-Object System.Windows.Automation.PropertyCondition($A::AutomationIdProperty, $id) }
+$controls = $dialog.FindAll($T, (New-Object System.Windows.Automation.OrCondition((Of $C::Edit), (Of $C::ComboBox), (Of $C::Button))))
+Write-Output ("controls: " + (@($controls | ForEach-Object { "$($_.Current.ControlType.ProgrammaticName)[$($_.Current.AutomationId)]'$($_.Current.Name)'" }) -join "; "))
+$nameBox = $null
+$combo = $dialog.FindFirst($T, (New-Object System.Windows.Automation.AndCondition((Id "1148"), (Of $C::ComboBox))))
+if ($combo -ne $null) { $nameBox = $combo.FindFirst($T, (Of $C::Edit)) }
+if ($nameBox -eq $null) {
+    foreach ($e in $dialog.FindAll($T, (Of $C::Edit))) { if ($e.Current.Name -like "File name*") { $nameBox = $e; break } }
+}
+if ($nameBox -ne $null) {
+    $nameBox.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($env:PROBE_FILE)
+    Write-Output "file name set in: [$($nameBox.Current.AutomationId)]'$($nameBox.Current.Name)'"
+    $ok = $dialog.FindFirst($T, (New-Object System.Windows.Automation.AndCondition((Id "1"), (Of $C::Button))))
+    if ($ok -ne $null) {
+        Write-Output "button: $($ok.Current.Name)"
+        $ok.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+        Write-Output "pressed"
+        exit 0
+    }
+}
+# The box has the focus when the dialog opens: type into it.
+Add-Type -AssemblyName System.Windows.Forms
+$dialog.SetFocus()
+Start-Sleep -Milliseconds 300
+$keys = ($env:PROBE_FILE -replace '([+^%~(){}\\[\\]])', '{$1}') + "{ENTER}"
+[System.Windows.Forms.SendKeys]::SendWait($keys)
+Write-Output "typed into the focused dialog"
 `;
     return new Promise((resolve) => {
         execFile(
