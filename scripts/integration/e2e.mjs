@@ -5,9 +5,10 @@
 // It turns the credentials into a `ci` profile, starts TEST_DEFAULT_CLUSTER_ID if it isn't
 // running, installs uv for the Databricks Connect specs if it's missing, then runs
 // `run-spec.sh real <spec> --profile ci`, which signs the spec in with a two-hour token of that
-// profile and revokes it at the end. The e2e logs are copied to packages/databricks-vscode/logs,
-// where the CI collects them. EXTENSION_VSIX_DIR, a folder of the extension pack's VSIXs, becomes
-// DATABRICKS_E2E_EXTENSIONS.
+// profile and revokes it at the end. The spec gets a temp folder of its own, which VS Code's user
+// data is in; the e2e logs and VS Code's (with the extension's) are copied to
+// packages/databricks-vscode/logs, where the CI collects them. EXTENSION_VSIX_DIR, a folder of the
+// extension pack's VSIXs, becomes DATABRICKS_E2E_EXTENSIONS.
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -34,10 +35,17 @@ if (specArg === undefined) {
 // run-spec.sh takes the spec's path in the e2e package.
 const spec = path.relative(e2eDir, path.resolve(process.cwd(), specArg)).split(path.sep).join("/");
 
-const runDir = fs.mkdtempSync(path.join(os.tmpdir(), "databricks-vscode-integ-"));
+// RUNNER_TEMP on a GitHub runner: there, Windows' TEMP is a short (8.3) path, which VS Code and
+// Node spell differently.
+const runDir = fs.realpathSync.native(
+    fs.mkdtempSync(path.join(process.env.RUNNER_TEMP || os.tmpdir(), "dbx-integ-")),
+);
 const configFile = path.join(runDir, "databrickscfg");
 fs.writeFileSync(configFile, ciConfigFile(process.env), { mode: 0o600 });
 const env = childEnv(process.env, configFile);
+const tempDir = path.join(runDir, "tmp");
+fs.mkdirSync(tempDir);
+env.TMPDIR = env.TEMP = env.TMP = tempDir;
 env.DATABRICKS_E2E_EXTENSIONS ??= extensionSources(process.env.EXTENSION_VSIX_DIR);
 if (env.DATABRICKS_E2E_EXTENSIONS === undefined) {
     delete env.DATABRICKS_E2E_EXTENSIONS;
@@ -75,15 +83,38 @@ try {
     if (fs.existsSync(logs)) {
         fs.cpSync(logs, path.join(extensionDir, "logs"), { recursive: true });
     }
+    for (const [i, dir] of vscodeLogDirs(tempDir).entries()) {
+        fs.cpSync(dir, path.join(extensionDir, "logs", `vscode-${i + 1}`), { recursive: true });
+    }
     fs.rmSync(runDir, { recursive: true, force: true });
 }
 process.exit(status);
+
+/**
+ * The logs folders of the VS Code user data under `dir` (`<user data>/settings/logs`, a few levels
+ * down): VS Code's own, the extension host's, and each extension's, with this one's.
+ */
+function vscodeLogDirs(dir, depth = 3) {
+    const found = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) {
+            continue;
+        }
+        const child = path.join(dir, entry.name);
+        if (entry.name === "settings" && fs.existsSync(path.join(child, "logs"))) {
+            found.push(path.join(child, "logs"));
+        } else if (depth > 1) {
+            found.push(...vscodeLogDirs(child, depth - 1));
+        }
+    }
+    return found;
+}
 
 /** Starts the cluster if it's stopped and waits until it runs, for at most 30 minutes. */
 async function ensureClusterRunning(clusterId) {
     const deadline = Date.now() + 30 * 60_000;
     for (;;) {
-        const { state } = JSON.parse(
+        const { state, spark_version, data_security_mode } = JSON.parse(
             execFileSync(
                 cli,
                 ["clusters", "get", clusterId, "--profile", CI_PROFILE, "-o", "json"],
@@ -95,6 +126,9 @@ async function ensureClusterRunning(clusterId) {
         );
         const action = clusterAction(state);
         if (action === "ready") {
+            console.log(
+                `Cluster ${clusterId} is running ${spark_version} (${data_security_mode}).`,
+            );
             return;
         }
         if (Date.now() > deadline) {
