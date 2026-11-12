@@ -1,7 +1,7 @@
 import os from "node:os";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerFeatures, startFeatures } from "../../kernel/feature";
-import { CancelledError } from "../../platform/errors";
+import { CancelledError, type UserFacingError } from "../../platform/errors";
 import { MutableState, when } from "../../platform/reactive";
 import { environmentOf, PROBE_ENV, PROBE_SETTINGS } from "../../test-support/childEnvironment";
 import { apiCluster, FakeClusters } from "../../test-support/fakeClusters";
@@ -33,7 +33,12 @@ function deferred() {
  * With `probe`, the host env and settings tell the child environments apart.
  */
 async function setup(
-    options: { project?: boolean; overrides?: Record<string, unknown>; probe?: boolean } = {},
+    options: {
+        project?: boolean;
+        overrides?: Record<string, unknown>;
+        probe?: boolean;
+        settings?: Record<string, unknown>;
+    } = {},
 ) {
     const t = tempDir();
     const config = t.write(".databrickscfg", `[DEFAULT]\nhost = ${A}\ntoken = dapi-default\n`);
@@ -82,7 +87,10 @@ async function setup(
             DATABRICKS_TOKEN: "ambient",
             PATH: "/usr/bin",
         },
-        settings: fakeSettings(options.probe ? { ...PROBE_SETTINGS } : {}),
+        settings: fakeSettings({
+            ...(options.probe ? PROBE_SETTINGS : {}),
+            ...options.settings,
+        }),
         httpClient: http,
         folders: new MutableState<readonly string[]>(folders),
         files: new FakeFileEvents(),
@@ -488,6 +496,61 @@ describe("starting the SSH tunnel (SSH-01)", () => {
         });
         expect(signIn).not.toHaveBeenCalled();
         expect(vscode.quickInputs).toHaveLength(0);
+    });
+
+    it("stops before installing Remote-SSH, signing in or picking compute when extensions.allowed blocks it", async () => {
+        const s = await setup({ settings: { "extensions.allowed": { "*": false } } });
+        vscode.extensions.clear();
+        const signIn = vi.fn(async () => {});
+        const error = await s
+            .tunnel({ signIn })
+            .start()
+            .then(
+                () => undefined,
+                (e: unknown) => e as UserFacingError,
+            );
+        expect(error).toMatchObject({
+            code: "EXTENSION_NOT_ALLOWED",
+            userMessage:
+                "The 'Remote - SSH' extension is required to start an SSH tunnel, but installing it is blocked. " +
+                "Please modify the 'extensions.allowed' setting to allow 'ms-vscode-remote.remote-ssh', then try again.",
+        });
+        expect(vscode.executed.map((e) => e.command)).not.toContain(
+            "workbench.extensions.installExtension",
+        );
+        expect(signIn).not.toHaveBeenCalled();
+        expect(vscode.quickInputs).toHaveLength(0);
+
+        expect(error!.actions.map((a) => a.title)).toEqual(["Open setting"]);
+        await error!.actions[0]!.run();
+        expect(vscode.executed).toContainEqual({
+            command: "workbench.action.openSettings",
+            args: ["extensions.allowed"],
+        });
+    });
+
+    it("names Cursor's Remote-SSH when extensions.allowed blocks it in Cursor", async () => {
+        const s = await setup({
+            settings: { "extensions.allowed": { "*": false, "microsoft": true } },
+        });
+        env.uriScheme = "cursor";
+        await expect(s.tunnel().start()).rejects.toMatchObject({
+            code: "EXTENSION_NOT_ALLOWED",
+            userMessage: expect.stringContaining("allow 'anysphere.remote-ssh'"),
+        });
+    });
+
+    it("carries on when extensions.allowed allows Remote-SSH", async () => {
+        const s = await setup({
+            settings: {
+                "extensions.allowed": { "*": false, "ms-vscode-remote.remote-ssh": "stable" },
+            },
+        });
+        const started = s.tunnel().start();
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(1));
+        s.picker().accept(SERVERLESS_LABEL);
+        await started;
+        expect(vscode.terminals).toHaveLength(1);
     });
 });
 

@@ -12,12 +12,15 @@ import { CancelledError, UserFacingError } from "../../platform/errors";
 import type { Logger } from "../../platform/log";
 import { when } from "../../platform/reactive";
 import { detectShellKind, type ShellKind } from "../../platform/shell";
+import { settingId } from "../../platform/settings";
 import type { QuickInputFactory } from "../../platform/ui/quickPick";
 import {
+    EXTENSIONS_ALLOWED,
     findHostCliInInstall,
     hostCliCommand,
     hostIde,
     isHostCliOnPath,
+    isRemoteSshAllowed,
     pathSetupDocs,
     remoteSshExtension,
 } from "./host";
@@ -63,6 +66,7 @@ export class SshTunnel {
                 this.deps.log.error("Failed to handle the host CLI PATH prompt", e),
             );
         }
+        this.ensureRemoteSshAllowed(ide);
         await this.ensureRemoteSsh(ide);
         const connection = await this.connect();
         const compute = await pickSshCompute({
@@ -110,6 +114,35 @@ export class SshTunnel {
                     "Please connect to a Databricks workspace before starting an SSH tunnel.",
                 );
         }
+    }
+
+    /**
+     * When `extensions.allowed` blocks Remote-SSH, installing it fails and
+     * the tunnel can't open its window; say so before anything starts,
+     * with the way to the setting.
+     */
+    private ensureRemoteSshAllowed(ide: SshIde): void {
+        if (isRemoteSshAllowed(ide, this.deps.kernel.settings.get(EXTENSIONS_ALLOWED))) {
+            return;
+        }
+        const { id } = remoteSshExtension(ide);
+        throw new UserFacingError(
+            "EXTENSION_NOT_ALLOWED",
+            `The 'Remote - SSH' extension is required to start an SSH tunnel, but installing it is blocked. ` +
+                `Please modify the 'extensions.allowed' setting to allow '${id}', then try again.`,
+            {
+                actions: [
+                    {
+                        title: "Open setting",
+                        run: () =>
+                            commands.executeCommand(
+                                "workbench.action.openSettings",
+                                settingId(EXTENSIONS_ALLOWED),
+                            ),
+                    },
+                ],
+            },
+        );
     }
 
     /**

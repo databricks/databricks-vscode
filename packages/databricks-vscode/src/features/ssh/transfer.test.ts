@@ -101,6 +101,7 @@ describe("SSH tunnel transfer", () => {
                 processes: kernel.processes,
                 childEnv: (options?: Parameters<Kernel["childEnv"]>[0]) => kernel.childEnv(options),
                 extensionDependencies: kernel.extensionDependencies,
+                settings: kernel.settings,
                 connection: {
                     state: new MutableState<ConnectionState>({
                         status: "connected",
