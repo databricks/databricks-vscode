@@ -37,7 +37,14 @@ export class ConfigurationTreeDataProvider implements TreeDataProvider<Configura
         private readonly view: SidebarView = "configuration",
         private readonly groups?: Pick<OpenGroups, "isOpen">,
     ) {
-        this.subscription = sections.onDidChange(() => this.changed.fire(undefined));
+        this.subscription = sections.onDidChange((row) => {
+            if (!row) {
+                this.changed.fire(undefined);
+            } else if (this.owners.has(row)) {
+                // Only that row and its children: VS Code keeps the row itself, so a click on it never misses.
+                this.changed.fire(row);
+            }
+        });
     }
 
     getTreeItem(item: ConfigurationItem): TreeItem {

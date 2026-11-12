@@ -111,6 +111,28 @@ describe("ConfigurationTreeDataProvider", () => {
         expect(refreshes).toBe(3);
     });
 
+    it("refreshes only a row that changed alone, if it rendered that row", async () => {
+        const sections = new ConfigurationSections();
+        const provider = new ConfigurationTreeDataProvider(sections, fakeLog());
+        const events: (ConfigurationItem | undefined)[] = [];
+        provider.onDidChangeTreeData((e) => events.push(e));
+        const changed = new Emitter<ConfigurationItem | void>();
+        const shown = row("Job");
+        sections.add({
+            id: "s",
+            order: 1,
+            getChildren: () => [shown],
+            onDidChange: changed.event,
+        });
+        events.length = 0;
+        await provider.getChildren();
+        changed.fire(shown);
+        // Another view's row, or one this view never asked for: nothing to refresh here.
+        changed.fire(row("Elsewhere"));
+        changed.fire();
+        expect(events).toEqual([shown, undefined]);
+    });
+
     it("rejects two sections with the same id", () => {
         const sections = new ConfigurationSections();
         sections.add({ id: "s", order: 1, getChildren: () => [] });

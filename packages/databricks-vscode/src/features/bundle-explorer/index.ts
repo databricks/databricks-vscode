@@ -1,10 +1,12 @@
 import { TreeItemCollapsibleState, window } from "vscode";
 import type { Feature } from "../../kernel/feature";
 import { PROJECT_VIEW } from "../../kernel/project/commands";
+import { Emitter } from "../../platform/event";
 import { SECTION_ORDER } from "../../platform/ui/sections";
 import { NodeGroupSection, nodeArgument } from "../../platform/ui/nodeGroup";
 import { REFRESH_REMOTE_STATE, refreshRemoteState, SHOW_LOGS } from "./BundleExplorerCommands";
 import { BundleExplorerTreeDataProvider } from "./BundleExplorerTreeDataProvider";
+import type { ExplorerNode } from "./explorerNode";
 import {
     deployAndReport,
     DEPLOY,
@@ -62,6 +64,7 @@ export const bundleExplorer: Feature = {
     register(ctx) {
         const { bundle, bundleLog, extension, connection } = ctx.kernel;
         const trackers = new RunTrackers();
+        const runChanged = new Emitter<string>();
         const datasets = new PipelineDatasets(
             (key) => trackers.pipelineHistory(key),
             () => connection.connection?.api,
@@ -101,6 +104,15 @@ export const bundleExplorer: Feature = {
                     collapsibleState: TreeItemCollapsibleState.Expanded,
                     nodes: () => provider.getChildren(),
                     onDidChange: (listener) => provider.onDidChangeTreeData(() => listener()),
+                    // A poll redraws its resource's row alone: a full refresh drops every row for a
+                    // moment, and a click on Cancel run in that moment gets no row.
+                    onDidChangeNode: runChanged.event,
+                    rowKey: (node) => {
+                        const { type, resourceKey } = node as Partial<
+                            ExplorerNode & { resourceKey: string }
+                        >;
+                        return type === "jobs" || type === "pipelines" ? resourceKey : undefined;
+                    },
                     log: ctx.log,
                 }),
             );
@@ -113,10 +125,15 @@ export const bundleExplorer: Feature = {
             decorations,
             provider.onDidChangeTreeData(() => decorations.refresh()),
             trackers,
+            runChanged,
             diagnostics,
             terminals,
-            trackers.onDidChange(() => {
-                provider.refresh();
+            trackers.onDidChange((resourceKey) => {
+                if (resourceKey === undefined) {
+                    provider.refresh();
+                } else {
+                    runChanged.fire(resourceKey);
+                }
                 runs.updateDiagnostics().catch((e: unknown) =>
                     ctx.log.warn("Failed to update pipeline diagnostics", e),
                 );

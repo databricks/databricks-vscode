@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TreeItemCollapsibleState } from "vscode";
 import { registerFeatures, startFeatures } from "../../../kernel/feature";
 import type { RunOptions, RunResult } from "../../../platform/process";
@@ -321,6 +321,47 @@ describe("deploy and run", () => {
         expect(s.reporter.events.find((e) => e.name === "bundleRun")?.properties).toMatchObject({
             "event.cancelled": "true",
         });
+        s.kernel.dispose();
+    });
+
+    it("redraws only the job's own rows on each status poll, so its Cancel run button stays clickable", async () => {
+        const s = await setup();
+        s.kernel.runner.on(["bundle", "run"], (_args, options) => {
+            options.onStdout?.(RUN_URL);
+            return untilAborted(options);
+        });
+        let polls = 0;
+        s.http.on("GET", RUNS_GET, () => {
+            if (s.http.to(RUNS_CANCEL).length > 0) {
+                return jobRun("TERMINATED", "CANCELED");
+            }
+            polls++;
+            return jobRun("RUNNING");
+        });
+        s.http.on("POST", RUNS_CANCEL, { body: {} });
+        const project = vscode.treeDataProviders.get(PROJECT_VIEW) as ConfigurationTreeDataProvider;
+
+        const running = s.run(DEPLOY_AND_RUN_JOB, await s.job());
+        await expect
+            .poll(
+                async () => (await s.child(await s.job(), "Run Status"))?.getTreeItem().description,
+            )
+            .toBe("Running");
+        // The rows the view has now; a poll changes the run's status only.
+        const row = await s.job();
+        const refreshes: (ConfigurationItem | undefined)[] = [];
+        project.onDidChangeTreeData((e) => refreshes.push(e));
+        const seen = polls;
+        await vi.waitFor(() => expect(polls).toBeGreaterThan(seen), { timeout: 5_000 });
+        await vi.waitFor(() => expect(refreshes).not.toEqual([]));
+        // The job's row itself, not the whole view: VS Code keeps the row while it redraws it.
+        expect(refreshes.every((e) => e === row)).toBe(true);
+
+        await s.run(CANCEL_RUN, row);
+        await running;
+        expect((await s.child(await s.job(), "Run Status"))?.getTreeItem().description).toBe(
+            "Cancelled",
+        );
         s.kernel.dispose();
     });
 

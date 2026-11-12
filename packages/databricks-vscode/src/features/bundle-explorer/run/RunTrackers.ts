@@ -15,8 +15,12 @@ export class RunTrackers implements Disposable {
     private readonly latest = new Map<string, AnyRunTracker>();
     private readonly pipelineRuns = new Map<string, PipelineRunTracker[]>();
     private readonly subscriptions = new Map<AnyRunTracker, Disposable>();
-    private readonly changed = new Emitter<void>();
-    readonly onDidChange: Event<void> = this.changed.event;
+    private readonly changed = new Emitter<string | undefined>();
+    /**
+     * A resource key when only that run's status changed, as on each poll; undefined when a run
+     * started, ended, or was dropped, which can change more than its own rows.
+     */
+    readonly onDidChange: Event<string | undefined> = this.changed.event;
 
     get(resourceKey: string): AnyRunTracker | undefined {
         return this.latest.get(resourceKey);
@@ -42,11 +46,16 @@ export class RunTrackers implements Disposable {
         if (tracker.type === "pipelines") {
             this.pipelineRuns.set(resourceKey, [...this.pipelineHistory(resourceKey), tracker]);
         }
+        let state = tracker.state;
         this.subscriptions.set(
             tracker,
-            tracker.onDidChange(() => this.changed.fire()),
+            tracker.onDidChange(() => {
+                const same = tracker.state === state;
+                state = tracker.state;
+                this.changed.fire(same ? resourceKey : undefined);
+            }),
         );
-        this.changed.fire();
+        this.changed.fire(undefined);
     }
 
     /** Stops and forgets every run. */
@@ -65,7 +74,7 @@ export class RunTrackers implements Disposable {
         this.subscriptions.clear();
         this.latest.clear();
         this.pipelineRuns.clear();
-        this.changed.fire();
+        this.changed.fire(undefined);
     }
 
     dispose(): void {
