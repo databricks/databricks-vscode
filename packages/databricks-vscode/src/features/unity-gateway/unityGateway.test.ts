@@ -197,7 +197,7 @@ function setup(
         }
         return rows;
     };
-    return { kernel, settled, connectedTo, windowOn, fake, models, signInRows };
+    return { kernel, http, settled, connectedTo, windowOn, fake, models, signInRows };
 }
 
 /** Picks the host, then the profile, in the shared sign-in wizard. */
@@ -430,6 +430,121 @@ describe("the Unity Gateway feature", () => {
             expect.stringMatching(/^Can't login with config profile down: .*names no workspace on/),
         ]);
         expect(item()?.visible).toBe(true);
+    });
+
+    describe("with a new profile and a Personal Access Token", () => {
+        const CHECKING = "Databricks: Checking the Personal Access Token";
+
+        /**
+         * `configure` saves the profile `new` on B, as the CLI would, and
+         * records the progress shown before it. B is a workspace host here,
+         * so the wizard offers a token.
+         */
+        function withConfigure() {
+            const shownBeforeSaving: (string | undefined)[] = [];
+            const fixture = setup({
+                beforeStart: (k) =>
+                    k.runner.on(["configure"], (_args, options) => {
+                        shownBeforeSaving.push(...vscode.progress.map((p) => p.title));
+                        fs.appendFileSync(
+                            k.configFile(),
+                            `\n[new]\nhost = ${B}\ntoken = ${options.input!.trim()}\n`,
+                        );
+                        return {};
+                    }),
+            });
+            fixture.http.on("GET", "/.well-known/databricks-config", {
+                body: { host_type: "workspace" },
+            });
+            return { ...fixture, shownBeforeSaving };
+        }
+
+        /** The wizard's steps to a new profile `new` on B, with `token`. */
+        async function enterNewPat(token: string) {
+            await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(1));
+            lastInput().accept(B);
+            await tick();
+            lastInput().accept("Personal Access Token");
+            await tick();
+            lastInput().type("new");
+            lastInput().accept();
+            await tick();
+            lastInput().type(token);
+            lastInput().accept();
+        }
+
+        it("doesn't save a token that fails its check: it says why, with no Retry, and both connections stay as they were", async () => {
+            const { kernel, connectedTo } = withConfigure();
+            await connectedTo("DEFAULT");
+            const windowState = kernel.connection.state.value;
+            const before = fs.readFileSync(kernel.configFile(), "utf8");
+
+            const signIn = run("databricks.unityGateway.signIn");
+            await enterNewPat("dapi-down");
+            await signIn;
+
+            expect(vscode.progress.map((p) => p.title)).toContain(CHECKING);
+            expect(vscode.errors).toEqual([
+                {
+                    message: expect.stringMatching(
+                        /^Can't login with the provided Personal Access Token: .*Invalid token/,
+                    ),
+                    actions: [],
+                },
+            ]);
+            expect(kernel.runner.calls.find((c) => c.args[0] === "configure")).toBeUndefined();
+            expect(fs.readFileSync(kernel.configFile(), "utf8")).toBe(before);
+            expect(kernel.unityGateway.connection?.profile).toBe("DEFAULT");
+            expect(kernel.state.get(UNITY_GATEWAY_SAVED_PROFILE)?.profile).toBe("DEFAULT");
+            expect(kernel.connection.state.value).toEqual(windowState);
+        });
+
+        it("checks a token that works before saving it, then signs in with the new profile", async () => {
+            const { kernel, connectedTo, shownBeforeSaving } = withConfigure();
+            await connectedTo("DEFAULT");
+
+            const signIn = run("databricks.unityGateway.signIn");
+            await enterNewPat("dapi-typed");
+            await signIn;
+
+            await connectedTo("new");
+            expect(shownBeforeSaving).toContain(CHECKING);
+            expect(vscode.errors).toEqual([]);
+            expect(kernel.runner.calls.filter((c) => c.args[0] === "configure")).toHaveLength(1);
+            expect(fs.readFileSync(kernel.configFile(), "utf8")).toContain(
+                `[new]\nhost = ${B}\ntoken = dapi-typed\n`,
+            );
+            expect(kernel.connection.connection?.profile).toBe("DEFAULT");
+        });
+
+        it("doesn't save a token over a profile of the same name saved during its check", async () => {
+            const { kernel, http, connectedTo } = withConfigure();
+            await connectedTo("DEFAULT");
+            http.on("GET", SCIM_ME, (req) => {
+                if (req.headers.get("Authorization") === "Bearer dapi-typed") {
+                    // Another sign-in saved an OAuth profile under the name, as `auth login` would.
+                    fs.appendFileSync(
+                        kernel.configFile(),
+                        `\n[new]\nhost = ${B}\nauth_type = databricks-cli\n`,
+                    );
+                }
+                return { body: { userName: "me" } };
+            });
+
+            const signIn = run("databricks.unityGateway.signIn");
+            await enterNewPat("dapi-typed");
+            await signIn;
+
+            expect(vscode.errors).toEqual([
+                {
+                    message: "Profile new exists now. Sign in again to choose another name.",
+                    actions: [],
+                },
+            ]);
+            expect(kernel.runner.calls.find((c) => c.args[0] === "configure")).toBeUndefined();
+            expect(kernel.unityGateway.connection?.profile).toBe("DEFAULT");
+            expect(kernel.connection.connection?.profile).toBe("DEFAULT");
+        });
     });
 
     it("stays quiet when a sign-out cancels a sign-in under way", async () => {

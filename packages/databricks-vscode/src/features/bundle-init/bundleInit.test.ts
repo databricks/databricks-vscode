@@ -385,6 +385,41 @@ describe("the new-project wizard", () => {
         expect(kernel.connection.state.value).toEqual(failed);
     });
 
+    it("stops when a new profile's token fails its check, saving nothing, and says why with no Retry", async () => {
+        const { t, kernel, wizard } = await setup({ rejected: true });
+        kernel.runner.on(["configure"], (_args, options) => {
+            fs.appendFileSync(
+                t.path(".databrickscfg"),
+                `\n[new]\nhost = ${A}\ntoken = ${options.input!.trim()}\n`,
+            );
+            return {};
+        });
+        const failed = kernel.connection.state.value;
+        const before = fs.readFileSync(t.path(".databrickscfg"), "utf8");
+        const shown = vscode.errors.length;
+        const stopped = expect(wizard().run()).rejects.toThrow(CancelledError);
+        await answerHostAndProfile("Personal Access Token");
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(3));
+        lastInput().type("new");
+        lastInput().accept();
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(4));
+        lastInput().type("dapi-typed");
+        lastInput().accept();
+
+        await vi.waitFor(() => expect(vscode.errors).toHaveLength(shown + 1));
+        await stopped;
+        expect(vscode.errors[shown]).toEqual({
+            message: expect.stringMatching(
+                /^Can't login with the provided Personal Access Token: .*Invalid access token/,
+            ),
+            actions: [],
+        });
+        expect(kernel.runner.calls.find((c) => c.args[0] === "configure")).toBeUndefined();
+        expect(fs.readFileSync(t.path(".databrickscfg"), "utf8")).toBe(before);
+        expect(vscode.terminals).toEqual([]);
+        expect(kernel.connection.state.value).toEqual(failed);
+    });
+
     it("opens a new project outside the workspace in the window, with its profile saved", async () => {
         const { t, wizard } = await setup();
         const outside = t.path("elsewhere");

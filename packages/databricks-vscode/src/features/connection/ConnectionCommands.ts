@@ -26,6 +26,7 @@ import {
     type SignInRow,
 } from "../../kernel/connection/commands";
 import type { ConnectionState } from "../../kernel/connection/ConnectionService";
+import type { ProfilesSnapshot } from "../../kernel/connection/Profiles";
 import { failureNotice, fixFor, type FixActions } from "../../kernel/connection/fix";
 import type { Kernel, FeatureCommands } from "../../kernel/feature";
 import { SELECT_TARGET } from "../../kernel/project/commands";
@@ -115,9 +116,14 @@ export class ConnectionCommands {
      * The sign-in wizard, then whatever the user chose. `host` skips the host
      * step, as "Switch profile" does. In a project the target's host is
      * known, so the wizard starts with the profiles for it (`auth.e2e.ts`
-     * looks for them in the first input).
+     * looks for them in the first input). `retried`, a failed sign-in's
+     * choice, skips the wizard: its Retry is otherwise a sign-in like the first.
      */
-    async configureLogin(source: ManualLoginSource, host?: string): Promise<void> {
+    async configureLogin(
+        source: ManualLoginSource,
+        host?: string,
+        retried?: SignInChoice,
+    ): Promise<void> {
         const record = this.telemetry.start(MANUAL_LOGIN);
         let success = false;
         try {
@@ -132,14 +138,16 @@ export class ConnectionCommands {
                 }
                 const project = connection.project;
                 const signedOut = connection.state.value.status === "signedOut";
-                const choice = await this.runWizard({
-                    host:
-                        host ??
-                        (project !== undefined ? hostOf(connection.state.value) : undefined),
-                    suggestedName: project?.target,
-                    targetProfile: project?.workspaceProfile,
-                });
-                const connected = await this.carryOut(choice);
+                const choice =
+                    retried ??
+                    (await this.runWizard({
+                        host:
+                            host ??
+                            (project !== undefined ? hostOf(connection.state.value) : undefined),
+                        suggestedName: project?.target,
+                        targetProfile: project?.workspaceProfile,
+                    }));
+                const connected = await this.carryOut(choice, source);
                 if (connected && signedOut) {
                     this.signInUnityGatewayToo();
                 }
@@ -177,8 +185,8 @@ export class ConnectionCommands {
      * `CHOOSE_PROFILE`: the host step, preselected, then the profiles for that
      * host, whatever the window is connected to. `focus` is the caller's own
      * host and profile, which the wizard focuses instead of the window's host.
-     * A new profile is created, an expired OAuth session renewed; the window's
-     * connection doesn't change.
+     * A new profile is created, a new token checked first, as in sign-in, and
+     * an expired OAuth session renewed; the window's connection doesn't change.
      */
     async chooseProfile(focus?: ProfileFocus): Promise<ChosenProfile> {
         return this.exclusively(async () => {
@@ -198,6 +206,11 @@ export class ConnectionCommands {
                     }
                     break;
                 default:
+                    if (choice.kind === "pat") {
+                        // No Retry: Unity Gateway's sign-in or bundle init, the callers, can't resume from a notice.
+                        await this.checkToken(choice);
+                        await this.refuseTakenName(choice.profile);
+                    }
                     await this.createProfile(choice, focus?.row);
                     name = choice.profile;
             }
@@ -293,22 +306,7 @@ export class ConnectionCommands {
         focus?: ProfileFocus;
     }): Promise<SignInChoice> {
         const { connection } = this.kernel;
-        let snapshot;
-        try {
-            snapshot = await connection.profiles.refresh("sign-in wizard");
-        } catch (e) {
-            // The old wizard's remedy: a file the CLI can't parse either, so only an edit fixes it.
-            throw new UserFacingError(
-                "CONFIG_FILE_UNREADABLE",
-                `Can't read the Databricks config file ${this.kernel.configFile()}: ${errorMessage(e)}`,
-                {
-                    cause: e,
-                    actions: [
-                        { title: "Open Databricks Config File", run: () => this.openConfigFile() },
-                    ],
-                },
-            );
-        }
+        const snapshot = await this.readProfiles("sign-in wizard");
         try {
             return await runSignInWizard({
                 profiles: snapshot.profiles,
@@ -335,6 +333,25 @@ export class ConnectionCommands {
         }
     }
 
+    /** The config file's profiles, read now. */
+    private async readProfiles(reason: string): Promise<ProfilesSnapshot> {
+        try {
+            return await this.kernel.connection.profiles.refresh(reason);
+        } catch (e) {
+            // The old wizard's remedy: a file the CLI can't parse either, so only an edit fixes it.
+            throw new UserFacingError(
+                "CONFIG_FILE_UNREADABLE",
+                `Can't read the Databricks config file ${this.kernel.configFile()}: ${errorMessage(e)}`,
+                {
+                    cause: e,
+                    actions: [
+                        { title: "Open Databricks Config File", run: () => this.openConfigFile() },
+                    ],
+                },
+            );
+        }
+    }
+
     /** `factory`, remembering the input each step shows until it's hidden or disposed. */
     private trackingFactory(): QuickInputFactory {
         const factory = this.factory ?? window;
@@ -353,13 +370,19 @@ export class ConnectionCommands {
         };
     }
 
-    private async carryOut(choice: SignInChoice): Promise<boolean> {
+    private async carryOut(choice: SignInChoice, source: ManualLoginSource): Promise<boolean> {
         switch (choice.kind) {
             case "editConfigFile":
                 await this.openConfigFile();
                 return false;
             case "oauth":
             case "pat":
+                if (choice.kind === "pat") {
+                    await this.checkToken(choice, () =>
+                        this.configureLogin(source, undefined, choice),
+                    );
+                    await this.refuseTakenName(choice.profile);
+                }
                 await this.createProfile(choice, "workspace");
                 return this.recordSelection(
                     choice.kind === "oauth" ? choice.workspaceSelection : undefined,
@@ -370,6 +393,49 @@ export class ConnectionCommands {
                     choice.workspaceSelection,
                     this.connect(choice.profile.name, choice.profile.host),
                 );
+        }
+    }
+
+    /**
+     * As the old wizard did: a token that doesn't work isn't saved, and the window keeps its connection.
+     * `retry` is the error's Retry, when the sign-in can resume from it.
+     */
+    private async checkToken(
+        choice: Extract<SignInChoice, { kind: "pat" }>,
+        retry?: () => Promise<void>,
+    ): Promise<void> {
+        try {
+            await window.withProgress(
+                {
+                    location: ProgressLocation.Notification,
+                    title: "Databricks: Checking the Personal Access Token",
+                },
+                () => this.kernel.connection.checkToken(choice.host, choice.token, choice.profile),
+            );
+        } catch (e) {
+            throw new UserFacingError(
+                "PAT_CHECK_FAILED",
+                `Can't login with the provided Personal Access Token: ${errorMessage(e)}`,
+                {
+                    cause: e,
+                    actions: retry === undefined ? [] : [{ title: "Retry", run: retry }],
+                },
+            );
+        }
+    }
+
+    /**
+     * `configure` merges into a section of the same name, replacing its
+     * credentials. The wizard checked the name before the token check; a
+     * Retry may come after another sign-in saved a profile under it.
+     */
+    private async refuseTakenName(profile: string): Promise<void> {
+        const { profiles } = await this.readProfiles("before saving a token");
+        if (profiles.some((p) => p.name === profile)) {
+            throw new UserFacingError(
+                "PROFILE_EXISTS",
+                `Profile ${profile} exists now. Sign in again to choose another name.`,
+            );
         }
     }
 
