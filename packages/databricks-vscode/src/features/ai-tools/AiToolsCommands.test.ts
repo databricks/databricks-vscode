@@ -10,6 +10,7 @@ import { useTempDirs } from "../../test-support/tempDir";
 import { host as vscode } from "../../test-support/vscode";
 import { AiToolsCommands, describeAgent, INSTALL_PROMPT } from "./AiToolsCommands";
 import { AiToolsService, HIDE_INSTALL_PROMPT } from "./AiToolsService";
+import type { CopilotCliStatus } from "./copilotShim";
 import type { AiToolsAgentStatus } from "./model";
 
 const STATE_FILE = ".databricks/aitools/skills/.state.json";
@@ -45,13 +46,25 @@ const listOutput = (agents: unknown[] = AGENTS) => ({
     stdout: JSON.stringify({ release: "0.2.10", skills: [], agents }),
 });
 
-function setup(options: { isCursor?: boolean; folder?: boolean } = {}) {
+const COPILOT = {
+    name: "copilot",
+    display_name: "GitHub Copilot",
+    managed: true,
+    detected: true,
+    supports_project_scope: true,
+    installed: {},
+};
+const SHIM = "/Applications/Visual Studio Code.app/bin/copilot-shim/copilot";
+const INSTALL_CLI = "Install GitHub Copilot CLI";
+
+function setup(options: { isCursor?: boolean; folder?: boolean; copilot?: CopilotCliStatus } = {}) {
     const tmp = newDir();
     fs.mkdirSync(tmp.path("home"));
     fs.mkdirSync(tmp.path("project"));
     const { cli, runner } = fakeCli();
     runner.on(["aitools", "list"], listOutput());
     const state = new StateStore({ global: fakeMemento(), workspace: fakeMemento() });
+    const copilot = { status: options.copilot ?? ("installed" as CopilotCliStatus) };
     const service = new AiToolsService({
         cli,
         env: () => ({}),
@@ -61,6 +74,7 @@ function setup(options: { isCursor?: boolean; folder?: boolean } = {}) {
         readFile: (p) => fs.promises.readFile(p),
         isCursor: options.isCursor ?? false,
         openCursorPlugin: async () => {},
+        copilotCliStatus: async () => copilot.status,
         telemetry: new Telemetry(fakeReporter()),
         log: fakeLog(),
     });
@@ -79,6 +93,7 @@ function setup(options: { isCursor?: boolean; folder?: boolean } = {}) {
         runner,
         state,
         showLog,
+        copilot,
         installed,
         installCalls: () => runner.argv.filter((a) => a[1] === "install"),
     };
@@ -111,6 +126,12 @@ describe("describeAgent", () => {
         expect(describeAgent(agent({ supportsProjectScope: false }), "global", false)).toBe(
             "Detected",
         );
+    });
+
+    it("keeps an agent whose CLI isn't installed listed, with a CLI-missing description", () => {
+        const shimmed = { ...agent({ displayName: "GitHub Copilot" }), copilotShim: SHIM };
+        expect(describeAgent(shimmed, "global", false)).toBe("GitHub Copilot CLI not installed");
+        expect(describeAgent(shimmed, "project", false)).toBe("GitHub Copilot CLI not installed");
     });
 
     it("always allows Cursor's plugin in Cursor", () => {
@@ -391,5 +412,245 @@ describe("AiToolsCommands: uninstall", () => {
         const s = setup();
         await s.ui.uninstall();
         expect(vscode.warnings).toEqual([]);
+    });
+});
+
+describe("AiToolsCommands: GitHub Copilot CLI", () => {
+    /** Lists Claude Code and Copilot, with Copilot detected through `copilot`. */
+    function withCopilot(s: ReturnType<typeof setup>) {
+        s.runner.on(["aitools", "list"], listOutput([AGENTS[0], COPILOT]));
+    }
+
+    /** Picks Global, then `labels`, and returns the agents picker. */
+    async function pickGlobal(s: ReturnType<typeof setup>, labels: string[]) {
+        const done = s.ui.install();
+        (await nextPicker(0)).accept("$(globe) Global");
+        const agents = await nextPicker(1);
+        agents.acceptSelection(labels);
+        await done;
+        return agents;
+    }
+
+    it("lists Copilot without a CLI unchecked, and installs only the checked agents", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        withCopilot(s);
+        const done = s.ui.install();
+        (await nextPicker(0)).accept("$(globe) Global");
+        const agents = await nextPicker(1);
+        expect(agents.items.map((i) => [i.label, i.description])).toEqual([
+            ["Claude Code", "Detected"],
+            ["GitHub Copilot", "GitHub Copilot CLI not installed"],
+        ]);
+        expect(agents.selectedItems.map((i) => i.label)).toEqual(["Claude Code"]);
+        agents.acceptSelection(["Claude Code"]);
+        await done;
+        expect(s.installCalls()).toEqual([
+            [
+                "aitools",
+                "install",
+                "--scope",
+                "global",
+                "--agents",
+                "claude-code",
+                "--output",
+                "json",
+            ],
+        ]);
+    });
+
+    it("installs Copilot as usual when its CLI is installed", async () => {
+        const s = setup();
+        withCopilot(s);
+        await pickGlobal(s, ["Claude Code", "GitHub Copilot"]);
+        expect(s.installCalls()).toEqual([
+            [
+                "aitools",
+                "install",
+                "--scope",
+                "global",
+                "--agents",
+                "claude-code,copilot",
+                "--output",
+                "json",
+            ],
+        ]);
+        expect(vscode.warnings).toEqual([]);
+    });
+
+    it("installs the other agents and warns, without a modal, when Copilot's CLI is missing", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        withCopilot(s);
+        await pickGlobal(s, ["Claude Code", "GitHub Copilot"]);
+        expect(s.installCalls()).toEqual([
+            [
+                "aitools",
+                "install",
+                "--scope",
+                "global",
+                "--agents",
+                "claude-code",
+                "--output",
+                "json",
+            ],
+        ]);
+        expect(vscode.warnings).toEqual([
+            {
+                message:
+                    "Databricks AI tools were not installed for GitHub Copilot because GitHub Copilot CLI is not installed. Install GitHub Copilot CLI, then try again.",
+                actions: [INSTALL_CLI],
+            },
+        ]);
+        // Nothing runs until the user asks for the installer.
+        expect(vscode.terminals).toEqual([]);
+    });
+
+    it("omits the install action when copilot is only missing from PATH", async () => {
+        const s = setup({ copilot: "missing" });
+        withCopilot(s);
+        await pickGlobal(s, ["Claude Code", "GitHub Copilot"]);
+        expect(vscode.warnings).toEqual([expect.objectContaining({ actions: [] })]);
+        expect(vscode.warnings[0]!.message).toContain("GitHub Copilot CLI is not installed");
+    });
+
+    it("runs the shim as the installer terminal's process, then offers to install Copilot", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        withCopilot(s);
+        vscode.nextMessageChoice = INSTALL_CLI;
+        await pickGlobal(s, ["GitHub Copilot"]);
+
+        expect(vscode.terminals).toHaveLength(1);
+        expect(vscode.terminals[0]!.creationOptions).toMatchObject({
+            name: INSTALL_CLI,
+            shellPath: SHIM,
+            shellArgs: ["--version"],
+            hideFromUser: true,
+        });
+        expect(vscode.terminals[0]!.shown).toBe(1);
+        expect(s.installCalls()).toEqual([]);
+
+        // The CLI is installed once the installer's terminal closes.
+        s.copilot.status = "installed";
+        vscode.nextMessageChoice = "Install";
+        vscode.terminals[0]!.close();
+        await vi.waitFor(() =>
+            expect(vscode.infos.map((i) => i.message)).toEqual([
+                "GitHub Copilot CLI is installed. Install Databricks AI tools for GitHub Copilot?",
+            ]),
+        );
+        await vi.waitFor(() =>
+            expect(s.installCalls()).toEqual([
+                [
+                    "aitools",
+                    "install",
+                    "--scope",
+                    "global",
+                    "--agents",
+                    "copilot",
+                    "--output",
+                    "json",
+                ],
+            ]),
+        );
+    });
+
+    it("installs nothing when the installer leaves the CLI missing, and offers nothing", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        withCopilot(s);
+        vscode.nextMessageChoice = INSTALL_CLI;
+        await pickGlobal(s, ["GitHub Copilot"]);
+
+        vscode.nextMessageChoice = undefined;
+        vscode.terminals[0]!.close();
+        await vi.waitFor(() => expect(vscode.terminals[0]!.closed).toBe(true));
+        await new Promise((r) => setImmediate(r));
+        expect(vscode.infos).toEqual([]);
+        expect(s.installCalls()).toEqual([]);
+    });
+
+    it("doesn't offer the install again once the terminal has closed", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        withCopilot(s);
+        vscode.nextMessageChoice = INSTALL_CLI;
+        await pickGlobal(s, ["GitHub Copilot"]);
+        s.copilot.status = "installed";
+        vscode.nextMessageChoice = undefined;
+        vscode.terminals[0]!.close();
+        vscode.terminals[0]!.close();
+        await new Promise((r) => setImmediate(r));
+        expect(vscode.infos).toHaveLength(1);
+    });
+
+    it("asks for a modal warning with the install action when Copilot is the only agent", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        s.installed("home");
+        await s.service.refresh();
+        await s.ui.installAgent({ id: "AITOOLS.agent.copilot" });
+        expect(vscode.warnings).toEqual([
+            {
+                message:
+                    "Databricks AI tools can't be installed for GitHub Copilot because GitHub Copilot CLI is not installed.",
+                actions: [INSTALL_CLI],
+            },
+        ]);
+        expect(s.installCalls()).toEqual([]);
+        expect(vscode.terminals).toEqual([]);
+    });
+
+    it("installs Copilot from a row once its CLI is installed", async () => {
+        const s = setup();
+        s.installed("home");
+        await s.service.refresh();
+        await s.ui.installAgent({ id: "AITOOLS.agent.copilot" });
+        expect(vscode.warnings).toEqual([]);
+        expect(s.installCalls()).toEqual([
+            ["aitools", "install", "--scope", "global", "--agents", "copilot", "--output", "json"],
+        ]);
+    });
+
+    it("runs the installer from a row's warning, and retries once the CLI is installed", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        s.installed("home");
+        await s.service.refresh();
+        vscode.nextMessageChoice = INSTALL_CLI;
+        await s.ui.installAgent({ id: "AITOOLS.agent.copilot" });
+        expect(vscode.terminals).toHaveLength(1);
+
+        s.copilot.status = "installed";
+        vscode.nextMessageChoice = "Install";
+        vscode.terminals[0]!.close();
+        await vi.waitFor(() =>
+            expect(s.installCalls()).toEqual([
+                [
+                    "aitools",
+                    "install",
+                    "--scope",
+                    "global",
+                    "--agents",
+                    "copilot",
+                    "--output",
+                    "json",
+                ],
+            ]),
+        );
+    });
+
+    it("shows an error when the retry fails, after the installer closes", async () => {
+        const s = setup({ copilot: { shim: SHIM } });
+        withCopilot(s);
+        s.runner.on(["aitools", "install"], { exitCode: 1, stderr: "Error: boom" });
+        vscode.nextMessageChoice = INSTALL_CLI;
+        await pickGlobal(s, ["GitHub Copilot"]);
+
+        s.copilot.status = "installed";
+        vscode.nextMessageChoice = "Install";
+        vscode.terminals[0]!.close();
+        await vi.waitFor(() =>
+            expect(vscode.errors).toEqual([
+                {
+                    message: "Failed to install Databricks AI tools. Error: boom",
+                    actions: ["Show Logs"],
+                },
+            ]),
+        );
     });
 });

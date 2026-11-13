@@ -16,6 +16,14 @@ export const PYTHON = extensionDependency("ms-python.python", "Python", {
 export const DEBUGPY = extensionDependency("ms-python.debugpy", "Python Debugger");
 export const JUPYTER = extensionDependency("ms-toolsai.jupyter", "Jupyter");
 export const YAML = extensionDependency("redhat.vscode-yaml", "YAML");
+/**
+ * Its Copilot integration adds the `copilot` shim to terminals' PATH, which
+ * the AI tools need to find GitHub Copilot CLI. Not in the pack: Copilot
+ * users have it already, and others don't need it.
+ */
+export const COPILOT_CHAT = extensionDependency("GitHub.copilot-chat", "GitHub Copilot Chat", {
+    inPack: false,
+});
 
 /**
  * The SSH tunnel's remote window, in VS Code. The oldest the pinned CLI
@@ -38,6 +46,7 @@ export const EXTENSION_DEPENDENCIES = [
     DEBUGPY,
     JUPYTER,
     YAML,
+    COPILOT_CHAT,
     REMOTE_SSH_VSCODE,
     REMOTE_SSH_CURSOR,
 ];

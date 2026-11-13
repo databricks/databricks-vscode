@@ -35,7 +35,7 @@ export const AITOOLS_INSTALL = telemetryEvent<
     },
     agents: {
         comment:
-            'The coding agents whose skills were installed via the CLI (the closed set of agent ids, e.g. ["claude-code","cursor"]). Excludes the Cursor plugin, which is tracked separately by cursorPlugin. Undefined when no explicit selection was made (the CLI acts on every detected agent).',
+            'The coding agents selected for a skills install via the CLI (the closed set of agent ids, e.g. ["claude-code","cursor"]), including any the extension skipped (see agentErrors). Excludes the Cursor plugin, which is tracked separately by cursorPlugin. Undefined when no explicit selection was made (the CLI acts on every detected agent).',
     },
     cursorPlugin: {
         comment:
@@ -47,7 +47,7 @@ export const AITOOLS_INSTALL = telemetryEvent<
     },
     agentErrors: {
         comment:
-            "Per-agent install errors as a map of agent id to its categorical error, for each requested agent that did not install (failed or skipped). Categories are the CLI's closed set, never the free-form per-agent message. Omitted when every requested agent installed.",
+            "Per-agent install errors as a map of agent id to its categorical error, for each requested agent that did not install (failed or skipped). Categories are the CLI's closed set, never the free-form per-agent message, plus COPILOT_CLI_NOT_INSTALLED when the extension skipped GitHub Copilot because GitHub Copilot CLI isn't installed. Omitted when every requested agent installed.",
     },
     ...durationComment,
 });
@@ -85,9 +85,24 @@ export const AITOOLS_CURSOR_PLUGIN_PROMPT = telemetryEvent<{
     },
 );
 
+/** The installer VS Code runs for GitHub Copilot CLI, from the install flow. */
+export const AITOOLS_COPILOT_CLI_INSTALL = telemetryEvent<
+    { installed: boolean } & DurationMeasurement
+>(
+    "aitoolsCopilotCliInstall",
+    "Ran VS Code's GitHub Copilot CLI installer from the AI tools install flow. Recorded when its terminal closes.",
+    {
+        installed: {
+            comment: "true if GitHub Copilot CLI was usable once the installer terminal closed",
+        },
+        ...durationComment,
+    },
+);
+
 export const AI_TOOLS_EVENTS = [
     AITOOLS_INSTALL,
     AITOOLS_UPDATE,
     AITOOLS_UNINSTALL,
     AITOOLS_CURSOR_PLUGIN_PROMPT,
+    AITOOLS_COPILOT_CLI_INSTALL,
 ];

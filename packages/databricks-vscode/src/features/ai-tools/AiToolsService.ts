@@ -15,6 +15,7 @@ import { MutableState, type State } from "../../platform/reactive";
 import { stateKey, type StateStore } from "../../platform/state";
 import {
     agentStatusesOf,
+    COPILOT_AGENT_ID,
     CURSOR_AGENT_ID,
     describeInstallFailure,
     summarizeInstallErrors,
@@ -22,7 +23,9 @@ import {
     type AiToolsAgentStatus,
     type AiToolsState,
 } from "./model";
+import type { CopilotCliStatus } from "./copilotShim";
 import {
+    AITOOLS_COPILOT_CLI_INSTALL,
     AITOOLS_CURSOR_PLUGIN_PROMPT,
     AITOOLS_INSTALL,
     AITOOLS_UNINSTALL,
@@ -74,6 +77,8 @@ export interface AiToolsServiceDeps {
     readonly isCursor: boolean;
     /** Opens Cursor's marketplace install dialog for the plugin. */
     readonly openCursorPlugin: () => Thenable<unknown>;
+    /** Whether GitHub Copilot CLI is usable, on the PATH `env` gives. May throw. */
+    readonly copilotCliStatus: () => Promise<CopilotCliStatus>;
     readonly telemetry: TelemetryRecorder;
     readonly log: Logger;
 }
@@ -157,7 +162,7 @@ export class AiToolsService implements Disposable {
                 env: this.deps.env(),
                 cwd: this.cwdFor(scope),
             });
-            return agentStatusesOf(result.agents, scope);
+            return await this.withCopilotCliStatus(agentStatusesOf(result.agents, scope));
         } catch (e) {
             this.deps.log.error("Failed to list Databricks AI tools agents", e);
             return [];
@@ -165,19 +170,66 @@ export class AiToolsService implements Disposable {
     }
 
     /**
+     * Whether GitHub Copilot CLI is usable. A check that fails reads as
+     * installed, so the CLI tries the install and reports the problem itself.
+     */
+    async copilotCliStatus(): Promise<CopilotCliStatus> {
+        try {
+            return await this.deps.copilotCliStatus();
+        } catch (e) {
+            this.deps.log.error("Failed to check for GitHub Copilot CLI", e);
+            return "installed";
+        }
+    }
+
+    /** Start timing a run of VS Code's GitHub Copilot CLI installer. */
+    startCopilotCliInstall(): (props: { installed: boolean }) => void {
+        return this.deps.telemetry.start(AITOOLS_COPILOT_CLI_INSTALL);
+    }
+
+    /**
+     * Records an install the flow skipped before running the CLI, such as
+     * Copilot alone without GitHub Copilot CLI. `cursorPlugin` marks a Cursor
+     * plugin prompt that did go ahead: its outcome isn't observable, so it's
+     * only a possible success, unless an agent was skipped too.
+     */
+    recordSkippedInstall(
+        scope: AiToolsScope,
+        source: AiToolsInstallSource,
+        skipped: Readonly<Record<string, string>>,
+        cursorPlugin?: boolean,
+    ): void {
+        const agents = Object.keys(skipped);
+        this.deps.telemetry.record(AITOOLS_INSTALL, {
+            duration: 0,
+            result: cursorPlugin && agents.length === 0 ? "possible-success" : "error",
+            scope,
+            source,
+            agents,
+            ...(cursorPlugin !== undefined ? { cursorPlugin } : {}),
+            ...(agents.length > 0 ? { agentErrors: { ...skipped } } : {}),
+        });
+    }
+
+    /**
      * Installs for the chosen agents. In Cursor, choosing the Cursor agent
      * means its marketplace plugin instead, opened alongside; `cursor` is
-     * never passed to the CLI. The state is reconciled afterwards, also
-     * after a failure, which often installed some tools.
+     * never passed to the CLI. `skipped` maps agents the caller left out to
+     * the category telemetry records for them. The state is reconciled
+     * afterwards, also after a failure, which often installed some tools.
      */
     install(
         scope: AiToolsScope,
         source: AiToolsInstallSource,
         agents: readonly string[],
         signal?: AbortSignal,
+        skipped: Readonly<Record<string, string>> = {},
     ): Promise<void> {
         return this.serial(async () => {
             if (agents.length === 0) {
+                if (Object.keys(skipped).length > 0) {
+                    this.recordSkippedInstall(scope, source, skipped);
+                }
                 return;
             }
             let cliAgents = agents;
@@ -190,19 +242,12 @@ export class AiToolsService implements Disposable {
                 cliAgents = agents.filter((a) => a !== CURSOR_AGENT_ID);
                 if (cliAgents.length === 0) {
                     // Only the plugin: an empty `--agents` would act on every detected agent.
-                    this.deps.telemetry.record(AITOOLS_INSTALL, {
-                        duration: 0,
-                        result: "possible-success",
-                        scope,
-                        source,
-                        agents: [],
-                        cursorPlugin,
-                    });
+                    this.recordSkippedInstall(scope, source, skipped, cursorPlugin);
                     return;
                 }
             }
             try {
-                await this.runInstall(scope, cliAgents, source, cursorPlugin, signal);
+                await this.runInstall(scope, cliAgents, source, cursorPlugin, signal, skipped);
             } finally {
                 await this.detect();
                 await this.resolveInstalled();
@@ -218,7 +263,7 @@ export class AiToolsService implements Disposable {
                 return;
             }
             try {
-                await this.runInstall(scope, [agentId], "sidePane", undefined, signal);
+                await this.runInstall(scope, [agentId], "sidePane", undefined, signal, {});
             } finally {
                 await this.resolveInstalled();
             }
@@ -300,8 +345,11 @@ export class AiToolsService implements Disposable {
         source: AiToolsInstallSource,
         cursorPlugin: boolean | undefined,
         signal: AbortSignal | undefined,
+        skipped: Readonly<Record<string, string>>,
     ): Promise<void> {
         const record = this.deps.telemetry.start(AITOOLS_INSTALL);
+        const skippedAgents = Object.keys(skipped);
+        const selected = [...agents, ...skippedAgents];
         let result: Awaited<ReturnType<typeof aiToolsInstall>>;
         try {
             result = await aiToolsInstall(this.deps.cli, scope, agents, {
@@ -313,20 +361,26 @@ export class AiToolsService implements Disposable {
             record({
                 result: "error",
                 scope,
-                agents: [...agents],
+                agents: selected,
                 source,
                 ...(cursorPlugin !== undefined ? { cursorPlugin } : {}),
+                ...(skippedAgents.length > 0 ? { agentErrors: { ...skipped } } : {}),
             });
             throw e;
         }
         const { output, error } = result;
+        const summarized = summarizeInstallErrors(output);
+        const agentErrors = { ...skipped, ...summarized.agentErrors };
         record({
-            result: error === undefined ? "success" : "error",
+            result: error === undefined && skippedAgents.length === 0 ? "success" : "error",
             scope,
-            agents: [...agents],
+            agents: selected,
             source,
             ...(cursorPlugin !== undefined ? { cursorPlugin } : {}),
-            ...summarizeInstallErrors(output),
+            ...(summarized.globalErrorCategory !== undefined
+                ? { globalErrorCategory: summarized.globalErrorCategory }
+                : {}),
+            ...(Object.keys(agentErrors).length > 0 ? { agentErrors } : {}),
         });
         if (error !== undefined) {
             // Under `--output json` stderr is empty and the reason is in the JSON.
@@ -385,12 +439,32 @@ export class AiToolsService implements Disposable {
             this.patch({
                 version: result.release,
                 updateStatus: updateStatusOf(result.skills, scope),
-                agents: agentStatusesOf(result.agents, scope),
+                agents: await this.withCopilotCliStatus(agentStatusesOf(result.agents, scope)),
             });
         } catch (e) {
             this.deps.log.error("Failed to check for Databricks AI tools updates", e);
             this.patch({ updateStatus: "error" });
         }
+    }
+
+    /**
+     * Marks Copilot with `copilotShim` when `aitools list` detected it only
+     * through VS Code's shim. Not checked once Copilot is installed.
+     */
+    private async withCopilotCliStatus(
+        agents: AiToolsAgentStatus[],
+    ): Promise<AiToolsAgentStatus[]> {
+        const copilot = agents.find(
+            (a) => a.id === COPILOT_AGENT_ID && a.detected && a.version === undefined,
+        );
+        if (copilot === undefined) {
+            return agents;
+        }
+        const status = await this.copilotCliStatus();
+        if (typeof status !== "object") {
+            return agents;
+        }
+        return agents.map((a) => (a === copilot ? { ...a, copilotShim: status.shim } : a));
     }
 
     private async stateFileExists(scope: AiToolsScope): Promise<boolean> {

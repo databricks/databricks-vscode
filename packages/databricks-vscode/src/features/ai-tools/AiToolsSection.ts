@@ -149,6 +149,20 @@ function agentRow(agent: AiToolsAgentStatus, scope: AiToolsScope): Configuration
         };
     }
     const reason = agentInstallBlockReason(agent, scope);
+    if (reason === "cliNotInstalled") {
+        return {
+            ...base,
+            description: "CLI not installed",
+            tooltip: `${agent.displayName} CLI is not installed. Install to set it up first.`,
+            contextValue: contextValue("agent.notInstalled"),
+            // Installing offers to install the agent's CLI first.
+            command: {
+                title: "Install AI tools for this agent",
+                command: INSTALL_AGENT,
+                arguments: [{ id }],
+            },
+        };
+    }
     if (reason === "notDetected") {
         return {
             ...base,

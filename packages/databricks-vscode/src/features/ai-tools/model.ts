@@ -25,6 +25,12 @@ export interface AiToolsAgentStatus {
     readonly version?: string;
     /** A managed agent that received only the raw skills, not the plugin. */
     readonly skillsOnly?: boolean;
+    /**
+     * Set when GitHub Copilot was detected only through VS Code's `copilot`
+     * shim: GitHub Copilot CLI isn't installed, and running this shim in a
+     * terminal installs it.
+     */
+    readonly copilotShim?: string;
 }
 
 export interface AiToolsState {
@@ -41,7 +47,13 @@ export interface AiToolsState {
 /** The Cursor agent of `aitools list`. In Cursor, the marketplace plugin replaces it. */
 export const CURSOR_AGENT_ID = "cursor";
 
-export type AgentInstallBlockReason = "notDetected" | "scopeUnsupported";
+/** The GitHub Copilot agent of `aitools list`. */
+export const COPILOT_AGENT_ID = "copilot";
+
+/** `agentErrors` category for a Copilot install skipped because GitHub Copilot CLI isn't installed. */
+export const COPILOT_CLI_NOT_INSTALLED = "COPILOT_CLI_NOT_INSTALLED";
+
+export type AgentInstallBlockReason = "notDetected" | "scopeUnsupported" | "cliNotInstalled";
 
 /** Whether an agent can take the install at `scope`, once detected. */
 export function supportsScope(agent: AiToolsAgentStatus, scope: AiToolsScope): boolean {
@@ -50,7 +62,8 @@ export function supportsScope(agent: AiToolsAgentStatus, scope: AiToolsScope): b
 
 /**
  * Why an agent can't be installed at `scope`, or undefined if it can. The
- * install picker and the Agents rows share it.
+ * install picker and the Agents rows share it. `cliNotInstalled` stays
+ * installable: installing then offers to install the agent's CLI.
  */
 export function agentInstallBlockReason(
     agent: AiToolsAgentStatus,
@@ -61,6 +74,9 @@ export function agentInstallBlockReason(
     }
     if (!supportsScope(agent, scope)) {
         return "scopeUnsupported";
+    }
+    if (agent.copilotShim !== undefined) {
+        return "cliNotInstalled";
     }
     return undefined;
 }
