@@ -185,8 +185,8 @@ export class ConnectionCommands {
      * `CHOOSE_PROFILE`: the host step, preselected, then the profiles for that
      * host, whatever the window is connected to. `focus` is the caller's own
      * host and profile, which the wizard focuses instead of the window's host.
-     * A new profile is created, an expired OAuth session renewed; the window's
-     * connection doesn't change.
+     * A new profile is created, a new token checked first, as in sign-in, and
+     * an expired OAuth session renewed; the window's connection doesn't change.
      */
     async chooseProfile(focus?: ProfileFocus): Promise<ChosenProfile> {
         return this.exclusively(async () => {
@@ -206,6 +206,11 @@ export class ConnectionCommands {
                     }
                     break;
                 default:
+                    if (choice.kind === "pat") {
+                        // No Retry: Unity Gateway's sign-in or bundle init, the callers, can't resume from a notice.
+                        await this.checkToken(choice);
+                        await this.refuseTakenName(choice.profile);
+                    }
                     await this.createProfile(choice, focus?.row);
                     name = choice.profile;
             }
@@ -373,7 +378,9 @@ export class ConnectionCommands {
             case "oauth":
             case "pat":
                 if (choice.kind === "pat") {
-                    await this.checkToken(choice, source);
+                    await this.checkToken(choice, () =>
+                        this.configureLogin(source, undefined, choice),
+                    );
                     await this.refuseTakenName(choice.profile);
                 }
                 await this.createProfile(choice, "workspace");
@@ -389,10 +396,13 @@ export class ConnectionCommands {
         }
     }
 
-    /** As the old wizard did: a token that doesn't work isn't saved, and the window keeps its connection. */
+    /**
+     * As the old wizard did: a token that doesn't work isn't saved, and the window keeps its connection.
+     * `retry` is the error's Retry, when the sign-in can resume from it.
+     */
     private async checkToken(
         choice: Extract<SignInChoice, { kind: "pat" }>,
-        source: ManualLoginSource,
+        retry?: () => Promise<void>,
     ): Promise<void> {
         try {
             await window.withProgress(
@@ -408,12 +418,7 @@ export class ConnectionCommands {
                 `Can't login with the provided Personal Access Token: ${errorMessage(e)}`,
                 {
                     cause: e,
-                    actions: [
-                        {
-                            title: "Retry",
-                            run: () => this.configureLogin(source, undefined, choice),
-                        },
-                    ],
+                    actions: retry === undefined ? [] : [{ title: "Retry", run: retry }],
                 },
             );
         }
