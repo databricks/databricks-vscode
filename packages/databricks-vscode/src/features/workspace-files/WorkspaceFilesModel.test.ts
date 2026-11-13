@@ -292,7 +292,7 @@ describe("WorkspaceFsProvider", () => {
         await before;
     });
 
-    it("doesn't let a late request overwrite a newer stat", async () => {
+    it("a newer stat stays cached after an older request settles", async () => {
         const { model, http } = provider();
         const file = `${HOME}/a.py`;
         // The tree's request is answered only when released, with the old size.

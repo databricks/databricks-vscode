@@ -177,8 +177,8 @@ export class WorkspaceFilesModel implements Disposable {
     }
 
     /**
-     * Loads and caches the result. The cache holds the promise, so a slower
-     * request that settles after a newer one can't overwrite the newer entry.
+     * Loads and caches the result. The newest call to start wins: the entry is
+     * set when the call starts, and a request that settles later doesn't replace it.
      */
     private store<T>(
         cache: Map<string, Cached<T>>,
