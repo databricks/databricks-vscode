@@ -468,6 +468,29 @@ export const python: Feature = {
                 recordDrift: (report) => recordPythonSetupDrift(ctx.telemetry, report),
             });
 
+            /** Whether `executable` has databricks-connect. Shared by the checklist and the run gate. */
+            const dbConnectProbe = async (
+                executable: string,
+                signal?: AbortSignal,
+                options: { uv?: boolean } = {},
+            ): Promise<PackageProbe> => {
+                try {
+                    const found = await packages.find(
+                        executable,
+                        "databricks-connect",
+                        signal,
+                        options,
+                    );
+                    return found === undefined
+                        ? { kind: "missing" }
+                        : { kind: "installed", version: found.version };
+                } catch (e) {
+                    signal?.throwIfAborted();
+                    ctx.log.error("Failed to check python environment dependencies", e);
+                    return { kind: "failed", message: errorMessage(e) };
+                }
+            };
+
             const autocomplete = new Autocomplete({
                 stubSource: kernel.extension.asAbsolutePath(BUILTINS_STUB),
                 workspaceFolder: () =>
@@ -487,18 +510,7 @@ export const python: Feature = {
                 compute: () => checklistCompute(ctx),
                 onDidChangeCompute: computeChanged.event,
                 catalogs: () => catalogProbe(),
-                dbConnect: async (executable, signal): Promise<PackageProbe> => {
-                    try {
-                        const found = await packages.find(executable, "databricks-connect", signal);
-                        return found === undefined
-                            ? { kind: "missing" }
-                            : { kind: "installed", version: found.version };
-                    } catch (e) {
-                        signal.throwIfAborted();
-                        ctx.log.error("Failed to check python environment dependencies", e);
-                        return { kind: "failed", message: errorMessage(e) };
-                    }
-                },
+                dbConnect: dbConnectProbe,
                 builtins: async (): Promise<BuiltinsProbe> => {
                     try {
                         return (await autocomplete.shouldSetupBuiltins())
@@ -633,6 +645,7 @@ export const python: Feature = {
                 setup: () => runSetup(),
                 requireExtension,
                 executable: () => msPython.executable(root),
+                dbConnect: (executable, signal) => dbConnectProbe(executable, signal, { uv: true }),
                 writeEnvFile: () => envFile.update("Databricks Connect run"),
                 bootstrapPath: kernel.extension.asAbsolutePath(
                     path.join("resources", "python", "dbconnect-bootstrap.py"),

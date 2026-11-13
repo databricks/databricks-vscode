@@ -9,9 +9,13 @@ import {
 import type { DatabricksPythonDebugConfiguration } from "./DatabricksDebugConfigurationProvider";
 import { DEBUGPY, PYTHON } from "../../kernel/extensionDependencies";
 import type { ExtensionDependencies } from "../../platform/extensions";
+import type { PackageProbe } from "./setup/external/checks";
 import type { Readiness } from "./setup/readiness";
 
 export const TERMINAL_NAME = "Databricks Connect";
+
+/** How long the databricks-connect probe may take before the run goes on without it. */
+export const DBCONNECT_PROBE_TIMEOUT_MS = 10_000;
 
 /** The part of `vscode.window` the runner needs. */
 interface TerminalHost {
@@ -30,6 +34,8 @@ export interface DbConnectRunnerDeps {
     readonly requireExtension: ExtensionDependencies["require"];
     /** The interpreter ms-python has selected for the project. */
     executable(): Promise<string | undefined>;
+    /** Whether an interpreter has databricks-connect: the same probe the external checklist uses. */
+    dbConnect(executable: string, signal: AbortSignal): Promise<PackageProbe>;
     /** Writes the env file the bootstrap reads, and resolves when it is current. */
     writeEnvFile(): Promise<unknown>;
     /** `resources/python/dbconnect-bootstrap.py`. */
@@ -43,7 +49,7 @@ export interface DbConnectRunnerDeps {
 }
 
 /** A setup that ran but doesn't match the compute any more still runs: the row says so. */
-function canRun(readiness: Readiness | undefined): boolean {
+function canRun(readiness: Readiness | undefined): readiness is Readiness {
     return readiness !== undefined && readiness.status !== "notReady";
 }
 
@@ -61,6 +67,8 @@ function canRun(readiness: Readiness | undefined): boolean {
 export class DbConnectRunner implements Disposable {
     private terminal?: Terminal;
     private readonly closed: Disposable;
+    /** Interpreters found with databricks-connect in this session. */
+    private readonly withDbConnect = new Set<string>();
 
     constructor(private readonly deps: DbConnectRunnerDeps) {
         this.closed = deps.terminals.onDidCloseTerminal((t) => {
@@ -146,9 +154,13 @@ export class DbConnectRunner implements Disposable {
 
     /** The gate, the file and the interpreter, shared by run and debug so both use the same interpreter. */
     private async preflight(file: string | undefined): Promise<string | undefined> {
-        if (!canRun(await this.deps.readiness())) {
+        let readiness = await this.deps.readiness();
+        let setupRan = false;
+        if (!canRun(readiness)) {
             await this.deps.setup();
-            if (!canRun(await this.deps.readiness())) {
+            setupRan = true;
+            readiness = await this.deps.readiness();
+            if (!canRun(readiness)) {
                 return undefined;
             }
         }
@@ -159,7 +171,41 @@ export class DbConnectRunner implements Disposable {
         if (executable === undefined) {
             throw new UserFacingError("NO_INTERPRETER", "No python executable found");
         }
+        // The uv row describes the .venv, not the selected interpreter. As in 2.x, a
+        // missing databricks-connect runs the setup, which adopts the .venv; the run
+        // goes on only if the interpreter it then uses has the package. The external
+        // checklist already probed the selected interpreter in readiness.
+        if (readiness.strategy === "uv" && (await this.missingDbConnect(executable))) {
+            // Setup runs once per run, as in 2.x: after one that already ran, a missing package stops the run.
+            if (setupRan) {
+                return undefined;
+            }
+            await this.deps.setup();
+            const after = await this.deps.executable();
+            if (after === undefined || (await this.missingDbConnect(after))) {
+                return undefined;
+            }
+            return after;
+        }
         return executable;
+    }
+
+    /**
+     * A probe that times out or fails lets the run go on: the run reports its own error.
+     * A found package is remembered per interpreter for the session, as 2.x re-checks only
+     * when the interpreter changed; a missing or failed result is probed again.
+     */
+    private async missingDbConnect(executable: string): Promise<boolean> {
+        if (this.withDbConnect.has(executable)) {
+            return false;
+        }
+        const probe = await this.deps
+            .dbConnect(executable, AbortSignal.timeout(DBCONNECT_PROBE_TIMEOUT_MS))
+            .catch(() => undefined);
+        if (probe?.kind === "installed") {
+            this.withDbConnect.add(executable);
+        }
+        return probe?.kind === "missing";
     }
 
     /** The terminal stays open: its output is the user's to read. */

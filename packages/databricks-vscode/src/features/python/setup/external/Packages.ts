@@ -30,9 +30,22 @@ export interface InstalledPackage {
 export class Packages {
     constructor(private readonly deps: PackagesDeps) {}
 
-    /** Every package in the interpreter's environment. Throws when pip fails. */
-    async list(executable: string, signal?: AbortSignal): Promise<InstalledPackage[]> {
-        const { command, args } = await this.command(executable, ["list", "--format", "json"]);
+    /**
+     * Every package in the interpreter's environment. Throws when pip fails.
+     * `uv: true` lists with uv whatever the project's lock: a uv-made venv has no pip.
+     */
+    async list(
+        executable: string,
+        signal?: AbortSignal,
+        options: { uv?: boolean } = {},
+    ): Promise<InstalledPackage[]> {
+        const { command, args } = await this.command(
+            executable,
+            ["list", "--format", "json"],
+            [],
+            options.uv,
+            signal,
+        );
         const result = await this.deps.processes.run(command, args, {
             env: this.deps.env(),
             signal,
@@ -52,8 +65,9 @@ export class Packages {
         executable: string,
         name: string,
         signal?: AbortSignal,
+        options: { uv?: boolean } = {},
     ): Promise<InstalledPackage | undefined> {
-        return (await this.list(executable, signal)).find((p) => p.name === name);
+        return (await this.list(executable, signal, options)).find((p) => p.name === name);
     }
 
     /** Installs `name`, pinned to `version` when given (`==` accepts `17.3.*`). Throws on a non-zero exit. */
@@ -84,10 +98,15 @@ export class Packages {
         if (!existsSync(path.join(this.deps.root, "uv.lock"))) {
             return false;
         }
+        return this.hasUv();
+    }
+
+    private async hasUv(signal?: AbortSignal): Promise<boolean> {
         try {
             const result = await this.deps.processes.run("uv", ["--version"], {
                 env: this.deps.env(),
                 closeStdin: true,
+                signal,
             });
             return result.exitCode === 0;
         } catch {
@@ -99,8 +118,13 @@ export class Packages {
         executable: string,
         baseArgs: string[],
         nativePipArgs: string[] = [],
+        preferUv = false,
+        signal?: AbortSignal,
     ): Promise<{ command: string; args: string[] }> {
-        if (await this.usesUv()) {
+        const useUv = preferUv ? await this.hasUv(signal) : await this.usesUv();
+        // An aborted `uv --version` reads as "no uv": stop here rather than run pip.
+        signal?.throwIfAborted();
+        if (useUv) {
             return { command: "uv", args: ["pip", ...baseArgs, "--python", executable] };
         }
         return {
