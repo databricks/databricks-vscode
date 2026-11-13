@@ -1,8 +1,13 @@
 import type { Disposable } from "vscode";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPublicApi } from "./api";
+import type {
+    Connection,
+    ConnectionState as KernelState,
+} from "./kernel/connection/ConnectionService";
+import type { Kernel } from "./kernel/feature";
 import { disposeAll } from "./platform/event";
-import { when } from "./platform/reactive";
+import { MutableState, when } from "./platform/reactive";
 import { FAKE_CLI_PATH, fakeKernel } from "./test-support/fakes";
 import { FakeHttpClient, SCIM_ME } from "./test-support/fakeHttp";
 import { useTempDirs } from "./test-support/tempDir";
@@ -54,6 +59,53 @@ describe("the public API, version 2 (INFRA-08)", () => {
         await expect(s.api.getAuthHeaders()).rejects.toThrow(
             "Not connected to a Databricks workspace.",
         );
+    });
+});
+
+describe("the version 1 state events", () => {
+    /** Only the connection state is set: the API reads nothing else when it's created. */
+    function stateApi(initial: KernelState) {
+        const state = new MutableState<KernelState>(initial, (a, b) => a === b);
+        const kernel = { connection: { state, connection: undefined } } as unknown as Kernel;
+        const api = createPublicApi(kernel, async () => {}, subscriptions);
+        const states: string[] = [];
+        api.connectionManager.onDidChangeState((s) => states.push(s));
+        return { state, states };
+    }
+    const connected = (): KernelState => ({ status: "connected", connection: {} as Connection });
+
+    it("fires only when the version 1 state changes", () => {
+        const { state, states } = stateApi({ status: "connecting" });
+        state.set(connected());
+        state.set(connected());
+        expect(states).toEqual(["CONNECTED"]);
+        state.set({ status: "connecting" });
+        state.set(connected());
+        state.set({ status: "error", error: new Error("boom") });
+        state.set(connected());
+        state.set({ status: "signedOut", reason: "You signed out." });
+        expect(states).toEqual([
+            "CONNECTED",
+            "CONNECTING",
+            "CONNECTED",
+            "DISCONNECTED",
+            "CONNECTED",
+            "DISCONNECTED",
+        ]);
+    });
+
+    it("fires the first change as DISCONNECTED with no profile, as the kernel's first signed-out state", () => {
+        const { state, states } = stateApi({ status: "connecting" });
+        state.set({ status: "signedOut", reason: "No profile." });
+        expect(states).toEqual(["DISCONNECTED"]);
+    });
+
+    it("reports the startup order of version 2.x: CONNECTING, then CONNECTED", () => {
+        // The kernel is already connecting when the API is created, then connects.
+        const { state, states } = stateApi({ status: "connecting" });
+        state.set({ status: "connecting", profile: "DEFAULT", host: A });
+        state.set(connected());
+        expect(states).toEqual(["CONNECTING", "CONNECTED"]);
     });
 });
 
