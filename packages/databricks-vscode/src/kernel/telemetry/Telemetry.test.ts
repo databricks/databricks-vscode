@@ -61,7 +61,7 @@ describe("Telemetry", () => {
         const telemetry = new Telemetry(reporter);
         telemetry.setMetadata(
             "user",
-            await toUserMetadata({
+            toUserMetadata({
                 userName: "miles@databricks.com",
                 host: "my.databricks.com",
                 workspaceId: "workspace-id",

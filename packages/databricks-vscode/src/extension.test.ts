@@ -55,7 +55,7 @@ const logEntries = (context: ReturnType<typeof fakeExtensionContext>): LogEntry[
         .filter((line) => line !== "")
         .map((line) => JSON.parse(line) as LogEntry);
 
-/** The `user.*` properties of the next event, once the user name is hashed: that is asynchronous. */
+/** The `user.*` properties of the next `commandExecution`, once the connection has set them. */
 async function userOfNextEvent(): Promise<Record<string, string>> {
     let user: Record<string, string> = {};
     await vi.waitFor(async () => {
@@ -151,7 +151,7 @@ describe("activate", () => {
 
     it("tags events with the hashed user name and the workspace's host name, as the old extension did", async () => {
         const context = await activateConnected();
-        const expectedUser = await toUserMetadata({ userName: "alice@example.com", host: A });
+        const expectedUser = toUserMetadata({ userName: "alice@example.com", host: A });
         expect(await userOfNextEvent()).toEqual({
             "user.hashedUserName": expectedUser.hashedUserName,
             // The old extension sent `URL.host`, without the scheme; the dashboards group by it.
@@ -159,6 +159,20 @@ describe("activate", () => {
             "user.workspaceId": "1234",
             "user.authType": "pat",
         });
+        deactivateContext(context);
+    });
+
+    it("tags the events recorded as the connection comes up with the user", async () => {
+        const context = await activateConnected();
+        const firstEvent = (name: string, property: string, value: string) =>
+            telemetry.events.find((e) => e.name === name && e.properties[property] === value)
+                ?.properties;
+        expect(firstEvent("connectionStateChanged", "event.newState", "CONNECTED")).toHaveProperty(
+            "user.hashedUserName",
+        );
+        expect(firstEvent("autoLogin", "event.success", "true")).toHaveProperty(
+            "user.hashedUserName",
+        );
         deactivateContext(context);
     });
 
@@ -175,7 +189,7 @@ describe("activate", () => {
         deactivateContext(context);
     });
 
-    it("doesn't tag events with a user who signed out while the name was being hashed", async () => {
+    it("clears the user when signed out as soon as the connection is announced", async () => {
         process.env.DATABRICKS_CONFIG_FILE = tempDir().write(
             ".databrickscfg",
             `[DEFAULT]\nhost = ${A}\ntoken = ${TOKEN}\n`,
@@ -183,7 +197,7 @@ describe("activate", () => {
         await stubDatabricksApi(async () => Response.json({ userName: "alice@example.com" }));
         const context = fakeExtensionContext(tempDir().dir);
         const api = activate(context as never)!;
-        // Signs out as soon as the connection is announced, before the hash can finish.
+        // Signs out as soon as the connection is announced: the user just set must be cleared.
         api.onDidChangeConnection(() => {
             if (api.connection !== undefined) {
                 void run("databricks.connection.logout");
