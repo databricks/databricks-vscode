@@ -22,7 +22,7 @@ describe("onboarding", () => {
         setup();
         await vscode.commands.get("databricks.quickstart.open")?.();
         expect(vscode.executed.at(-1)?.command).toBe("workbench.action.openWalkthrough");
-        expect(vscode.executed.at(-1)?.args[0]).toBe("databricks.databricks#quickstart");
+        expect(vscode.executed.at(-1)?.args[0]).toBe("databricks.databricks#getStarted");
     });
 
     it("on a fresh install, opens nothing (VS Code opens the walkthrough) and records the version", async () => {
