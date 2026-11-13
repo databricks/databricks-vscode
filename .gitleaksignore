@@ -2,3 +2,6 @@
 # verified identical to https://repo.yarnpkg.com/4.18.1/packages/yarnpkg-cli/bin/yarn.js
 .yarn/releases/yarn-4.18.1.cjs:aws-access-token:150
 .yarn/releases/yarn-4.18.1.cjs:azure-openai-api-key:609
+# The same findings in a scan of the git history, which keys them by the commit that added the file
+bfe97cf9f25e4651297b0ea35f148c4223358a24:.yarn/releases/yarn-4.18.1.cjs:aws-access-token:150
+bfe97cf9f25e4651297b0ea35f148c4223358a24:.yarn/releases/yarn-4.18.1.cjs:azure-openai-api-key:609
