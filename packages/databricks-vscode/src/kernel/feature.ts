@@ -66,11 +66,11 @@ export interface ChildEnvOptions {
     /** Adds `DATABRICKS_CLUSTER_ID` or `DATABRICKS_SERVERLESS_COMPUTE_ID=auto`. */
     readonly compute?: ChildCompute;
     /**
-     * A bundle CLI call for this project's target. In a session window it
-     * throws unless the target guard lets the target run (`targetAccess`),
-     * and pins the project's root, since the call gets the session's token.
+     * The project's root, which a bundle CLI call pins, so the CLI can't walk
+     * up to a parent `databricks.yml`. The bundle calls that check the target
+     * come from `bundleChildEnv`.
      */
-    readonly bundle?: { readonly root: string; readonly target: string };
+    readonly bundleRoot?: string;
 }
 
 /** The shared services. */
@@ -116,6 +116,18 @@ export interface Kernel {
     configFile(): string;
     /** The environment of a child process (`childEnv`). */
     childEnv(options?: ChildEnvOptions): Record<string, string>;
+    /**
+     * The environment of a bundle call, as `childEnv` with `bundle`. It first
+     * decides the target from the files on disk, so a bundle command started
+     * right after an edit is refused. Resolves once that passes.
+     */
+    bundleChildEnv(
+        options: ChildEnvOptions & {
+            readonly bundle: { readonly root: string; readonly target: string };
+            /** Aborting it stops the check, as it stops the command. */
+            readonly signal?: AbortSignal;
+        },
+    ): Promise<Record<string, string>>;
 }
 
 /** Commands registered through it are disposed with the feature. */

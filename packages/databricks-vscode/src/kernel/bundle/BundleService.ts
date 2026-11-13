@@ -53,7 +53,10 @@ export interface BundleServiceDeps {
      * variable overrides and this cluster override (`childEnv`, with
      * `BUNDLE_VAR_*` and `DATABRICKS_CLUSTER_ID`).
      */
-    readonly env: (connection: Connection, inputs: BundleEnvInputs) => Record<string, string>;
+    readonly env: (
+        connection: Connection,
+        inputs: BundleEnvInputs,
+    ) => Record<string, string> | Promise<Record<string, string>>;
     /**
      * Whether the target's "Override Jobs cluster in bundle" applies (`capabilities.compute` is
      * `perTarget`). A session's compute is the window's: its deploys keep the bundle's own.
@@ -93,6 +96,12 @@ export class BundleService implements Disposable {
     readonly operations: BundleOperations;
 
     private inputs?: Inputs;
+    /**
+     * The target manual commands run for: as `inputs`, but it follows the connection
+     * and not the cached check, which only the automatic runs wait for. Each command's
+     * check (`bundleEnv`) decides what may run.
+     */
+    private manual?: Inputs;
     /** Validate's last outcome, as a comparable string. */
     private lastOutcome?: string;
     /** Set by an explicit refresh: the next summary runs even if validate's outcome is unchanged. */
@@ -168,6 +177,7 @@ export class BundleService implements Disposable {
         const connection = this.deps.connection.value;
         const root = project.project?.root;
         const target = project.target;
+        this.manual = this.manualInputs(root, target, connection);
         if (root === undefined || target === undefined || !this.usable(root, target)) {
             return this.clear();
         }
@@ -183,17 +193,7 @@ export class BundleService implements Disposable {
             }
             return this.clear();
         }
-        const next: Inputs = {
-            root,
-            target,
-            revision: project.revision,
-            variables: project.variables ?? {},
-            clusterId: this.deps.choosesCompute
-                ? bundleClusterOverride(project.overrides)
-                : undefined,
-            host: connection.connection.host,
-            connection: connection.connection,
-        };
+        const next = this.inputsOf(root, target, connection.connection);
         const previous = this.inputs;
         if (
             previous !== undefined &&
@@ -215,6 +215,41 @@ export class BundleService implements Disposable {
         }
         this.inputs = next;
         this.validated.invalidate(previous === undefined ? "session started" : "inputs changed");
+    }
+
+    /** The target manual commands run for: the connection's, whatever the cached check says. */
+    private manualInputs(
+        root: string | undefined,
+        target: string | undefined,
+        connection: ConnectionState,
+    ): Inputs | undefined {
+        if (root === undefined || target === undefined) {
+            return undefined;
+        }
+        if (connection.status === "connected") {
+            return this.inputsOf(root, target, connection.connection);
+        }
+        // While reconnecting, keep the last target, as the automatic inputs do.
+        return connection.status === "connecting" &&
+            this.manual?.root === root &&
+            this.manual.target === target
+            ? this.manual
+            : undefined;
+    }
+
+    private inputsOf(root: string, target: string, connection: Connection): Inputs {
+        const project = this.deps.project.value;
+        return {
+            root,
+            target,
+            revision: project.revision,
+            variables: project.variables ?? {},
+            clusterId: this.deps.choosesCompute
+                ? bundleClusterOverride(project.overrides)
+                : undefined,
+            host: connection.host,
+            connection,
+        };
     }
 
     private clear() {
@@ -260,7 +295,7 @@ export class BundleService implements Disposable {
                 );
             },
             current: (): OperationTarget | undefined => {
-                const inputs = this.inputs;
+                const inputs = this.manual;
                 return inputs === undefined
                     ? undefined
                     : {
@@ -300,7 +335,8 @@ export class BundleService implements Disposable {
         const { bundleLog } = this.deps;
         bundleLog.info(`Reading local bundle configuration for target ${inputs.target}...`);
         const config = await this.run(
-            () => bundleValidate(this.deps.cli, inputs.target, this.context(inputs, signal)),
+            async () =>
+                bundleValidate(this.deps.cli, inputs.target, await this.context(inputs, signal)),
             "Failed to read local bundle configuration.",
         );
         bundleLog.info("Finished reading local bundle configuration.");
@@ -314,8 +350,8 @@ export class BundleService implements Disposable {
         const { bundleLog } = this.deps;
         bundleLog.info(`Refreshing bundle configuration for target ${inputs.target}...`);
         const summary = await this.run(
-            () =>
-                bundleSummary(this.deps.cli, inputs.target, this.context(inputs, signal), {
+            async () =>
+                bundleSummary(this.deps.cli, inputs.target, await this.context(inputs, signal), {
                     forcePull,
                 }),
             "Failed to refresh bundle configuration.",
@@ -332,11 +368,11 @@ export class BundleService implements Disposable {
         return this.inputs;
     }
 
-    private context(inputs: Inputs, signal: AbortSignal) {
+    private async context(inputs: Inputs, signal: AbortSignal) {
         // stderr carries the CLI's warnings and errors; the old extension streamed it there too.
         return {
             cwd: inputs.root,
-            env: this.deps.env(inputs.connection, inputs),
+            env: await this.deps.env(inputs.connection, { ...inputs, signal }),
             signal,
             onStderr: (chunk: string) => this.deps.bundleLog.output(chunk),
         };

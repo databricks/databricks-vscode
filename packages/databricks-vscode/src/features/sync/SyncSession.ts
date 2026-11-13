@@ -142,7 +142,7 @@ export class SyncSession implements Disposable {
                             kernel.project.overrides.value,
                             kernel.capabilities.compute === "perTarget",
                         ),
-                        bundle: { root: session.project.root, target: session.target },
+                        bundleRoot: session.project.root,
                     }),
                     onStdoutLine: (line) => read(readStdoutLine(line)),
                     onStderrLine: (line) => read(readStderrLine(line)),

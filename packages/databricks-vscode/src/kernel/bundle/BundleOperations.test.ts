@@ -14,6 +14,7 @@ import { useTempDirs } from "../../test-support/tempDir";
 import { Cli, CliError } from "../cli/Cli";
 import type { Connection, ConnectionState } from "../connection/ConnectionService";
 import { ProjectService } from "../project/ProjectService";
+import type { TargetAccessState } from "../project/TargetGuard";
 import { BundleLog, type BundleLogChannel } from "./BundleLog";
 import { BundleService } from "./BundleService";
 
@@ -22,6 +23,7 @@ const FIXTURES = path.join(__dirname, "..", "cli", "commands", "fixtures", "bund
 const fixture = (name: string) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");
 const HOST = "https://mock.databricks.test";
 const BUNDLE = `bundle: {name: demo}\ntargets:\n  dev_test: {default: true, mode: development, workspace: {host: ${HOST}}}\n`;
+const TWO_TARGETS = `${BUNDLE}  prod_test: {mode: development, workspace: {host: ${HOST}}}\n`;
 
 function connected(): ConnectionState {
     const connection = {
@@ -60,17 +62,31 @@ function deferred<T = void>() {
 
 /** Resolves when the run is aborted, as a killed process does. */
 function untilAborted(options: RunOptions): Promise<Partial<RunResult>> {
-    return new Promise((resolve) =>
+    // As the real runner: a signal aborted before the start cancels at once.
+    return new Promise((resolve) => {
+        if (options.signal?.aborted) {
+            resolve({ cancelled: true, exitCode: null });
+            return;
+        }
         options.signal?.addEventListener("abort", () =>
             resolve({ cancelled: true, exitCode: null }),
-        ),
-    );
+        );
+    });
 }
 
 /** The real project detection and bundle service over a temp folder and a scripted CLI. */
-function setup(options: { cli?: Cli; runner?: FakeProcessRunner } = {}) {
+function setup(
+    options: {
+        cli?: Cli;
+        runner?: FakeProcessRunner;
+        /** Runs before each bundle call's environment, as the target check does. */
+        check?: () => Promise<void>;
+        /** The bundle file's content, for a project with another target. */
+        bundle?: string;
+    } = {},
+) {
     const t = tempDir();
-    t.write("databricks.yml", BUNDLE);
+    t.write("databricks.yml", options.bundle ?? BUNDLE);
     t.write(
         ".databricks/bundle/dev_test/vscode.bundlevars.json",
         JSON.stringify({ greeting: "salut" }),
@@ -92,19 +108,24 @@ function setup(options: { cli?: Cli; runner?: FakeProcessRunner } = {}) {
         { status: "connecting" },
         (a, b) => a === b,
     );
+    const access = new MutableState<TargetAccessState>({ status: "open" });
     const channel = recordingChannel();
     const service = new BundleService({
         project: project.snapshot,
         connection,
+        access,
         cli,
         choosesCompute: true,
-        env: (c, { variables, clusterId }) => ({
-            DATABRICKS_CONFIG_PROFILE: c.profile ?? "",
-            ...Object.fromEntries(
-                Object.entries(variables).map(([k, v]) => [`BUNDLE_VAR_${k}`, v]),
-            ),
-            ...(clusterId !== undefined ? { DATABRICKS_CLUSTER_ID: clusterId } : {}),
-        }),
+        env: async (c, { variables, clusterId }) => {
+            await options.check?.();
+            return {
+                DATABRICKS_CONFIG_PROFILE: c.profile ?? "",
+                ...Object.fromEntries(
+                    Object.entries(variables).map(([k, v]) => [`BUNDLE_VAR_${k}`, v]),
+                ),
+                ...(clusterId !== undefined ? { DATABRICKS_CLUSTER_ID: clusterId } : {}),
+            };
+        },
         log: fakeLog(),
         bundleLog: new BundleLog(() => channel),
         debounceMs: 5,
@@ -145,6 +166,7 @@ function setup(options: { cli?: Cli; runner?: FakeProcessRunner } = {}) {
         files,
         project,
         connection,
+        access,
         service,
         operations,
         channel,
@@ -156,6 +178,93 @@ function setup(options: { cli?: Cli; runner?: FakeProcessRunner } = {}) {
 }
 
 describe("BundleOperations", () => {
+    it("runs a manual deploy while the cached check is still checking, when the bundle's check allows it", async () => {
+        let checks = 0;
+        const s = setup({ check: async () => void checks++ });
+        await s.ready();
+        const before = checks;
+        s.access.set({ status: "checking", root: s.t.dir, target: "dev_test" });
+        await expect(s.operations.deploy()).resolves.toMatchObject({ target: "dev_test" });
+        expect(checks - before).toBe(1);
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(1);
+        s.service.dispose();
+    });
+
+    it("refuses a manual deploy while the cached check is checking, when the bundle's check refuses", async () => {
+        let refuse = false;
+        const s = setup({
+            check: async () => {
+                if (refuse) {
+                    throw new Error("paused in this session window");
+                }
+            },
+        });
+        await s.ready();
+        refuse = true;
+        s.access.set({ status: "checking", root: s.t.dir, target: "dev_test" });
+        await expect(s.operations.deploy()).rejects.toThrow("paused in this session window");
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(0);
+        s.service.dispose();
+    });
+
+    it("keeps the target and connection while the connection reconnects", async () => {
+        const s = setup();
+        await s.ready();
+        s.connection.set({ status: "connecting" });
+        await s.settle();
+        await expect(s.operations.deploy()).resolves.toMatchObject({ target: "dev_test" });
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(1);
+        s.service.dispose();
+    });
+
+    it("refuses a manual deploy after the project's target changes while reconnecting", async () => {
+        const s = setup({ bundle: TWO_TARGETS });
+        await s.ready();
+        s.connection.set({ status: "connecting" });
+        await s.project.selectTarget("prod_test");
+        await s.settle();
+        await expect(s.operations.deploy()).rejects.toThrow("No bundle target is connected.");
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(0);
+        s.service.dispose();
+    });
+
+    it("refuses a manual deploy after sign-out, and after the connection errors", async () => {
+        const s = setup();
+        await s.ready();
+        s.connection.set({ status: "signedOut", reason: "signed out" });
+        await s.settle();
+        await expect(s.operations.deploy()).rejects.toThrow("No bundle target is connected.");
+        s.connection.set({ status: "error", error: new Error("boom") });
+        await s.settle();
+        await expect(s.operations.deploy()).rejects.toThrow("No bundle target is connected.");
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(0);
+        s.service.dispose();
+    });
+
+    it("starts no bundle command whose target check refuses: deploy, destroy, run or upload", async () => {
+        let refuse = false;
+        const s = setup({
+            check: async () => {
+                if (refuse) {
+                    throw new Error("paused in this session window");
+                }
+            },
+        });
+        await s.ready();
+        const on = await s.operations.deploy();
+        const calls = (verb: string) => s.runner.calls.filter((c) => c.args[1] === verb).length;
+        refuse = true;
+        const before = ["deploy", "destroy", "run", "sync"].map(calls);
+        await expect(s.operations.deploy()).rejects.toThrow("paused in this session window");
+        await expect(s.operations.destroy()).rejects.toThrow("paused in this session window");
+        await expect(s.operations.run(on, "jobs.etl")).rejects.toThrow(
+            "paused in this session window",
+        );
+        await expect(s.operations.syncOnce()).rejects.toThrow("paused in this session window");
+        expect(["deploy", "destroy", "run", "sync"].map(calls)).toEqual(before);
+        s.service.dispose();
+    });
+
     it("deploys with --verbose, streams the CLI's output, then refreshes the deployed state", async () => {
         const s = setup();
         await s.ready();

@@ -201,7 +201,7 @@ export function targetAccess(
     });
     switch (workspace.kind) {
         case "unresolved":
-            return paused(UNRESOLVED[workspace.reason]);
+            return paused(UNRESOLVED[workspace.reason], UNRESOLVED_REMEDY[workspace.reason]);
         case "noHost":
             return { usable: true, via: "noHost" };
     }
@@ -237,6 +237,17 @@ export function targetAccess(
     }
     return paused(elsewhere);
 }
+
+/** What to change, where the default ("point the target at the session's workspace") would mislead. */
+const UNRESOLVED_REMEDY: Partial<Record<UnresolvedReason, string>> = {
+    "unreadable": "Fix the bundle files, or work on the project from a local window.",
+    "absent-target":
+        "Define the target in the bundle files, or work on the project from a local window.",
+    "variable":
+        "Set the target's workspace host in the bundle files, or work on the project from a local window.",
+    "glob-class":
+        "Write the include patterns without a […] class, or work on the project from a local window.",
+};
 
 /** 2.x's phrases, completing "Bundle commands … are paused: …". */
 const UNRESOLVED: Readonly<Record<UnresolvedReason, string>> = {

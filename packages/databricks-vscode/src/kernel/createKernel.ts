@@ -114,13 +114,6 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
             options.connection === null
                 ? undefined
                 : (options.connection ?? connection?.connection);
-        if (options.bundle !== undefined) {
-            // Where the token joins a bundle call: the guard has the last word.
-            if (guard === undefined) {
-                throw new Error("The target guard isn't ready");
-            }
-            guard.assertUsable(options.bundle.root, options.bundle.target);
-        }
         return childEnv({
             base: env,
             configFile: configFile(),
@@ -131,7 +124,7 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
             ...(options.cli ? { cli: { extensionVersion: extension.version } } : {}),
             bundleVariables: options.bundleVariables,
             compute: options.compute,
-            ...(options.bundle !== undefined ? { bundleRoot: options.bundle.root } : {}),
+            ...(options.bundleRoot !== undefined ? { bundleRoot: options.bundleRoot } : {}),
         });
     };
 
@@ -199,6 +192,21 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         log: platform.log.child("targetGuard"),
     });
     guard = targetGuard;
+    // The only env for a bundle command that takes the session's token: decided again from
+    // the disk right before the spawn, with nothing cached on top.
+    const bundleEnv = async (
+        options: ChildEnvOptions & {
+            readonly bundle: { readonly root: string; readonly target: string };
+            readonly signal?: AbortSignal;
+        },
+    ) => {
+        if (guard === undefined) {
+            throw new Error("The target guard isn't ready");
+        }
+        const { bundle, signal, ...rest } = options;
+        await guard.assertUsableNow(bundle.root, bundle.target, signal);
+        return buildEnv({ ...rest, bundleRoot: bundle.root });
+    };
 
     const bundleLog = new BundleLog(platform.bundleLogChannel ?? (() => silentChannel));
     const bundle = new BundleService({
@@ -207,7 +215,7 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         access: targetGuard.state,
         cli,
         env: (c, inputs) =>
-            buildEnv({
+            bundleEnv({
                 connection: c,
                 cli: true,
                 bundleVariables: inputs.variables,
@@ -215,6 +223,7 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
                     ? { compute: { kind: "cluster", clusterId: inputs.clusterId } }
                     : {}),
                 bundle: { root: inputs.root, target: inputs.target },
+                signal: inputs.signal,
             }),
         choosesCompute: capabilities.compute === "perTarget",
         log: platform.log.child("bundle"),
@@ -257,6 +266,7 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         terminalEnvironment: platform.terminalEnvironment ?? memoryTerminalEnv(),
         configFile,
         childEnv: buildEnv,
+        bundleChildEnv: bundleEnv,
         /** Detects the project, and resolves the connection once it has. */
         start: () => {
             project.start();

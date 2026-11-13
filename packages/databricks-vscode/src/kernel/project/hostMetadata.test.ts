@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fakeLog } from "../../test-support/fakes";
 import { FakeHttpClient } from "../../test-support/fakeHttp";
 import { hostMetadataReader } from "./hostMetadata";
@@ -41,6 +41,39 @@ describe("hostMetadataReader", () => {
             await hostMetadataReader(http, fakeLog())("https://evil.example.com"),
         ).toBeUndefined();
         expect(http.requests).toEqual([]);
+    });
+
+    it("doesn't ask a host that times out again for a minute, so commands don't wait each time", async () => {
+        const http = new FakeHttpClient().on("GET", CONFIG, () => {
+            throw new DOMException("The operation timed out.", "TimeoutError");
+        });
+        const read = hostMetadataReader(http, fakeLog());
+        expect(await read("https://slow.cloud.databricks.com")).toBeUndefined();
+        expect(await read("https://slow.cloud.databricks.com")).toBeUndefined();
+        expect(http.requests).toHaveLength(1);
+    });
+
+    it("asks a host again after a minute once its read timed out", async () => {
+        vi.useFakeTimers();
+        try {
+            let asks = 0;
+            const http = new FakeHttpClient().on("GET", CONFIG, () => {
+                if (++asks === 1) {
+                    throw new DOMException("The operation timed out.", "TimeoutError");
+                }
+                return { body: { host_type: "workspace", workspace_id: 9 } };
+            });
+            const read = hostMetadataReader(http, fakeLog());
+            const url = "https://slow.cloud.databricks.com";
+            expect(await read(url)).toBeUndefined();
+            expect(await read(url)).toBeUndefined();
+            expect(http.requests).toHaveLength(1);
+            await vi.advanceTimersByTimeAsync(60_000);
+            expect(await read(url)).toEqual({ hostType: "workspace", workspaceId: "9" });
+            expect(http.requests).toHaveLength(2);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it("knows nothing from an error or a type it doesn't know, and asks again only after a failed read", async () => {

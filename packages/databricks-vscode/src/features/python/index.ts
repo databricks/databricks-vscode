@@ -383,9 +383,7 @@ export const python: Feature = {
                 cli: true,
                 // The host env with http.proxy over it, as 2.22.0's setup-local had.
                 environment: "hostAndProxy",
-                ...(session.target !== undefined
-                    ? { bundle: { root: session.project.root, target: session.target } }
-                    : {}),
+                ...(session.target !== undefined ? { bundleRoot: session.project.root } : {}),
             }),
             ...(session.target !== undefined ? { DATABRICKS_BUNDLE_TARGET: session.target } : {}),
         });

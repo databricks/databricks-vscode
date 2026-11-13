@@ -34,7 +34,13 @@ export interface OperationTarget {
 }
 
 /** What a bundle CLI call's environment adds to the connection's, and what it is for. */
-export type BundleEnvInputs = Pick<OperationTarget, "root" | "target" | "variables" | "clusterId">;
+export type BundleEnvInputs = Pick<
+    OperationTarget,
+    "root" | "target" | "variables" | "clusterId"
+> & {
+    /** Aborting it cancels the command's check, as it cancels the command. */
+    readonly signal?: AbortSignal;
+};
 
 /** What `BundleService` does for its operations. */
 export interface OperationHost {
@@ -53,7 +59,10 @@ export interface OperationHost {
 export interface BundleOperationsDeps {
     readonly host: OperationHost;
     readonly cli: Cli;
-    readonly env: (connection: Connection, inputs: BundleEnvInputs) => Record<string, string>;
+    readonly env: (
+        connection: Connection,
+        inputs: BundleEnvInputs,
+    ) => Record<string, string> | Promise<Record<string, string>>;
     readonly log: Logger;
     readonly bundleLog: BundleLog;
 }
@@ -192,7 +201,7 @@ export class BundleOperations implements Disposable {
                 resourceKey,
                 {
                     cwd: on.root,
-                    env: this.deps.env(on.connection, on),
+                    env: await this.deps.env(on.connection, { ...on, signal }),
                     signal,
                     onStdout: options.onOutput,
                     onStderr: options.onOutput,
@@ -259,7 +268,7 @@ export class BundleOperations implements Disposable {
                 target.target,
                 {
                     cwd: target.root,
-                    env: this.deps.env(target.connection, target),
+                    env: await this.deps.env(target.connection, { ...target, signal }),
                     signal,
                     // `--verbose` writes progress to stderr, and the summary to stdout.
                     onStdout: (chunk) => bundleLog.output(chunk),

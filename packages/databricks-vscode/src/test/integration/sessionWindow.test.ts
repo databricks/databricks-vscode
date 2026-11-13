@@ -212,10 +212,10 @@ describe("a session window", () => {
             `Bundle commands for target "dev" are paused in this session window: it deploys to https://elsewhere.example.com, which may be another workspace than this session's. Point the target at this session's workspace (${SESSION_HOST}), or work on the project from a local window.`,
         ]);
         expect(s.kernel.runner.calls.filter((c) => c.args.includes("deploy"))).toEqual([]);
-        // The kernel's backstop: a bundle call for it can't get the session's token.
-        expect(() =>
-            s.kernel.childEnv({ cli: true, bundle: { root: s.root, target: "dev" } }),
-        ).toThrow("are paused in this session window");
+        // The kernel's bundle call: a bundle call for it can't get the session's token.
+        await expect(
+            s.kernel.bundleChildEnv({ cli: true, bundle: { root: s.root, target: "dev" } }),
+        ).rejects.toThrow("are paused in this session window");
     });
 
     it("names the missing variables, and Unity Catalog's Refresh connects again", async () => {
@@ -467,6 +467,20 @@ describe("a session window", () => {
         const started = s.kernel.runner.started.find((p) => p.args[1] === "sync");
         expect(started?.args).toContain("--watch");
         expect(started?.options.env).not.toHaveProperty("DATABRICKS_CLUSTER_ID");
+        s.kernel.dispose();
+    });
+
+    it("syncs in a session window whose target is in another workspace, as 2.23.1 did", async () => {
+        const s = await setup(
+            {},
+            "bundle: {name: demo}\ntargets:\n  dev: {default: true, mode: development, workspace: {host: https://elsewhere.example.com}}\n",
+        );
+        await when(s.kernel.targetAccess, (a) => a.status === "decided");
+        expect(s.kernel.targetAccess.value).toMatchObject({ access: { usable: false } });
+        startFeatures(registerFeatures([sync], s.fake.host));
+        await vscode.commands.get(SYNC_START)!();
+        const started = s.kernel.runner.started.find((p) => p.args[1] === "sync");
+        expect(started?.args).toContain("--watch");
         s.kernel.dispose();
     });
 
