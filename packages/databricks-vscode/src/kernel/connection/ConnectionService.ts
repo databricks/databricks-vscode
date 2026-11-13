@@ -193,6 +193,11 @@ export class ConnectionService implements Disposable {
     private resolvedDuringSignIn = false;
     /** This window's no-project choice, once read: another window's choice doesn't move it. */
     private windowChoice?: { readonly value: SavedChoice | undefined };
+    /** This window's last write to global state and what it replaced, for `restoreChoice` to undo. */
+    private lastWrite?: {
+        readonly wrote: SavedChoice | undefined;
+        readonly replaced: SavedChoice | undefined;
+    };
 
     constructor(private readonly deps: ConnectionServiceDeps) {}
 
@@ -398,13 +403,22 @@ export class ConnectionService implements Disposable {
                     await this.deps.project!.saveSignedOut(before.signedOut);
                 }
             } else {
-                await this.saveNoProjectChoice(
-                    before.signedOut
+                // Global state is every window's: undo only this window's write, and only
+                // if no other window has written since.
+                const last = this.lastWrite;
+                if (
+                    last !== undefined &&
+                    isDeepStrictEqual(this.deps.state.get(NO_PROJECT_CHOICE), last.wrote)
+                ) {
+                    await this.deps.state.set(NO_PROJECT_CHOICE, last.replaced);
+                }
+                this.windowChoice = {
+                    value: before.signedOut
                         ? { signedOut: true }
                         : before.profile !== undefined
                           ? { profile: before.profile }
                           : undefined,
-                );
+                };
             }
         });
     }
@@ -446,6 +460,7 @@ export class ConnectionService implements Disposable {
 
     /** This window's choice, saved for windows opened later too. */
     private async saveNoProjectChoice(choice: SavedChoice | undefined): Promise<void> {
+        this.lastWrite = { wrote: choice, replaced: this.deps.state.get(NO_PROJECT_CHOICE) };
         await this.deps.state.set(NO_PROJECT_CHOICE, choice);
         this.windowChoice = { value: choice };
     }

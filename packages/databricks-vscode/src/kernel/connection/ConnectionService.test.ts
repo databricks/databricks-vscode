@@ -153,6 +153,51 @@ describe("ConnectionService", () => {
         expect(one.state.get(NO_PROJECT_CHOICE)).toEqual({ profile: "DEFAULT" });
     });
 
+    it("gives a cancelled sign-in its own choice back, and new windows the last choice of any window", async () => {
+        const global = fakeMemento();
+        const profiles = [pat("DEFAULT"), pat("dev"), pat("other")];
+        const one = setup({ global, profiles });
+        one.service.start();
+        await one.settle();
+        const two = setup({ global, profiles });
+        two.service.start();
+        await two.settle();
+        await two.service.useProfile("dev");
+
+        // A sign-in saves its profile before the browser login, which is then cancelled.
+        const before = one.service.savedChoice();
+        await one.service.useProfile("other");
+        expect(summary(await one.service.restoreChoice(before))).toBe(
+            "connected DEFAULT user-of-Bearer dapi-DEFAULT",
+        );
+        expect(one.service.savedChoice()).toEqual(before);
+        expect(one.state.get(NO_PROJECT_CHOICE)).toEqual({ profile: "dev" });
+
+        const three = setup({ global, profiles });
+        three.service.start();
+        expect(summary(await three.settle())).toBe("connected dev user-of-Bearer dapi-dev");
+    });
+
+    it("keeps a choice another window made during a sign-in that is then cancelled", async () => {
+        const global = fakeMemento();
+        const profiles = [pat("DEFAULT"), pat("dev"), pat("other")];
+        const one = setup({ global, profiles });
+        one.service.start();
+        await one.settle();
+        const before = one.service.savedChoice();
+        await one.service.useProfile("other");
+
+        const two = setup({ global, profiles });
+        two.service.start();
+        await two.settle();
+        await two.service.useProfile("dev");
+
+        expect(summary(await one.service.restoreChoice(before))).toBe(
+            "connected DEFAULT user-of-Bearer dapi-DEFAULT",
+        );
+        expect(one.state.get(NO_PROJECT_CHOICE)).toEqual({ profile: "dev" });
+    });
+
     it("stays signed out after signing out, with a hint for the next sign-in", async () => {
         const { service, settle, setProfiles } = setup();
         service.start();
