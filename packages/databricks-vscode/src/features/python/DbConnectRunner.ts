@@ -171,7 +171,7 @@ export class DbConnectRunner implements Disposable {
         if (executable === undefined) {
             throw new UserFacingError("NO_INTERPRETER", "No python executable found");
         }
-        // The uv row describes the project's .venv, not the selected interpreter, so check that one.
+        // The uv row describes the project's .venv, not the selected interpreter, so check the interpreter the run uses.
         // The external checklist already probed the selected interpreter in readiness.
         if (readiness.strategy === "uv" && (await this.missingDbConnect(executable))) {
             throw this.dbConnectMissing();

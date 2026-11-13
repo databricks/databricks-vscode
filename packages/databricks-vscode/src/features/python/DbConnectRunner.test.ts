@@ -302,6 +302,15 @@ describe("DbConnectRunner", () => {
             expect(timeout).toHaveBeenCalledWith(DBCONNECT_PROBE_TIMEOUT_MS);
         });
 
+        it("runs when the probe rejects: the run reports its own error", async () => {
+            const { r } = runner({
+                probe: async () => {
+                    throw new Error("pip exited with code 1");
+                },
+            });
+            expect(await r.run("/work/project/hello.py")).toBe(true);
+        });
+
         it("doesn't probe the external strategy, whose checklist already checked the interpreter", async () => {
             const { r } = runner({ strategy: "external", dbConnect: missing });
             expect(await r.run("/work/project/hello.py")).toBe(true);
