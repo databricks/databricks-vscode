@@ -195,8 +195,6 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         connection: connection.state,
         readFiles: readBundleFiles,
         metadata: hostMetadataReader(httpClient, platform.log.child("hostMetadata")),
-        bundleFileChanged: project.onBundleFileChanged,
-        detectionEnded: project.onDetectionEnded,
         recorded: () => workspaces.read(),
         log: platform.log.child("targetGuard"),
     });

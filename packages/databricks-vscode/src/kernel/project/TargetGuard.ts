@@ -1,5 +1,5 @@
 import { UserFacingError } from "../../platform/errors";
-import { disposeAll, type Disposable, type Event } from "../../platform/event";
+import { disposeAll, type Disposable } from "../../platform/event";
 import type { Logger } from "../../platform/log";
 import { MutableState, Resource, type State } from "../../platform/reactive";
 import type { BundleFilesSnapshot } from "../bundle/BundleFiles";
@@ -56,10 +56,6 @@ export interface TargetGuardDeps {
     /** The bundle's files, read again from disk for each decision. */
     readonly readFiles: (root: string) => Promise<BundleFilesSnapshot>;
     readonly metadata: (host: string, signal: AbortSignal) => Promise<HostMetadata | undefined>;
-    /** A bundle file changed on disk, before the project reads it again. */
-    readonly bundleFileChanged: Event<void>;
-    /** A detection pass ended, whether or not its result changed. */
-    readonly detectionEnded: Event<void>;
     /** Host → workspace IDs local windows saw it serve (`WorkspaceIdRecorder`). */
     readonly recorded: () => ReadonlyMap<string, readonly string[]>;
     readonly log: Logger;
@@ -120,8 +116,6 @@ export class TargetGuard implements Disposable {
         this.disposables.push(
             this.deps.project.onDidChange(() => this.update()),
             this.deps.connection.onDidChange(() => this.update()),
-            this.deps.detectionEnded(() => this.update()),
-            this.deps.bundleFileChanged(() => this.stale()),
         );
         this.update();
     }
@@ -142,21 +136,6 @@ export class TargetGuard implements Disposable {
         return project === undefined || target === undefined
             ? undefined
             : { root: project.root, target };
-    }
-
-    /**
-     * A bundle file changed on disk. The last decision may name a host the
-     * files no longer do, and the project re-reads only after its debounce.
-     */
-    private stale(): void {
-        const active = this.active();
-        if (active === undefined || this.decision === undefined) {
-            return;
-        }
-        this.decision.reset();
-        // The pass may publish an equal project: update() must decide anyway.
-        this.inputs = undefined;
-        this.current.set({ status: "checking", ...active });
     }
 
     private update() {
