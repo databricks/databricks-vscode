@@ -33,7 +33,11 @@ export function hostMetadataReader(
         if (found === undefined) {
             found = read(httpClient, key, timeoutMs).catch((e: unknown) => {
                 log.warn(`Can't read what ${key} is`, e);
-                known.delete(key);
+                // A host that doesn't answer in time is not asked again this window: each
+                // command would wait out the timeout again.
+                if (!(e instanceof DOMException && e.name === "TimeoutError")) {
+                    known.delete(key);
+                }
                 return undefined;
             });
             known.set(key, found);

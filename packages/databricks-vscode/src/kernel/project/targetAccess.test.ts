@@ -140,6 +140,24 @@ describe("targetAccess, in order", () => {
         });
     });
 
+    it("says what to fix, rather than the session's host, for a bundle that can't be read, defined or resolved", () => {
+        for (const [reason, remedy] of [
+            ["unreadable", "Fix the bundle files, or work on the project from a local window."],
+            [
+                "absent-target",
+                "Define the target in the bundle files, or work on the project from a local window.",
+            ],
+            [
+                "variable",
+                "Set the target's workspace host in the bundle files, or work on the project from a local window.",
+            ],
+        ] as const) {
+            expect(
+                targetAccess("dev", { kind: "unresolved", reason }, SESSION, undefined, none),
+            ).toMatchObject({ usable: false, remedy });
+        }
+    });
+
     it("lets a target without a host run: the CLI falls back to DATABRICKS_HOST, the session's", () => {
         expect(targetAccess("dev", { kind: "noHost" }, SESSION, undefined, none)).toEqual({
             usable: true,

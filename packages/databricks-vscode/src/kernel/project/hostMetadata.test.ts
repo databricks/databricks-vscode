@@ -43,6 +43,16 @@ describe("hostMetadataReader", () => {
         expect(http.requests).toEqual([]);
     });
 
+    it("asks a host that doesn't answer in time once per window, so commands don't wait again", async () => {
+        const http = new FakeHttpClient().on("GET", CONFIG, () => {
+            throw new DOMException("The operation timed out.", "TimeoutError");
+        });
+        const read = hostMetadataReader(http, fakeLog());
+        expect(await read("https://slow.cloud.databricks.com")).toBeUndefined();
+        expect(await read("https://slow.cloud.databricks.com")).toBeUndefined();
+        expect(http.requests).toHaveLength(1);
+    });
+
     it("knows nothing from an error or a type it doesn't know, and asks again only after a failed read", async () => {
         const answers = new Map<string, { status?: number; text?: string; body?: unknown }[]>([
             ["missing.cloud.databricks.com", [{ status: 404, body: {} }]],
