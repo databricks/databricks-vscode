@@ -256,7 +256,7 @@ describe("the AI tools feature", () => {
             expect(listCalls(s).at(-1)!.options.cwd).toBe(s.t.path("project/sub"));
         });
 
-        it("re-runs it when a workspace folder is added in front of a bundle-less folder", async () => {
+        it("re-runs it when the first workspace folder is added", async () => {
             const s = await setup({ installed: "home" });
             const added = s.t.path("added");
             s.t.write("added/.keep", "");
@@ -271,6 +271,44 @@ describe("the AI tools feature", () => {
                 timeout: 3000,
             });
             expect(listCalls(s).at(-1)!.options.cwd).toBe(added);
+        });
+
+        it("re-runs it when a folder is added in front of the saved bundle-less folder", async () => {
+            const t = tempDir();
+            vi.stubEnv("HOME", t.path("home"));
+            vi.stubEnv("USERPROFILE", t.path("home"));
+            t.write("home/.keep");
+            t.write(`saved/.keep`, "");
+            t.write(`saved/${STATE_FILE}`, "{}");
+            t.write(`added/.keep`, "");
+            t.write(`added/${STATE_FILE}`, "{}");
+            vscode.folders = [t.path("saved")];
+            const folders = new MutableState<readonly string[]>([t.path("saved")]);
+            // The saved folder stays the project folder, so `root` doesn't change.
+            const workspaceState = fakeMemento();
+            workspaceState.store.set(ACTIVE_PROJECT_PATH.name, t.path("saved"));
+            const kernel = fakeKernel({
+                folders,
+                files: new FakeFileEvents(),
+                state: new StateStore({ global: fakeMemento(), workspace: workspaceState }),
+            });
+            kernel.runner.on(["aitools", "list"], {
+                stdout: JSON.stringify({ release: "0.2.10", skills: [], agents: [] }),
+            });
+            const [registered] = registerFeatures([aiTools], fakeFeatureHost(kernel).host);
+            kernel.start();
+            await aiTools.start!(registered!.ctx);
+            const lists = () => kernel.runner.calls.filter((c) => c.args[1] === "list");
+            expect(lists().at(-1)?.options.cwd).toBe(t.path("saved"));
+            const before = lists().length;
+
+            vscode.folders = [t.path("added"), t.path("saved")];
+            folders.set(vscode.folders);
+            vscode.foldersChanged.fire();
+            await vi.waitFor(() => expect(lists().length).toBe(before + 1), {
+                timeout: 3000,
+            });
+            expect(lists().at(-1)!.options.cwd).toBe(t.path("added"));
         });
 
         it("re-runs it when a bundle appears in the saved sub-folder, which is where it reads the install from", async () => {

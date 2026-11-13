@@ -144,6 +144,9 @@ export const aiTools: Feature = {
             kernel.state.onDidChange(HIDE_INSTALL_PROMPT)(syncKeys),
             kernel.project.root.onDidChange(refreshOnFolderChange),
             kernel.project.active.onDidChange(refreshOnFolderChange),
+            // A folder added in front of the saved one changes the fallback folder
+            // without moving `root` or `active`.
+            workspace.onDidChangeWorkspaceFolders(refreshOnFolderChange),
         );
         void kernel.contextKeys.set(AITOOLS_SHOW_CURSOR_PLUGIN, isCursor);
         syncKeys();
