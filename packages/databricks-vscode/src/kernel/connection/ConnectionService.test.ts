@@ -18,6 +18,7 @@ import { Profiles, type ProfileInfo, type ProfilesSnapshot } from "./Profiles";
 import { WORKSPACE_IDS_BY_HOST, WorkspaceIdLedger } from "./WorkspaceIds";
 
 const A = "https://a.cloud.databricks.com";
+const B = "https://b.cloud.databricks.com";
 const pat = (name: string, host = A): ProfileInfo => ({
     name,
     host,
@@ -33,6 +34,8 @@ function setup(
         http?: FakeHttpClient;
         u2mToken?: () => Promise<{ value: string }>;
         project?: ProjectConnectionSource;
+        /** Another window's global state: VS Code shares it between windows. */
+        global?: ReturnType<typeof fakeMemento>;
     } = {},
 ) {
     let snapshot: ProfilesSnapshot = {
@@ -55,7 +58,10 @@ function setup(
             body: { userName: `user-of-${req.headers.get("Authorization")}` },
             headers: { "x-databricks-org-id": "1234" },
         }));
-    const state = new StateStore({ global: fakeMemento(), workspace: fakeMemento() });
+    const state = new StateStore({
+        global: options.global ?? fakeMemento(),
+        workspace: fakeMemento(),
+    });
     const service = new ConnectionService({
         profiles,
         hostMetadata: new HostMetadataCache(http),
@@ -123,6 +129,73 @@ describe("ConnectionService", () => {
         expect(summary(s)).toBe("connected dev user-of-Bearer dapi-dev");
         expect(state.get(NO_PROJECT_CHOICE)).toEqual({ profile: "dev" });
         expect(service.connection?.source).toEqual({ kind: "saved" });
+    });
+
+    it("keeps its own choice when another window chooses another profile, and a new window starts with the last", async () => {
+        const global = fakeMemento();
+        const profiles = [pat("DEFAULT"), pat("dev", B)];
+        const one = setup({ global, profiles });
+        one.service.start();
+        await one.settle();
+        await one.service.useProfile("dev");
+
+        const two = setup({ global, profiles });
+        two.service.start();
+        expect(summary(await two.settle())).toBe("connected dev user-of-Bearer dapi-dev");
+        await two.service.useProfile("DEFAULT");
+
+        // Another window's login rewrites the config file, so this window resolves again.
+        one.setProfiles(profiles);
+        await new Promise((r) => setTimeout(r, 250));
+        expect(summary(await one.settle())).toBe("connected dev user-of-Bearer dapi-dev");
+        expect(one.service.savedChoice()).toEqual({ profile: "dev", signedOut: false });
+        expect(one.service.noProjectWorkspace()?.host).toBe(B);
+        expect(one.state.get(NO_PROJECT_CHOICE)).toEqual({ profile: "DEFAULT" });
+    });
+
+    it("gives a cancelled sign-in its own choice back, and new windows the last choice of any window", async () => {
+        const global = fakeMemento();
+        const profiles = [pat("DEFAULT"), pat("dev"), pat("other")];
+        const one = setup({ global, profiles });
+        one.service.start();
+        await one.settle();
+        const two = setup({ global, profiles });
+        two.service.start();
+        await two.settle();
+        await two.service.useProfile("dev");
+
+        // A sign-in saves its profile before the browser login, which is then cancelled.
+        const before = one.service.savedChoice();
+        await one.service.useProfile("other");
+        expect(summary(await one.service.restoreChoice(before))).toBe(
+            "connected DEFAULT user-of-Bearer dapi-DEFAULT",
+        );
+        expect(one.service.savedChoice()).toEqual(before);
+        expect(one.state.get(NO_PROJECT_CHOICE)).toEqual({ profile: "dev" });
+
+        const three = setup({ global, profiles });
+        three.service.start();
+        expect(summary(await three.settle())).toBe("connected dev user-of-Bearer dapi-dev");
+    });
+
+    it("keeps a choice another window made during a sign-in that is then cancelled", async () => {
+        const global = fakeMemento();
+        const profiles = [pat("DEFAULT"), pat("dev"), pat("other")];
+        const one = setup({ global, profiles });
+        one.service.start();
+        await one.settle();
+        const before = one.service.savedChoice();
+        await one.service.useProfile("other");
+
+        const two = setup({ global, profiles });
+        two.service.start();
+        await two.settle();
+        await two.service.useProfile("dev");
+
+        expect(summary(await one.service.restoreChoice(before))).toBe(
+            "connected DEFAULT user-of-Bearer dapi-DEFAULT",
+        );
+        expect(one.state.get(NO_PROJECT_CHOICE)).toEqual({ profile: "dev" });
     });
 
     it("stays signed out after signing out, with a hint for the next sign-in", async () => {
@@ -306,7 +379,6 @@ function fakeProject(project: ProjectScope | undefined, initialized = true) {
     return { source, scope, saved };
 }
 
-const B = "https://b.cloud.databricks.com";
 const dev: ProjectScope = { root: "/w", target: "dev", host: A };
 
 describe("ConnectionService in a project", () => {
