@@ -238,7 +238,6 @@ export function targetAccess(
     return paused(elsewhere);
 }
 
-/** 2.x's phrases, completing "Bundle commands … are paused: …". */
 /** What to change, where the default ("point the target at the session's workspace") would mislead. */
 const UNRESOLVED_REMEDY: Partial<Record<UnresolvedReason, string>> = {
     "unreadable": "Fix the bundle files, or work on the project from a local window.",
@@ -246,8 +245,11 @@ const UNRESOLVED_REMEDY: Partial<Record<UnresolvedReason, string>> = {
         "Define the target in the bundle files, or work on the project from a local window.",
     "variable":
         "Set the target's workspace host in the bundle files, or work on the project from a local window.",
+    "glob-class":
+        "Write the include patterns without a […] class, or work on the project from a local window.",
 };
 
+/** 2.x's phrases, completing "Bundle commands … are paused: …". */
 const UNRESOLVED: Readonly<Record<UnresolvedReason, string>> = {
     "profile": "it selects an authentication profile, which can point at another workspace",
     "variable": "its workspace is set by a ${…} variable this extension can't resolve",

@@ -163,6 +163,15 @@ describe("TargetGuard", () => {
         );
     });
 
+    it("refuses a command when the bundle can't be read at the moment it starts", async () => {
+        const s = setup();
+        s.open();
+        s.connect();
+        await s.decided();
+        s.readFiles.mockRejectedValueOnce(new Error("read failed"));
+        await expect(s.guard.assertUsableNow(ROOT, "dev")).rejects.toThrow("read failed");
+    });
+
     it("leaves a local window's targets open without reading the files", async () => {
         const s = setup({ kind: "anyTarget" });
         s.open();

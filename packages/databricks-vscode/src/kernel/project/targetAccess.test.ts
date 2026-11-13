@@ -151,6 +151,10 @@ describe("targetAccess, in order", () => {
                 "variable",
                 "Set the target's workspace host in the bundle files, or work on the project from a local window.",
             ],
+            [
+                "glob-class",
+                "Write the include patterns without a […] class, or work on the project from a local window.",
+            ],
         ] as const) {
             expect(
                 targetAccess("dev", { kind: "unresolved", reason }, SESSION, undefined, none),

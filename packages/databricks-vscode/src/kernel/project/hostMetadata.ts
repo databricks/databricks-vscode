@@ -16,8 +16,12 @@ const DatabricksConfig = z.object({
  * thing the target guard decides where it may go. Only Databricks domains
  * are asked. Undefined when the host isn't one, doesn't answer, or answers
  * something else; the guard then keeps the target paused. An answer is kept
- * for the window, an unhelpful one too; a failed read is asked again.
+ * for the window, an unhelpful one too. A failed read is asked again at the
+ * next command; a read that timed out is asked again after a minute.
  */
+/** How long a host whose read timed out is left alone before it's asked again. */
+const RETRY_AFTER_TIMEOUT_MS = 60_000;
+
 export function hostMetadataReader(
     httpClient: HttpClient,
     log: Logger,
@@ -33,9 +37,10 @@ export function hostMetadataReader(
         if (found === undefined) {
             found = read(httpClient, key, timeoutMs).catch((e: unknown) => {
                 log.warn(`Can't read what ${key} is`, e);
-                // A host that doesn't answer in time is not asked again this window: each
-                // command would wait out the timeout again.
-                if (!(e instanceof DOMException && e.name === "TimeoutError")) {
+                if (e instanceof DOMException && e.name === "TimeoutError") {
+                    // Not asked again for a minute: each command would wait out the timeout.
+                    setTimeout(() => known.delete(key), RETRY_AFTER_TIMEOUT_MS);
+                } else {
                     known.delete(key);
                 }
                 return undefined;
