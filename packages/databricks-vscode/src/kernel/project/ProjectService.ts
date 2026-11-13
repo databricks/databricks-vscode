@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { disposeAll, type Disposable } from "../../platform/event";
+import { Emitter, disposeAll, type Disposable, type Event } from "../../platform/event";
 import type { Logger } from "../../platform/log";
 import { MutableState, Resource, select, type State } from "../../platform/reactive";
 import { stateKey, type StateStore } from "../../platform/state";
@@ -156,6 +156,15 @@ export class ProjectService implements Disposable {
     readonly overrides = select(this.current, (s) => s.overrides);
     readonly variables = select(this.current, (s) => s.variables);
     readonly subProjects = select(this.current, (s) => s.subProjects);
+    private readonly bundleFileChanged = new Emitter<void>();
+    private readonly detectionEnded = new Emitter<void>();
+    /**
+     * A bundle file changed on disk, before the debounce that starts a
+     * detection pass. The target guard stops trusting its decision until then.
+     */
+    readonly onBundleFileChanged: Event<void> = this.bundleFileChanged.event;
+    /** Every detection pass that ends, even one that publishes an equal snapshot. */
+    readonly onDetectionEnded: Event<void> = this.detectionEnded.event;
 
     private watched?: { root: string; bundle: BundleFiles; targetFiles: Disposable[] };
     private readonly disposables: Disposable[] = [];
@@ -190,9 +199,11 @@ export class ProjectService implements Disposable {
                         subProjects: keep(prev.subProjects, next.subProjects),
                         initialized: true,
                     });
+                    this.detectionEnded.fire();
                 } else if (s.status === "error") {
                     this.deps.log.error("Project detection failed", s.error);
                     this.current.set({ ...this.current.value, initialized: true });
+                    this.detectionEnded.fire();
                 }
             }),
         );
@@ -484,7 +495,11 @@ export class ProjectService implements Disposable {
         }
         if (root !== undefined && this.watched === undefined) {
             const bundle = new BundleFiles(root, this.deps.files, 0);
-            bundle.onDidChange(() => this.schedule("bundle files changed"));
+            bundle.onDidChange(() => {
+                // Scheduled first: a listener that throws must not stop the pass.
+                this.schedule("bundle files changed");
+                this.bundleFileChanged.fire();
+            });
             const targetFiles = [
                 this.deps.files.watch(root, OVERRIDES_GLOB, () =>
                     this.schedule("overrides changed"),
@@ -505,6 +520,8 @@ export class ProjectService implements Disposable {
         this.watch(undefined);
         disposeAll(this.disposables);
         this.detection.dispose();
+        this.bundleFileChanged.dispose();
+        this.detectionEnded.dispose();
         for (const s of [
             this.initialized,
             this.root,

@@ -148,6 +148,84 @@ describe("ProjectService", () => {
         );
     });
 
+    it("reports a change to an included file before the pass it starts", async () => {
+        const t = tempDir();
+        t.write("databricks.yml", "include: [targets/*.yml]");
+        const included = t.write("targets/dev.yml", bundle("  dev: {}"));
+        const { service, initialized, touchUntil } = setup([t.dir]);
+        service.start();
+        await initialized();
+        const order: string[] = [];
+        service.onBundleFileChanged(() => order.push("file"));
+        service.onDetectionEnded(() => order.push("pass"));
+        fs.writeFileSync(included, bundle("  dev: {}\n  prod: {}"));
+        await touchUntil(included, () => expect(order).toEqual(["file", "pass"]));
+    });
+
+    it("ends a pass that finds no change without changing the project", async () => {
+        const t = tempDir();
+        const file = t.write("databricks.yml", bundle("  dev: {}"));
+        const { service, initialized, touchUntil } = setup([t.dir]);
+        service.start();
+        await initialized();
+        let changes = 0;
+        let ended = 0;
+        service.snapshot.onDidChange(() => changes++);
+        service.onDetectionEnded(() => ended++);
+        fs.writeFileSync(file, `# a comment\n${bundle("  dev: {}")}`);
+        await touchUntil(file, () => expect(ended).toBe(1));
+        expect(changes).toBe(0);
+    });
+
+    it("still runs the detection pass when a listener of a bundle file change throws", async () => {
+        const t = tempDir();
+        // Outside the root, so only the bundle's own watcher reports it, not the overrides' ones.
+        const shared = tempDir();
+        t.write("databricks.yml", `include: ["${shared.dir}/*.yml"]`);
+        const included = shared.write("dev.yml", bundle("  dev: {}"));
+        const { service, initialized, touchUntil } = setup([t.dir]);
+        service.start();
+        await initialized();
+        let passes = 0;
+        service.onBundleFileChanged(() => {
+            throw new Error("listener failed");
+        });
+        service.onDetectionEnded(() => passes++);
+        // The error leaves the timer that fired the event, so take it here as
+        // the process would, and let the runner's handler back in afterwards.
+        const runner = process.listeners("uncaughtException");
+        const thrown: unknown[] = [];
+        process.removeAllListeners("uncaughtException");
+        process.on("uncaughtException", (e) => thrown.push(e));
+        try {
+            fs.writeFileSync(included, bundle("  dev: {}\n  prod: {}"));
+            await touchUntil(included, () => expect(passes).toBe(1));
+            expect(thrown).toEqual([new Error("listener failed")]);
+        } finally {
+            process.removeAllListeners("uncaughtException");
+            for (const listener of runner) {
+                process.on("uncaughtException", listener);
+            }
+        }
+    });
+
+    it("ends a pass that fails, so a listener of the target guard can decide again", async () => {
+        const t = tempDir();
+        const { service, initialized } = setup([t.dir], {
+            search: {
+                find: async () => {
+                    throw new Error("search failed");
+                },
+            },
+        });
+        service.start();
+        await initialized();
+        let ended = 0;
+        service.onDetectionEnded(() => ended++);
+        await service.reloadTargetFiles();
+        expect(ended).toBe(1);
+    });
+
     it("keeps the last good config while a file doesn't parse", async () => {
         const t = tempDir();
         const file = t.write("databricks.yml", bundle(`  dev: {workspace: {host: ${HOST}}}`));
