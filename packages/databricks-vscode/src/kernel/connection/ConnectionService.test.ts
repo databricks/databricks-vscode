@@ -233,6 +233,43 @@ describe("ConnectionService", () => {
         );
     });
 
+    it("emits no state for a profile refresh that keeps the connection and its source", async () => {
+        const { service, settle, setProfiles } = setup();
+        service.start();
+        await settle();
+        const events: ConnectionState[] = [];
+        service.state.onDidChange((s) => events.push(s));
+        setProfiles([pat("DEFAULT"), pat("dev"), pat("extra")]);
+        // The refresh is debounced, so wait until the snapshot shows it. Then one
+        // macrotask: the resolution after it runs in microtasks only.
+        await vi.waitFor(() =>
+            expect(service.profiles.snapshot.latest?.profiles.map((p) => p.name)).toContain(
+                "extra",
+            ),
+        );
+        await new Promise((r) => setImmediate(r));
+        expect(events).toEqual([]);
+        expect(service.connection?.profile).toBe("DEFAULT");
+    });
+
+    it("emits state when only the source changes", async () => {
+        const project = fakeProject({ ...dev, savedProfile: "DEFAULT" });
+        const { service, settle } = setup({ project: project.source });
+        service.start();
+        await settle();
+        const events: ConnectionState[] = [];
+        service.state.onDidChange((s) => events.push(s));
+        project.scope.set({ initialized: true });
+        await vi.waitFor(() =>
+            expect(service.connection?.source).toEqual({ kind: "defaultProfile" }),
+        );
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({
+            status: "connected",
+            connection: { profile: "DEFAULT", source: { kind: "defaultProfile" } },
+        });
+    });
+
     it("reports a failed me call as an error with the profile and host", async () => {
         const http = new FakeHttpClient().on("GET", SCIM_ME, {
             status: 401,

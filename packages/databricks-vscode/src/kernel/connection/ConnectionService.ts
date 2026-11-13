@@ -576,10 +576,14 @@ export class ConnectionService implements Disposable {
             if (resolution.kind !== "signedOut" && resolution.kind !== "error") {
                 // Only the reason changed, for example a project now names the same profile.
                 this.connectedFrom = resolution;
-                this.current.set({
-                    status: "connected",
-                    connection: { ...current.connection, source: resolution.source },
-                });
+                // A profile refresh that keeps the connection and its source shouldn't
+                // re-announce it: every listener would re-run for nothing.
+                if (!isDeepStrictEqual(current.connection.source, resolution.source)) {
+                    this.current.set({
+                        status: "connected",
+                        connection: { ...current.connection, source: resolution.source },
+                    });
+                }
             }
             return this.current.value;
         }

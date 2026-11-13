@@ -33,8 +33,16 @@ export function createPublicApi(
     const changed = new Emitter<void>();
     const stateChanged = new Emitter<ConnectionState>();
     let last = kernel.connection.connection;
+    // Starts unset so the first change fires, even when it matches the state at
+    // creation (usually CONNECTING). After that, fire only on a v1 change.
+    let lastState: ConnectionState | undefined;
     const subscription = kernel.connection.state.onDidChange((s) => {
-        stateChanged.fire(v1State(s));
+        const nextState = v1State(s);
+        // A repeat is the same connection: the kernel goes through CONNECTING between connections.
+        if (nextState !== lastState) {
+            lastState = nextState;
+            stateChanged.fire(nextState);
+        }
         const next = kernel.connection.connection;
         if (next !== last) {
             last = next;
