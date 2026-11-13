@@ -161,7 +161,7 @@ describe("host contract", () => {
         expect(problems).toEqual([]);
     });
 
-    it("hides a submenu in a session when nothing in it is available there", () => {
+    it("hides a submenu in a session when nothing in it is available there, and doesn't hide it when something is", () => {
         const { menus } = manifest.contributes;
         const problems: string[] = [];
         for (const [menu, items] of Object.entries(menus)) {
@@ -176,6 +176,11 @@ describe("host contract", () => {
                 if (usable.length === 0 && shown !== false) {
                     problems.push(
                         `${menu} ${entry.submenu}: "${entry.when}" shows it in a session`,
+                    );
+                } else if (usable.length > 0 && shown === false) {
+                    const names = usable.map((item) => item.command ?? item.submenu).join(", ");
+                    problems.push(
+                        `${menu} ${entry.submenu}: "${entry.when}" hides it in a session, where ${names} is available`,
                     );
                 }
             }
