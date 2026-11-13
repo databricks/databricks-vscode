@@ -100,7 +100,7 @@ describe("the version 1 state events", () => {
         expect(states).toEqual(["DISCONNECTED"]);
     });
 
-    it("reports the startup order of version 2.x: CONNECTING, then CONNECTED", () => {
+    it("the first connection reports CONNECTING, then CONNECTED", () => {
         // The kernel is already connecting when the API is created, then connects.
         const { state, states } = stateApi({ status: "connecting" });
         state.set({ status: "connecting", profile: "DEFAULT", host: A });
