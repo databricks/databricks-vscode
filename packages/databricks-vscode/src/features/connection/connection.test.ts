@@ -1280,6 +1280,37 @@ describe("the connection feature", () => {
         expect(kernel.connection.connection?.profile).toBe("fresh");
     });
 
+    it("doesn't save a token on Retry over a profile of the same name saved since", async () => {
+        const fixture = setup();
+        const { kernel, settled, run, file } = fixture;
+        let valid = false;
+        refuseTypedTokenUntil(fixture, () => valid);
+        kernel.start();
+        await settled();
+        let choose!: (choice: string) => void;
+        vscode.nextErrorChoice = new Promise<string>((resolve) => (choose = resolve));
+        const signIn = run("databricks.connection.configureLogin");
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(1));
+        await enterNewPat();
+        await signIn;
+        expect(vscode.errors.map((e) => e.actions)).toEqual([["Retry"]]);
+        // Another sign-in saved an OAuth profile under the name, as `auth login` would.
+        fs.appendFileSync(file, `\n[new]\nhost = ${A}\nauth_type = databricks-cli\n`);
+        const before = fs.readFileSync(file, "utf8");
+
+        // The token works now, so a Retry without the check would save it.
+        valid = true;
+        choose("Retry");
+        await vi.waitFor(() => expect(vscode.errors).toHaveLength(2));
+        expect(vscode.errors[1]).toMatchObject({
+            message: "Profile new exists now. Sign in again to choose another name.",
+            actions: [],
+        });
+        expect(kernel.runner.calls.find((c) => c.args[0] === "configure")).toBeUndefined();
+        expect(fs.readFileSync(file, "utf8")).toBe(before);
+        expect(kernel.connection.connection?.profile).toBe("DEFAULT");
+    });
+
     it("saveNewProfile copies the PAT connection through configure", async () => {
         const { kernel, settled, run } = setup();
         kernel.start();

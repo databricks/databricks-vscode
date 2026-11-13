@@ -26,6 +26,7 @@ import {
     type SignInRow,
 } from "../../kernel/connection/commands";
 import type { ConnectionState } from "../../kernel/connection/ConnectionService";
+import type { ProfilesSnapshot } from "../../kernel/connection/Profiles";
 import { failureNotice, fixFor, type FixActions } from "../../kernel/connection/fix";
 import type { Kernel, FeatureCommands } from "../../kernel/feature";
 import { SELECT_TARGET } from "../../kernel/project/commands";
@@ -300,22 +301,7 @@ export class ConnectionCommands {
         focus?: ProfileFocus;
     }): Promise<SignInChoice> {
         const { connection } = this.kernel;
-        let snapshot;
-        try {
-            snapshot = await connection.profiles.refresh("sign-in wizard");
-        } catch (e) {
-            // The old wizard's remedy: a file the CLI can't parse either, so only an edit fixes it.
-            throw new UserFacingError(
-                "CONFIG_FILE_UNREADABLE",
-                `Can't read the Databricks config file ${this.kernel.configFile()}: ${errorMessage(e)}`,
-                {
-                    cause: e,
-                    actions: [
-                        { title: "Open Databricks Config File", run: () => this.openConfigFile() },
-                    ],
-                },
-            );
-        }
+        const snapshot = await this.readProfiles("sign-in wizard");
         try {
             return await runSignInWizard({
                 profiles: snapshot.profiles,
@@ -339,6 +325,25 @@ export class ConnectionCommands {
         } finally {
             // The wizard is done; what follows (a browser login, connecting) has no input to bring back.
             this.openInput = undefined;
+        }
+    }
+
+    /** The config file's profiles, read now. */
+    private async readProfiles(reason: string): Promise<ProfilesSnapshot> {
+        try {
+            return await this.kernel.connection.profiles.refresh(reason);
+        } catch (e) {
+            // The old wizard's remedy: a file the CLI can't parse either, so only an edit fixes it.
+            throw new UserFacingError(
+                "CONFIG_FILE_UNREADABLE",
+                `Can't read the Databricks config file ${this.kernel.configFile()}: ${errorMessage(e)}`,
+                {
+                    cause: e,
+                    actions: [
+                        { title: "Open Databricks Config File", run: () => this.openConfigFile() },
+                    ],
+                },
+            );
         }
     }
 
@@ -369,6 +374,7 @@ export class ConnectionCommands {
             case "pat":
                 if (choice.kind === "pat") {
                     await this.checkToken(choice, source);
+                    await this.refuseTakenName(choice.profile);
                 }
                 await this.createProfile(choice, "workspace");
                 return this.recordSelection(
@@ -409,6 +415,21 @@ export class ConnectionCommands {
                         },
                     ],
                 },
+            );
+        }
+    }
+
+    /**
+     * `configure` merges into a section of the same name, replacing its
+     * credentials. The wizard checked the name before the token check; a
+     * Retry may come after another sign-in saved a profile under it.
+     */
+    private async refuseTakenName(profile: string): Promise<void> {
+        const { profiles } = await this.readProfiles("before saving a token");
+        if (profiles.some((p) => p.name === profile)) {
+            throw new UserFacingError(
+                "PROFILE_EXISTS",
+                `Profile ${profile} exists now. Sign in again to choose another name.`,
             );
         }
     }
