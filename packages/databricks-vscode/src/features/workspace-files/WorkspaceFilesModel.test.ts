@@ -1,6 +1,6 @@
 import { newPatCredentials } from "@databricks/sdk-auth/credentials";
 import { setProduct } from "@databricks/sdk-core/clientinfo";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ApiClients, type Connection } from "../../kernel/connection";
 import { FakeHttpClient } from "../../test-support/fakeHttp";
 import { FakeWorkspaceFiles } from "../../test-support/fakeWorkspaceFiles";
@@ -202,6 +202,33 @@ describe("WorkspaceFilesModel", () => {
     });
 });
 
+/** A get-status answer for a file of `size` bytes. */
+function statBody(path: string, size: number) {
+    return {
+        body: {
+            path,
+            object_type: "FILE",
+            object_id: 100 + size,
+            size,
+            created_at: 1700000000000,
+            modified_at: 1700000000000 + size,
+        },
+    };
+}
+
+/** `promise`, or `"timed out"` if it hasn't settled within `ms`. */
+async function within<T>(promise: Promise<T>, ms: number): Promise<T | "timed out"> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timed out">(
+        (resolve) => (timer = setTimeout(() => resolve("timed out"), ms)),
+    );
+    try {
+        return await Promise.race([promise, timeout]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 describe("WorkspaceFsProvider", () => {
     function provider() {
         const s = setup();
@@ -224,6 +251,93 @@ describe("WorkspaceFsProvider", () => {
         await expect(p.stat(uri(`${HOME}/missing`))).rejects.toMatchObject({
             code: "FileNotFound",
         });
+    });
+
+    it("stats fresh, so VS Code's save check sees a change made elsewhere", async () => {
+        const { p, uri, files, http, model } = provider();
+        const file = `${HOME}/a.py`;
+        expect(await p.stat(uri(file))).toMatchObject({ size: 8 });
+
+        files.file(file, "print(1)\nprint(2)");
+
+        expect(await p.stat(uri(file))).toMatchObject({ size: 17 });
+        // The fresh result is what the tree and the reads see next.
+        expect(await model.stat(file)).toMatchObject({ size: 17 });
+        expect(http.to("/api/2.0/workspace/get-status")).toHaveLength(2);
+    });
+
+    it("doesn't take a fresh stat from a request that started before the change", async () => {
+        const { p, uri, http } = provider();
+        const file = `${HOME}/a.py`;
+        // The first request is answered only when released, with the old size.
+        let release!: () => void;
+        const held = new Promise<void>((r) => (release = r));
+        http.on(
+            "GET",
+            "/api/2.0/workspace/get-status",
+            async () => {
+                await held;
+                return statBody(file, 8);
+            },
+            statBody(file, 17),
+        );
+
+        const before = p.stat(uri(file));
+        await vi.waitFor(() => expect(http.to("/api/2.0/workspace/get-status")).toHaveLength(1));
+        // The change lands while the first request is in flight.
+        const fresh = p.stat(uri(file));
+
+        release();
+        expect(await within(fresh, 1_000)).toMatchObject({ size: 17 });
+        await before;
+    });
+
+    it("a newer stat stays cached after an older request settles", async () => {
+        const { model, http } = provider();
+        const file = `${HOME}/a.py`;
+        // The tree's request is answered only when released, with the old size.
+        let release!: () => void;
+        const held = new Promise<void>((r) => (release = r));
+        http.on(
+            "GET",
+            "/api/2.0/workspace/get-status",
+            async () => {
+                await held;
+                return statBody(file, 8);
+            },
+            statBody(file, 17),
+        );
+
+        const tree = model.stat(file);
+        await vi.waitFor(() => expect(http.to("/api/2.0/workspace/get-status")).toHaveLength(1));
+        expect(await model.statFresh(file)).toMatchObject({ size: 17 });
+
+        release();
+        await tree;
+        expect(await model.stat(file)).toMatchObject({ size: 17 });
+    });
+
+    it("doesn't wait on a request that hangs when it asks fresh", async () => {
+        const { p, uri, http } = provider();
+        const file = `${HOME}/a.py`;
+        let release!: () => void;
+        const held = new Promise<void>((r) => (release = r));
+        http.on(
+            "GET",
+            "/api/2.0/workspace/get-status",
+            async () => {
+                await held;
+                return statBody(file, 8);
+            },
+            statBody(file, 8),
+        );
+
+        const hung = p.stat(uri(file));
+        await vi.waitFor(() => expect(http.to("/api/2.0/workspace/get-status")).toHaveLength(1));
+
+        expect(await within(p.stat(uri(file)), 1_000)).toMatchObject({ size: 8 });
+        release();
+        await hung;
     });
 
     it("reads a directory and a file", async () => {
