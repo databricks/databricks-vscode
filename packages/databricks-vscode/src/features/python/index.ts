@@ -378,18 +378,13 @@ export const python: Feature = {
 
         // A run's compute: the setup-local env for the connection, the target and the project.
         // It reads the bundle for the target, so it is a bundle call.
-        const setupLocalEnv = async (session: ProjectSession) => ({
-            ...(await (session.target !== undefined
-                ? kernel.bundleChildEnv({
-                      cli: true,
-                      // The host env with http.proxy over it, as 2.22.0's setup-local had.
-                      environment: "hostAndProxy",
-                      bundle: { root: session.project.root, target: session.target },
-                  })
-                : kernel.childEnv({
-                      cli: true,
-                      environment: "hostAndProxy",
-                  }))),
+        const setupLocalEnv = (session: ProjectSession) => ({
+            ...kernel.childEnv({
+                cli: true,
+                // The host env with http.proxy over it, as 2.22.0's setup-local had.
+                environment: "hostAndProxy",
+                ...(session.target !== undefined ? { bundleRoot: session.project.root } : {}),
+            }),
             ...(session.target !== undefined ? { DATABRICKS_BUNDLE_TARGET: session.target } : {}),
         });
 
@@ -431,13 +426,13 @@ export const python: Feature = {
             const computeChanged = new Emitter<void>();
             const uvChanged = new Emitter<void>();
             const cli = {
-                run: async (
+                run: (
                     invocation: Parameters<typeof environmentsSetupLocal>[1],
                     options: { cwd: string; onLog?: (chunk: string) => void; signal?: AbortSignal },
                 ) =>
                     environmentsSetupLocal(kernel.cli, invocation, {
                         cwd: options.cwd,
-                        env: await setupLocalEnv(session),
+                        env: setupLocalEnv(session),
                         signal: options.signal,
                         onStderr: options.onLog,
                     }),

@@ -66,11 +66,11 @@ export interface ChildEnvOptions {
     /** Adds `DATABRICKS_CLUSTER_ID` or `DATABRICKS_SERVERLESS_COMPUTE_ID=auto`. */
     readonly compute?: ChildCompute;
     /**
-     * A bundle CLI call for this project's target. In a session window it
-     * throws unless the target guard lets the target run (`targetAccess`),
-     * and pins the project's root, since the call gets the session's token.
+     * The project's root, which a bundle CLI call pins, so the CLI can't walk
+     * up to a parent `databricks.yml`. The bundle calls that check the target
+     * come from `bundleChildEnv`.
      */
-    readonly bundle?: { readonly root: string; readonly target: string };
+    readonly bundleRoot?: string;
 }
 
 /** The shared services. */

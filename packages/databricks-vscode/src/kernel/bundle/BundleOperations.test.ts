@@ -171,7 +171,7 @@ function setup(
 }
 
 describe("BundleOperations", () => {
-    it("starts no bundle command whose target check refuses, deploy or run", async () => {
+    it("starts no bundle command whose target check refuses: deploy, destroy, run or upload", async () => {
         let refuse = false;
         const s = setup({
             check: async () => {
@@ -184,12 +184,14 @@ describe("BundleOperations", () => {
         const on = await s.operations.deploy();
         const calls = (verb: string) => s.runner.calls.filter((c) => c.args[1] === verb).length;
         refuse = true;
-        const [deploys, runs] = [calls("deploy"), calls("run")];
+        const before = ["deploy", "destroy", "run", "sync"].map(calls);
         await expect(s.operations.deploy()).rejects.toThrow("paused in this session window");
+        await expect(s.operations.destroy()).rejects.toThrow("paused in this session window");
         await expect(s.operations.run(on, "jobs.etl")).rejects.toThrow(
             "paused in this session window",
         );
-        expect([calls("deploy"), calls("run")]).toEqual([deploys, runs]);
+        await expect(s.operations.syncOnce()).rejects.toThrow("paused in this session window");
+        expect(["deploy", "destroy", "run", "sync"].map(calls)).toEqual(before);
         s.service.dispose();
     });
 

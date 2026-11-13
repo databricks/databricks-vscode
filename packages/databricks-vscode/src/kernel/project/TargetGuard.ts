@@ -135,7 +135,7 @@ export class TargetGuard implements Disposable {
      * Decides `target` of `root` from the files on disk right now, and throws
      * unless it may run. Called right before each bundle command that sends
      * the session's token, so a host edited a moment ago is seen without
-     * waiting for the project's debounce. The cached decision still applies.
+     * waiting for the project's debounce.
      */
     async assertUsableNow(root: string, target: string): Promise<void> {
         // A local window: every target is open, and nothing is read.

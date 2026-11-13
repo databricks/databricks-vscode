@@ -162,6 +162,21 @@ describe("BundleService", () => {
         expect(s.bundleCalls()).toEqual([]);
     });
 
+    it("starts no summary whose target check refuses, after its validate has passed", async () => {
+        // The first check (the validate) passes; every later one refuses.
+        let allowed = 1;
+        const s = setup({
+            check: async () => {
+                if (allowed-- <= 0) {
+                    throw new Error("paused in this session window");
+                }
+            },
+        });
+        await s.start();
+        s.connection.set(connected());
+        await s.settleUntil(() => expect(s.bundleCalls()).toEqual(["bundle validate"]));
+    });
+
     it("validates and then summarizes once a project target is connected", async () => {
         const s = setup();
         await s.start();

@@ -114,13 +114,6 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
             options.connection === null
                 ? undefined
                 : (options.connection ?? connection?.connection);
-        if (options.bundle !== undefined) {
-            // Where the token joins a bundle call: the guard has the last word.
-            if (guard === undefined) {
-                throw new Error("The target guard isn't ready");
-            }
-            guard.assertUsable(options.bundle.root, options.bundle.target);
-        }
         return childEnv({
             base: env,
             configFile: configFile(),
@@ -131,7 +124,7 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
             ...(options.cli ? { cli: { extensionVersion: extension.version } } : {}),
             bundleVariables: options.bundleVariables,
             compute: options.compute,
-            ...(options.bundle !== undefined ? { bundleRoot: options.bundle.root } : {}),
+            ...(options.bundleRoot !== undefined ? { bundleRoot: options.bundleRoot } : {}),
         });
     };
 
@@ -199,7 +192,8 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         log: platform.log.child("targetGuard"),
     });
     guard = targetGuard;
-    // A bundle call's env: decided again from the disk first, right before the spawn.
+    // The only env for a bundle command that takes the session's token: decided again from
+    // the disk right before the spawn, with nothing cached on top.
     const bundleEnv = async (
         options: ChildEnvOptions & {
             readonly bundle: { readonly root: string; readonly target: string };
@@ -208,8 +202,9 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         if (guard === undefined) {
             throw new Error("The target guard isn't ready");
         }
-        await guard.assertUsableNow(options.bundle.root, options.bundle.target);
-        return buildEnv(options);
+        const { bundle, ...rest } = options;
+        await guard.assertUsableNow(bundle.root, bundle.target);
+        return buildEnv({ ...rest, bundleRoot: bundle.root });
     };
 
     const bundleLog = new BundleLog(platform.bundleLogChannel ?? (() => silentChannel));

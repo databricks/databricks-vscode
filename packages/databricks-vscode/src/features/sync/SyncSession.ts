@@ -29,8 +29,6 @@ export interface TaskRunner {
 interface SyncRun {
     readonly terminal: SyncTerminal;
     readonly connection: Connection;
-    /** The spawn, begun when the terminal opens: the target is checked before the process starts. */
-    spawning?: Promise<void>;
     process?: ProcessHandle;
     execution?: TaskExecution;
     ended: boolean;
@@ -84,9 +82,7 @@ export class SyncSession implements Disposable {
         this.run = run;
         this.setStatus(run, { state: "IN_PROGRESS" });
         const subscriptions = [
-            terminal.onDidOpen(() => {
-                run.spawning ??= this.spawn(run, full);
-            }),
+            terminal.onDidOpen(() => this.spawn(run, full)),
             terminal.onDidCloseByUser(() => this.end(run, { state: "STOPPED" })),
         ];
         run.terminal.onDidClose(() => subscriptions.forEach((s) => s.dispose()));
@@ -97,7 +93,6 @@ export class SyncSession implements Disposable {
             this.end(run, { state: "ERROR", reason: errorMessage(e) });
             throw e;
         }
-        await run.spawning;
         if (run.ended) {
             run.execution.terminate();
         }
@@ -110,8 +105,8 @@ export class SyncSession implements Disposable {
         }
     }
 
-    private async spawn(run: SyncRun, full: boolean) {
-        if (run.ended) {
+    private spawn(run: SyncRun, full: boolean) {
+        if (run.ended || run.process !== undefined) {
             return;
         }
         const { kernel, session } = this;
@@ -134,25 +129,21 @@ export class SyncSession implements Disposable {
             }
         };
         try {
-            const env = await kernel.bundleChildEnv({
-                connection: run.connection,
-                cli: true,
-                bundleVariables: kernel.project.variables.value,
-                ...bundleCompute(
-                    kernel.project.overrides.value,
-                    kernel.capabilities.compute === "perTarget",
-                ),
-                bundle: { root: session.project.root, target: session.target },
-            });
-            if (run.ended) {
-                return;
-            }
             run.process = bundleSync(
                 kernel.cli,
                 session.target,
                 {
                     cwd: session.project.root,
-                    env,
+                    env: kernel.childEnv({
+                        connection: run.connection,
+                        cli: true,
+                        bundleVariables: kernel.project.variables.value,
+                        ...bundleCompute(
+                            kernel.project.overrides.value,
+                            kernel.capabilities.compute === "perTarget",
+                        ),
+                        bundleRoot: session.project.root,
+                    }),
                     onStdoutLine: (line) => read(readStdoutLine(line)),
                     onStderrLine: (line) => read(readStderrLine(line)),
                 },
