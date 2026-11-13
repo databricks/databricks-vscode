@@ -317,6 +317,8 @@ describe("deploy and run", () => {
             "Cancelled",
         );
         expect(vscode.terminals.at(-1)!.output).not.toContain("Process exited");
+        // The terminal says the run ended, as the old one did, rather than stopping at its last line.
+        expect(vscode.terminals.at(-1)!.output).toContain("Process killed by user input");
         expect(vscode.errors).toEqual([]);
         expect(s.reporter.events.find((e) => e.name === "bundleRun")?.properties).toMatchObject({
             "event.cancelled": "true",
@@ -440,7 +442,8 @@ describe("deploy and run", () => {
         vscode.terminals[0]!.closeByUser();
         await running;
 
-        expect(vscode.terminals[0]!.output).toContain("Process killed by user input");
+        // Once: closing the terminal says it, and the cancel that follows doesn't again.
+        expect(vscode.terminals[0]!.output.split("Process killed by user input")).toHaveLength(2);
         expect((await s.child(await s.job(), "Run Status"))?.getTreeItem().description).toBe(
             "Cancelled",
         );

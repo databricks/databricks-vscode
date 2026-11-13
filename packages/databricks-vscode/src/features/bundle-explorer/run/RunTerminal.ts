@@ -3,6 +3,9 @@ import { Emitter } from "../../../platform/event";
 
 type TerminalWindow = Pick<typeof vscodeWindow, "createTerminal" | "terminals">;
 
+/** The old terminal's line for a run the user stopped. */
+const KILLED = "\x1b[31mProcess killed by user input\x1b[0m\r\n";
+
 /** A display-only quoting of the command line, as the old terminal printed it. */
 export function quoteCommandLine(args: readonly string[]): string {
     return args
@@ -33,7 +36,7 @@ export class RunTerminal implements Pseudoterminal, Disposable {
     close(): void {
         this.isClosed = true;
         if (this.running) {
-            this.written.fire("\x1b[31mProcess killed by user input\x1b[0m\r\n");
+            this.written.fire(KILLED);
         }
         this.closedByUser.fire();
     }
@@ -53,7 +56,15 @@ export class RunTerminal implements Pseudoterminal, Disposable {
         this.written.fire(text);
     }
 
-    /** The CLI exited: with its code, or `null` when it was killed. */
+    /** The run was cancelled and its CLI killed. Closing the terminal already says so. */
+    cancelled(): void {
+        this.running = false;
+        if (!this.isClosed) {
+            this.written.fire(KILLED);
+        }
+    }
+
+    /** The CLI exited: with its code, or `null` when it has none to report. */
     exited(exitCode: number | null): void {
         this.running = false;
         if (exitCode === 0) {

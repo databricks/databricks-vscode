@@ -156,7 +156,7 @@ export class RunCommands {
             return tracker.state === "cancelled";
         } catch (e) {
             if (isCancellation(e)) {
-                terminal.exited(null);
+                terminal.cancelled();
                 await tracker.cancel().catch((error: unknown) => {
                     throw new UserFacingError(
                         "CANCEL_FAILED",
