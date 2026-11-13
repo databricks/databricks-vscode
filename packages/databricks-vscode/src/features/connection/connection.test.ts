@@ -38,6 +38,42 @@ const tick = () => new Promise((r) => setImmediate(r));
 const lastInput = (): FakeQuickInput => vscode.quickInputs[vscode.quickInputs.length - 1]!;
 const labels = (input: FakeQuickInput) => input.items.map((i) => i.label);
 
+/**
+ * SCIM `me` refuses the token `dapi-typed` until `works()` says otherwise, and
+ * `configure` saves the profile `new`, as the CLI would.
+ */
+function refuseTypedTokenUntil(
+    { kernel, http, file }: Pick<ReturnType<typeof setup>, "kernel" | "http" | "file">,
+    works: () => boolean,
+) {
+    http.on("GET", SCIM_ME, (req) => {
+        if (req.headers.get("Authorization") === "Bearer dapi-typed" && !works()) {
+            return {
+                status: 401,
+                body: { error_code: "UNAUTHENTICATED", message: "Invalid access token" },
+            };
+        }
+        return { body: { userName: `user ${req.headers.get("Authorization")}` } };
+    });
+    kernel.runner.on(["configure"], (_args, options) => {
+        fs.appendFileSync(file, `\n[new]\nhost = ${A}\ntoken = ${options.input!.trim()}\n`);
+        return {};
+    });
+}
+
+/** The open wizard's steps to a new profile `new` for the first host, with the token `dapi-typed`. */
+async function enterNewPat() {
+    lastInput().accept();
+    await tick();
+    lastInput().accept("Personal Access Token");
+    await tick();
+    lastInput().type("new");
+    lastInput().accept();
+    await tick();
+    lastInput().type("dapi-typed");
+    lastInput().accept();
+}
+
 const dirs: string[] = [];
 function configFile(content: string) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "connection-"));
@@ -1135,37 +1171,18 @@ describe("the connection feature", () => {
     });
 
     it("checks a new PAT before saving it: a token that fails writes nothing and keeps the connection, and Retry checks it again", async () => {
-        const { kernel, settled, run, file, http } = setup();
+        const fixture = setup();
+        const { kernel, settled, run, file } = fixture;
         let valid = false;
-        http.on("GET", SCIM_ME, (req) => {
-            if (req.headers.get("Authorization") === "Bearer dapi-typed" && !valid) {
-                return {
-                    status: 401,
-                    body: { error_code: "UNAUTHENTICATED", message: "Invalid access token" },
-                };
-            }
-            return { body: { userName: `user ${req.headers.get("Authorization")}` } };
-        });
+        refuseTypedTokenUntil(fixture, () => valid);
         kernel.start();
         await settled();
         const before = fs.readFileSync(file, "utf8");
-        kernel.runner.on(["configure"], (_args, options) => {
-            fs.appendFileSync(file, `\n[new]\nhost = ${A}\ntoken = ${options.input!.trim()}\n`);
-            return {};
-        });
         let choose!: (choice: string) => void;
         vscode.nextErrorChoice = new Promise<string>((resolve) => (choose = resolve));
         const signIn = run("databricks.connection.configureLogin");
         await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(1));
-        lastInput().accept();
-        await tick();
-        lastInput().accept("Personal Access Token");
-        await tick();
-        lastInput().type("new");
-        lastInput().accept();
-        await tick();
-        lastInput().type("dapi-typed");
-        lastInput().accept();
+        await enterNewPat();
         await vi.waitFor(() => expect(vscode.errors).toHaveLength(1));
 
         expect(vscode.errors[0]!.message).toMatch(
@@ -1182,6 +1199,85 @@ describe("the connection feature", () => {
         await signIn;
         await vi.waitFor(() => expect(kernel.connection.connection?.profile).toBe("new"));
         expect(kernel.runner.calls.filter((c) => c.args[0] === "configure")).toHaveLength(1);
+    });
+
+    it("signs in on a token check's Retry as on a first try: signed out of both, Unity Gateway signs in too, and the sign-in is recorded", async () => {
+        const fixture = setup();
+        const { kernel, settled, run, reporter } = fixture;
+        let valid = false;
+        refuseTypedTokenUntil(fixture, () => valid);
+        kernel.start();
+        await settled();
+        await run("databricks.connection.logout");
+        expect(kernel.connection.state.value.status).toBe("signedOut");
+        expect(kernel.unityGateway.state.value.status).toBe("signedOut");
+        let choose!: (choice: string) => void;
+        vscode.nextErrorChoice = new Promise<string>((resolve) => (choose = resolve));
+        const signIn = run("databricks.connection.configureLogin");
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(1));
+        await enterNewPat();
+        await signIn;
+        expect(vscode.errors.map((e) => e.actions)).toEqual([["Retry"]]);
+
+        valid = true;
+        choose("Retry");
+        await vi.waitFor(() => expect(kernel.connection.connection?.profile).toBe("new"));
+        await vi.waitFor(() => expect(kernel.unityGateway.connection?.profile).toBe("new"));
+        const manual = reporter.events.filter((e) => e.name === "manualLogin");
+        expect(
+            manual.map((e) => [e.properties?.["event.success"], e.properties?.["event.source"]]),
+        ).toEqual([
+            ["false", "command"],
+            ["true", "command"],
+        ]);
+    });
+
+    it("says sign-in is under way when a token check's Retry comes while another sign-in is past its wizard", async () => {
+        const fixture = setup();
+        const { kernel, settled, run, file } = fixture;
+        let valid = false;
+        refuseTypedTokenUntil(fixture, () => valid);
+        kernel.start();
+        await settled();
+        let choose!: (choice: string) => void;
+        vscode.nextErrorChoice = new Promise<string>((resolve) => (choose = resolve));
+        const signIn = run("databricks.connection.configureLogin");
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(1));
+        await enterNewPat();
+        await signIn;
+        let release!: () => void;
+        kernel.runner.on(
+            ["auth", "login"],
+            () =>
+                new Promise((resolve) => {
+                    release = () => {
+                        fs.appendFileSync(
+                            file,
+                            `\n[fresh]\nhost = ${A}\nauth_type = databricks-cli\n`,
+                        );
+                        resolve({});
+                    };
+                }),
+        );
+        const other = run("databricks.connection.configureLogin");
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(5));
+        lastInput().accept();
+        await tick();
+        lastInput().accept("OAuth");
+        await tick();
+        lastInput().type("fresh");
+        lastInput().accept();
+        await vi.waitFor(() => expect(kernel.runner.argv.some((a) => a[1] === "login")).toBe(true));
+
+        // The token works now, so a Retry past the guard would save it.
+        valid = true;
+        choose("Retry");
+        await vi.waitFor(() => expect(vscode.errors).toHaveLength(2));
+        expect(vscode.errors[1]!.message).toBe("Databricks: sign in is already in progress");
+        expect(kernel.runner.calls.find((c) => c.args[0] === "configure")).toBeUndefined();
+        release();
+        await other;
+        expect(kernel.connection.connection?.profile).toBe("fresh");
     });
 
     it("saveNewProfile copies the PAT connection through configure", async () => {

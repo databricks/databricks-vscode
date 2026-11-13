@@ -115,9 +115,14 @@ export class ConnectionCommands {
      * The sign-in wizard, then whatever the user chose. `host` skips the host
      * step, as "Switch profile" does. In a project the target's host is
      * known, so the wizard starts with the profiles for it (`auth.e2e.ts`
-     * looks for them in the first input).
+     * looks for them in the first input). `retried`, a failed sign-in's
+     * choice, skips the wizard: its Retry is otherwise a sign-in like the first.
      */
-    async configureLogin(source: ManualLoginSource, host?: string): Promise<void> {
+    async configureLogin(
+        source: ManualLoginSource,
+        host?: string,
+        retried?: SignInChoice,
+    ): Promise<void> {
         const record = this.telemetry.start(MANUAL_LOGIN);
         let success = false;
         try {
@@ -132,14 +137,16 @@ export class ConnectionCommands {
                 }
                 const project = connection.project;
                 const signedOut = connection.state.value.status === "signedOut";
-                const choice = await this.runWizard({
-                    host:
-                        host ??
-                        (project !== undefined ? hostOf(connection.state.value) : undefined),
-                    suggestedName: project?.target,
-                    targetProfile: project?.workspaceProfile,
-                });
-                const connected = await this.carryOut(choice);
+                const choice =
+                    retried ??
+                    (await this.runWizard({
+                        host:
+                            host ??
+                            (project !== undefined ? hostOf(connection.state.value) : undefined),
+                        suggestedName: project?.target,
+                        targetProfile: project?.workspaceProfile,
+                    }));
+                const connected = await this.carryOut(choice, source);
                 if (connected && signedOut) {
                     this.signInUnityGatewayToo();
                 }
@@ -353,7 +360,7 @@ export class ConnectionCommands {
         };
     }
 
-    private async carryOut(choice: SignInChoice): Promise<boolean> {
+    private async carryOut(choice: SignInChoice, source: ManualLoginSource): Promise<boolean> {
         switch (choice.kind) {
             case "editConfigFile":
                 await this.openConfigFile();
@@ -361,7 +368,7 @@ export class ConnectionCommands {
             case "oauth":
             case "pat":
                 if (choice.kind === "pat") {
-                    await this.checkToken(choice);
+                    await this.checkToken(choice, source);
                 }
                 await this.createProfile(choice, "workspace");
                 return this.recordSelection(
@@ -377,7 +384,10 @@ export class ConnectionCommands {
     }
 
     /** As the old wizard did: a token that doesn't work isn't saved, and the window keeps its connection. */
-    private async checkToken(choice: Extract<SignInChoice, { kind: "pat" }>): Promise<void> {
+    private async checkToken(
+        choice: Extract<SignInChoice, { kind: "pat" }>,
+        source: ManualLoginSource,
+    ): Promise<void> {
         try {
             await window.withProgress(
                 {
@@ -390,7 +400,15 @@ export class ConnectionCommands {
             throw new UserFacingError(
                 "PAT_CHECK_FAILED",
                 `Can't login with the provided Personal Access Token: ${errorMessage(e)}`,
-                { cause: e, actions: [{ title: "Retry", run: () => this.carryOut(choice) }] },
+                {
+                    cause: e,
+                    actions: [
+                        {
+                            title: "Retry",
+                            run: () => this.configureLogin(source, undefined, choice),
+                        },
+                    ],
+                },
             );
         }
     }
