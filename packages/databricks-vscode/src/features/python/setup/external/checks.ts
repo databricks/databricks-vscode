@@ -168,10 +168,6 @@ export function checkDatabricksConnectVersion(
     return { id: DEPENDENCIES, available: true, title: `Databricks Connect: ${version}` };
 }
 
-/** The databricks-connect row's message, and the run gate's: the same fact, the same words. */
-export const DBCONNECT_NOT_INSTALLED =
-    "databricks-connect package is not installed in the current environment.";
-
 /** What reading the interpreter's packages found. */
 export type PackageProbe =
     | { readonly kind: "installed"; readonly version: string }
@@ -203,7 +199,7 @@ export function checkEnvironmentDependencies(
             id: DEPENDENCIES,
             available: false,
             title: "Install databricks-connect",
-            message: DBCONNECT_NOT_INSTALLED,
+            message: "databricks-connect package is not installed in the current environment.",
             action: "installDbConnect",
         };
     }

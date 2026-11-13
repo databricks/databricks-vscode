@@ -1,4 +1,3 @@
-import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UserFacingError } from "../../platform/errors";
 import type { ShellKind } from "../../platform/shell";
@@ -9,9 +8,8 @@ import {
     TERMINAL_NAME,
     type DbConnectRunnerDeps,
 } from "./DbConnectRunner";
-import { DBCONNECT_NOT_INSTALLED, type PackageProbe } from "./setup/external/checks";
+import type { PackageProbe } from "./setup/external/checks";
 import type { Readiness } from "./setup/readiness";
-import { venvInterpreterPath } from "./setup/uv/venvInterpreterPath";
 
 const readiness = (
     status: Readiness["status"],
@@ -36,12 +34,17 @@ function runner(
         dbConnect?: PackageProbe;
         /** The databricks-connect probe itself, when it must see the signal. */
         probe?: DbConnectRunnerDeps["dbConnect"];
+        /** Whether the setup installs databricks-connect. */
+        setupInstalls?: boolean;
+        /** The interpreter the setup adopts (the `.venv`), once it ran. */
+        setupAdopts?: string;
     } = {},
 ) {
     const statuses = [...(options.statuses ?? ["ready"])];
     const log: string[] = [];
     const debugged: Record<string, unknown>[] = [];
-    const selected: string[] = [];
+    const probed: string[] = [];
+    let setupRan = false;
     const deps: DbConnectRunnerDeps = {
         root: "/work/project",
         readiness: async () => {
@@ -51,6 +54,7 @@ function runner(
         },
         setup: async () => {
             log.push("setup");
+            setupRan = true;
         },
         requireExtension: (extension, what) => {
             if (options.missing?.includes(extension.id)) {
@@ -58,13 +62,20 @@ function runner(
             }
         },
         executable: async () =>
-            "executable" in options ? options.executable : "/work/project/.venv/bin/python",
+            setupRan && options.setupAdopts !== undefined
+                ? options.setupAdopts
+                : "executable" in options
+                  ? options.executable
+                  : "/work/project/.venv/bin/python",
         dbConnect:
             options.probe ??
-            (async () => options.dbConnect ?? { kind: "installed", version: "17.3.0" }),
-        setActiveEnvironmentPath: async (interpreter) => {
-            selected.push(interpreter);
-        },
+            (async (executable) => {
+                probed.push(executable);
+                if (setupRan && options.setupInstalls) {
+                    return { kind: "installed", version: "17.3.0" };
+                }
+                return options.dbConnect ?? { kind: "installed", version: "17.3.0" };
+            }),
         writeEnvFile: async () => {
             log.push("envFile");
         },
@@ -85,7 +96,7 @@ function runner(
         },
         onRun: (launchType) => log.push(`onRun:${launchType}`),
     };
-    return { r: new DbConnectRunner(deps), log, debugged, selected };
+    return { r: new DbConnectRunner(deps), log, debugged, probed };
 }
 
 describe("DbConnectRunner", () => {
@@ -233,52 +244,56 @@ describe("DbConnectRunner", () => {
         const missing: PackageProbe = { kind: "missing" };
         afterEach(() => vi.restoreAllMocks());
 
-        it("stops a run when the selected interpreter lacks databricks-connect, and offers the .venv and the setup", async () => {
-            const { r, log, selected } = runner({
+        it("runs the setup when the selected interpreter lacks databricks-connect, then runs the interpreter the setup adopted", async () => {
+            const adopted = "/work/project/.venv/bin/python";
+            const { r, log, probed } = runner({
                 executable: "/usr/bin/python3",
                 dbConnect: missing,
+                setupInstalls: true,
+                setupAdopts: adopted,
             });
-            const error = await r.run("/work/project/hello.py").catch((e: unknown) => e);
-            expect(error).toBeInstanceOf(UserFacingError);
-            expect(error).toMatchObject({
-                code: "DBCONNECT_MISSING",
-                userMessage: DBCONNECT_NOT_INSTALLED,
-            });
-            expect((error as UserFacingError).actions.map((a) => a.title)).toEqual([
-                "Select the project's .venv",
-                "Set up Python environment",
-            ]);
-            expect(vscode.terminals).toHaveLength(0);
-            expect(log).not.toContain("setup");
-            expect(selected).toEqual([]);
-        });
-
-        it("stops a debug session the same way", async () => {
-            const { r, debugged } = runner({ executable: "/usr/bin/python3", dbConnect: missing });
-            await expect(r.debug("/work/project/hello.py")).rejects.toMatchObject({
-                code: "DBCONNECT_MISSING",
-            });
-            expect(debugged).toEqual([]);
-        });
-
-        it("its actions select the project's .venv, or run the setup", async () => {
-            const { r, log, selected } = runner({
-                executable: "/usr/bin/python3",
-                dbConnect: missing,
-            });
-            const error = (await r
-                .run("/work/project/hello.py")
-                .catch((e: unknown) => e)) as UserFacingError;
-            await error.actions[0]!.run();
-            expect(selected).toEqual([venvInterpreterPath(path.join("/work/project", ".venv"))]);
-            await error.actions[1]!.run();
-            expect(log).toContain("setup");
-        });
-
-        it("runs when the selected interpreter has databricks-connect", async () => {
-            const { r, selected } = runner({ executable: "/usr/bin/python3" });
             expect(await r.run("/work/project/hello.py")).toBe(true);
-            expect(selected).toEqual([]);
+            expect(log).toEqual(["readiness", "setup", "envFile", "createTerminal", "onRun:run"]);
+            // The selected interpreter first, then the one the setup adopted.
+            expect(probed).toEqual(["/usr/bin/python3", adopted]);
+            expect(vscode.terminals[0]!.sent[0]!.startsWith(`'${adopted}'`)).toBe(true);
+            expect(vscode.errors).toEqual([]);
+        });
+
+        it("stops quietly when the setup doesn't leave databricks-connect in the interpreter", async () => {
+            const { r, log } = runner({ executable: "/usr/bin/python3", dbConnect: missing });
+            expect(await r.run("/work/project/hello.py")).toBe(false);
+            expect(log).toEqual(["readiness", "setup"]);
+            expect(vscode.terminals).toHaveLength(0);
+            expect(vscode.errors).toEqual([]);
+        });
+
+        it("the debug session runs the same setup and re-check, and pins the adopted interpreter", async () => {
+            const adopted = "/work/project/.venv/bin/python";
+            const { r, debugged } = runner({
+                executable: "/usr/bin/python3",
+                dbConnect: missing,
+                setupInstalls: true,
+                setupAdopts: adopted,
+            });
+            expect(await r.debug("/work/project/hello.py")).toBe(true);
+            expect(debugged[0]).toMatchObject({ python: adopted });
+        });
+
+        it("the debug session stops quietly, without starting, when the setup doesn't install it", async () => {
+            const { r, debugged, log } = runner({
+                executable: "/usr/bin/python3",
+                dbConnect: missing,
+            });
+            expect(await r.debug("/work/project/hello.py")).toBe(false);
+            expect(debugged).toEqual([]);
+            expect(log).toEqual(["readiness", "setup"]);
+        });
+
+        it("runs when the selected interpreter has databricks-connect, without a setup", async () => {
+            const { r, log } = runner({ executable: "/usr/bin/python3" });
+            expect(await r.run("/work/project/hello.py")).toBe(true);
+            expect(log).not.toContain("setup");
         });
 
         it("runs when the probe failed: the run reports its own error", async () => {

@@ -1,4 +1,3 @@
-import path from "node:path";
 import type { Disposable, Event, Terminal, TerminalOptions } from "vscode";
 import { UserFacingError } from "../../platform/errors";
 import {
@@ -10,9 +9,8 @@ import {
 import type { DatabricksPythonDebugConfiguration } from "./DatabricksDebugConfigurationProvider";
 import { DEBUGPY, PYTHON } from "../../kernel/extensionDependencies";
 import type { ExtensionDependencies } from "../../platform/extensions";
-import { DBCONNECT_NOT_INSTALLED, type PackageProbe } from "./setup/external/checks";
+import type { PackageProbe } from "./setup/external/checks";
 import type { Readiness } from "./setup/readiness";
-import { venvInterpreterPath } from "./setup/uv/venvInterpreterPath";
 
 export const TERMINAL_NAME = "Databricks Connect";
 
@@ -38,8 +36,6 @@ export interface DbConnectRunnerDeps {
     executable(): Promise<string | undefined>;
     /** Whether an interpreter has databricks-connect: the same probe the external checklist uses. */
     dbConnect(executable: string, signal: AbortSignal): Promise<PackageProbe>;
-    /** Selects an interpreter for the project, as the uv setup does with its `.venv`. */
-    setActiveEnvironmentPath(interpreter: string): Promise<void>;
     /** Writes the env file the bootstrap reads, and resolves when it is current. */
     writeEnvFile(): Promise<unknown>;
     /** `resources/python/dbconnect-bootstrap.py`. */
@@ -171,10 +167,17 @@ export class DbConnectRunner implements Disposable {
         if (executable === undefined) {
             throw new UserFacingError("NO_INTERPRETER", "No python executable found");
         }
-        // The uv row describes the project's .venv, not the selected interpreter, so check the interpreter the run uses.
-        // The external checklist already probed the selected interpreter in readiness.
+        // The uv row describes the .venv, not the selected interpreter. As in 2.x, a
+        // missing databricks-connect runs the setup, which adopts the .venv; the run
+        // goes on only if the interpreter it then uses has the package. The external
+        // checklist already probed the selected interpreter in readiness.
         if (readiness.strategy === "uv" && (await this.missingDbConnect(executable))) {
-            throw this.dbConnectMissing();
+            await this.deps.setup();
+            const after = await this.deps.executable();
+            if (after === undefined || (await this.missingDbConnect(after))) {
+                return undefined;
+            }
+            return after;
         }
         return executable;
     }
@@ -185,19 +188,6 @@ export class DbConnectRunner implements Disposable {
             .dbConnect(executable, AbortSignal.timeout(DBCONNECT_PROBE_TIMEOUT_MS))
             .catch(() => undefined);
         return probe?.kind === "missing";
-    }
-
-    private dbConnectMissing(): UserFacingError {
-        const venv = venvInterpreterPath(path.join(this.deps.root, ".venv"));
-        return new UserFacingError("DBCONNECT_MISSING", DBCONNECT_NOT_INSTALLED, {
-            actions: [
-                {
-                    title: "Select the project's .venv",
-                    run: () => this.deps.setActiveEnvironmentPath(venv),
-                },
-                { title: "Set up Python environment", run: () => this.deps.setup() },
-            ],
-        });
     }
 
     /** The terminal stays open: its output is the user's to read. */

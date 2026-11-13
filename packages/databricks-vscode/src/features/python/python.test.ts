@@ -518,16 +518,18 @@ describe("python feature", () => {
             expect(chosen).not.toContain("DATABRICKS_SERVERLESS_COMPUTE_DEFAULT");
         });
 
-        it("stops a run before the terminal when the uv venv lacks databricks-connect", async () => {
-            const fakePython = new FakeMsPython().install();
+        it("runs the setup when the selected interpreter lacks databricks-connect, and stops quietly if the setup doesn't install it", async () => {
+            const fakePython = new FakeMsPython({ selectOnUpdate: true }).install();
             const s = await setup({ overrides: serverless });
-            // A uv-made venv has no pip, so only uv's listing can read its packages (none here).
+            cliSetupLocal(s);
+            // A uv-made venv has no pip, so only uv's listing can read it (none here).
             s.kernel.runner.on(["-m", "pip", "list"], {
                 exitCode: 1,
                 stderr: "No module named pip\n",
             });
             s.kernel.runner.on(["pip", "list"], () => ({ stdout: JSON.stringify(s.packages) }));
-            const python = s.t.write(`project/${VENV_PYTHON}`);
+            // The uv setup's `.venv` exists; the selected interpreter is a global one without databricks-connect.
+            s.t.write(`project/${VENV_PYTHON}`);
             s.t.write("project/.venv/pyvenv.cfg", "uv = 0.9.0\n");
             await s.kernel.state.set(SETUP_STATES, {
                 [s.root]: {
@@ -536,30 +538,31 @@ describe("python feature", () => {
                     timestamp: "2026-10-03T00:00:00Z",
                 },
             });
-            fakePython.select(
-                resolvedEnvironment({
-                    executable: python,
-                    version: [3, 12, 13],
-                    sysPrefix: path.join(s.root, ".venv"),
-                }),
-            );
+            const other = s.t.write("other/bin/python");
+            const otherEnv = resolvedEnvironment({
+                executable: other,
+                version: [3, 12, 13],
+                type: "Global",
+                sysPrefix: path.join(s.root, "other"),
+            });
+            const venvEnv = resolvedEnvironment({
+                executable: path.join(s.root, VENV_PYTHON),
+                version: [3, 12, 13],
+                sysPrefix: path.join(s.root, ".venv"),
+            });
+            fakePython.known = [otherEnv, venvEnv];
+            fakePython.select(otherEnv);
             await s.start();
 
             vscode.activeEditor = Uri.file(path.join(s.root, "hello.py"));
-            vscode.nextErrorChoice = "Select the project's .venv";
-            await s.run(DBCONNECT_RUN_FILE);
+            await runSetup(s, DBCONNECT_RUN_FILE);
+            // The setup ran for real, adopted the `.venv`, and the run stopped: no terminal, no error.
+            expect(setupCalls(s).filter((c) => !c.args.includes("--dry-run"))).toHaveLength(1);
+            expect(fakePython.adopted).toEqual([
+                { path: path.join(s.root, VENV_PYTHON), resource: s.root },
+            ]);
             expect(vscode.terminals.find((t) => t.name === "Databricks Connect")).toBeUndefined();
-            expect(vscode.errors.map((e) => e.message)).toEqual([
-                "databricks-connect package is not installed in the current environment.",
-            ]);
-            expect(vscode.errors[0]!.actions).toEqual([
-                "Select the project's .venv",
-                "Set up Python environment",
-            ]);
-            // The action selects the project's .venv, for the project's folder.
-            await vi.waitFor(() =>
-                expect(fakePython.adopted).toEqual([{ path: python, resource: s.root }]),
-            );
+            expect(vscode.errors).toEqual([]);
         });
 
         it("lets a uv that never answers go on once the probe's timeout passes", async () => {

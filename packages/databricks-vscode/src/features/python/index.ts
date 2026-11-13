@@ -648,8 +648,6 @@ export const python: Feature = {
                 requireExtension,
                 executable: () => msPython.executable(root),
                 dbConnect: (executable, signal) => dbConnectProbe(executable, signal, { uv: true }),
-                setActiveEnvironmentPath: (interpreter) =>
-                    msPython.setActiveEnvironmentPath(interpreter, root),
                 writeEnvFile: () => envFile.update("Databricks Connect run"),
                 bootstrapPath: kernel.extension.asAbsolutePath(
                     path.join("resources", "python", "dbconnect-bootstrap.py"),
