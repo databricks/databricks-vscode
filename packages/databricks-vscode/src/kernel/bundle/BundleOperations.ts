@@ -53,7 +53,10 @@ export interface OperationHost {
 export interface BundleOperationsDeps {
     readonly host: OperationHost;
     readonly cli: Cli;
-    readonly env: (connection: Connection, inputs: BundleEnvInputs) => Record<string, string>;
+    readonly env: (
+        connection: Connection,
+        inputs: BundleEnvInputs,
+    ) => Record<string, string> | Promise<Record<string, string>>;
     readonly log: Logger;
     readonly bundleLog: BundleLog;
 }
@@ -192,7 +195,7 @@ export class BundleOperations implements Disposable {
                 resourceKey,
                 {
                     cwd: on.root,
-                    env: this.deps.env(on.connection, on),
+                    env: await this.deps.env(on.connection, on),
                     signal,
                     onStdout: options.onOutput,
                     onStderr: options.onOutput,
@@ -259,7 +262,7 @@ export class BundleOperations implements Disposable {
                 target.target,
                 {
                     cwd: target.root,
-                    env: this.deps.env(target.connection, target),
+                    env: await this.deps.env(target.connection, target),
                     signal,
                     // `--verbose` writes progress to stderr, and the summary to stdout.
                     onStdout: (chunk) => bundleLog.output(chunk),

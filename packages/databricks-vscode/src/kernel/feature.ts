@@ -116,6 +116,16 @@ export interface Kernel {
     configFile(): string;
     /** The environment of a child process (`childEnv`). */
     childEnv(options?: ChildEnvOptions): Record<string, string>;
+    /**
+     * The environment of a bundle call, as `childEnv` with `bundle`. It first
+     * decides the target from the files on disk, so a bundle command started
+     * right after an edit is refused. Resolves once that passes.
+     */
+    bundleChildEnv(
+        options: ChildEnvOptions & {
+            readonly bundle: { readonly root: string; readonly target: string };
+        },
+    ): Promise<Record<string, string>>;
 }
 
 /** Commands registered through it are disposed with the feature. */

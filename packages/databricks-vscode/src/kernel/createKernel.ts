@@ -199,6 +199,18 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         log: platform.log.child("targetGuard"),
     });
     guard = targetGuard;
+    // A bundle call's env: decided again from the disk first, right before the spawn.
+    const bundleEnv = async (
+        options: ChildEnvOptions & {
+            readonly bundle: { readonly root: string; readonly target: string };
+        },
+    ) => {
+        if (guard === undefined) {
+            throw new Error("The target guard isn't ready");
+        }
+        await guard.assertUsableNow(options.bundle.root, options.bundle.target);
+        return buildEnv(options);
+    };
 
     const bundleLog = new BundleLog(platform.bundleLogChannel ?? (() => silentChannel));
     const bundle = new BundleService({
@@ -207,7 +219,7 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         access: targetGuard.state,
         cli,
         env: (c, inputs) =>
-            buildEnv({
+            bundleEnv({
                 connection: c,
                 cli: true,
                 bundleVariables: inputs.variables,
@@ -257,6 +269,7 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
         terminalEnvironment: platform.terminalEnvironment ?? memoryTerminalEnv(),
         configFile,
         childEnv: buildEnv,
+        bundleChildEnv: bundleEnv,
         /** Detects the project, and resolves the connection once it has. */
         start: () => {
             project.start();

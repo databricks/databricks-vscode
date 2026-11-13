@@ -60,15 +60,27 @@ function deferred<T = void>() {
 
 /** Resolves when the run is aborted, as a killed process does. */
 function untilAborted(options: RunOptions): Promise<Partial<RunResult>> {
-    return new Promise((resolve) =>
+    // As the real runner: a signal aborted before the start cancels at once.
+    return new Promise((resolve) => {
+        if (options.signal?.aborted) {
+            resolve({ cancelled: true, exitCode: null });
+            return;
+        }
         options.signal?.addEventListener("abort", () =>
             resolve({ cancelled: true, exitCode: null }),
-        ),
-    );
+        );
+    });
 }
 
 /** The real project detection and bundle service over a temp folder and a scripted CLI. */
-function setup(options: { cli?: Cli; runner?: FakeProcessRunner } = {}) {
+function setup(
+    options: {
+        cli?: Cli;
+        runner?: FakeProcessRunner;
+        /** Runs before each bundle call's environment, as the target check does. */
+        check?: () => Promise<void>;
+    } = {},
+) {
     const t = tempDir();
     t.write("databricks.yml", BUNDLE);
     t.write(
@@ -98,13 +110,16 @@ function setup(options: { cli?: Cli; runner?: FakeProcessRunner } = {}) {
         connection,
         cli,
         choosesCompute: true,
-        env: (c, { variables, clusterId }) => ({
-            DATABRICKS_CONFIG_PROFILE: c.profile ?? "",
-            ...Object.fromEntries(
-                Object.entries(variables).map(([k, v]) => [`BUNDLE_VAR_${k}`, v]),
-            ),
-            ...(clusterId !== undefined ? { DATABRICKS_CLUSTER_ID: clusterId } : {}),
-        }),
+        env: async (c, { variables, clusterId }) => {
+            await options.check?.();
+            return {
+                DATABRICKS_CONFIG_PROFILE: c.profile ?? "",
+                ...Object.fromEntries(
+                    Object.entries(variables).map(([k, v]) => [`BUNDLE_VAR_${k}`, v]),
+                ),
+                ...(clusterId !== undefined ? { DATABRICKS_CLUSTER_ID: clusterId } : {}),
+            };
+        },
         log: fakeLog(),
         bundleLog: new BundleLog(() => channel),
         debounceMs: 5,
@@ -156,6 +171,28 @@ function setup(options: { cli?: Cli; runner?: FakeProcessRunner } = {}) {
 }
 
 describe("BundleOperations", () => {
+    it("starts no bundle command whose target check refuses, deploy or run", async () => {
+        let refuse = false;
+        const s = setup({
+            check: async () => {
+                if (refuse) {
+                    throw new Error("paused in this session window");
+                }
+            },
+        });
+        await s.ready();
+        const on = await s.operations.deploy();
+        const calls = (verb: string) => s.runner.calls.filter((c) => c.args[1] === verb).length;
+        refuse = true;
+        const [deploys, runs] = [calls("deploy"), calls("run")];
+        await expect(s.operations.deploy()).rejects.toThrow("paused in this session window");
+        await expect(s.operations.run(on, "jobs.etl")).rejects.toThrow(
+            "paused in this session window",
+        );
+        expect([calls("deploy"), calls("run")]).toEqual([deploys, runs]);
+        s.service.dispose();
+    });
+
     it("deploys with --verbose, streams the CLI's output, then refreshes the deployed state", async () => {
         const s = setup();
         await s.ready();

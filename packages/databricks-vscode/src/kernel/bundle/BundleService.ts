@@ -53,7 +53,10 @@ export interface BundleServiceDeps {
      * variable overrides and this cluster override (`childEnv`, with
      * `BUNDLE_VAR_*` and `DATABRICKS_CLUSTER_ID`).
      */
-    readonly env: (connection: Connection, inputs: BundleEnvInputs) => Record<string, string>;
+    readonly env: (
+        connection: Connection,
+        inputs: BundleEnvInputs,
+    ) => Record<string, string> | Promise<Record<string, string>>;
     /**
      * Whether the target's "Override Jobs cluster in bundle" applies (`capabilities.compute` is
      * `perTarget`). A session's compute is the window's: its deploys keep the bundle's own.
@@ -300,7 +303,8 @@ export class BundleService implements Disposable {
         const { bundleLog } = this.deps;
         bundleLog.info(`Reading local bundle configuration for target ${inputs.target}...`);
         const config = await this.run(
-            () => bundleValidate(this.deps.cli, inputs.target, this.context(inputs, signal)),
+            async () =>
+                bundleValidate(this.deps.cli, inputs.target, await this.context(inputs, signal)),
             "Failed to read local bundle configuration.",
         );
         bundleLog.info("Finished reading local bundle configuration.");
@@ -314,8 +318,8 @@ export class BundleService implements Disposable {
         const { bundleLog } = this.deps;
         bundleLog.info(`Refreshing bundle configuration for target ${inputs.target}...`);
         const summary = await this.run(
-            () =>
-                bundleSummary(this.deps.cli, inputs.target, this.context(inputs, signal), {
+            async () =>
+                bundleSummary(this.deps.cli, inputs.target, await this.context(inputs, signal), {
                     forcePull,
                 }),
             "Failed to refresh bundle configuration.",
@@ -332,11 +336,11 @@ export class BundleService implements Disposable {
         return this.inputs;
     }
 
-    private context(inputs: Inputs, signal: AbortSignal) {
+    private async context(inputs: Inputs, signal: AbortSignal) {
         // stderr carries the CLI's warnings and errors; the old extension streamed it there too.
         return {
             cwd: inputs.root,
-            env: this.deps.env(inputs.connection, inputs),
+            env: await this.deps.env(inputs.connection, inputs),
             signal,
             onStderr: (chunk: string) => this.deps.bundleLog.output(chunk),
         };

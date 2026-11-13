@@ -131,6 +131,24 @@ export class TargetGuard implements Disposable {
         }
     }
 
+    /**
+     * Decides `target` of `root` from the files on disk right now, and throws
+     * unless it may run. Called right before each bundle command that sends
+     * the session's token, so a host edited a moment ago is seen without
+     * waiting for the project's debounce. The cached decision still applies.
+     */
+    async assertUsableNow(root: string, target: string): Promise<void> {
+        // A local window: every target is open, and nothing is read.
+        if (this.decision === undefined) {
+            return;
+        }
+        const state = await this.decideAt({ root, target }, new AbortController().signal);
+        const error = accessError(state, root, target);
+        if (error !== undefined) {
+            throw error;
+        }
+    }
+
     private active(): { root: string; target: string } | undefined {
         const { project, target } = this.deps.project.value;
         return project === undefined || target === undefined
@@ -164,7 +182,14 @@ export class TargetGuard implements Disposable {
 
     private async decide(signal: AbortSignal): Promise<TargetAccessState> {
         const active = this.active();
-        if (active === undefined || this.deps.policy.kind !== "sessionWorkspace") {
+        return active === undefined ? { status: "none" } : this.decideAt(active, signal);
+    }
+
+    private async decideAt(
+        active: { root: string; target: string },
+        signal: AbortSignal,
+    ): Promise<TargetAccessState> {
+        if (this.deps.policy.kind !== "sessionWorkspace") {
             return { status: "none" };
         }
         const connection = this.deps.connection.value;

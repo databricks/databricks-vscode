@@ -55,7 +55,14 @@ function recordingChannel(): BundleLogChannel & { lines: string[]; created: numb
  * connection the test controls. Validate answers with the job fixture unless
  * a test scripts it otherwise.
  */
-function setup(options: { runner?: FakeProcessRunner; content?: string } = {}) {
+function setup(
+    options: {
+        runner?: FakeProcessRunner;
+        content?: string;
+        /** Runs before each bundle call's environment, as the target check does. */
+        check?: () => Promise<void>;
+    } = {},
+) {
     const t = tempDir();
     t.write("databricks.yml", options.content ?? BUNDLE);
     const runner = options.runner ?? new FakeProcessRunner();
@@ -86,13 +93,16 @@ function setup(options: { runner?: FakeProcessRunner; content?: string } = {}) {
         connection,
         cli,
         choosesCompute: true,
-        env: (c, { variables, clusterId }) => ({
-            DATABRICKS_CONFIG_PROFILE: c.profile ?? "",
-            ...Object.fromEntries(
-                Object.entries(variables).map(([k, v]) => [`BUNDLE_VAR_${k}`, v]),
-            ),
-            ...(clusterId !== undefined ? { DATABRICKS_CLUSTER_ID: clusterId } : {}),
-        }),
+        env: async (c, { variables, clusterId }) => {
+            await options.check?.();
+            return {
+                DATABRICKS_CONFIG_PROFILE: c.profile ?? "",
+                ...Object.fromEntries(
+                    Object.entries(variables).map(([k, v]) => [`BUNDLE_VAR_${k}`, v]),
+                ),
+                ...(clusterId !== undefined ? { DATABRICKS_CLUSTER_ID: clusterId } : {}),
+            };
+        },
         log: fakeLog(),
         bundleLog,
         debounceMs: 5,
@@ -136,6 +146,22 @@ function setup(options: { runner?: FakeProcessRunner; content?: string } = {}) {
 }
 
 describe("BundleService", () => {
+    it("starts no validate or summary that the target check refuses", async () => {
+        let refuse = false;
+        const s = setup({
+            check: async () => {
+                if (refuse) {
+                    throw new Error("paused in this session window");
+                }
+            },
+        });
+        await s.start();
+        refuse = true;
+        s.connection.set(connected());
+        await s.settle();
+        expect(s.bundleCalls()).toEqual([]);
+    });
+
     it("validates and then summarizes once a project target is connected", async () => {
         const s = setup();
         await s.start();

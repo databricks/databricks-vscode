@@ -120,4 +120,53 @@ describe("TargetGuard", () => {
         s.project.set({ subProjects: [] });
         expect(s.guard.state.value).toEqual({ status: "none" });
     });
+
+    it("reads the host on disk for each bundle command, without waiting for a file event", async () => {
+        const s = setup();
+        s.open();
+        s.connect();
+        await s.decided();
+        // Edited just now: no event, no pass, the cached decision is still "usable".
+        s.setHost("https://other.cloud.databricks.com");
+        s.metadata.mockResolvedValueOnce({ hostType: "workspace", workspaceId: "999" });
+        await expect(s.guard.assertUsableNow(ROOT, "dev")).rejects.toThrow(
+            'Bundle commands for target "dev" are paused in this session window',
+        );
+    });
+
+    it("lets a command run while the host on disk is still the session's", async () => {
+        const s = setup();
+        s.open();
+        s.connect();
+        await s.decided();
+        s.readFiles.mockClear();
+        await expect(s.guard.assertUsableNow(ROOT, "dev")).resolves.toBeUndefined();
+        expect(s.readFiles).toHaveBeenCalledWith(ROOT);
+    });
+
+    it("refuses a command while the session has not connected", async () => {
+        const s = setup();
+        s.open();
+        await expect(s.guard.assertUsableNow(ROOT, "dev")).rejects.toThrow(
+            'Bundle commands for target "dev" wait until this session window has checked',
+        );
+    });
+
+    it("refuses a host the YAML leaves to a variable", async () => {
+        const s = setup();
+        s.open();
+        s.connect();
+        await s.decided();
+        s.setHost("${var.workspace_host}");
+        await expect(s.guard.assertUsableNow(ROOT, "dev")).rejects.toThrow(
+            'Bundle commands for target "dev" are paused in this session window',
+        );
+    });
+
+    it("leaves a local window's targets open without reading the files", async () => {
+        const s = setup({ kind: "anyTarget" });
+        s.open();
+        await expect(s.guard.assertUsableNow(ROOT, "dev")).resolves.toBeUndefined();
+        expect(s.readFiles).not.toHaveBeenCalled();
+    });
 });
