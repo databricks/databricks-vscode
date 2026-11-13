@@ -11,6 +11,7 @@ import {
 } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import { openFile } from "./utils/editor.ts";
+import { samePath, vscodePath } from "./utils/paths.ts";
 import { getTreeViewItems } from "./utils/view.ts";
 
 /**
@@ -121,7 +122,8 @@ describe("Debug a file with Databricks Connect", async function () {
         await executeCommandWhenAvailable(
             "Databricks: Configure autocomplete for Databricks globals",
         );
-        await waitForNotification(`Create ${builtins}?`, "Continue");
+        // The extension names it from the workspace folder's path, as VS Code spells it.
+        await waitForNotification(`Create ${vscodePath(builtins)}?`, "Continue");
         const text = await browser.waitUntil(
             () => fs.readFile(builtins, "utf-8").catch(() => false as const),
             {
@@ -181,9 +183,9 @@ describe("Debug a file with Databricks Connect", async function () {
             "dbconnect-bootstrap.py",
         );
         assert(
-            (session.configuration.args ?? [])
-                .map((a) => path.resolve(a))
-                .includes(path.join(root, "debug_me.py")),
+            (session.configuration.args ?? []).some((a) =>
+                samePath(a, path.join(root, "debug_me.py")),
+            ),
             `The file isn't the bootstrap's argument: ${JSON.stringify(session.configuration.args)}`,
         );
     });

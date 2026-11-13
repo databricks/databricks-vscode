@@ -222,6 +222,23 @@ describe("unity catalog", () => {
             s.kernel.dispose();
         });
 
+        it("shows a workspace without a metastore as empty, and logs no error", async () => {
+            const s = await setup();
+            s.uc.failures.set("catalogs", {
+                status: 404,
+                body: {
+                    error_code: "METASTORE_DOES_NOT_EXIST",
+                    message: "No metastore assigned for the current workspace.",
+                },
+            });
+            await s.run("databricks.unityCatalog.refresh");
+            expect(await s.labels()).toEqual([
+                "No Unity Catalog metastore is assigned to this workspace",
+            ]);
+            expect(s.fake.log.entries.filter((e) => e.level === "error")).toEqual([]);
+            s.kernel.dispose();
+        });
+
         it("doesn't keep a list with an error, so expanding again retries", async () => {
             const s = await setup();
             s.uc.failures.set("schemas", {

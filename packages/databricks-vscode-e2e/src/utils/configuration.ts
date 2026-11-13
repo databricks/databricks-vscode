@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import path from "node:path";
 import { CustomTreeSection, InputBox, type Notification, TreeItem } from "wdio-vscode-service";
+import { vscodePath } from "./paths.ts";
 import { getViewSection, type ViewSectionType } from "./view.ts";
 import { waitUntilSeen } from "./wait.ts";
 
@@ -69,7 +70,8 @@ export async function getLocalFolderTreeItem(folder: string) {
         if ((await item.getLabel()).toLowerCase().includes("local folder")) {
             const descPath = path.normalize((await item.getDescription())!);
             console.log("Local Folder description:", descPath);
-            if (descPath.includes(folder)) {
+            // VS Code spells a Windows drive letter in lower case.
+            if (vscodePath(descPath).includes(vscodePath(folder))) {
                 return item as TreeItem;
             }
         }
@@ -255,14 +257,29 @@ export async function executeCommandWhenAvailable(command: string) {
                 });
                 const prompt = await new InputBox(workbench.locatorMap).wait();
                 await prompt.setText(`>${command}`);
-                for (const pick of await prompt.getQuickPicks()) {
-                    if ((await pick.getLabel()) === command) {
-                        await pick.select();
-                        return true;
+                // By keyboard, not a click: on CI's 1024px-wide window VS Code shows the input's
+                // placeholder as a tooltip at the mouse, which covers the first row and takes the click.
+                let focused = -1;
+                let match = -1;
+                for (const [i, pick] of (await prompt.getQuickPicks()).entries()) {
+                    const classes = (await pick.elem.getAttribute("class")) ?? "";
+                    if (focused === -1 && classes.split(" ").includes("focused")) {
+                        focused = i;
+                    }
+                    if (match === -1 && (await pick.getLabel()) === command) {
+                        match = i;
                     }
                 }
-                await prompt.cancel();
-                return false;
+                if (match === -1) {
+                    await prompt.cancel();
+                    return false;
+                }
+                const steps = match - Math.max(focused, 0);
+                for (let i = 0; i < Math.abs(steps); i++) {
+                    await browser.keys([steps > 0 ? "ArrowDown" : "ArrowUp"]);
+                }
+                await prompt.confirm();
+                return true;
             } catch (e) {
                 console.log(`Failed to execute ${command}:`, e);
                 return false;

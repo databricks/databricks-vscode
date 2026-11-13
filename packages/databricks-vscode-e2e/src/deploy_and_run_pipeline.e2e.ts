@@ -87,15 +87,21 @@ describe("Deploy and run pipeline", async function () {
             labels.push(label);
         }
         assert(labels.includes("Start Time"), "Start Time label not found");
+        // The workspace's event text: older ones say "Dataset 'test_view'", then "Dataset `test_view`",
+        // and newer ones "Flow `test_view`".
         assert(
             labels.includes("Dataset 'test_view' defined as VIEW.") ||
-                labels.includes("Dataset `test_view` defined as VIEW."),
+                labels.includes("Dataset `test_view` defined as VIEW.") ||
+                labels.includes("Flow `test_view` defined as VIEW."),
             "test_view item not found",
         );
         assert(
             labels.includes("Dataset 'test_table' defined as MATERIALIZED_VIEW.") ||
                 labels.includes(
                     "Dataset `vscode_integration_test`.`test_table` defined as MATERIALIZED_VIEW.",
+                ) ||
+                labels.includes(
+                    "Flow `vscode_integration_test`.`test_table` defined as MATERIALIZED_VIEW.",
                 ),
             "test_table item not found",
         );

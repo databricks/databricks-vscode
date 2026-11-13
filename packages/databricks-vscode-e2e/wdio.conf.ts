@@ -120,6 +120,10 @@ function startDisplay(): Promise<string> {
 
 let driverInstalled: Promise<unknown> | undefined;
 
+/** Spec files that failed once, and those of them that then passed on a retry (`specFileRetries`). */
+const failedOnce = new Set<string>();
+const passedOnRetry = new Set<string>();
+
 // The extension's `extensionPack` (ms-python.python, ms-python.debugpy,
 // ms-toolsai.jupyter, redhat.vscode-yaml) is installed into this folder
 // before the first window starts; the specs that use Python, debugging,
@@ -285,6 +289,12 @@ const vscodeCapability = (
         userSettings: {
             "workbench.startupEditor": "none",
             "telemetry.telemetryLevel": "off",
+            // No spec tests a language server, and the pinned Python extension's crashes on a
+            // newer Python (the Windows runner's) fill the notifications the specs read.
+            "python.languageServer": "None",
+            // A tree's sticky scroll pins a copy of an expanded row to the top, with the row's label
+            // but no level, which the helpers then find instead of the row.
+            "workbench.tree.enableStickyScroll": false,
             ...extra.userSettings,
         },
     },
@@ -365,6 +375,12 @@ export const config: WebdriverIO.Config = {
             : []),
     ],
     services: [["vscode", { cachePath }]],
+    // As 2.x: on Windows a failed spec file runs once more, after the others, in a fresh VS Code.
+    // Windows sessions there crash in ways no wait in a spec recovers from. `onComplete` names the
+    // spec files that passed only on the retry, so a flaky one doesn't go silently green.
+    specFileRetries: process.platform === "win32" ? 1 : 0,
+    specFileRetriesDelay: process.platform === "win32" ? 5 : 0,
+    specFileRetriesDeferred: true,
     framework: "mocha",
     mochaOpts: {
         ui: "bdd",
@@ -477,5 +493,22 @@ export const config: WebdriverIO.Config = {
     },
     afterSession() {
         display?.kill();
+    },
+    // In the launcher: a spec file's workers end one by one, its retry after the others.
+    onWorkerEnd(_cid, exitCode, specs) {
+        for (const spec of specs) {
+            if (exitCode !== 0) {
+                failedOnce.add(spec);
+            } else if (failedOnce.has(spec)) {
+                passedOnRetry.add(spec);
+            }
+        }
+    },
+    onComplete() {
+        if (passedOnRetry.size > 0) {
+            console.warn(
+                `These spec files failed, then passed on a retry: ${[...passedOnRetry].join(", ")}`,
+            );
+        }
     },
 };

@@ -42,10 +42,20 @@ describe("Legacy project notice", async function () {
             timeoutMsg: "PROJECT never showed the legacy-project notice",
         });
         const section = await getViewSection("PROJECT");
-        const welcome = await section!.findWelcomeContent();
-        const buttons = await Promise.all(
-            ((await welcome?.getButtons()) ?? []).map((b) => b.getTitle()),
-        );
+        // The buttons can render before their titles do.
+        let buttons: string[] = [];
+        await browser
+            .waitUntil(
+                async () => {
+                    const welcome = await section!.findWelcomeContent();
+                    buttons = await Promise.all(
+                        ((await welcome?.getButtons()) ?? []).map((b) => b.getTitle()),
+                    );
+                    return buttons.includes("Learn how to migrate");
+                },
+                { timeout: 30_000, interval: 1_000 },
+            )
+            .catch(() => undefined);
         assert(
             buttons.includes("Learn how to migrate"),
             `No "Learn how to migrate" button: ${buttons.join(", ")}`,

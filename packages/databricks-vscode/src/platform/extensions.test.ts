@@ -126,6 +126,19 @@ describe("ExtensionDependencies", () => {
         expect(await api).toEqual({});
     });
 
+    it("uses one that starts but doesn't get ready, and logs a warning", async () => {
+        const dep = extensionDependency("ms-python.python", "Python", {
+            ready: () => Promise.reject(new Error("Launching Jedi language server failed")),
+        });
+        const s = service();
+        const api = { environments: {} };
+        s.add(dep.id, api);
+        expect(await s.extensions.activate(dep)).toBe(api);
+        expect(s.log.entries.map((e) => [e.level, e.message])).toEqual([
+            ["warn", "The Python extension started with errors"],
+        ]);
+    });
+
     it("activates nothing that isn't there, and logs one that fails to start", async () => {
         const s = service();
         expect(await s.extensions.activate(PYTHON)).toBe(undefined);

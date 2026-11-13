@@ -9,6 +9,7 @@ import {
 } from "./utils/bundle-fixtures.ts";
 import {
     executeCommandWhenAvailable,
+    waitForConfigSurface,
     waitForLogin,
     waitForNotification,
 } from "./utils/configuration.ts";
@@ -192,18 +193,30 @@ describe("Set up local Python environment (uv) on serverless", async function ()
             process.env.DATABRICKS_LOCALENV_AUTO_INSTALL_UV = "1";
         });
 
+        // Choosing Serverless asks for a version only once the uv setup is the
+        // project's surface, which waits for the Python extension: on a small CI
+        // runner, a minute after sign-in. So wait for its row first.
+        await waitForConfigSurface("Set up Python environment", "Python Environment", 120_000);
+
         // Attach serverless. Selecting serverless prompts for (and persists) the
         // environment version up front, so the subsequent setup run resolves
         // compute without re-prompting.
         await executeCommandWhenAvailable("Databricks: Configure compute");
         const computeInput = await waitForQuickInput();
-        await computeInput.selectQuickPick("Serverless");
+        await acceptFocusedQuickPick(computeInput, "Serverless");
 
         // The version picker lists candidates best-first (the recommended one is
         // starred at index 0). Take the recommendation rather than pinning a
         // version string, which drifts as new serverless versions ship.
         const versionInput = await waitForQuickInput();
-        await versionInput.selectQuickPick(0);
+        // Its options can come a while after it opens: wait up to two minutes.
+        await browser.waitUntil(async () => (await versionInput.getQuickPicks()).length > 0, {
+            timeout: 120_000,
+            interval: 1_000,
+            timeoutMsg: "The serverless environment version picker listed no versions",
+        });
+        // The recommended one: the first row, which is focused.
+        await acceptFocusedQuickPick(versionInput, "");
     });
 
     it("should set up the environment with uv (setup-local)", async () => {

@@ -30,7 +30,8 @@
         { "id": "databricks.quickstart.open" },
         { "id": "databricks.connection.openDatabricksConfigFile" },
         { "id": "databricks.connection.detachCluster" },
-        { "id": "databricks.unityGateway.signOut" }
+        { "id": "databricks.unityGateway.signOut" },
+        { "id": "databricks.unityCatalog.filter" }
     ],
     "paletteTitles": [
         { "title": "Databricks: Configure compute" },

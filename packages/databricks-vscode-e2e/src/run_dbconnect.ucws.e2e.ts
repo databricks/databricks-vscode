@@ -609,16 +609,29 @@ describe("Run files on serverless compute", async function () {
     });
 
     it("should prompt to setup virtual environment", async () => {
-        const subTreeItems = await getTreeViewItems("PROJECT", "Python Environment");
+        // The group shows once the Python extension has found the machine's environments,
+        // which can take a minute on a small CI runner.
         let promptFound = false;
-        for (const item of subTreeItems) {
-            const label = await item.getLabel();
-            console.log("Python Environment item label: ", label);
-            if (label.includes("Activate an environment")) {
-                promptFound = true;
-                break;
-            }
-        }
+        await browser
+            .waitUntil(
+                async () => {
+                    const subTreeItems = await getTreeViewItems(
+                        "PROJECT",
+                        "Python Environment",
+                    ).catch(() => []);
+                    for (const item of subTreeItems) {
+                        const label = await item.getLabel();
+                        console.log("Python Environment item label: ", label);
+                        if (label.includes("Activate an environment")) {
+                            promptFound = true;
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                { timeout: 120_000, interval: 2_000 },
+            )
+            .catch(() => undefined);
         assert(promptFound, "Prompt to setup virtual environment not found");
     });
 

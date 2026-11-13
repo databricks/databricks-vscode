@@ -23,6 +23,7 @@ The first pre-release of version 3, a rewrite of the extension. These notes comp
 - Uploading a notebook to the Workspace file system view asks before replacing it.
 - On Windows, non-ASCII text in the project's environment file and in notebooks run with `%run` reaches Python as written.
 - In fish, the new-project wizard quotes the parent folder correctly: a folder name with an apostrophe or a backslash no longer breaks the command.
+- On a workspace without a Unity Catalog metastore, the Unity Catalog view says so instead of showing an error.
 
 ### Changed or removed
 

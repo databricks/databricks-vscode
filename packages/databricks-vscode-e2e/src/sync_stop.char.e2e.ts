@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { NotificationType } from "wdio-vscode-service";
+import { type Notification, NotificationType } from "wdio-vscode-service";
 import {
     getBasicBundleConfig,
     getUniqueResourceName,
@@ -77,10 +77,29 @@ describe("Stop sync", async function () {
         const workbench = await browser.getWorkbench();
         const errors: string[] = [];
         for (const notification of await workbench.getNotifications()) {
-            if ((await notification.getType()) === NotificationType.Error) {
+            if ((await notification.getType()) !== NotificationType.Error) {
+                continue;
+            }
+            // Only this extension's errors: the Python extension's language server can crash on
+            // the machine's Python, which isn't what this checks. One that names no source counts.
+            const source = await notificationSource(notification);
+            if (source === "" || source === "Databricks") {
                 errors.push(await notification.getMessage());
             }
         }
         assert.deepStrictEqual(errors, []);
     });
 });
+
+/**
+ * The name of the extension that showed `notification`, from its "Source: <name>" line, or "".
+ * wdio's `getSource` reads a title attribute VS Code no longer sets.
+ */
+async function notificationSource(notification: Notification): Promise<string> {
+    await notification.expand();
+    const text = await notification.elem
+        .$(".notification-list-item-source")
+        .getText()
+        .catch(() => "");
+    return text.replace(/^Source:\s*/, "").trim();
+}

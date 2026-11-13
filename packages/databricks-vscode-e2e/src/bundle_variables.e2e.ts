@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
-import type { CustomTreeSection, TextEditor, Workbench } from "wdio-vscode-service";
+import type { CustomTreeSection, TextEditor, TreeItem, Workbench } from "wdio-vscode-service";
 import {
     getBasicBundleConfig,
     getUniqueResourceName,
@@ -119,7 +119,17 @@ describe("Bundle Variables", async function () {
         assert.strictEqual(await variableTreeItem.getDescription(), expected.value);
 
         if (expected.defaultValue) {
-            const defaultValueTreeItem = (await section.openItem(VARIABLES, variableName))[0];
+            // The variable's rows can load after the variable does.
+            let defaultValueTreeItem: TreeItem | undefined;
+            await browser
+                .waitUntil(
+                    async () => {
+                        defaultValueTreeItem = (await section.openItem(VARIABLES, variableName))[0];
+                        return defaultValueTreeItem !== undefined;
+                    },
+                    { timeout: 30_000, interval: 1_000 },
+                )
+                .catch(() => undefined);
             assert(defaultValueTreeItem);
             assert.strictEqual(await defaultValueTreeItem.getLabel(), "Default");
             assert.strictEqual(await defaultValueTreeItem.getDescription(), expected.defaultValue);
