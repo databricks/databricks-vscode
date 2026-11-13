@@ -152,13 +152,10 @@ export function activate(context: vscode.ExtensionContext): PublicApi | undefine
             }
             const { userName, host, workspaceId, authType } = s.connection;
             // The host name, without the scheme, as the old extension sent it (`URL.host`).
-            void toUserMetadata({ userName, host: new URL(host).host, workspaceId, authType }).then(
-                (user) => {
-                    // Hashing is asynchronous: a sign-out or another connection meanwhile wins.
-                    if (kernel.connection.connection === s.connection) {
-                        telemetry.setMetadata("user", user);
-                    }
-                },
+            // Set before the feature listeners below record this change's events.
+            telemetry.setMetadata(
+                "user",
+                toUserMetadata({ userName, host: new URL(host).host, workspaceId, authType }),
             );
         }),
     );
