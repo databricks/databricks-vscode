@@ -197,13 +197,14 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
     const bundleEnv = async (
         options: ChildEnvOptions & {
             readonly bundle: { readonly root: string; readonly target: string };
+            readonly signal?: AbortSignal;
         },
     ) => {
         if (guard === undefined) {
             throw new Error("The target guard isn't ready");
         }
-        const { bundle, ...rest } = options;
-        await guard.assertUsableNow(bundle.root, bundle.target);
+        const { bundle, signal, ...rest } = options;
+        await guard.assertUsableNow(bundle.root, bundle.target, signal);
         return buildEnv({ ...rest, bundleRoot: bundle.root });
     };
 
@@ -222,6 +223,7 @@ export function createKernel(platform: KernelPlatform): Kernel & Disposable & { 
                     ? { compute: { kind: "cluster", clusterId: inputs.clusterId } }
                     : {}),
                 bundle: { root: inputs.root, target: inputs.target },
+                signal: inputs.signal,
             }),
         choosesCompute: capabilities.compute === "perTarget",
         log: platform.log.child("bundle"),

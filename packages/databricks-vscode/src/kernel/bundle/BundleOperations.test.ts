@@ -23,6 +23,7 @@ const FIXTURES = path.join(__dirname, "..", "cli", "commands", "fixtures", "bund
 const fixture = (name: string) => fs.readFileSync(path.join(FIXTURES, name), "utf-8");
 const HOST = "https://mock.databricks.test";
 const BUNDLE = `bundle: {name: demo}\ntargets:\n  dev_test: {default: true, mode: development, workspace: {host: ${HOST}}}\n`;
+const TWO_TARGETS = `${BUNDLE}  prod_test: {mode: development, workspace: {host: ${HOST}}}\n`;
 
 function connected(): ConnectionState {
     const connection = {
@@ -80,10 +81,12 @@ function setup(
         runner?: FakeProcessRunner;
         /** Runs before each bundle call's environment, as the target check does. */
         check?: () => Promise<void>;
+        /** The bundle file's content, for a project with another target. */
+        bundle?: string;
     } = {},
 ) {
     const t = tempDir();
-    t.write("databricks.yml", BUNDLE);
+    t.write("databricks.yml", options.bundle ?? BUNDLE);
     t.write(
         ".databricks/bundle/dev_test/vscode.bundlevars.json",
         JSON.stringify({ greeting: "salut" }),
@@ -176,11 +179,65 @@ function setup(
 
 describe("BundleOperations", () => {
     it("runs a manual deploy while the cached check is still checking, when the bundle's check allows it", async () => {
-        const s = setup();
+        let checks = 0;
+        const s = setup({ check: async () => void checks++ });
         await s.ready();
+        const before = checks;
         s.access.set({ status: "checking", root: s.t.dir, target: "dev_test" });
         await expect(s.operations.deploy()).resolves.toMatchObject({ target: "dev_test" });
+        expect(checks - before).toBe(1);
         expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(1);
+        s.service.dispose();
+    });
+
+    it("refuses a manual deploy while the cached check is checking, when the bundle's check refuses", async () => {
+        let refuse = false;
+        const s = setup({
+            check: async () => {
+                if (refuse) {
+                    throw new Error("paused in this session window");
+                }
+            },
+        });
+        await s.ready();
+        refuse = true;
+        s.access.set({ status: "checking", root: s.t.dir, target: "dev_test" });
+        await expect(s.operations.deploy()).rejects.toThrow("paused in this session window");
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(0);
+        s.service.dispose();
+    });
+
+    it("keeps the target and connection while the connection reconnects", async () => {
+        const s = setup();
+        await s.ready();
+        s.connection.set({ status: "connecting" });
+        await s.settle();
+        await expect(s.operations.deploy()).resolves.toMatchObject({ target: "dev_test" });
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(1);
+        s.service.dispose();
+    });
+
+    it("refuses a manual deploy after the project's target changes while reconnecting", async () => {
+        const s = setup({ bundle: TWO_TARGETS });
+        await s.ready();
+        s.connection.set({ status: "connecting" });
+        await s.project.selectTarget("prod_test");
+        await s.settle();
+        await expect(s.operations.deploy()).rejects.toThrow("No bundle target is connected.");
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(0);
+        s.service.dispose();
+    });
+
+    it("refuses a manual deploy after sign-out, and after the connection errors", async () => {
+        const s = setup();
+        await s.ready();
+        s.connection.set({ status: "signedOut", reason: "signed out" });
+        await s.settle();
+        await expect(s.operations.deploy()).rejects.toThrow("No bundle target is connected.");
+        s.connection.set({ status: "error", error: new Error("boom") });
+        await s.settle();
+        await expect(s.operations.deploy()).rejects.toThrow("No bundle target is connected.");
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(0);
         s.service.dispose();
     });
 

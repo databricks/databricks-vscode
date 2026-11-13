@@ -124,6 +124,8 @@ export interface Kernel {
     bundleChildEnv(
         options: ChildEnvOptions & {
             readonly bundle: { readonly root: string; readonly target: string };
+            /** Aborting it stops the check, as it stops the command. */
+            readonly signal?: AbortSignal;
         },
     ): Promise<Record<string, string>>;
 }

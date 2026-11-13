@@ -137,12 +137,12 @@ export class TargetGuard implements Disposable {
      * the session's token, so a host edited a moment ago is seen without
      * waiting for the project's debounce.
      */
-    async assertUsableNow(root: string, target: string): Promise<void> {
+    async assertUsableNow(root: string, target: string, signal?: AbortSignal): Promise<void> {
         // A local window: every target is open, and nothing is read.
         if (this.decision === undefined) {
             return;
         }
-        const state = await this.decideAt({ root, target }, new AbortController().signal);
+        const state = await this.decideAt({ root, target }, signal ?? new AbortController().signal);
         const error = accessError(state, root, target);
         if (error !== undefined) {
             throw error;

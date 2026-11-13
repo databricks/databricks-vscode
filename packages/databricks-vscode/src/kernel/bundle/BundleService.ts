@@ -372,7 +372,7 @@ export class BundleService implements Disposable {
         // stderr carries the CLI's warnings and errors; the old extension streamed it there too.
         return {
             cwd: inputs.root,
-            env: await this.deps.env(inputs.connection, inputs),
+            env: await this.deps.env(inputs.connection, { ...inputs, signal }),
             signal,
             onStderr: (chunk: string) => this.deps.bundleLog.output(chunk),
         };

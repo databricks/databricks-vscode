@@ -172,6 +172,24 @@ describe("TargetGuard", () => {
         await expect(s.guard.assertUsableNow(ROOT, "dev")).rejects.toThrow("read failed");
     });
 
+    it("stops waiting for a foreign host's answer when the command is cancelled", async () => {
+        const s = setup();
+        s.open();
+        s.connect();
+        await s.decided();
+        s.setHost("https://other.cloud.databricks.com");
+        s.metadata.mockImplementationOnce(
+            ((_host: string, signal: AbortSignal) =>
+                new Promise((_resolve, reject) => {
+                    signal.addEventListener("abort", () => reject(signal.reason));
+                })) as never,
+        );
+        const controller = new AbortController();
+        const pending = s.guard.assertUsableNow(ROOT, "dev", controller.signal);
+        controller.abort();
+        await expect(pending).rejects.toThrow();
+    });
+
     it("leaves a local window's targets open without reading the files", async () => {
         const s = setup({ kind: "anyTarget" });
         s.open();
