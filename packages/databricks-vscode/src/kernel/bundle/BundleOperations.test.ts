@@ -14,6 +14,7 @@ import { useTempDirs } from "../../test-support/tempDir";
 import { Cli, CliError } from "../cli/Cli";
 import type { Connection, ConnectionState } from "../connection/ConnectionService";
 import { ProjectService } from "../project/ProjectService";
+import type { TargetAccessState } from "../project/TargetGuard";
 import { BundleLog, type BundleLogChannel } from "./BundleLog";
 import { BundleService } from "./BundleService";
 
@@ -104,10 +105,12 @@ function setup(
         { status: "connecting" },
         (a, b) => a === b,
     );
+    const access = new MutableState<TargetAccessState>({ status: "open" });
     const channel = recordingChannel();
     const service = new BundleService({
         project: project.snapshot,
         connection,
+        access,
         cli,
         choosesCompute: true,
         env: async (c, { variables, clusterId }) => {
@@ -160,6 +163,7 @@ function setup(
         files,
         project,
         connection,
+        access,
         service,
         operations,
         channel,
@@ -171,6 +175,15 @@ function setup(
 }
 
 describe("BundleOperations", () => {
+    it("runs a manual deploy while the cached check is still checking, when the bundle's check allows it", async () => {
+        const s = setup();
+        await s.ready();
+        s.access.set({ status: "checking", root: s.t.dir, target: "dev_test" });
+        await expect(s.operations.deploy()).resolves.toMatchObject({ target: "dev_test" });
+        expect(s.runner.calls.filter((c) => c.args[1] === "deploy")).toHaveLength(1);
+        s.service.dispose();
+    });
+
     it("starts no bundle command whose target check refuses: deploy, destroy, run or upload", async () => {
         let refuse = false;
         const s = setup({
