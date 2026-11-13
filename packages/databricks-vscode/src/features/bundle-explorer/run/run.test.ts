@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TreeItemCollapsibleState } from "vscode";
 import { registerFeatures, startFeatures } from "../../../kernel/feature";
 import type { RunOptions, RunResult } from "../../../platform/process";
@@ -197,6 +197,7 @@ async function setup() {
 
 describe("deploy and run", () => {
     beforeEach(() => vscode.reset());
+    afterEach(() => vi.useRealTimers());
 
     it("deploys, runs the job in its terminal, and shows the run's and the tasks' status (BNDL-08)", async () => {
         const s = await setup();
@@ -330,16 +331,15 @@ describe("deploy and run", () => {
             options.onStdout?.(RUN_URL);
             return untilAborted(options);
         });
-        let polls = 0;
-        s.http.on("GET", RUNS_GET, () => {
-            if (s.http.to(RUNS_CANCEL).length > 0) {
-                return jobRun("TERMINATED", "CANCELED");
-            }
-            polls++;
-            return jobRun("RUNNING");
-        });
+        s.http.on("GET", RUNS_GET, () =>
+            s.http.to(RUNS_CANCEL).length > 0
+                ? jobRun("TERMINATED", "CANCELED")
+                : jobRun("RUNNING"),
+        );
         s.http.on("POST", RUNS_CANCEL, { body: {} });
         const project = vscode.treeDataProviders.get(PROJECT_VIEW) as ConfigurationTreeDataProvider;
+        // The 3 s between two polls pass on a fake clock.
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
         const running = s.run(DEPLOY_AND_RUN_JOB, await s.job());
         await expect
@@ -351,8 +351,8 @@ describe("deploy and run", () => {
         const row = await s.job();
         const refreshes: (ConfigurationItem | undefined)[] = [];
         project.onDidChangeTreeData((e) => refreshes.push(e));
-        const seen = polls;
-        await vi.waitFor(() => expect(polls).toBeGreaterThan(seen), { timeout: 5_000 });
+        await vi.advanceTimersByTimeAsync(3000);
+        await expect.poll(() => s.http.to(RUNS_GET).length).toBe(2);
         await vi.waitFor(() => expect(refreshes).not.toEqual([]));
         // The job's row itself, not the whole view: VS Code keeps the row while it redraws it.
         expect(refreshes.every((e) => e === row)).toBe(true);
@@ -361,6 +361,84 @@ describe("deploy and run", () => {
         await running;
         expect((await s.child(await s.job(), "Run Status"))?.getTreeItem().description).toBe(
             "Cancelled",
+        );
+        s.kernel.dispose();
+    });
+
+    it("refreshes the whole view when a status poll finds the run has ended", async () => {
+        const s = await setup();
+        let release!: () => void;
+        s.kernel.runner.on(["bundle", "run"], async (_args, options) => {
+            options.onStdout?.(RUN_URL);
+            await new Promise<void>((r) => (release = r));
+            return {};
+        });
+        s.http.on("GET", RUNS_GET, jobRun("RUNNING"), jobRun("TERMINATED", "SUCCESS"));
+        const project = vscode.treeDataProviders.get(PROJECT_VIEW) as ConfigurationTreeDataProvider;
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+        const running = s.run(DEPLOY_AND_RUN_JOB, await s.job());
+        await expect
+            .poll(
+                async () => (await s.child(await s.job(), "Run Status"))?.getTreeItem().description,
+            )
+            .toBe("Running");
+        const refreshes: (ConfigurationItem | undefined)[] = [];
+        project.onDidChangeTreeData((e) => refreshes.push(e));
+        await vi.advanceTimersByTimeAsync(3000);
+        await expect
+            .poll(async () => (await s.job()).getTreeItem().contextValue)
+            .toBe("databricks.bundle.resource=jobs.runnable.has-url.nodeType=jobs");
+        // A run that ends can change more than its own rows.
+        expect(refreshes).toContain(undefined);
+        expect((await s.child(await s.job(), "Run Status"))?.getTreeItem().description).toBe(
+            "Success",
+        );
+
+        release();
+        await running;
+        s.kernel.dispose();
+    });
+
+    it("redraws only the pipeline's own rows on each status poll, as a job's", async () => {
+        const s = await setup();
+        let release!: () => void;
+        s.kernel.runner.on(["bundle", "run"], async (_args, options) => {
+            options.onStdout?.(UPDATE_URL);
+            await new Promise<void>((r) => (release = r));
+            return {};
+        });
+        s.http.on("GET", UPDATE, update("RUNNING"), update("RUNNING"), update("COMPLETED"));
+        s.http.on(
+            "GET",
+            EVENTS,
+            { body: { events: PIPELINE_EVENTS.events.slice(0, 1) } },
+            { body: { events: [] } },
+        );
+        const project = vscode.treeDataProviders.get(PROJECT_VIEW) as ConfigurationTreeDataProvider;
+        // The 5 s between two polls pass on a fake clock.
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+        const running = s.run(DEPLOY_AND_RUN_PIPELINE, await s.pipeline());
+        // The first poll is done once its event shows.
+        await expect
+            .poll(async () =>
+                (await s.labels(await s.child(await s.pipeline(), "Run Status"))).map(([l]) => l),
+            )
+            .toContain("Dataset `test_view` defined as VIEW.");
+        const row = await s.pipeline();
+        const refreshes: (ConfigurationItem | undefined)[] = [];
+        project.onDidChangeTreeData((e) => refreshes.push(e));
+        await vi.advanceTimersByTimeAsync(5000);
+        await expect.poll(() => s.http.to(EVENTS).length).toBe(2);
+        // One for the update's status, one for its events.
+        await vi.waitFor(() => expect(refreshes).toHaveLength(2));
+        expect(refreshes.every((e) => e === row)).toBe(true);
+
+        release();
+        await running;
+        expect((await s.child(await s.pipeline(), "Run Status"))?.getTreeItem().description).toBe(
+            "Success",
         );
         s.kernel.dispose();
     });
