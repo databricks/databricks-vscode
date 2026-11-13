@@ -54,7 +54,8 @@ export interface ConfigurationSection {
     readonly view?: SidebarView;
     /** `parent` is undefined for the section's top-level rows. */
     getChildren(parent?: ConfigurationItem): ConfigurationItem[] | Promise<ConfigurationItem[]>;
-    readonly onDidChange?: Event<void>;
+    /** With a row, only that row and the rows under it changed; without one, any of the section's rows may have. */
+    readonly onDidChange?: Event<ConfigurationItem | void>;
     /** The user checked or unchecked one of the section's rows that has a `checkboxState`. */
     setChecked?(item: ConfigurationItem, checked: boolean): void;
     /** A line of text above the view's rows, such as what setting the section up gives. */
@@ -63,16 +64,16 @@ export interface ConfigurationSection {
 
 export class ConfigurationSections {
     private readonly sections = new Map<string, ConfigurationSection>();
-    private readonly changed = new Emitter<void>();
-    /** Fires when a section is added, removed, or reports a change. */
-    readonly onDidChange: Event<void> = this.changed.event;
+    private readonly changed = new Emitter<ConfigurationItem | void>();
+    /** Fires when a section is added, removed, or reports a change: with a row when only that row changed. */
+    readonly onDidChange: Event<ConfigurationItem | void> = this.changed.event;
 
     add(section: ConfigurationSection): Disposable {
         if (this.sections.has(section.id)) {
             throw new Error(`Section ${section.id} is already added`);
         }
         this.sections.set(section.id, section);
-        const subscription = section.onDidChange?.(() => this.changed.fire());
+        const subscription = section.onDidChange?.((row) => this.changed.fire(row));
         this.changed.fire();
         return {
             dispose: () => {
