@@ -55,6 +55,21 @@ describe("Packages", () => {
         expect(call!.options.env).toEqual({ PATH: "/bin", HTTPS_PROXY: "http://proxy" });
     });
 
+    it("lists with uv when asked, even without a uv.lock: a uv-made venv has no pip", async () => {
+        const { p, runner } = packages();
+        runner.on(["pip", "list"], {
+            stdout: JSON.stringify([{ name: "databricks-connect", version: "17.3.1" }]),
+        });
+        expect(await p.find(PYTHON, "databricks-connect", undefined, { uv: true })).toEqual({
+            name: "databricks-connect",
+            version: "17.3.1",
+        });
+        expect(runner.calls.at(-1)).toMatchObject({
+            command: "uv",
+            args: ["pip", "list", "--format", "json", "--python", PYTHON],
+        });
+    });
+
     it("throws when pip fails", async () => {
         const { p, runner } = packages();
         runner.on(["-m", "pip", "list"], { exitCode: 1, stderr: "No module named pip\n" });

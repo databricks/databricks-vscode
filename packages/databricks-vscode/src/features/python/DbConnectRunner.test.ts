@@ -1,12 +1,23 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UserFacingError } from "../../platform/errors";
 import type { ShellKind } from "../../platform/shell";
 import { host as vscode, window, type FakeTerminal } from "../../test-support/vscode";
-import { DbConnectRunner, TERMINAL_NAME, type DbConnectRunnerDeps } from "./DbConnectRunner";
+import {
+    DBCONNECT_PROBE_TIMEOUT_MS,
+    DbConnectRunner,
+    TERMINAL_NAME,
+    type DbConnectRunnerDeps,
+} from "./DbConnectRunner";
+import { DBCONNECT_NOT_INSTALLED, type PackageProbe } from "./setup/external/checks";
 import type { Readiness } from "./setup/readiness";
+import { venvInterpreterPath } from "./setup/uv/venvInterpreterPath";
 
-const readiness = (status: Readiness["status"]): Readiness => ({
-    strategy: "uv",
+const readiness = (
+    status: Readiness["status"],
+    strategy: Readiness["strategy"] = "uv",
+): Readiness => ({
+    strategy,
     status,
     checks: [],
 });
@@ -20,17 +31,23 @@ function runner(
         debugStarts?: boolean;
         /** The extension pack's members that aren't installed. */
         missing?: string[];
+        strategy?: Readiness["strategy"];
+        /** What the databricks-connect probe finds. */
+        dbConnect?: PackageProbe;
+        /** The databricks-connect probe itself, when it must see the signal. */
+        probe?: DbConnectRunnerDeps["dbConnect"];
     } = {},
 ) {
     const statuses = [...(options.statuses ?? ["ready"])];
     const log: string[] = [];
     const debugged: Record<string, unknown>[] = [];
+    const selected: string[] = [];
     const deps: DbConnectRunnerDeps = {
         root: "/work/project",
         readiness: async () => {
             log.push("readiness");
             const status = statuses.length > 1 ? statuses.shift()! : statuses[0]!;
-            return readiness(status);
+            return readiness(status, options.strategy);
         },
         setup: async () => {
             log.push("setup");
@@ -42,6 +59,12 @@ function runner(
         },
         executable: async () =>
             "executable" in options ? options.executable : "/work/project/.venv/bin/python",
+        dbConnect:
+            options.probe ??
+            (async () => options.dbConnect ?? { kind: "installed", version: "17.3.0" }),
+        setActiveEnvironmentPath: async (interpreter) => {
+            selected.push(interpreter);
+        },
         writeEnvFile: async () => {
             log.push("envFile");
         },
@@ -62,7 +85,7 @@ function runner(
         },
         onRun: (launchType) => log.push(`onRun:${launchType}`),
     };
-    return { r: new DbConnectRunner(deps), log, debugged };
+    return { r: new DbConnectRunner(deps), log, debugged, selected };
 }
 
 describe("DbConnectRunner", () => {
@@ -203,6 +226,85 @@ describe("DbConnectRunner", () => {
                 "Debugging a file with Databricks Connect needs ms-python.debugpy",
             );
             expect(log).toEqual([]);
+        });
+    });
+
+    describe("databricks-connect on the selected interpreter (uv)", () => {
+        const missing: PackageProbe = { kind: "missing" };
+        afterEach(() => vi.restoreAllMocks());
+
+        it("stops a run when the selected interpreter lacks databricks-connect, and offers the .venv and the setup", async () => {
+            const { r, log, selected } = runner({
+                executable: "/usr/bin/python3",
+                dbConnect: missing,
+            });
+            const error = await r.run("/work/project/hello.py").catch((e: unknown) => e);
+            expect(error).toBeInstanceOf(UserFacingError);
+            expect(error).toMatchObject({
+                code: "DBCONNECT_MISSING",
+                userMessage: DBCONNECT_NOT_INSTALLED,
+            });
+            expect((error as UserFacingError).actions.map((a) => a.title)).toEqual([
+                "Select the project's .venv",
+                "Set up Python environment",
+            ]);
+            expect(vscode.terminals).toHaveLength(0);
+            expect(log).not.toContain("setup");
+            expect(selected).toEqual([]);
+        });
+
+        it("stops a debug session the same way", async () => {
+            const { r, debugged } = runner({ executable: "/usr/bin/python3", dbConnect: missing });
+            await expect(r.debug("/work/project/hello.py")).rejects.toMatchObject({
+                code: "DBCONNECT_MISSING",
+            });
+            expect(debugged).toEqual([]);
+        });
+
+        it("its actions select the project's .venv, or run the setup", async () => {
+            const { r, log, selected } = runner({
+                executable: "/usr/bin/python3",
+                dbConnect: missing,
+            });
+            const error = (await r
+                .run("/work/project/hello.py")
+                .catch((e: unknown) => e)) as UserFacingError;
+            await error.actions[0]!.run();
+            expect(selected).toEqual([venvInterpreterPath(path.join("/work/project", ".venv"))]);
+            await error.actions[1]!.run();
+            expect(log).toContain("setup");
+        });
+
+        it("runs when the selected interpreter has databricks-connect", async () => {
+            const { r, selected } = runner({ executable: "/usr/bin/python3" });
+            expect(await r.run("/work/project/hello.py")).toBe(true);
+            expect(selected).toEqual([]);
+        });
+
+        it("runs when the probe failed: the run reports its own error", async () => {
+            const { r } = runner({
+                dbConnect: { kind: "failed", message: "pip exited with code 1" },
+            });
+            expect(await r.run("/work/project/hello.py")).toBe(true);
+        });
+
+        it("lets a probe that times out go on, and asks for a signal that aborts", async () => {
+            const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(AbortSignal.abort());
+            const { r } = runner({
+                probe: async (_executable, signal) => {
+                    if (signal?.aborted) {
+                        throw new Error("aborted");
+                    }
+                    return missing;
+                },
+            });
+            expect(await r.run("/work/project/hello.py")).toBe(true);
+            expect(timeout).toHaveBeenCalledWith(DBCONNECT_PROBE_TIMEOUT_MS);
+        });
+
+        it("doesn't probe the external strategy, whose checklist already checked the interpreter", async () => {
+            const { r } = runner({ strategy: "external", dbConnect: missing });
+            expect(await r.run("/work/project/hello.py")).toBe(true);
         });
     });
 

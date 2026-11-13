@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { Disposable, Event, Terminal, TerminalOptions } from "vscode";
 import { UserFacingError } from "../../platform/errors";
 import {
@@ -9,9 +10,14 @@ import {
 import type { DatabricksPythonDebugConfiguration } from "./DatabricksDebugConfigurationProvider";
 import { DEBUGPY, PYTHON } from "../../kernel/extensionDependencies";
 import type { ExtensionDependencies } from "../../platform/extensions";
+import { DBCONNECT_NOT_INSTALLED, type PackageProbe } from "./setup/external/checks";
 import type { Readiness } from "./setup/readiness";
+import { venvInterpreterPath } from "./setup/uv/venvInterpreterPath";
 
 export const TERMINAL_NAME = "Databricks Connect";
+
+/** How long the databricks-connect probe may take before the run goes on without it. */
+export const DBCONNECT_PROBE_TIMEOUT_MS = 10_000;
 
 /** The part of `vscode.window` the runner needs. */
 interface TerminalHost {
@@ -30,6 +36,10 @@ export interface DbConnectRunnerDeps {
     readonly requireExtension: ExtensionDependencies["require"];
     /** The interpreter ms-python has selected for the project. */
     executable(): Promise<string | undefined>;
+    /** Whether an interpreter has databricks-connect: the same probe the external checklist uses. */
+    dbConnect(executable: string, signal: AbortSignal): Promise<PackageProbe>;
+    /** Selects an interpreter for the project, as the uv setup does with its `.venv`. */
+    setActiveEnvironmentPath(interpreter: string): Promise<void>;
     /** Writes the env file the bootstrap reads, and resolves when it is current. */
     writeEnvFile(): Promise<unknown>;
     /** `resources/python/dbconnect-bootstrap.py`. */
@@ -43,7 +53,7 @@ export interface DbConnectRunnerDeps {
 }
 
 /** A setup that ran but doesn't match the compute any more still runs: the row says so. */
-function canRun(readiness: Readiness | undefined): boolean {
+function canRun(readiness: Readiness | undefined): readiness is Readiness {
     return readiness !== undefined && readiness.status !== "notReady";
 }
 
@@ -146,9 +156,11 @@ export class DbConnectRunner implements Disposable {
 
     /** The gate, the file and the interpreter, shared by run and debug so both use the same interpreter. */
     private async preflight(file: string | undefined): Promise<string | undefined> {
-        if (!canRun(await this.deps.readiness())) {
+        let readiness = await this.deps.readiness();
+        if (!canRun(readiness)) {
             await this.deps.setup();
-            if (!canRun(await this.deps.readiness())) {
+            readiness = await this.deps.readiness();
+            if (!canRun(readiness)) {
                 return undefined;
             }
         }
@@ -159,7 +171,33 @@ export class DbConnectRunner implements Disposable {
         if (executable === undefined) {
             throw new UserFacingError("NO_INTERPRETER", "No python executable found");
         }
+        // The uv row describes the project's .venv, not the selected interpreter, so check that one.
+        // The external checklist already probed the selected interpreter in readiness.
+        if (readiness.strategy === "uv" && (await this.missingDbConnect(executable))) {
+            throw this.dbConnectMissing();
+        }
         return executable;
+    }
+
+    /** A probe that times out or fails lets the run go on: the run reports its own error. */
+    private async missingDbConnect(executable: string): Promise<boolean> {
+        const probe = await this.deps
+            .dbConnect(executable, AbortSignal.timeout(DBCONNECT_PROBE_TIMEOUT_MS))
+            .catch(() => undefined);
+        return probe?.kind === "missing";
+    }
+
+    private dbConnectMissing(): UserFacingError {
+        const venv = venvInterpreterPath(path.join(this.deps.root, ".venv"));
+        return new UserFacingError("DBCONNECT_MISSING", DBCONNECT_NOT_INSTALLED, {
+            actions: [
+                {
+                    title: "Select the project's .venv",
+                    run: () => this.deps.setActiveEnvironmentPath(venv),
+                },
+                { title: "Set up Python environment", run: () => this.deps.setup() },
+            ],
+        });
     }
 
     /** The terminal stays open: its output is the user's to read. */

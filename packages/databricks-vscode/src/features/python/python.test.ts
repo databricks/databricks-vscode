@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { EOL } from "node:os";
 import path from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ThemeIcon } from "vscode";
 import { registerFeatures, startFeatures } from "../../kernel/feature";
 import { liveListenerCount } from "../../platform/event";
@@ -518,9 +518,100 @@ describe("python feature", () => {
             expect(chosen).not.toContain("DATABRICKS_SERVERLESS_COMPUTE_DEFAULT");
         });
 
+        it("stops a run before the terminal when the uv venv lacks databricks-connect", async () => {
+            const fakePython = new FakeMsPython().install();
+            const s = await setup({ overrides: serverless });
+            // A uv-made venv has no pip, so only uv's listing can read its packages (none here).
+            s.kernel.runner.on(["-m", "pip", "list"], {
+                exitCode: 1,
+                stderr: "No module named pip\n",
+            });
+            s.kernel.runner.on(["pip", "list"], () => ({ stdout: JSON.stringify(s.packages) }));
+            const python = s.t.write(`project/${VENV_PYTHON}`);
+            s.t.write("project/.venv/pyvenv.cfg", "uv = 0.9.0\n");
+            await s.kernel.state.set(SETUP_STATES, {
+                [s.root]: {
+                    envKey: "serverless/serverless-v4",
+                    pythonVersion: "3.12",
+                    timestamp: "2026-10-03T00:00:00Z",
+                },
+            });
+            fakePython.select(
+                resolvedEnvironment({
+                    executable: python,
+                    version: [3, 12, 13],
+                    sysPrefix: path.join(s.root, ".venv"),
+                }),
+            );
+            await s.start();
+
+            vscode.activeEditor = Uri.file(path.join(s.root, "hello.py"));
+            vscode.nextErrorChoice = "Select the project's .venv";
+            await s.run(DBCONNECT_RUN_FILE);
+            expect(vscode.terminals.find((t) => t.name === "Databricks Connect")).toBeUndefined();
+            expect(vscode.errors.map((e) => e.message)).toEqual([
+                "databricks-connect package is not installed in the current environment.",
+            ]);
+            expect(vscode.errors[0]!.actions).toEqual([
+                "Select the project's .venv",
+                "Set up Python environment",
+            ]);
+            // The action selects the project's .venv, for the project's folder.
+            await vi.waitFor(() =>
+                expect(fakePython.adopted).toEqual([{ path: python, resource: s.root }]),
+            );
+        });
+
+        it("lets a uv that never answers go on once the probe's timeout passes", async () => {
+            const fakePython = new FakeMsPython().install();
+            const s = await setup({ overrides: serverless });
+            // The probe's timeout, shortened: the real one is 10 s.
+            const original = AbortSignal.timeout.bind(AbortSignal);
+            const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation(() => original(1));
+            try {
+                // uv hangs: only its abort ends the spawn.
+                s.kernel.runner.on(
+                    ["--version"],
+                    (_args, options) =>
+                        new Promise((_resolve, reject) =>
+                            options.signal?.addEventListener("abort", () =>
+                                reject(options.signal?.reason),
+                            ),
+                        ),
+                );
+                const python = s.t.write(`project/${VENV_PYTHON}`);
+                s.t.write("project/.venv/pyvenv.cfg", "uv = 0.9.0\n");
+                await s.kernel.state.set(SETUP_STATES, {
+                    [s.root]: {
+                        envKey: "serverless/serverless-v4",
+                        pythonVersion: "3.12",
+                        timestamp: "2026-10-03T00:00:00Z",
+                    },
+                });
+                fakePython.select(
+                    resolvedEnvironment({
+                        executable: python,
+                        version: [3, 12, 13],
+                        sysPrefix: path.join(s.root, ".venv"),
+                    }),
+                );
+                await s.start();
+
+                vscode.activeEditor = Uri.file(path.join(s.root, "hello.py"));
+                await s.run(DBCONNECT_RUN_FILE);
+                expect(vscode.terminals.find((t) => t.name === "Databricks Connect")).toBeDefined();
+                expect(vscode.errors).toEqual([]);
+            } finally {
+                timeout.mockRestore();
+            }
+        });
+
         it("runs the active file with Databricks Connect in a terminal rooted at the project", async () => {
             const fakePython = new FakeMsPython().install();
             const s = await setup({ overrides: serverless });
+            // The uv setup's `.venv` has Databricks Connect; the run checks it through uv's listing.
+            s.packages.push({ name: "databricks-connect", version: "17.3.1" });
+            s.kernel.runner.on(["pip", "list"], () => ({ stdout: JSON.stringify(s.packages) }));
             const python = s.t.write(`project/${VENV_PYTHON}`);
             s.t.write("project/.venv/pyvenv.cfg", "uv = 0.9.0\n");
             await s.kernel.state.set(SETUP_STATES, {
