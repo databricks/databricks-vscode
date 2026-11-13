@@ -1703,13 +1703,13 @@
                 {
                     "submenu": "databricks.run",
                     "group": "navigation@0",
-                    "when": "databricks.context.isActiveFileInActiveWorkspace && (databricks.context.showRunAsWorkflow || resourceExtname == .ipynb)"
+                    "when": "databricks.context.isActiveFileInActiveWorkspace && (databricks.context.showRunAsWorkflow || resourceExtname == .ipynb) && (!databricks.context.host.fixedCompute || !databricks.context.host.givenPython)"
                 }
             ],
             "explorer/context": [
                 {
                     "submenu": "databricks.run",
-                    "when": "resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow"
+                    "when": "(resourceLangId == python || resourceExtname == .ipynb || databricks.context.showRunAsWorkflow) && (!databricks.context.host.fixedCompute || !databricks.context.host.givenPython)"
                 }
             ],
             "databricks.run": [

@@ -161,6 +161,33 @@ describe("host contract", () => {
         expect(problems).toEqual([]);
     });
 
+    it("hides a submenu in a session when nothing in it is available there, and doesn't hide it when something is", () => {
+        const { menus } = manifest.contributes;
+        const problems: string[] = [];
+        for (const [menu, items] of Object.entries(menus)) {
+            for (const entry of items.filter((m) => m.submenu !== undefined)) {
+                const usable = (menus[entry.submenu!] ?? []).filter(
+                    (item) =>
+                        (item.command === undefined ||
+                            !isUnavailable(declared.get(item.command))) &&
+                        (item.when === undefined || evaluateWhen(item.when, inSession) !== false),
+                );
+                const shown = entry.when === undefined || evaluateWhen(entry.when, inSession);
+                if (usable.length === 0 && shown !== false) {
+                    problems.push(
+                        `${menu} ${entry.submenu}: "${entry.when}" shows it in a session`,
+                    );
+                } else if (usable.length > 0 && shown === false) {
+                    const names = usable.map((item) => item.command ?? item.submenu).join(", ");
+                    problems.push(
+                        `${menu} ${entry.submenu}: "${entry.when}" hides it in a session, where ${names} is available`,
+                    );
+                }
+            }
+        }
+        expect(problems).toEqual([]);
+    });
+
     it("hides the palette's Start and Stop Compute in a session, as they name no cluster there", () => {
         const palette = manifest.contributes.menus.commandPalette ?? [];
         for (const id of ["databricks.cluster.start", "databricks.cluster.stop"]) {
