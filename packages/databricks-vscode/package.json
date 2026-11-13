@@ -1805,50 +1805,78 @@
         },
         "walkthroughs": [
             {
-                "id": "quickstart",
+                "id": "getStarted",
                 "title": "Get started with Databricks",
-                "description": "Sign in, open a project, and deploy it to your workspace.",
+                "description": "Connect, explore data, use Databricks models, run code, and deploy.",
                 "when": "!remoteName",
                 "steps": [
                     {
-                        "id": "sign-in",
-                        "title": "Sign in to your workspace",
-                        "description": "Connect VS Code to a Databricks workspace.\n[Sign in to Databricks workspace](command:databricks.connection.configureLogin)",
+                        "id": "connect",
+                        "title": "Connect to your workspace",
+                        "description": "Sign in once, and every Databricks view uses that workspace. Use a profile you already have, or sign in with your browser.\n[Setup authentication](https://docs.databricks.com/dev-tools/vscode-ext/authentication) describes the options.\n[Sign in](command:databricks.connection.configureLogin)",
+                        "completionEvents": [
+                            "onContext:databricks.context.connected"
+                        ],
                         "media": {
-                            "markdown": "resources/walkthrough/sign-in.md"
+                            "markdown": "resources/walkthrough/connect.md"
                         }
                     },
                     {
-                        "id": "project",
-                        "title": "Open or create a project",
-                        "description": "A project is a folder with a databricks.yml file.\n[Create a new Databricks project](command:databricks.bundle.initNewProject)\n[Open folder](command:vscode.openFolder)",
-                        "when": "!databricks.context.project",
+                        "id": "explore",
+                        "title": "Explore your data",
+                        "description": "Browse catalogs, schemas, tables and volumes in the Unity Catalog view, and open a table's columns and details without leaving the editor. Your workspace files are in the Workspace file system view.\n[Open Unity Catalog](command:unityCatalogView.focus)",
+                        "completionEvents": [
+                            "onView:unityCatalogView"
+                        ],
                         "media": {
-                            "markdown": "resources/walkthrough/project.md"
+                            "markdown": "resources/walkthrough/explore.md"
                         }
                     },
                     {
-                        "id": "compute",
-                        "title": "Choose compute",
-                        "description": "Pick the cluster that runs your code. Serverless needs no cluster.\n[Configure compute](command:databricks.connection.attachClusterQuickPick)",
+                        "id": "models",
+                        "title": "Chat with Databricks models",
+                        "description": "The models your workspace serves through Unity Gateway show up in Chat, agent mode included. Pick one in Chat's model picker.\n[Choose a Databricks model](command:databricks.unityGateway.chooseModel)",
+                        "when": "!databricks.context.unityGateway.unavailable",
+                        "completionEvents": [
+                            "onCommand:databricks.unityGateway.chooseModel"
+                        ],
                         "media": {
-                            "markdown": "resources/walkthrough/compute.md"
+                            "markdown": "resources/walkthrough/chat.md"
+                        }
+                    },
+                    {
+                        "id": "ai-tools",
+                        "title": "Give your coding agent Databricks skills",
+                        "description": "AI tools add Databricks skills to Copilot, Claude Code, Codex or Cursor, so your agent knows how to work with your workspace's jobs, pipelines and data.\n[Install AI tools](command:databricks.aitools.install)",
+                        "when": "!databricks.context.host.noAiTools",
+                        "completionEvents": [
+                            "onCommand:databricks.aitools.install"
+                        ],
+                        "media": {
+                            "markdown": "resources/walkthrough/ai-tools.md"
+                        }
+                    },
+                    {
+                        "id": "tunnel",
+                        "title": "Work directly on Databricks compute",
+                        "description": "Start an SSH tunnel to open a VS Code window that runs on serverless compute or your cluster, with your workspace files and the compute's Python environment.\n[SSH tunnel](https://docs.databricks.com/aws/en/dev-tools/ssh-tunnel) describes how the tunnel works.\n[Start SSH tunnel](command:databricks.ssh.startTunnel)",
+                        "when": "!databricks.context.host.noTunnel",
+                        "completionEvents": [
+                            "onCommand:databricks.ssh.startTunnel"
+                        ],
+                        "media": {
+                            "markdown": "resources/walkthrough/tunnel.md"
                         }
                     },
                     {
                         "id": "deploy",
-                        "title": "Deploy your project",
-                        "description": "Deploy the bundle to your workspace, then run a job or pipeline from the Resources group in the Project view.\n[Deploy bundle](command:databricks.bundle.deploy)",
+                        "title": "Deploy jobs and pipelines",
+                        "description": "A bundle is a folder whose databricks.yml describes its jobs and pipelines. Create one from a template, then deploy and run it from the Project view.\n[Declarative Automation Bundles](https://docs.databricks.com/dev-tools/vscode-ext/bundles) explain the details.\n[Create a new project](command:databricks.bundle.initNewProject)",
+                        "completionEvents": [
+                            "onCommand:databricks.bundle.deploy"
+                        ],
                         "media": {
                             "markdown": "resources/walkthrough/deploy.md"
-                        }
-                    },
-                    {
-                        "id": "learn",
-                        "title": "Learn more",
-                        "description": "Add AI tools to your coding agents, or read the user guide.\n[Install AI tools](command:databricks.aitools.install)\n[Read the user guide](https://docs.databricks.com/dev-tools/vscode-ext.html)",
-                        "media": {
-                            "markdown": "resources/walkthrough/learn.md"
                         }
                     }
                 ]

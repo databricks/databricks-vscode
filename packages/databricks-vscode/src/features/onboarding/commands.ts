@@ -3,7 +3,7 @@ import { commands, Uri } from "vscode";
 export const OPEN_QUICKSTART = "databricks.quickstart.open";
 
 /** The walkthrough's category id: the extension id, then the walkthrough's id in package.json. */
-export const QUICKSTART_WALKTHROUGH = "databricks.databricks#quickstart";
+export const QUICKSTART_WALKTHROUGH = "databricks.databricks#getStarted";
 
 export async function openQuickstart() {
     await commands.executeCommand(

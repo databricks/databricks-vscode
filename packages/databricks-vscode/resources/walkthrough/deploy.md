@@ -1,1 +1,1 @@
-[Troubleshoot problems](https://docs.databricks.com/dev-tools/vscode-ext/troubleshooting) covers common errors. The output panel shows each deployment's progress.
+<video src="deploy.mp4" title="Deploying the bundle from the Project view, then running its job, which ends with Run Status Success and the run's output in the terminal." autoplay loop muted playsinline width="100%"></video>

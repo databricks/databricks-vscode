@@ -1,0 +1,1 @@
+<video src="chat.mp4" title="Choosing a Databricks model in Chat's model picker, asking for a query on samples.nyctaxi.trips, and the streamed reply." autoplay loop muted playsinline width="100%"></video>
