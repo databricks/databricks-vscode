@@ -82,6 +82,8 @@ export const aiTools: Feature = {
             );
             return onPath ? withShimOnPath(child, shimDir) : child;
         };
+        const projectFolder = () =>
+            kernel.project.active.value?.root ?? workspace.workspaceFolders?.[0]?.uri.fsPath;
         const service = new AiToolsService({
             cli: kernel.cli,
             env: aiToolsEnv,
@@ -93,8 +95,7 @@ export const aiTools: Feature = {
                 });
             },
             state: kernel.state,
-            projectFolder: () =>
-                kernel.project.active.value?.root ?? workspace.workspaceFolders?.[0]?.uri.fsPath,
+            projectFolder,
             homeDir: os.homedir(),
             readFile: (p) => fs.readFile(p),
             isCursor,
@@ -122,6 +123,16 @@ export const aiTools: Feature = {
                 !service.shouldPromptInstall,
             );
         };
+        // Project-scope installs live in the project folder. Refresh only when that folder
+        // changes: `active` also changes on bundle config edits, and each refresh fetches.
+        let lastFolder = projectFolder();
+        const refreshOnFolderChange = () => {
+            const folder = projectFolder();
+            if (folder !== lastFolder) {
+                lastFolder = folder;
+                void service.refresh();
+            }
+        };
         ctx.subscriptions.push(
             service,
             ui,
@@ -131,8 +142,11 @@ export const aiTools: Feature = {
                 changed.fire();
             }),
             kernel.state.onDidChange(HIDE_INSTALL_PROMPT)(syncKeys),
-            // Project-scope installs live in the project folder.
-            kernel.project.active.onDidChange(() => void service.refresh()),
+            kernel.project.root.onDidChange(refreshOnFolderChange),
+            kernel.project.active.onDidChange(refreshOnFolderChange),
+            // A folder added in front of the saved one changes the fallback folder
+            // without moving `root` or `active`.
+            workspace.onDidChangeWorkspaceFolders(refreshOnFolderChange),
         );
         void kernel.contextKeys.set(AITOOLS_SHOW_CURSOR_PLUGIN, isCursor);
         syncKeys();

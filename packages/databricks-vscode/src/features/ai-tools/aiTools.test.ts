@@ -57,8 +57,9 @@ async function setup(
             activate: async () => ({}),
         });
     }
+    const folderState = new MutableState<readonly string[]>(folders);
     const kernel = fakeKernel({
-        folders: new MutableState<readonly string[]>(folders),
+        folders: folderState,
         files: new FakeFileEvents(),
         ...(options.session ? { host: SERVERLESS_SESSION } : {}),
         ...(options.chat ? { settings: fakeSettings(options.chat) } : {}),
@@ -71,7 +72,7 @@ async function setup(
     kernel.start();
     startFeatures(registered);
     await when(kernel.project.initialized, (i) => i);
-    return { t, kernel, fake, registered };
+    return { t, kernel, fake, registered, folders: folderState };
 }
 
 /** The label of the Models & AI tools view's first row. */
@@ -204,6 +205,129 @@ describe("the AI tools feature", () => {
                 expect(s.kernel.runner.calls.some((c) => c.args[1] === "list")).toBe(true),
             );
             expect((listPath(s) ?? "").split(path.delimiter)).not.toContain(shimDir());
+        });
+    });
+
+    describe("when it re-runs aitools list", () => {
+        const listCalls = (s: Awaited<ReturnType<typeof setup>>) =>
+            s.kernel.runner.calls.filter((c) => c.args[1] === "list");
+        const BUNDLE = "bundle: {name: demo}\ntargets:\n  dev: {default: true}\n";
+        const touch = (s: Awaited<ReturnType<typeof setup>>, file: string) =>
+            (s.kernel.files as FakeFileEvents).touch(file);
+
+        it("doesn't re-run it when a save changes the parsed config", async () => {
+            const s = await setup({ project: true, installed: "project" });
+            s.t.write("project/sub/databricks.yml", BUNDLE);
+            s.t.write(`project/sub/${STATE_FILE}`, "{}");
+            await vi.waitFor(() => expect(listCalls(s).length).toBeGreaterThan(0));
+            const before = listCalls(s).length;
+
+            const file = s.t.path("project/databricks.yml");
+            s.t.write("project/databricks.yml", `${BUNDLE}  prod: {}\n`);
+            touch(s, file);
+            await vi.waitFor(
+                () =>
+                    expect(
+                        s.kernel.project.active.value?.config.targets.map((t) => t.name),
+                    ).toEqual(["dev", "prod"]),
+                { timeout: 3000 },
+            );
+            // The save's refresh, if any, is queued before the switch below, and the
+            // queue runs in order. So once the switch's call is recorded, a call from
+            // the save would already be counted: the exact count is the check.
+            await s.kernel.project.selectProject(s.t.path("project/sub"));
+            await vi.waitFor(() => expect(listCalls(s).length).toBe(before + 1), {
+                timeout: 3000,
+            });
+            expect(listCalls(s).at(-1)!.options.cwd).toBe(s.t.path("project/sub"));
+        });
+
+        it("re-runs it when the project folder is switched", async () => {
+            const s = await setup({ project: true, installed: "project" });
+            s.t.write("project/sub/databricks.yml", BUNDLE);
+            s.t.write(`project/sub/${STATE_FILE}`, "{}");
+            await vi.waitFor(() => expect(listCalls(s).length).toBeGreaterThan(0));
+            const before = listCalls(s).length;
+
+            await s.kernel.project.selectProject(s.t.path("project/sub"));
+            await vi.waitFor(() => expect(listCalls(s).length).toBe(before + 1), {
+                timeout: 3000,
+            });
+            expect(listCalls(s).at(-1)!.options.cwd).toBe(s.t.path("project/sub"));
+        });
+
+        it("re-runs it when the first workspace folder is added", async () => {
+            const s = await setup({ installed: "home" });
+            const added = s.t.path("added");
+            s.t.write("added/.keep", "");
+            s.t.write(`added/${STATE_FILE}`, "{}");
+            await vi.waitFor(() => expect(listCalls(s).length).toBeGreaterThan(0));
+            const before = listCalls(s).length;
+
+            // The folder the install is read from changes from none to `added`.
+            vscode.folders = [added];
+            s.folders.set([added]);
+            await vi.waitFor(() => expect(listCalls(s).length).toBe(before + 1), {
+                timeout: 3000,
+            });
+            expect(listCalls(s).at(-1)!.options.cwd).toBe(added);
+        });
+
+        it("re-runs it when a folder is added in front of the saved bundle-less folder", async () => {
+            const t = tempDir();
+            vi.stubEnv("HOME", t.path("home"));
+            vi.stubEnv("USERPROFILE", t.path("home"));
+            t.write("home/.keep");
+            t.write(`saved/.keep`, "");
+            t.write(`saved/${STATE_FILE}`, "{}");
+            t.write(`added/.keep`, "");
+            t.write(`added/${STATE_FILE}`, "{}");
+            vscode.folders = [t.path("saved")];
+            const folders = new MutableState<readonly string[]>([t.path("saved")]);
+            // The saved folder stays the project folder, so `root` doesn't change.
+            const workspaceState = fakeMemento();
+            workspaceState.store.set(ACTIVE_PROJECT_PATH.name, t.path("saved"));
+            const kernel = fakeKernel({
+                folders,
+                files: new FakeFileEvents(),
+                state: new StateStore({ global: fakeMemento(), workspace: workspaceState }),
+            });
+            kernel.runner.on(["aitools", "list"], {
+                stdout: JSON.stringify({ release: "0.2.10", skills: [], agents: [] }),
+            });
+            const [registered] = registerFeatures([aiTools], fakeFeatureHost(kernel).host);
+            kernel.start();
+            await aiTools.start!(registered!.ctx);
+            const lists = () => kernel.runner.calls.filter((c) => c.args[1] === "list");
+            expect(lists().at(-1)?.options.cwd).toBe(t.path("saved"));
+            const before = lists().length;
+
+            vscode.folders = [t.path("added"), t.path("saved")];
+            folders.set(vscode.folders);
+            vscode.foldersChanged.fire();
+            await vi.waitFor(() => expect(lists().length).toBe(before + 1), {
+                timeout: 3000,
+            });
+            expect(lists().at(-1)!.options.cwd).toBe(t.path("added"));
+        });
+
+        it("re-runs it when a bundle appears in the saved sub-folder, which is where it reads the install from", async () => {
+            const s = await setup({ project: true, installed: "project" });
+            s.t.write("project/sub/.keep", "");
+            s.t.write(`project/sub/${STATE_FILE}`, "{}");
+            await s.kernel.project.selectProject(s.t.path("project/sub"));
+            await vi.waitFor(() =>
+                expect(s.kernel.project.root.value).toBe(s.t.path("project/sub")),
+            );
+            await vi.waitFor(() => expect(listCalls(s).length).toBeGreaterThan(0));
+            const before = listCalls(s).length;
+
+            s.t.write("project/sub/databricks.yml", BUNDLE);
+            touch(s, s.t.path("project/sub/databricks.yml"));
+            await vi.waitFor(() => expect(listCalls(s).length).toBe(before + 1), {
+                timeout: 3000,
+            });
+            expect(listCalls(s).at(-1)!.options.cwd).toBe(s.t.path("project/sub"));
         });
     });
 
