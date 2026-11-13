@@ -290,6 +290,28 @@ describe("DbConnectRunner", () => {
             expect(log).toEqual(["readiness", "setup"]);
         });
 
+        it("runs the setup once per run: when the first gate already ran it, a missing package stops the run", async () => {
+            const { r, log } = runner({ statuses: ["notReady", "ready"], dbConnect: missing });
+            expect(await r.run("/work/project/hello.py")).toBe(false);
+            expect(log).toEqual(["readiness", "setup", "readiness"]);
+            expect(vscode.terminals).toHaveLength(0);
+        });
+
+        it("probes an interpreter found with databricks-connect once per session", async () => {
+            const { r, probed } = runner({ executable: "/usr/bin/python3" });
+            expect(await r.run("/work/project/a.py")).toBe(true);
+            expect(await r.run("/work/project/b.py")).toBe(true);
+            expect(probed).toEqual(["/usr/bin/python3"]);
+        });
+
+        it("probes again when the interpreter was missing databricks-connect", async () => {
+            const { r, probed } = runner({ executable: "/usr/bin/python3", dbConnect: missing });
+            await r.run("/work/project/a.py");
+            const afterFirst = probed.length;
+            await r.run("/work/project/b.py");
+            expect(probed.length).toBeGreaterThan(afterFirst);
+        });
+
         it("runs when the selected interpreter has databricks-connect, without a setup", async () => {
             const { r, log } = runner({ executable: "/usr/bin/python3" });
             expect(await r.run("/work/project/hello.py")).toBe(true);

@@ -67,6 +67,8 @@ function canRun(readiness: Readiness | undefined): readiness is Readiness {
 export class DbConnectRunner implements Disposable {
     private terminal?: Terminal;
     private readonly closed: Disposable;
+    /** Interpreters found with databricks-connect in this session. */
+    private readonly withDbConnect = new Set<string>();
 
     constructor(private readonly deps: DbConnectRunnerDeps) {
         this.closed = deps.terminals.onDidCloseTerminal((t) => {
@@ -153,8 +155,10 @@ export class DbConnectRunner implements Disposable {
     /** The gate, the file and the interpreter, shared by run and debug so both use the same interpreter. */
     private async preflight(file: string | undefined): Promise<string | undefined> {
         let readiness = await this.deps.readiness();
+        let setupRan = false;
         if (!canRun(readiness)) {
             await this.deps.setup();
+            setupRan = true;
             readiness = await this.deps.readiness();
             if (!canRun(readiness)) {
                 return undefined;
@@ -172,6 +176,10 @@ export class DbConnectRunner implements Disposable {
         // goes on only if the interpreter it then uses has the package. The external
         // checklist already probed the selected interpreter in readiness.
         if (readiness.strategy === "uv" && (await this.missingDbConnect(executable))) {
+            // Setup runs once per run, as in 2.x: after one that already ran, a missing package stops the run.
+            if (setupRan) {
+                return undefined;
+            }
             await this.deps.setup();
             const after = await this.deps.executable();
             if (after === undefined || (await this.missingDbConnect(after))) {
@@ -182,11 +190,21 @@ export class DbConnectRunner implements Disposable {
         return executable;
     }
 
-    /** A probe that times out or fails lets the run go on: the run reports its own error. */
+    /**
+     * A probe that times out or fails lets the run go on: the run reports its own error.
+     * A found package is remembered per interpreter for the session, as 2.x re-checks only
+     * when the interpreter changed; a missing or failed result is probed again.
+     */
     private async missingDbConnect(executable: string): Promise<boolean> {
+        if (this.withDbConnect.has(executable)) {
+            return false;
+        }
         const probe = await this.deps
             .dbConnect(executable, AbortSignal.timeout(DBCONNECT_PROBE_TIMEOUT_MS))
             .catch(() => undefined);
+        if (probe?.kind === "installed") {
+            this.withDbConnect.add(executable);
+        }
         return probe?.kind === "missing";
     }
 
