@@ -21,9 +21,11 @@ interface Cached<T> {
 /**
  * The workspace's files for one connection (WSFS-01 to WSFS-04), shared by
  * the tree, the `databricks-wsfs:` provider and the commands. Stat and list
- * results are cached briefly; concurrent requests for a path share one call.
+ * results are cached briefly; concurrent `stat()` and `list()` calls for a path
+ * share one request.
  * The model's own writes, and `refresh()`, drop what they make stale. Changes
- * made elsewhere show after a refresh or once the cache expires, as before.
+ * made elsewhere show after a refresh or once the cache expires, as before;
+ * `statFresh()` always asks the workspace.
  */
 export class WorkspaceFilesModel implements Disposable {
     private readonly stats = new Map<string, Cached<WorkspaceEntry | undefined>>();
@@ -51,16 +53,28 @@ export class WorkspaceFilesModel implements Disposable {
 
     /** Undefined when nothing is at `path`, or the object isn't one the explorer shows. */
     stat(path: string): Promise<WorkspaceEntry | undefined> {
-        return this.cached(this.stats, path, async () => {
-            try {
-                return toEntry(await this.client.getStatus({ path }, calls.read()));
-            } catch (e) {
-                if (isNotFound(e)) {
-                    return undefined;
-                }
-                throw e;
+        return this.cached(this.stats, path, () => this.getStatus(path));
+    }
+
+    /**
+     * A stat that always asks the workspace: the provider's stat, which VS
+     * Code calls on open and before a save, must see a change made elsewhere.
+     * A request already in flight may predate the change, so it isn't shared.
+     * The result is kept for the tree and the reads that follow.
+     */
+    statFresh(path: string): Promise<WorkspaceEntry | undefined> {
+        return this.store(this.stats, path, () => this.getStatus(path));
+    }
+
+    private async getStatus(path: string): Promise<WorkspaceEntry | undefined> {
+        try {
+            return toEntry(await this.client.getStatus({ path }, calls.read()));
+        } catch (e) {
+            if (isNotFound(e)) {
+                return undefined;
             }
-        });
+            throw e;
+        }
     }
 
     /** The children of a directory, in the old order. Undefined when the directory doesn't exist. */
@@ -159,6 +173,18 @@ export class WorkspaceFilesModel implements Disposable {
         if (hit !== undefined && this.now() - hit.at < CACHE_TTL_MS) {
             return hit.value;
         }
+        return this.store(cache, path, load);
+    }
+
+    /**
+     * Loads and caches the result. The cache holds the promise, so a slower
+     * request that settles after a newer one can't overwrite the newer entry.
+     */
+    private store<T>(
+        cache: Map<string, Cached<T>>,
+        path: string,
+        load: () => Promise<T>,
+    ): Promise<T> {
         const value = load();
         const entry = { at: this.now(), value };
         cache.set(path, entry);

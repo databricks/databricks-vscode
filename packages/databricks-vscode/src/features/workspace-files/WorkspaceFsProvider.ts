@@ -47,7 +47,9 @@ export class WorkspaceFsProvider implements FileSystemProvider, Disposable {
     }
 
     async stat(uri: Uri): Promise<FileStat> {
-        const entry = await this.requireModel().stat(uri.path);
+        // Not from the cache: VS Code compares this mtime and size with what it read,
+        // on open and before a save, so a change made elsewhere must show.
+        const entry = await this.requireModel().statFresh(uri.path);
         if (entry === undefined) {
             throw FileSystemError.FileNotFound(uri);
         }
