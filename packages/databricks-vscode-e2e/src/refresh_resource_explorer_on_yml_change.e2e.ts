@@ -9,6 +9,7 @@ import { waitForLogin } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import { geTaskViewItem, getResourceViewItem, RESOURCES } from "./utils/explorer.ts";
 import { getViewSection } from "./utils/view.ts";
+import { openOutputView } from "./utils/output-view.ts";
 
 /*
  * Ported from the frozen suite. The imports differ, and so does one
@@ -68,7 +69,7 @@ describe("Automatically refresh the bundle's resources", async function () {
             `Resources should be missing from an empty bundle, found (${labels.join(", ")})`,
         );
 
-        const outputView = await (await browser.getWorkbench()).getBottomBar().openOutputView();
+        const outputView = await openOutputView();
         // A late notification toast can overlay the channel <select> and
         // intercept the click. Re-dismiss and retry rather than failing on the
         // first interception.
