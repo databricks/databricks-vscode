@@ -3,6 +3,8 @@
  * waiting for the "Databricks Job Run" panel of "Run File as Workflow".
  */
 
+import { waitUntilSeen } from "./wait.ts";
+
 /** The text of the element whose accessible name is `label` (the old `browser.getTextByLabel`). */
 async function getTextByLabel(label: string): Promise<string> {
     return browser.$(`aria/${label}`).getText();
@@ -15,14 +17,20 @@ async function getTextByLabel(label: string): Promise<string> {
  *.
  */
 export async function waitForWorkflowWebview(expectedOutput: string | string[]) {
+    // `getWebviewByTitle` switches into each webview's frame, and stays there when one fails
+    // to open, so the next poll would find no webviews: every poll starts from the top frame.
+    await browser.switchToFrame(null);
     const workbench = await browser.getWorkbench();
     const title = /Databricks Job Run/;
-    await browser.waitUntil(
+    let lastError = "none";
+    await waitUntilSeen(
         async () => {
+            await browser.switchToFrame(null);
             try {
                 const webView = await workbench.getWebviewByTitle(title);
                 return webView !== undefined;
-            } catch {
+            } catch (e) {
+                lastError = e instanceof Error ? e.message : String(e);
                 return false;
             }
         },
@@ -35,6 +43,7 @@ export async function waitForWorkflowWebview(expectedOutput: string | string[]) 
             interval: 2_000,
             timeoutMsg: "Webview did not open",
         },
+        () => `last error: ${lastError}`,
     );
     const webView = await workbench.getWebviewByTitle(title);
     await webView.open();
