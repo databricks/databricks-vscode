@@ -63,6 +63,19 @@ describe("TargetFiles", () => {
         });
     });
 
+    it("loses no update when writes overlap from two instances for the same root", async () => {
+        // As the project's sign-out and the connection's saved profile do.
+        const t = tempDir();
+        await Promise.all([
+            new TargetFiles(t.dir).writeOverride("dev", "authProfile", "DEFAULT"),
+            new TargetFiles(t.dir).writeOverride("dev", "signedOut", true),
+        ]);
+        expect(await new TargetFiles(t.dir).readOverrides("dev")).toEqual({
+            authProfile: "DEFAULT",
+            signedOut: true,
+        });
+    });
+
     it("treats an empty file as no overrides, and rejects one that isn't a JSON object", async () => {
         const t = tempDir();
         t.write(".databricks/bundle/empty/vscode.overrides.json", "");

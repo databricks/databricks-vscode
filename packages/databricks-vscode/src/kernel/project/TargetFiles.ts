@@ -39,14 +39,16 @@ export type VariableOverrides = Readonly<Record<string, string>>;
 /** The glob, relative to the project root, that matches every variables file. */
 export const VARIABLES_GLOB = ".databricks/bundle/*/vscode.bundlevars.json";
 
+/** Each root's pending writes, shared because callers make a new `TargetFiles` per use. */
+const queues = new Map<string, Promise<void>>();
+
 /**
  * Reads and writes one project's target files. The old root-level
  * `.databricks/bundle/vscode.overrides.json` isn't migrated.
- * Writes run one at a time, so read-modify-write can't lose an update.
+ * Writes to a root run one at a time, whichever instance makes them, so
+ * read-modify-write can't lose an update.
  */
 export class TargetFiles {
-    private queue: Promise<void> = Promise.resolve();
-
     constructor(readonly root: string) {}
 
     overridesFile(target: string): string {
@@ -133,11 +135,18 @@ export class TargetFiles {
     }
 
     private enqueue<T>(write: () => Promise<T>): Promise<T> {
-        const result = this.queue.then(write);
-        this.queue = result.then(
+        const key = path.resolve(this.root);
+        const result = (queues.get(key) ?? Promise.resolve()).then(write);
+        const done = result.then(
             () => {},
             () => {},
         );
+        queues.set(key, done);
+        void done.then(() => {
+            if (queues.get(key) === done) {
+                queues.delete(key);
+            }
+        });
         return result;
     }
 }
