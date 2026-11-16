@@ -690,14 +690,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@databricks/sdk-auth@npm:0.54.0, @databricks/sdk-auth@npm:>=0.54.0 <1.0.0":
-  version: 0.54.0
-  resolution: "@databricks/sdk-auth@npm:0.54.0"
+"@databricks/sdk-auth@npm:0.56.0, @databricks/sdk-auth@npm:>=0.54.0 <1.0.0, @databricks/sdk-auth@npm:>=0.56.0 <1.0.0":
+  version: 0.56.0
+  resolution: "@databricks/sdk-auth@npm:0.56.0"
   dependencies:
     "@azure/identity": "npm:^4.13.3"
-    "@databricks/sdk-core": "npm:>=0.51.2 <1.0.0"
+    "@databricks/sdk-core": "npm:>=0.52.0 <1.0.0"
     zod: "npm:^4.3.6"
-  checksum: 10c0/8ef2433a743c531e845962c89be90584adc7cc36c559b178bdaad034ae18485fa63fc9fa6557abf71405208e68d473617d74448ea955acaf8b78c6fd15e71ca1
+  checksum: 10c0/f5a455e363e94804b36a26503b326a33f85be9ce84e80172f7137aa0764268bc8693db6a7cb10995ede28244dc20606cec0b880517a1ab94cde1f054972f9fcc
   languageName: node
   linkType: hard
 
@@ -715,27 +715,27 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@databricks/sdk-commandexecution@npm:0.51.3":
-  version: 0.51.3
-  resolution: "@databricks/sdk-commandexecution@npm:0.51.3"
+"@databricks/sdk-commandexecution@npm:0.52.1":
+  version: 0.52.1
+  resolution: "@databricks/sdk-commandexecution@npm:0.52.1"
   dependencies:
-    "@databricks/sdk-auth": "npm:>=0.54.0 <1.0.0"
-    "@databricks/sdk-core": "npm:>=0.51.2 <1.0.0"
-    "@databricks/sdk-options": "npm:>=0.51.3 <1.0.0"
+    "@databricks/sdk-auth": "npm:>=0.56.0 <1.0.0"
+    "@databricks/sdk-core": "npm:>=0.52.0 <1.0.0"
+    "@databricks/sdk-options": "npm:>=0.52.0 <1.0.0"
     "@js-temporal/polyfill": "npm:^0.5.0"
     json-bigint: "npm:^1.0.0"
     zod: "npm:^4.3.6"
-  checksum: 10c0/36394a34ac3190450f9cdf0961acabb6fc7b387740e967c6fa043ab6a291280a1ce1b55f673a37bc5b51a816cfa7e482b088dd6af5cbc28705807719df987f4d
+  checksum: 10c0/6102f31fab3b2879578e3d0c2d3898c9f6812d5db6250b6b46cb32413ca96a2eff816e92655d8a3969869474ca2b5b33e71434fe4d6461b1a514e6874dfde0eb
   languageName: node
   linkType: hard
 
-"@databricks/sdk-core@npm:0.51.2, @databricks/sdk-core@npm:>=0.51.2 <1.0.0":
-  version: 0.51.2
-  resolution: "@databricks/sdk-core@npm:0.51.2"
+"@databricks/sdk-core@npm:0.52.0, @databricks/sdk-core@npm:>=0.51.2 <1.0.0, @databricks/sdk-core@npm:>=0.52.0 <1.0.0":
+  version: 0.52.0
+  resolution: "@databricks/sdk-core@npm:0.52.0"
   dependencies:
     json-bigint: "npm:^1.0.0"
     zod: "npm:^4.3.6"
-  checksum: 10c0/f40165602a97e8c66f82225e46e78b41c9d22d1f287a0c8af41d98e9af9729f0af1b42f83d0b7aae909e0216ef032ccc9272cfc3dcc6205fd134f8fdb4fe6104
+  checksum: 10c0/32bae1b57c98a9addfcfe97a6cc79d3dad432579637dc1ab8d778af7f2a0ae36e0f75b13c33c7423c79ba77019d345b9d8c89a4636337e3b48224a4721efc6bc
   languageName: node
   linkType: hard
 
@@ -767,13 +767,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@databricks/sdk-options@npm:0.51.3, @databricks/sdk-options@npm:>=0.51.3 <1.0.0":
-  version: 0.51.3
-  resolution: "@databricks/sdk-options@npm:0.51.3"
+"@databricks/sdk-options@npm:0.52.0, @databricks/sdk-options@npm:>=0.51.3 <1.0.0, @databricks/sdk-options@npm:>=0.52.0 <1.0.0":
+  version: 0.52.0
+  resolution: "@databricks/sdk-options@npm:0.52.0"
   dependencies:
-    "@databricks/sdk-auth": "npm:>=0.54.0 <1.0.0"
-    "@databricks/sdk-core": "npm:>=0.51.2 <1.0.0"
-  checksum: 10c0/ab81ce3b09a0342f05e60e758840e5d51f695db9d4ac77b54f3dd06212b9444a192b29d4fc6a60c9f34cb478bc7cc102ce583f452e5cbbe4cda64acbed710494
+    "@databricks/sdk-auth": "npm:>=0.56.0 <1.0.0"
+    "@databricks/sdk-core": "npm:>=0.52.0 <1.0.0"
+  checksum: 10c0/25a5ad729c242e17c0e45f9033cd13684f07be98a19cd0fd786374e72d3127e6083a3486dee6c1c5a1fcc6d299ed82cd21dd1f6acf4bcd0662b3247c83302e7f
   languageName: node
   linkType: hard
 
@@ -5362,11 +5362,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "databricks-vscode-e2e@workspace:packages/databricks-vscode-e2e"
   dependencies:
-    "@databricks/sdk-auth": "npm:0.54.0"
+    "@databricks/sdk-auth": "npm:0.56.0"
     "@databricks/sdk-clusters": "npm:0.52.4"
-    "@databricks/sdk-core": "npm:0.51.2"
+    "@databricks/sdk-core": "npm:0.52.0"
     "@databricks/sdk-jobs": "npm:0.57.4"
-    "@databricks/sdk-options": "npm:0.51.3"
+    "@databricks/sdk-options": "npm:0.52.0"
     "@databricks/sdk-scim": "npm:0.51.3"
     "@types/lodash": "npm:^4.17.25"
     "@types/mocha": "npm:^10.0.10"
@@ -5408,13 +5408,13 @@ __metadata:
     "@databricks/databricks-vscode-types": "workspace:^"
     "@databricks/sdk-accessmanagement": "npm:0.51.3"
     "@databricks/sdk-aigateway": "npm:0.23.3"
-    "@databricks/sdk-auth": "npm:0.54.0"
+    "@databricks/sdk-auth": "npm:0.56.0"
     "@databricks/sdk-clusters": "npm:0.52.4"
-    "@databricks/sdk-commandexecution": "npm:0.51.3"
-    "@databricks/sdk-core": "npm:0.51.2"
+    "@databricks/sdk-commandexecution": "npm:0.52.1"
+    "@databricks/sdk-core": "npm:0.52.0"
     "@databricks/sdk-dataquality": "npm:0.51.3"
     "@databricks/sdk-jobs": "npm:0.57.4"
-    "@databricks/sdk-options": "npm:0.51.3"
+    "@databricks/sdk-options": "npm:0.52.0"
     "@databricks/sdk-pipelines": "npm:0.58.4"
     "@databricks/sdk-scim": "npm:0.51.3"
     "@databricks/sdk-uc-catalogs": "npm:0.52.3"
