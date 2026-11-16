@@ -1,7 +1,7 @@
 {
     "name": "databricks",
     "displayName": "Databricks",
-    "version": "0.0.0",
+    "version": "3.1.0",
     "description": "IDE support for Databricks",
     "categories": [
         "Data Science",
