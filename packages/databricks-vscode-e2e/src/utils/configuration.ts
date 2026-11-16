@@ -296,12 +296,13 @@ export async function executeCommandWhenAvailable(command: string) {
 /**
  * Waits until the PROJECT view shows a row labelled `expected` and none
  * labelled `forbidden`. Ported from the old `commonUtils.ts`; labels match
- * exactly here.
+ * exactly here. The Python environment rows wait for ms-python's interpreter,
+ * which has taken over 40 s on CI runners, hence the long default.
  */
 export async function waitForConfigSurface(
     expected: string,
     forbidden: string,
-    timeoutMs = 60_000,
+    timeoutMs = 120_000,
 ) {
     let rows: string[] = [];
     await waitUntilSeen(

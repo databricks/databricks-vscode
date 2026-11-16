@@ -44,7 +44,7 @@ describe("Python setup entry visibility (pip project)", async function () {
             await fileExists(path.join(projectDir, "requirements.txt")),
             "fixture is missing requirements.txt (would not exercise the legacy flow)",
         );
-        await waitForConfigSurface(LEGACY_GROUP_LABEL, UV_SETUP_LABEL, 120_000);
+        await waitForConfigSurface(LEGACY_GROUP_LABEL, UV_SETUP_LABEL);
     });
 });
 
