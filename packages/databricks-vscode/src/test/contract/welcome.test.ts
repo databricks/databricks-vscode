@@ -31,7 +31,7 @@ const CHANGED: Record<string, { reason: string; replacement?: string; view?: str
         replacement: "Choose a Databricks project from a subfolder of the open folder:",
     },
     "A Databricks project was not detected in the workspace:": {
-        reason: "It said no project was detected in the workspace, though only the open folder and its subfolders are searched. It now names what was searched, the folders skipped, and how to use a bundle elsewhere.",
+        reason: 'It said no project was detected in the workspace, though only the open folder and its subfolders are searched. It now names what was searched, the folders skipped, and how to use a bundle elsewhere. It is hidden while the sub-project search runs, which no longer holds up detection; "Looking for bundles" shows instead.',
         replacement: "No bundle (databricks.yml) was found in the open folder or its subfolders,",
     },
     "Loading configuration": {

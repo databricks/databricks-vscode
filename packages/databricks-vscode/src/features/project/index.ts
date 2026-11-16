@@ -1,13 +1,30 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Feature } from "../../kernel/feature";
+import type { ProjectService } from "../../kernel/project/ProjectService";
 import { when } from "../../platform/reactive";
+import { setting } from "../../platform/settings";
 import { LocalFolderSection, SELECT_PROJECT } from "./LocalFolderSection";
 import { selectActiveProjectFolder } from "./ProjectCommands";
 import { selectTarget } from "./TargetCommands";
 import { SELECT_TARGET, TargetSection } from "./TargetSection";
-import { BUNDLE_SUB_PROJECTS, EXTENSION_INITIALIZATION, PROJECT_EVENTS } from "./telemetry";
-import { INITIALIZED, LEGACY_PROJECT, SUB_PROJECTS_AVAILABLE, TARGET_SET } from "./welcome";
+import {
+    BUNDLE_SUB_PROJECT_SEARCH,
+    BUNDLE_SUB_PROJECTS,
+    EXTENSION_INITIALIZATION,
+    PROJECT_EVENTS,
+} from "./telemetry";
+import {
+    INITIALIZED,
+    LEGACY_PROJECT,
+    SUB_PROJECT_SEARCH,
+    SUB_PROJECTS_AVAILABLE,
+    TARGET_SET,
+    type SubProjectSearchKey,
+} from "./welcome";
+
+/** VS Code's own setting: whether its file search, and so the sub-project search, follows links. */
+const SEARCH_FOLLOW_SYMLINKS = setting<boolean>("search", "followSymlinks", true);
 
 /**
  * The bundle project (SHELL-01 to SHELL-03, SHELL-06): the Local Folder and
@@ -16,7 +33,13 @@ import { INITIALIZED, LEGACY_PROJECT, SUB_PROJECTS_AVAILABLE, TARGET_SET } from 
  */
 export const project: Feature = {
     id: "project",
-    contextKeys: [INITIALIZED, SUB_PROJECTS_AVAILABLE, TARGET_SET, LEGACY_PROJECT],
+    contextKeys: [
+        INITIALIZED,
+        SUB_PROJECT_SEARCH,
+        SUB_PROJECTS_AVAILABLE,
+        TARGET_SET,
+        LEGACY_PROJECT,
+    ],
     telemetryEvents: PROJECT_EVENTS,
     session: { [SELECT_PROJECT]: "same", [SELECT_TARGET]: "same" },
 
@@ -46,6 +69,7 @@ export const project: Feature = {
         });
         const update = () => {
             void contextKeys.set(SUB_PROJECTS_AVAILABLE, service.subProjects.value.length > 0);
+            void contextKeys.set(SUB_PROJECT_SEARCH, subProjectSearchKey(service));
             void contextKeys.set(TARGET_SET, service.target.value !== undefined);
             // Last: the views that wait for it (SSH Tunnel) then read the target too.
             void contextKeys.set(INITIALIZED, service.initialized.value);
@@ -65,6 +89,8 @@ export const project: Feature = {
         };
         ctx.subscriptions.push(
             service.initialized.onDidChange(update),
+            service.active.onDidChange(update),
+            service.subProjectSearch.onDidChange(update),
             service.subProjects.onDidChange(update),
             service.target.onDidChange(update),
             service.initialized.onDidChange(() => void updateLegacy()),
@@ -78,16 +104,38 @@ export const project: Feature = {
         // Same order as update(), so the SSH views never see a target that isn't set yet.
         void ctx.kernel.contextKeys.set(TARGET_SET, service.target.value !== undefined);
         void ctx.kernel.contextKeys.set(INITIALIZED, service.initialized.value);
-        // The first detection pass, as the old activation reported it.
+        // The first detection pass, as the old activation reported it, then its sub-project search.
         const record = ctx.telemetry.start(EXTENSION_INITIALIZATION);
-        void when(service.initialized, (i) => i).then(() => {
+        const recordSearch = ctx.telemetry.start(BUNDLE_SUB_PROJECT_SEARCH);
+        void when(service.initialized, (i) => i).then(async () => {
             const detected = service.active.value !== undefined;
             record({ success: true, type: detected ? "dabs" : "unknown" });
-            if (!detected && service.root.value !== undefined) {
-                ctx.telemetry.record(BUNDLE_SUB_PROJECTS, {
-                    count: service.subProjects.value.length,
+            const root = service.root.value;
+            const search = await when(service.subProjectSearch, (s) => s !== "searching");
+            // Undefined, or another root: a bundle or another folder turned up before it ended.
+            if (search !== undefined && service.root.value === root) {
+                const count = service.subProjects.value.length;
+                recordSearch({
+                    success: search === "done",
+                    count,
+                    followSymlinks: ctx.kernel.settings.get(SEARCH_FOLLOW_SYMLINKS),
                 });
+                // The old event has no success field: a failed search isn't "none found".
+                if (search === "done") {
+                    ctx.telemetry.record(BUNDLE_SUB_PROJECTS, { count });
+                }
             }
         });
     },
 };
+
+/** SUB_PROJECT_SEARCH for the last detection pass and its search. */
+function subProjectSearchKey(service: ProjectService): SubProjectSearchKey {
+    if (!service.initialized.value || service.active.value !== undefined) {
+        return "";
+    }
+    if (service.subProjectSearch.value === "searching") {
+        return "searching";
+    }
+    return service.subProjects.value.length > 0 ? "found" : "none";
+}

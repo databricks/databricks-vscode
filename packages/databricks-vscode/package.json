@@ -1943,8 +1943,13 @@
             },
             {
                 "view": "configurationView",
+                "contents": "Looking for bundles (databricks.yml) in the open folder and its subfolders...",
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.project && databricks.context.subProjectSearch == 'searching'"
+            },
+            {
+                "view": "configurationView",
                 "contents": "Choose a Databricks project from a subfolder of the open folder:\n[Choose a project](command:databricks.bundle.selectActiveProjectFolder)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectsAvailable && !databricks.context.configurationView.hasRows"
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.project && databricks.context.subProjectSearch == 'found' && !databricks.context.configurationView.hasRows"
             },
             {
                 "view": "configurationView",
@@ -1954,7 +1959,7 @@
             {
                 "view": "configurationView",
                 "contents": "No bundle (databricks.yml) was found in the open folder or its subfolders, except hidden folders and node_modules. To use one elsewhere, pick its folder:\n[Select a project](command:databricks.bundle.selectActiveProjectFolder)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.project && !databricks.context.subProjectsAvailable"
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.project && databricks.context.subProjectSearch == 'none'"
             },
             {
                 "view": "configurationView",

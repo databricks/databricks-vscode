@@ -21,3 +21,22 @@ export const globFileSearch: FileSearch = {
             ignore: [exclude],
         }),
 };
+
+/** A search that answers, with what `globFileSearch` finds then, only once the test calls `release`. */
+export function heldFileSearch() {
+    const held: (() => void)[] = [];
+    const search: FileSearch = {
+        find: (base, pattern, exclude) =>
+            new Promise((resolve, reject) =>
+                held.push(
+                    () => void globFileSearch.find(base, pattern, exclude).then(resolve, reject),
+                ),
+            ),
+    };
+    return {
+        search,
+        /** How many searches wait to be released. */
+        held: () => held.length,
+        release: () => held.splice(0).forEach((answer) => answer()),
+    };
+}

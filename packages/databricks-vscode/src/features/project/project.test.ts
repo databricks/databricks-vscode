@@ -3,10 +3,16 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerFeatures, startFeatures } from "../../kernel/feature";
 import { ACTIVE_PROJECT_PATH, PROJECT_TARGETS } from "../../kernel/project/ProjectService";
+import type { Host } from "../../kernel/host/Host";
+import type { FileSearch } from "../../platform/fileSearch";
 import { MutableState, when } from "../../platform/reactive";
+import type { Settings } from "../../platform/settings";
 import { StateStore } from "../../platform/state";
 import { FakeFileEvents } from "../../test-support/fakeFiles";
-import { fakeFeatureHost, fakeKernel, fakeMemento } from "../../test-support/fakes";
+import { fakeFeatureHost, fakeKernel, fakeMemento, fakeSettings } from "../../test-support/fakes";
+import { heldFileSearch } from "../../test-support/fileSearch";
+import { evaluateWhen } from "../../test-support/whenClause";
+import { SERVERLESS_SESSION } from "../../test-support/sessionEnv";
 import { useTempDirs } from "../../test-support/tempDir";
 import { host as vscode } from "../../test-support/vscode";
 import { project } from "./index";
@@ -15,23 +21,81 @@ import { SELECT_TARGET, TargetSection } from "./TargetSection";
 
 const tempDir = useTempDirs();
 
-function setup(folders: string[]) {
+/** The Project view's welcome entries while a folder is open, by their first words. */
+const PROJECT_WELCOMES = {
+    looking: "Looking for bundles (databricks.yml)",
+    choose: "Choose a Databricks project from a subfolder",
+    none: "No bundle (databricks.yml) was found",
+    loading: "Loading configuration",
+} as const;
+const welcomes = (
+    JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../../package.json"), "utf-8")) as {
+        contributes: { viewsWelcome: { view: string; contents: string; when: string }[] };
+    }
+).contributes.viewsWelcome.filter((w) => w.view === "configurationView");
+
+/** Which of those entries VS Code shows with these context keys, a folder being open. */
+function shownWelcomes(keys: ReadonlyMap<string, unknown>): string {
+    const atom = (key: string, op?: string, value?: string) => {
+        if (key === "workspaceFolderCount") {
+            return op === ">" && value === "0";
+        }
+        const actual = keys.get(key);
+        return op === "==" ? actual === value?.replace(/^'(.*)'$/, "$1") : Boolean(actual);
+    };
+    return Object.entries(PROJECT_WELCOMES)
+        .filter(([, start]) => {
+            const entry = welcomes.find((w) => w.contents.startsWith(start));
+            return entry !== undefined && evaluateWhen(entry.when, atom) === true;
+        })
+        .map(([name]) => name)
+        .join("+");
+}
+
+/**
+ * What the view showed with `keys`, then after each of `changes` in turn,
+ * each repeat of the previous state left out (a state coming back stays in).
+ */
+function shownAlong(keys: Map<string, unknown>, changes: readonly [string, unknown][]) {
+    const shown = [shownWelcomes(keys)];
+    for (const [key, value] of changes) {
+        keys.set(key, value);
+        const now = shownWelcomes(keys);
+        if (now !== shown.at(-1)) {
+            shown.push(now);
+        }
+    }
+    return shown;
+}
+
+/** The bootstrap sets the project key from another listener: in these tests, before the feature's keys. */
+const PROJECT_KEY = "databricks.context.project";
+
+function setup(
+    folders: string[],
+    options: { search?: FileSearch; settings?: Settings; host?: Host } = {},
+) {
     vscode.folders = folders;
     const files = new FakeFileEvents();
     const state = new StateStore({ global: fakeMemento(), workspace: fakeMemento() });
+    const folderState = new MutableState<readonly string[]>(folders);
     const kernel = fakeKernel({
-        folders: new MutableState<readonly string[]>(folders),
+        folders: folderState,
         files,
         state,
+        ...options,
     });
     const contextKeys = new Map<string, unknown>();
     /** Every key in the order it was set, so a test can see what a view saw first. */
     const setOrder: string[] = [];
+    /** Every key and value in the order they were set, to replay what a view saw in between. */
+    const sets: [string, unknown][] = [];
     const contextKernel = {
         ...kernel,
         contextKeys: {
             set: async (key: { name: string }, value: unknown) => {
                 setOrder.push(key.name);
+                sets.push([key.name, value]);
                 contextKeys.set(key.name, value);
             },
             get: () => undefined,
@@ -56,6 +120,7 @@ function setup(folders: string[]) {
     const sections = () => fake.host.sections.list();
     return {
         kernel,
+        folders: folderState,
         state,
         files,
         rows,
@@ -63,8 +128,15 @@ function setup(folders: string[]) {
         run,
         contextKeys,
         setOrder,
+        sets,
         events,
         initialized: () => when(kernel.project.initialized, (i) => i),
+        /** After the first pass, until its sub-project search ends. */
+        searched: async () => {
+            await when(kernel.project.initialized, (i) => i);
+            await when(kernel.project.subProjectSearch, (s) => s !== "searching");
+            await new Promise((r) => setImmediate(r));
+        },
     };
 }
 
@@ -232,9 +304,122 @@ describe("the project feature", () => {
     it("tells the welcome content when sub-projects exist", async () => {
         const t = tempDir();
         t.write("nested1/databricks.yml");
-        const { initialized, contextKeys } = setup([t.dir]);
-        await initialized();
+        const { searched, contextKeys } = setup([t.dir]);
+        await searched();
         expect(contextKeys.get("databricks.context.subProjectsAvailable")).toBe(true);
+    });
+
+    it.each([
+        ["a local window", undefined],
+        ["a session window", SERVERLESS_SESSION],
+    ])(
+        "says it is looking for projects until the sub-project search ends, without holding up detection, in %s",
+        async (_, host) => {
+            const t = tempDir();
+            t.write("nested1/databricks.yml");
+            const search = heldFileSearch();
+            const { initialized, searched, contextKeys, sets } = setup([t.dir], {
+                search: search.search,
+                ...(host !== undefined ? { host } : {}),
+            });
+            await initialized();
+            await new Promise((r) => setImmediate(r));
+            expect(contextKeys.get("databricks.context.initialized")).toBe(true);
+            expect(shownWelcomes(contextKeys)).toBe("looking");
+            const before = sets.length;
+            search.release();
+            await searched();
+            expect(contextKeys.get("databricks.context.subProjectsAvailable")).toBe(true);
+            // After every single key change, one text, never "No bundle".
+            expect(shownAlong(new Map(sets.slice(0, before)), sets.slice(before))).toEqual([
+                "looking",
+                "choose",
+            ]);
+        },
+    );
+
+    it("goes from one folder's projects to looking in another folder without showing anything else", async () => {
+        const a = tempDir();
+        a.write("in-a/databricks.yml");
+        const b = tempDir();
+        b.write("README.md", "");
+        const search = heldFileSearch();
+        const { kernel, folders, initialized, searched, contextKeys, sets } = setup([a.dir], {
+            search: search.search,
+        });
+        await initialized();
+        search.release();
+        await searched();
+        expect(shownWelcomes(contextKeys)).toBe("choose");
+        const before = sets.length;
+        folders.set([b.dir]);
+        await vi.waitFor(() => expect(kernel.project.root.value).toBe(b.dir));
+        await new Promise((r) => setImmediate(r));
+        expect(shownAlong(new Map(sets.slice(0, before)), sets.slice(before))).toEqual([
+            "choose",
+            "looking",
+        ]);
+        search.release();
+        await searched();
+        expect(shownWelcomes(contextKeys)).toBe("none");
+    });
+
+    it("says it is looking, not that there is no bundle, when the root bundle goes", async () => {
+        const t = tempDir();
+        t.write("databricks.yml", "targets: {dev: {}}");
+        t.write("nested/databricks.yml");
+        const search = heldFileSearch();
+        const { kernel, initialized, contextKeys, sets, files } = setup([t.dir], {
+            search: search.search,
+        });
+        await initialized();
+        expect(kernel.project.active.value?.root).toBe(t.dir);
+        const before = sets.length;
+        fs.rmSync(t.path("databricks.yml"));
+        files.touch(t.path("databricks.yml"));
+        await vi.waitFor(() => expect(kernel.project.active.value).toBeUndefined());
+        await new Promise((r) => setImmediate(r));
+        const keys = new Map([...sets.slice(0, before), [PROJECT_KEY, true]]);
+        expect(shownAlong(keys, [[PROJECT_KEY, false], ...sets.slice(before)])).toEqual([
+            "loading",
+            "",
+            "looking",
+        ]);
+        search.release();
+        await vi.waitFor(() => expect(shownWelcomes(contextKeys)).toBe("choose"));
+    });
+
+    it("empties the sub-project search key when a project without targets opens", async () => {
+        const t = tempDir();
+        t.write("databricks.yml", "bundle: {name: demo}");
+        const { kernel, folders, initialized, contextKeys } = setup([]);
+        await initialized();
+        await new Promise((r) => setImmediate(r));
+        expect(contextKeys.get("databricks.context.subProjectSearch")).toBe("none");
+        folders.set([t.dir]);
+        await vi.waitFor(() => expect(kernel.project.active.value?.root).toBe(t.dir));
+        await new Promise((r) => setImmediate(r));
+        expect(contextKeys.get("databricks.context.subProjectSearch")).toBe("");
+    });
+
+    it("goes from choosing a project to loading the bundle written at the root, without both", async () => {
+        const t = tempDir();
+        t.write("nested/databricks.yml");
+        const { kernel, initialized, searched, contextKeys, sets, files } = setup([t.dir]);
+        await initialized();
+        await searched();
+        expect(shownWelcomes(contextKeys)).toBe("choose");
+        const before = sets.length;
+        t.write("databricks.yml", "targets: {dev: {}}");
+        files.touch(t.path("databricks.yml"));
+        await vi.waitFor(() => expect(kernel.project.active.value?.root).toBe(t.dir));
+        await new Promise((r) => setImmediate(r));
+        const keys = new Map([...sets.slice(0, before), [PROJECT_KEY, false]]);
+        expect(shownAlong(keys, [[PROJECT_KEY, true], ...sets.slice(before)])).toEqual([
+            "choose",
+            "loading",
+        ]);
+        expect(contextKeys.get("databricks.context.subProjectSearch")).toBe("");
     });
 
     it("lists the sub-projects in the picker and activates the chosen one", async () => {
@@ -278,20 +463,82 @@ describe("the project feature", () => {
         expect(a.events().filter((e) => e.startsWith("extensionInitialization"))).toEqual([
             expect.stringContaining(`"event.success":"true","event.type":"dabs"`),
         ]);
+        expect(a.events().filter((e) => e.startsWith("bundleSubProject"))).toEqual([]);
 
         vscode.reset();
         const plain = tempDir();
         plain.write("one/databricks.yml");
         plain.write("two/databricks.yml");
         const b = setup([plain.dir]);
-        await b.initialized();
-        await new Promise((r) => setImmediate(r));
-        expect(b.events().filter((e) => !e.startsWith("extensionInitialization"))).toEqual([
+        await b.searched();
+        expect(b.events().filter((e) => e.startsWith("bundleSubProjects "))).toEqual([
             expect.stringContaining(`"event.count":2`),
         ]);
         expect(b.events().find((e) => e.startsWith("extensionInitialization"))).toContain(
             `"event.type":"unknown"`,
         );
+    });
+
+    it("records initialization before the sub-project search ends, then the search, with VS Code's followSymlinks", async () => {
+        const t = tempDir();
+        t.write("nested1/databricks.yml");
+        const search = heldFileSearch();
+        const { initialized, searched, events } = setup([t.dir], {
+            search: search.search,
+            settings: fakeSettings({ "search.followSymlinks": false }),
+        });
+        const names = () => events().map((e) => e.split(" ")[0]);
+        await initialized();
+        await new Promise((r) => setImmediate(r));
+        expect(names()).toEqual(["extensionInitialization"]);
+        search.release();
+        await searched();
+        expect(names()).toEqual([
+            "extensionInitialization",
+            "bundleSubProjectSearch",
+            "bundleSubProjects",
+        ]);
+        const recorded = events().find((e) => e.startsWith("bundleSubProjectSearch "));
+        expect(recorded).toContain(`"event.success":"true"`);
+        expect(recorded).toContain(`"event.followSymlinks":"false"`);
+        expect(recorded).toContain(`"event.count":1`);
+        expect(recorded).toMatch(/"event.duration":\d/);
+    });
+
+    it("records a failed sub-project search as failed", async () => {
+        const t = tempDir();
+        const failing: FileSearch = {
+            find: async () => {
+                throw new Error("search failed");
+            },
+        };
+        const { searched, events } = setup([t.dir], { search: failing });
+        await searched();
+        expect(events().find((e) => e.startsWith("bundleSubProjectSearch "))).toContain(
+            `"event.success":"false"`,
+        );
+        // The old event has no success field, so a failure isn't recorded as no sub-projects.
+        expect(events().filter((e) => e.startsWith("bundleSubProjects "))).toEqual([]);
+    });
+
+    it("doesn't record the first sub-project search when another folder turned up before it ended", async () => {
+        const a = tempDir();
+        a.write("in-a/databricks.yml");
+        const b = tempDir();
+        b.write("in-b/databricks.yml");
+        const search = heldFileSearch();
+        const { kernel, folders, initialized, searched, events } = setup([a.dir], {
+            search: search.search,
+        });
+        await initialized();
+        folders.set([b.dir]);
+        await new Promise((r) => setTimeout(r, 5));
+        await kernel.project.settled();
+        search.release();
+        await searched();
+        await new Promise((r) => setTimeout(r, 20));
+        expect(kernel.project.subProjects.value.map((p) => p.relative)).toEqual(["in-b"]);
+        expect(events().filter((e) => e.startsWith("bundleSubProject"))).toEqual([]);
     });
 
     it("is silent when the picker is dismissed", async () => {
