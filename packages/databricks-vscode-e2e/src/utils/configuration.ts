@@ -296,35 +296,32 @@ export async function executeCommandWhenAvailable(command: string) {
 /**
  * Waits until the PROJECT view shows a row labelled `expected` and none
  * labelled `forbidden`. Ported from the old `commonUtils.ts`; labels match
- * exactly here.
+ * exactly here. The Python environment rows wait for ms-python's interpreter,
+ * which has taken over 40 s on CI runners, hence the long default.
  */
 export async function waitForConfigSurface(
     expected: string,
     forbidden: string,
-    timeoutMs = 60_000,
+    timeoutMs = 120_000,
 ) {
-    await browser.waitUntil(
+    let rows: string[] = [];
+    await waitUntilSeen(
         async () => {
             const section = (await getViewSection("PROJECT")) as CustomTreeSection | undefined;
+            rows = [];
             if (!section) {
                 return false;
             }
-            let sawExpected = false;
             for (const item of await section.getVisibleItems()) {
-                const label = await item.getLabel();
-                if (label === forbidden) {
-                    return false;
-                }
-                if (label === expected) {
-                    sawExpected = true;
-                }
+                rows.push(await item.getLabel());
             }
-            return sawExpected;
+            return rows.includes(expected) && !rows.includes(forbidden);
         },
         {
             timeout: timeoutMs,
             interval: 1000,
             timeoutMsg: `PROJECT never showed "${expected}" without "${forbidden}"`,
         },
+        () => `rendered rows: ${rows.length > 0 ? rows.map((r) => `"${r}"`).join(", ") : "none"}`,
     );
 }
