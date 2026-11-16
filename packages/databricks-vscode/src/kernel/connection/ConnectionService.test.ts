@@ -52,6 +52,7 @@ function setup(
         },
         async () => snapshot,
     );
+    const log = fakeLog();
     const http =
         options.http ??
         new FakeHttpClient().on("GET", SCIM_ME, (req) => ({
@@ -81,7 +82,7 @@ function setup(
             azureCliToken: async () => ({ value: "az" }),
         },
         project: options.project,
-        log: fakeLog(),
+        log,
         httpClient: http,
     });
     const settle = () => when(service.state, (s) => s.status !== "connecting");
@@ -89,6 +90,7 @@ function setup(
         service,
         state,
         http,
+        log,
         settle,
         setProfiles: (p: ProfileInfo[]) => {
             snapshot = { ...snapshot, profiles: p };
@@ -474,6 +476,104 @@ describe("ConnectionService in a project", () => {
         await new Promise((r) => setTimeout(r, 100));
         expect(project.saved).toEqual(["DEFAULT"]);
         expect(http.to(SCIM_ME)).toHaveLength(1);
+    });
+
+    it("keeps the target's profile when a second profile for its host is added after the save", async () => {
+        const project = fakeProject(undefined);
+        const { service, settle, setProfiles } = setup({
+            project: project.source,
+            profiles: [pat("DEFAULT", B), pat("other", A)],
+        });
+        service.start();
+        await settle();
+        project.scope.set({ initialized: true, project: { root: "/w", target: "dev", host: B } });
+        await vi.waitFor(() =>
+            expect(service.connection?.source).toEqual({ kind: "savedForTarget", target: "dev" }),
+        );
+        setProfiles([pat("DEFAULT", B), pat("other", A), pat("dev", B)]);
+        await new Promise((r) => setTimeout(r, 100));
+        expect(service.state.value).toMatchObject({ status: "connected" });
+        expect(service.connection).toMatchObject({
+            profile: "DEFAULT",
+            source: { kind: "savedForTarget", target: "dev" },
+        });
+        expect(project.saved).toEqual(["DEFAULT"]);
+    });
+
+    it("saves nothing when the target changes while its connection is made", async () => {
+        const project = fakeProject(undefined);
+        let releaseProd!: () => void;
+        const prodGate = new Promise<void>((r) => (releaseProd = r));
+        let releaseSave!: () => void;
+        const saveGate = new Promise<void>((r) => (releaseSave = r));
+        const http = new FakeHttpClient().on("GET", SCIM_ME, async (req) => {
+            const auth = req.headers.get("Authorization")!;
+            if (auth.endsWith("prod")) {
+                await prodGate;
+            }
+            return { body: { userName: auth } };
+        });
+        // The explicit choice's save waits, so the target can change while the connection to prod is made.
+        const source: ProjectConnectionSource = {
+            ...project.source,
+            saveProfile: async (profile) => {
+                if (profile === "DEFAULT") {
+                    await saveGate;
+                }
+                return project.source.saveProfile(profile);
+            },
+        };
+        const {
+            service,
+            settle,
+            http: client,
+        } = setup({
+            project: source,
+            http,
+            profiles: [pat("DEFAULT", A), pat("prod", B)],
+        });
+        service.start();
+        await settle();
+        project.scope.set({ initialized: true, project: { root: "/w", target: "dev", host: B } });
+        await vi.waitFor(() =>
+            expect(
+                client.requests.some((r) => r.headers.get("Authorization") === "Bearer dapi-prod"),
+            ).toBe(true),
+        );
+        const switching = service.useProfile("DEFAULT");
+        project.scope.set({ initialized: true, project: { root: "/w", target: "other", host: A } });
+        releaseProd();
+        await vi.waitFor(() => expect(service.connection?.profile).toBe("prod"));
+        releaseSave();
+        await switching;
+        expect(project.saved).toEqual(["DEFAULT"]);
+    });
+
+    it("stays connected when saving the target's profile fails, and logs it once", async () => {
+        const project = fakeProject({ root: "/w", target: "dev", host: B });
+        const failing: ProjectConnectionSource = {
+            ...project.source,
+            saveProfile: async () => {
+                throw new Error("read-only");
+            },
+        };
+        const { service, settle, log } = setup({
+            project: failing,
+            profiles: [pat("DEFAULT", B), pat("other", A)],
+        });
+        service.start();
+        expect(summary(await settle())).toBe("connected DEFAULT user-of-Bearer dapi-DEFAULT");
+        // The save runs after the state is connected, so its warning comes a tick later.
+        await vi.waitFor(() =>
+            expect(
+                log.entries.filter(
+                    (e) =>
+                        e.level === "warn" &&
+                        e.message === "Can't save profile DEFAULT for the target",
+                ),
+            ).toHaveLength(1),
+        );
+        expect(service.state.value).toMatchObject({ status: "connected" });
     });
 
     it("saves nothing when the target already has its profile saved", async () => {

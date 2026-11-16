@@ -412,7 +412,9 @@ export class ConnectionService implements Disposable {
 
     /**
      * Puts back a saved choice that a sign-in changed before its browser login
-     * was cancelled, and connects with it again, as the window was.
+     * was cancelled, and connects again. With no choice to put back, the
+     * connection can still save the target's only profile, as any connection to
+     * it does.
      */
     async restoreChoice(before: SavedChoiceState): Promise<ConnectionState> {
         this.refuseInSession("restore a choice");
@@ -584,7 +586,8 @@ export class ConnectionService implements Disposable {
                         connection: { ...current.connection, source: resolution.source },
                     });
                 }
-                // The project can arrive after the connection, which was then the default profile.
+                // Any refresh that keeps the connection can bring the project it needs: the
+                // project may have arrived after a connection to the same profile.
                 await this.saveOnlyProfileForTarget(resolution, project);
             }
             return this.current.value;
@@ -680,6 +683,10 @@ export class ConnectionService implements Disposable {
      * only profile for its host was chosen, as the old extension did, so that a
      * second profile for the host doesn't make the choice ambiguous later. The
      * save re-resolves the connection as `savedForTarget`, which saves nothing.
+     *
+     * `project` is the target as the resolution read it, when it started. The
+     * save goes to the target that is active when it runs, so it's skipped when
+     * that has changed: the profile was chosen for the old target.
      */
     private async saveOnlyProfileForTarget(
         resolution: Resolution,
