@@ -1201,6 +1201,48 @@ describe("the connection feature", () => {
         expect(kernel.runner.calls.filter((c) => c.args[0] === "configure")).toHaveLength(1);
     });
 
+    it("ends a token check that hangs on Cancel: nothing is saved or shown, and another sign-in can start", async () => {
+        const fixture = setup();
+        const { kernel, settled, run, file, http } = fixture;
+        refuseTypedTokenUntil(fixture, () => true);
+        // The host never answers the typed token's check; the request ends only when it's aborted, as `fetch` does.
+        http.on("GET", SCIM_ME, (req) =>
+            req.headers.get("Authorization") === "Bearer dapi-typed"
+                ? new Promise((_resolve, reject) =>
+                      req.signal?.addEventListener("abort", () => reject(req.signal!.reason), {
+                          once: true,
+                      }),
+                  )
+                : { body: { userName: "someone" } },
+        );
+        kernel.start();
+        await settled();
+        const before = fs.readFileSync(file, "utf8");
+        const signIn = run("databricks.connection.configureLogin");
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(1));
+        await enterNewPat();
+        await vi.waitFor(() =>
+            expect(vscode.progress.at(-1)).toEqual({
+                title: "Databricks: Checking the Personal Access Token",
+                cancellable: true,
+            }),
+        );
+
+        vscode.cancelProgress();
+        await signIn;
+        expect(vscode.errors).toEqual([]);
+        expect(kernel.runner.calls.find((c) => c.args[0] === "configure")).toBeUndefined();
+        expect(fs.readFileSync(file, "utf8")).toBe(before);
+        expect(kernel.connection.connection?.profile).toBe("DEFAULT");
+
+        // The sign-in is free: the wizard opens again, with no "already in progress".
+        const again = run("databricks.connection.configureLogin");
+        await vi.waitFor(() => expect(vscode.quickInputs).toHaveLength(5));
+        expect(vscode.errors).toEqual([]);
+        lastInput().hide();
+        await again;
+    });
+
     it("signs in on a token check's Retry as on a first try: signed out of both, Unity Gateway signs in too, and the sign-in is recorded", async () => {
         const fixture = setup();
         const { kernel, settled, run, reporter } = fixture;

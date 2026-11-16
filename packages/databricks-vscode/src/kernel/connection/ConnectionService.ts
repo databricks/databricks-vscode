@@ -271,7 +271,12 @@ export class ConnectionService implements Disposable {
      * that doesn't work is never saved and the window keeps its connection. Throws what
      * connecting would.
      */
-    async checkToken(host: string, token: string, profile: string): Promise<void> {
+    async checkToken(
+        host: string,
+        token: string,
+        profile: string,
+        signal: AbortSignal,
+    ): Promise<void> {
         const credentials = credentialsFor(
             { name: profile, host, authType: "pat", token },
             this.deps.sources,
@@ -285,7 +290,7 @@ export class ConnectionService implements Disposable {
             },
             { kind: "saved" },
             this.deps,
-            new AbortController().signal,
+            signal,
         );
     }
 

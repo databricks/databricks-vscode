@@ -398,6 +398,7 @@ export class ConnectionCommands {
 
     /**
      * As the old wizard did: a token that doesn't work isn't saved, and the window keeps its connection.
+     * Cancel ends the check at once and saves nothing, so a host that hangs doesn't hold the sign-in.
      * `retry` is the error's Retry, when the sign-in can resume from it.
      */
     private async checkToken(
@@ -409,10 +410,27 @@ export class ConnectionCommands {
                 {
                     location: ProgressLocation.Notification,
                     title: "Databricks: Checking the Personal Access Token",
+                    cancellable: true,
                 },
-                () => this.kernel.connection.checkToken(choice.host, choice.token, choice.profile),
+                async (_progress, token) => {
+                    const controller = new AbortController();
+                    const subscription = token.onCancellationRequested(() => controller.abort());
+                    try {
+                        await this.kernel.connection.checkToken(
+                            choice.host,
+                            choice.token,
+                            choice.profile,
+                            controller.signal,
+                        );
+                    } finally {
+                        subscription.dispose();
+                    }
+                },
             );
         } catch (e) {
+            if (isCancellation(e)) {
+                throw e;
+            }
             throw new UserFacingError(
                 "PAT_CHECK_FAILED",
                 `Can't login with the provided Personal Access Token: ${errorMessage(e)}`,
