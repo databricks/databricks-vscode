@@ -456,6 +456,82 @@ describe("ConnectionService in a project", () => {
         expect(service.connection!.api).toBe(api);
     });
 
+    it("saves the only profile for the target when the project arrives after the connection, once", async () => {
+        // No project yet: the connection is the default profile, which is also the target's only one for its host.
+        const project = fakeProject(undefined);
+        const { service, settle, http } = setup({
+            project: project.source,
+            profiles: [pat("DEFAULT", B), pat("other", A)],
+        });
+        service.start();
+        await settle();
+        expect(service.connection?.source).toEqual({ kind: "defaultProfile" });
+        project.scope.set({ initialized: true, project: { root: "/w", target: "dev", host: B } });
+        await vi.waitFor(() =>
+            expect(service.connection?.source).toEqual({ kind: "savedForTarget", target: "dev" }),
+        );
+        // The save re-resolves the same connection: no reconnect, and no second save.
+        await new Promise((r) => setTimeout(r, 100));
+        expect(project.saved).toEqual(["DEFAULT"]);
+        expect(http.to(SCIM_ME)).toHaveLength(1);
+    });
+
+    it("saves nothing when the target already has its profile saved", async () => {
+        const project = fakeProject({
+            root: "/w",
+            target: "dev",
+            host: B,
+            savedProfile: "DEFAULT",
+        });
+        const { service, settle } = setup({
+            project: project.source,
+            profiles: [pat("DEFAULT", B), pat("other", A)],
+        });
+        service.start();
+        await settle();
+        project.scope.set({
+            initialized: true,
+            project: { root: "/w", target: "dev", host: B, savedProfile: "DEFAULT" },
+        });
+        await new Promise((r) => setTimeout(r, 100));
+        expect(project.saved).toEqual([]);
+    });
+
+    it("saves nothing for a target whose workspace.profile names the connection", async () => {
+        const project = fakeProject(undefined);
+        const { service, settle } = setup({
+            project: project.source,
+            profiles: [pat("DEFAULT", B), pat("other", A)],
+        });
+        service.start();
+        await settle();
+        project.scope.set({
+            initialized: true,
+            project: { root: "/w", target: "dev", host: B, workspaceProfile: "DEFAULT" },
+        });
+        await vi.waitFor(() =>
+            expect(service.connection?.source).toEqual({ kind: "workspaceProfile", target: "dev" }),
+        );
+        await new Promise((r) => setTimeout(r, 100));
+        expect(project.saved).toEqual([]);
+    });
+
+    it("saves nothing in a session window", async () => {
+        const project = fakeProject({ root: "/w", target: "dev", host: B });
+        const { service, settle } = setup({
+            project: project.source,
+            session: true,
+            env: {
+                DATABRICKS_HOST: B,
+                DATABRICKS_TOKEN: "dapi-env",
+            },
+        });
+        service.start();
+        expect((await settle()).status).toBe("connected");
+        await new Promise((r) => setTimeout(r, 100));
+        expect(project.saved).toEqual([]);
+    });
+
     it("signs out with the candidates when several profiles match", async () => {
         const project = fakeProject(dev);
         const { service, settle } = setup({ project: project.source });

@@ -584,6 +584,8 @@ export class ConnectionService implements Disposable {
                         connection: { ...current.connection, source: resolution.source },
                     });
                 }
+                // The project can arrive after the connection, which was then the default profile.
+                await this.saveOnlyProfileForTarget(resolution, project);
             }
             return this.current.value;
         }
@@ -653,17 +655,7 @@ export class ConnectionService implements Disposable {
                         this.deps.log.warn(`Can't record ${host}'s workspace`, e),
                     );
             }
-            if (
-                resolution.source.kind === "onlyProfileForHost" &&
-                profile !== undefined &&
-                sameTarget(project, this.project)
-            ) {
-                // Saved, as the old extension did, so that a second profile for
-                // the host doesn't make the choice ambiguous later.
-                await this.deps.project!.saveProfile(profile.name).catch((e: unknown) => {
-                    this.deps.log.warn(`Can't save profile ${profile.name} for the target`, e);
-                });
-            }
+            await this.saveOnlyProfileForTarget(resolution, project);
         } catch (error) {
             if (generation !== this.generation) {
                 return this.superseded();
@@ -681,6 +673,29 @@ export class ConnectionService implements Disposable {
             finish(false);
         }
         return this.current.value;
+    }
+
+    /**
+     * Saves the connection's profile for the project's target when the target's
+     * only profile for its host was chosen, as the old extension did, so that a
+     * second profile for the host doesn't make the choice ambiguous later. The
+     * save re-resolves the connection as `savedForTarget`, which saves nothing.
+     */
+    private async saveOnlyProfileForTarget(
+        resolution: Resolution,
+        project: ProjectScope | undefined,
+    ): Promise<void> {
+        if (
+            resolution.kind !== "profile" ||
+            resolution.source.kind !== "onlyProfileForHost" ||
+            !sameTarget(project, this.project)
+        ) {
+            return;
+        }
+        const name = resolution.profile.name;
+        await this.deps.project!.saveProfile(name).catch((e: unknown) => {
+            this.deps.log.warn(`Can't save profile ${name} for the target`, e);
+        });
     }
 
     /** A newer resolution took over: wait for its result. */
