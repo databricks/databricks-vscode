@@ -166,6 +166,22 @@ describe("CommandRegistry", () => {
         expect(t.executions[0]?.success).toBe(true);
     });
 
+    it.each([
+        ["CancelledError", new CancelledError()],
+        ["AbortError", Object.assign(new Error("aborted"), { name: "AbortError" })],
+    ])(
+        "is silent when a shown error's action is cancelled (%s): nothing shown or logged as an error",
+        async (_name, cancelled) => {
+            const error = new UserFacingError("PAT_CHECK_FAILED", "Can't login.", {
+                actions: [{ title: "Retry", run: () => Promise.reject(cancelled) }],
+            });
+            t.choose("Retry");
+            await expect(t.registry.showError(error)).resolves.toBeUndefined();
+            expect(t.errors).toEqual([{ message: "Can't login.", actions: ["Retry"] }]);
+            expect(t.log.entries.filter((e) => e.level === "error")).toEqual([]);
+        },
+    );
+
     it("passes the scope value first, then the arguments", async () => {
         t.registry.defineScope("testScope", {
             current: () => ({ name: "dev" }),
