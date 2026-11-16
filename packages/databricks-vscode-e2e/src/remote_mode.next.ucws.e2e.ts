@@ -162,7 +162,40 @@ describe("Remote mode", async function () {
             );
         } catch {
             // Not a timeoutMsg: that is built before the first poll.
-            throw new Error(`The interpreter isn't in ${venv}; it is ${active}`);
+            // Where the interpreter setting holds a value, per scope, and what ms-python reads for the folder: to see
+            // where a selection landed, if it did.
+            const state = await browser
+                .executeWorkbench(async (vscode) => {
+                    const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
+                    const inspected = vscode.workspace
+                        .getConfiguration("python", folder)
+                        .inspect("defaultInterpreterPath");
+                    const api = (await vscode.extensions
+                        .getExtension("ms-python.python")
+                        ?.activate()) as
+                        | {
+                              environments: {
+                                  getActiveEnvironmentPath(resource?: unknown): { path: string };
+                              };
+                          }
+                        | undefined;
+                    return {
+                        inspect: {
+                            default: inspected?.defaultValue,
+                            global: inspected?.globalValue,
+                            workspace: inspected?.workspaceValue,
+                            workspaceFolder: inspected?.workspaceFolderValue,
+                        },
+                        folder: folder?.fsPath,
+                        activeForFolder:
+                            folder === undefined
+                                ? undefined
+                                : api?.environments.getActiveEnvironmentPath(folder).path,
+                    };
+                })
+                .then((s) => JSON.stringify(s))
+                .catch((e: unknown) => `(reading the state failed: ${String(e)})`);
+            throw new Error(`The interpreter isn't in ${venv}; it is ${active}. State: ${state}`);
         }
     });
 

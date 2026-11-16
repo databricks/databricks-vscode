@@ -1103,11 +1103,21 @@ export const python: Feature = {
             throw e;
         }
         ctx.log.debug("Selecting the session's interpreter", { interpreter: python.interpreter });
-        await msPython
-            .setActiveEnvironmentPath(python.interpreter)
-            .catch((e: unknown) =>
-                ctx.log.error(`Can't select the interpreter ${python.interpreter}`, e),
-            );
+        const started = Date.now();
+        try {
+            await msPython.setActiveEnvironmentPath(python.interpreter);
+        } catch (e) {
+            ctx.log.error(`Can't select the interpreter ${python.interpreter}`, e);
+            return;
+        }
+        // What ms-python reads back, for the folder the selection targets and for the window (no resource).
+        const folder = workspace.workspaceFolders?.[0]?.uri.fsPath;
+        ctx.log.debug("Selected the session's interpreter", {
+            interpreter: python.interpreter,
+            ms: Date.now() - started,
+            activeForFolder: folder === undefined ? undefined : await msPython.activePath(folder),
+            activeForWindow: await msPython.activePath(),
+        });
     },
 };
 

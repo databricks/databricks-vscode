@@ -78,6 +78,19 @@ export class MsPython implements Disposable {
         return environments.resolveEnvironment(active);
     }
 
+    /**
+     * The active interpreter's path as ms-python reports it, unresolved and
+     * without checking that it exists: for `resource`, or for the window
+     * without one. What a selection left behind, for the log. Undefined
+     * without ms-python.
+     */
+    async activePath(resource?: string): Promise<string | undefined> {
+        const api = await this.load();
+        return api?.environments.getActiveEnvironmentPath(
+            resource === undefined ? undefined : Uri.file(resource),
+        ).path;
+    }
+
     /** The active interpreter's executable for `resource`; the old `getPythonExecutable`. */
     async executable(resource: string): Promise<string | undefined> {
         return (await this.activeEnvironment(resource))?.executable.uri?.fsPath;
