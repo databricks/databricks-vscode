@@ -9,9 +9,10 @@ import { dismissNotifications } from "./utils/dismiss-notifications.ts";
  * Negative half of the visibility gate (sibling of `python_setup_visibility.e2e.ts`):
  * a pip project (`requirements.txt` is a pip signal) stays on the legacy "Python
  * Environment" checklist and must NOT show the uv setup row. A separate spec, not a
- * second phase, because nothing re-runs the gate on an in-window fixture change
- * (`environment.refresh` recomputes only the change-gated legacy dependencies
- * feature) — so each direction is asserted on its own fixture's first render.
+ * second phase: a marker-file change re-runs the gate (`PythonEnvironment.start()`
+ * watches `MARKER_FILES`), but the re-evaluation waits on the external interpreter
+ * check, which can take as long as the first render. Each direction is asserted on
+ * its own fixture's first render, with a 120 s wait.
  */
 
 const LEGACY_GROUP_LABEL = "Python Environment";
@@ -43,7 +44,7 @@ describe("Python setup entry visibility (pip project)", async function () {
             await fileExists(path.join(projectDir, "requirements.txt")),
             "fixture is missing requirements.txt (would not exercise the legacy flow)",
         );
-        await waitForConfigSurface(LEGACY_GROUP_LABEL, UV_SETUP_LABEL);
+        await waitForConfigSurface(LEGACY_GROUP_LABEL, UV_SETUP_LABEL, 120_000);
     });
 });
 

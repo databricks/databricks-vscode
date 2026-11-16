@@ -44,7 +44,7 @@ describe("Python setup entry visibility (uv-suitable project)", async function (
             !(await fileExists(path.join(projectDir, "requirements.txt"))),
             "fixture unexpectedly has a requirements.txt (would force the legacy flow)",
         );
-        await waitForConfigSurface(UV_SETUP_LABEL, LEGACY_GROUP_LABEL);
+        await waitForConfigSurface(UV_SETUP_LABEL, LEGACY_GROUP_LABEL, 120_000);
     });
 });
 

@@ -303,28 +303,24 @@ export async function waitForConfigSurface(
     forbidden: string,
     timeoutMs = 60_000,
 ) {
-    await browser.waitUntil(
+    let rows: string[] = [];
+    await waitUntilSeen(
         async () => {
             const section = (await getViewSection("PROJECT")) as CustomTreeSection | undefined;
+            rows = [];
             if (!section) {
                 return false;
             }
-            let sawExpected = false;
             for (const item of await section.getVisibleItems()) {
-                const label = await item.getLabel();
-                if (label === forbidden) {
-                    return false;
-                }
-                if (label === expected) {
-                    sawExpected = true;
-                }
+                rows.push(await item.getLabel());
             }
-            return sawExpected;
+            return rows.includes(expected) && !rows.includes(forbidden);
         },
         {
             timeout: timeoutMs,
             interval: 1000,
             timeoutMsg: `PROJECT never showed "${expected}" without "${forbidden}"`,
         },
+        () => `rendered rows: ${rows.length > 0 ? rows.map((r) => `"${r}"`).join(", ") : "none"}`,
     );
 }
