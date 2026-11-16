@@ -3,10 +3,14 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerFeatures, startFeatures } from "../../kernel/feature";
 import { ACTIVE_PROJECT_PATH, PROJECT_TARGETS } from "../../kernel/project/ProjectService";
+import type { Host } from "../../kernel/host/Host";
+import type { FileSearch } from "../../platform/fileSearch";
 import { MutableState, when } from "../../platform/reactive";
 import { StateStore } from "../../platform/state";
 import { FakeFileEvents } from "../../test-support/fakeFiles";
 import { fakeFeatureHost, fakeKernel, fakeMemento } from "../../test-support/fakes";
+import { heldFileSearch } from "../../test-support/fileSearch";
+import { SERVERLESS_SESSION } from "../../test-support/sessionEnv";
 import { useTempDirs } from "../../test-support/tempDir";
 import { host as vscode } from "../../test-support/vscode";
 import { project } from "./index";
@@ -15,23 +19,28 @@ import { SELECT_TARGET, TargetSection } from "./TargetSection";
 
 const tempDir = useTempDirs();
 
-function setup(folders: string[]) {
+function setup(folders: string[], options: { search?: FileSearch; host?: Host } = {}) {
     vscode.folders = folders;
     const files = new FakeFileEvents();
     const state = new StateStore({ global: fakeMemento(), workspace: fakeMemento() });
+    const folderState = new MutableState<readonly string[]>(folders);
     const kernel = fakeKernel({
-        folders: new MutableState<readonly string[]>(folders),
+        folders: folderState,
         files,
         state,
+        ...options,
     });
     const contextKeys = new Map<string, unknown>();
     /** Every key in the order it was set, so a test can see what a view saw first. */
     const setOrder: string[] = [];
+    /** Every key and value in the order they were set, to replay what a view saw in between. */
+    const sets: [string, unknown][] = [];
     const contextKernel = {
         ...kernel,
         contextKeys: {
             set: async (key: { name: string }, value: unknown) => {
                 setOrder.push(key.name);
+                sets.push([key.name, value]);
                 contextKeys.set(key.name, value);
             },
             get: () => undefined,
@@ -56,6 +65,7 @@ function setup(folders: string[]) {
     const sections = () => fake.host.sections.list();
     return {
         kernel,
+        folders: folderState,
         state,
         files,
         rows,
@@ -63,8 +73,15 @@ function setup(folders: string[]) {
         run,
         contextKeys,
         setOrder,
+        sets,
         events,
         initialized: () => when(kernel.project.initialized, (i) => i),
+        /** After the first pass, until its sub-project search ends. */
+        searched: async () => {
+            await when(kernel.project.initialized, (i) => i);
+            await when(kernel.project.subProjectSearch, (s) => s !== "searching");
+            await new Promise((r) => setImmediate(r));
+        },
     };
 }
 
@@ -232,10 +249,46 @@ describe("the project feature", () => {
     it("tells the welcome content when sub-projects exist", async () => {
         const t = tempDir();
         t.write("nested1/databricks.yml");
-        const { initialized, contextKeys } = setup([t.dir]);
-        await initialized();
+        const { searched, contextKeys } = setup([t.dir]);
+        await searched();
         expect(contextKeys.get("databricks.context.subProjectsAvailable")).toBe(true);
     });
+
+    it.each([
+        ["a local window", undefined],
+        ["a session window", SERVERLESS_SESSION],
+    ])(
+        "says it is looking for projects until the sub-project search ends, without holding up detection, in %s",
+        async (_, host) => {
+            const t = tempDir();
+            t.write("nested1/databricks.yml");
+            const search = heldFileSearch();
+            const { initialized, searched, contextKeys, sets } = setup([t.dir], {
+                search: search.search,
+                ...(host !== undefined ? { host } : {}),
+            });
+            await initialized();
+            await new Promise((r) => setImmediate(r));
+            expect(contextKeys.get("databricks.context.initialized")).toBe(true);
+            expect(contextKeys.get("databricks.context.searchingSubProjects")).toBe(true);
+            expect(contextKeys.get("databricks.context.subProjectsAvailable")).toBe(false);
+            const before = sets.length;
+            search.release();
+            await searched();
+            expect(contextKeys.get("databricks.context.searchingSubProjects")).toBe(false);
+            expect(contextKeys.get("databricks.context.subProjectsAvailable")).toBe(true);
+            // In between, the keys never said "searched, found nothing": the "No bundle" welcome.
+            const seen = new Map(sets.slice(0, before));
+            for (const [key, value] of sets.slice(before)) {
+                seen.set(key, value);
+                expect(
+                    seen.get("databricks.context.searchingSubProjects") === false &&
+                        seen.get("databricks.context.subProjectsAvailable") === false,
+                    `after setting ${key}`,
+                ).toBe(false);
+            }
+        },
+    );
 
     it("lists the sub-projects in the picker and activates the chosen one", async () => {
         const t = tempDir();
@@ -278,20 +331,40 @@ describe("the project feature", () => {
         expect(a.events().filter((e) => e.startsWith("extensionInitialization"))).toEqual([
             expect.stringContaining(`"event.success":"true","event.type":"dabs"`),
         ]);
+        expect(a.events().filter((e) => e.startsWith("bundleSubProject"))).toEqual([]);
 
         vscode.reset();
         const plain = tempDir();
         plain.write("one/databricks.yml");
         plain.write("two/databricks.yml");
         const b = setup([plain.dir]);
-        await b.initialized();
-        await new Promise((r) => setImmediate(r));
-        expect(b.events().filter((e) => !e.startsWith("extensionInitialization"))).toEqual([
+        await b.searched();
+        expect(b.events().filter((e) => e.startsWith("bundleSubProjects "))).toEqual([
             expect.stringContaining(`"event.count":2`),
         ]);
         expect(b.events().find((e) => e.startsWith("extensionInitialization"))).toContain(
             `"event.type":"unknown"`,
         );
+    });
+
+    it("doesn't record the first sub-project search when another folder turned up before it ended", async () => {
+        const a = tempDir();
+        a.write("in-a/databricks.yml");
+        const b = tempDir();
+        b.write("in-b/databricks.yml");
+        const search = heldFileSearch();
+        const { kernel, folders, initialized, searched, events } = setup([a.dir], {
+            search: search.search,
+        });
+        await initialized();
+        folders.set([b.dir]);
+        await new Promise((r) => setTimeout(r, 5));
+        await kernel.project.settled();
+        search.release();
+        await searched();
+        await new Promise((r) => setTimeout(r, 20));
+        expect(kernel.project.subProjects.value.map((p) => p.relative)).toEqual(["in-b"]);
+        expect(events().filter((e) => e.startsWith("bundleSubProject"))).toEqual([]);
     });
 
     it("is silent when the picker is dismissed", async () => {

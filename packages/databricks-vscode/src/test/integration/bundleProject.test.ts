@@ -8,10 +8,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FEATURES } from "../../features";
 import { registerFeatures, startFeatures } from "../../kernel/feature";
 import { ContextKeys } from "../../platform/contextKeys";
+import type { FileSearch } from "../../platform/fileSearch";
 import { MutableState, when } from "../../platform/reactive";
 import { FakeFileEvents } from "../../test-support/fakeFiles";
 import { fakeFeatureHost, fakeKernel } from "../../test-support/fakes";
 import { FakeHttpClient, SCIM_ME } from "../../test-support/fakeHttp";
+import { heldFileSearch } from "../../test-support/fileSearch";
 import { useTempDirs } from "../../test-support/tempDir";
 import { host as vscode } from "../../test-support/vscode";
 
@@ -41,7 +43,7 @@ interface TreeProvider {
 }
 
 /** The real features and kernel over a temp folder, with `yaml` as `project/databricks.yml`. */
-function world(yaml: string, options: { secondFolder?: boolean } = {}) {
+function world(yaml: string, options: { secondFolder?: boolean; search?: FileSearch } = {}) {
     const t = tempDir();
     const config = t.write(".databrickscfg", `[DEFAULT]\nhost = ${HOST}\ntoken = dapi-default\n`);
     t.write("other/README.md", "");
@@ -58,6 +60,7 @@ function world(yaml: string, options: { secondFolder?: boolean } = {}) {
         folders: new MutableState<readonly string[]>(folders),
         files,
         contextKeys: new ContextKeys(async (name, value) => void keys.set(name, value)),
+        ...(options.search !== undefined ? { search: options.search } : {}),
     });
     kernel.runner.on(["bundle", "validate"], (args) => ({
         stdout: JSON.stringify({
@@ -303,6 +306,18 @@ describe("the target's files, as the CLI receives them", () => {
         );
         return { w, env, bundleVars };
     }
+
+    it("resolves the connection while the sub-project search of a folder without a bundle still runs", async () => {
+        const search = heldFileSearch();
+        const w = world(`bundle: {name: demo}\ntargets:\n  dev: {default: true}\n`, {
+            secondFolder: true,
+            search: search.search,
+        });
+        const connection = await when(w.kernel.connection.state, (s) => s.status !== "connecting");
+        expect(w.kernel.project.subProjectSearch.value).toBe("searching");
+        expect(connection.status).toBe("connected");
+        search.release();
+    });
 
     it("passes each string, number and boolean override as BUNDLE_VAR_<name>, as written, and skips the rest", async () => {
         const { w, bundleVars } = await validatedWith({

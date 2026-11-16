@@ -63,7 +63,11 @@ export interface SubProject {
     readonly relative: string;
 }
 
-/** Everything one detection pass found, published together. */
+/**
+ * Everything one detection pass found, published together. The sub-projects
+ * are the exception: a pass that finds no bundle publishes at once, and the
+ * search for them fills them in later.
+ */
 export interface ProjectSnapshot {
     /** The active project folder, whether or not it holds a bundle. */
     readonly root?: string;
@@ -93,6 +97,16 @@ export interface ProjectServiceDeps {
     /** How long file events are coalesced. */
     readonly debounceMs?: number;
 }
+
+/** How far the sub-project search of a folder without a bundle got. */
+type SubProjectSearch = "searching" | "done" | "failed";
+
+/** What the service publishes: the last detection pass, and its sub-project search. */
+type ProjectState = ProjectSnapshot & {
+    readonly initialized: boolean;
+    /** Set while `root` holds no bundle. */
+    readonly subProjectSearch?: SubProjectSearch;
+};
 
 const EMPTY: ProjectSnapshot = { subProjects: [] };
 
@@ -138,16 +152,20 @@ function isReachedDirectly(realFolder: string, realRoot: string, relative: strin
  */
 export class ProjectService implements Disposable {
     private readonly detection: Resource<ProjectSnapshot>;
-    private readonly current = new MutableState<
-        ProjectSnapshot & { readonly initialized: boolean }
-    >({
+    /** The sub-project search of `searchRoot`, started by a detection pass that found no bundle. */
+    private readonly search: Resource<readonly SubProject[]>;
+    private searchRoot?: string;
+    private readonly current = new MutableState<ProjectState>({
         ...EMPTY,
         initialized: false,
     });
 
     /** The last detection pass. The states below are parts of it. */
-    readonly snapshot: State<ProjectSnapshot & { readonly initialized: boolean }> = this.current;
-    /** False until the first detection pass ends: the "Initializing…" welcome. */
+    readonly snapshot: State<ProjectState> = this.current;
+    /**
+     * False until the first detection pass ends: the "Initializing…" welcome.
+     * Without a bundle, the sub-project search may still be running.
+     */
     readonly initialized = select(this.current, (s) => s.initialized);
     readonly root = select(this.current, (s) => s.root);
     /** No folder, or no root bundle file: undefined. */
@@ -156,6 +174,12 @@ export class ProjectService implements Disposable {
     readonly overrides = select(this.current, (s) => s.overrides);
     readonly variables = select(this.current, (s) => s.variables);
     readonly subProjects = select(this.current, (s) => s.subProjects);
+    /**
+     * Without a bundle in `root`: "searching" until the first search of
+     * `root` ends. A later pass for the same folder searches again, keeping
+     * the last list and status meanwhile. Undefined with a bundle or no folder.
+     */
+    readonly subProjectSearch = select(this.current, (s) => s.subProjectSearch);
 
     private watched?: { root: string; bundle: BundleFiles; targetFiles: Disposable[] };
     private readonly disposables: Disposable[] = [];
@@ -164,6 +188,9 @@ export class ProjectService implements Disposable {
 
     constructor(private readonly deps: ProjectServiceDeps) {
         this.detection = new Resource((signal) => this.detect(signal));
+        this.search = new Resource<readonly SubProject[]>(async () =>
+            this.searchRoot === undefined ? [] : this.findSubProjects(this.searchRoot),
+        );
         this.disposables.push(
             this.detection.onDidChange((s) => {
                 if (s.status === "ready") {
@@ -180,6 +207,9 @@ export class ProjectService implements Disposable {
                                 : `No bundle project in ${next.root ?? "(no folder)"}`,
                         );
                     }
+                    const searching = next.project === undefined && next.root !== undefined;
+                    const searchedBefore =
+                        searching && prev.root === next.root && prev.subProjectSearch !== undefined;
                     // Unchanged parts keep their identity, so sessions bound to
                     // the project don't restart when only the overrides change.
                     this.current.set({
@@ -187,12 +217,48 @@ export class ProjectService implements Disposable {
                         project: keep(prev.project, next.project),
                         overrides: keep(prev.overrides, next.overrides),
                         variables: keep(prev.variables, next.variables),
-                        subProjects: keep(prev.subProjects, next.subProjects),
+                        subProjects: searchedBefore
+                            ? prev.subProjects
+                            : keep(prev.subProjects, next.subProjects),
+                        subProjectSearch: !searching
+                            ? undefined
+                            : searchedBefore
+                              ? prev.subProjectSearch
+                              : "searching",
                         initialized: true,
                     });
+                    // After publishing, so nothing waits for the search to know
+                    // there is no bundle. A newer search or a reset drops the
+                    // result of one still running.
+                    if (searching) {
+                        this.searchRoot = next.root;
+                        this.search.invalidate("no bundle");
+                    } else {
+                        this.searchRoot = undefined;
+                        this.search.reset();
+                    }
                 } else if (s.status === "error") {
                     this.deps.log.error("Project detection failed", s.error);
                     this.current.set({ ...this.current.value, initialized: true });
+                }
+            }),
+            this.search.onDidChange((s) => {
+                if (s.status === "ready") {
+                    this.deps.log.debug(
+                        `Found ${s.value.length} sub-projects in ${this.searchRoot ?? "(no folder)"}`,
+                    );
+                    this.current.set({
+                        ...this.current.value,
+                        subProjects: keep(this.current.value.subProjects, s.value),
+                        subProjectSearch: "done",
+                    });
+                } else if (s.status === "error") {
+                    this.deps.log.error("Sub-project search failed", s.error);
+                    this.current.set({
+                        ...this.current.value,
+                        subProjects: [],
+                        subProjectSearch: "failed",
+                    });
                 }
             }),
         );
@@ -397,7 +463,8 @@ export class ProjectService implements Disposable {
         const files = await this.watch(root)!.read();
         signal.throwIfAborted();
         if (files.rootFile === undefined) {
-            return { root, subProjects: await this.findSubProjects(root) };
+            // The listener starts the sub-project search once this pass is published.
+            return { root, subProjects: [] };
         }
         for (const error of files.errors) {
             this.deps.log.warn(`Can't read ${error.file}: ${error.message}`);
@@ -505,6 +572,7 @@ export class ProjectService implements Disposable {
         this.watch(undefined);
         disposeAll(this.disposables);
         this.detection.dispose();
+        this.search.dispose();
         for (const s of [
             this.initialized,
             this.root,
@@ -513,6 +581,7 @@ export class ProjectService implements Disposable {
             this.overrides,
             this.variables,
             this.subProjects,
+            this.subProjectSearch,
         ]) {
             s.dispose();
         }

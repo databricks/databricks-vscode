@@ -4,7 +4,10 @@ import {
     type DurationMeasurement,
 } from "../../kernel/telemetry/definitions";
 
-/** The old event. `legacy` (a `project.json` project) can't happen any more. */
+/**
+ * The old event. `legacy` (a `project.json` project) can't happen any more.
+ * For a folder without a bundle it ends before the sub-project search.
+ */
 export const EXTENSION_INITIALIZATION = telemetryEvent<
     { success: boolean; type?: "dabs" | "legacy" | "unknown" } & DurationMeasurement
 >("extensionInitialization", "Extension services were initialized", {

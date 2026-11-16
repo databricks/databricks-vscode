@@ -2,11 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { FileSearch } from "../../platform/fileSearch";
+import type { Logger } from "../../platform/log";
 import { MutableState, when } from "../../platform/reactive";
 import { StateStore } from "../../platform/state";
 import { FakeFileEvents } from "../../test-support/fakeFiles";
 import { fakeLog, fakeMemento } from "../../test-support/fakes";
-import { globFileSearch } from "../../test-support/fileSearch";
+import { globFileSearch, heldFileSearch } from "../../test-support/fileSearch";
 import { useTempDirs } from "../../test-support/tempDir";
 import {
     ACTIVE_PROJECT_PATH,
@@ -19,7 +20,10 @@ const tempDir = useTempDirs();
 const HOST = "https://a.cloud.databricks.com";
 const bundle = (targets: string) => `bundle: {name: demo}\ntargets:\n${targets}`;
 
-function setup(folders: string[], options: { state?: StateStore; search?: FileSearch } = {}) {
+function setup(
+    folders: string[],
+    options: { state?: StateStore; search?: FileSearch; log?: Logger } = {},
+) {
     const files = new FakeFileEvents();
     const state =
         options.state ?? new StateStore({ global: fakeMemento(), workspace: fakeMemento() });
@@ -30,10 +34,15 @@ function setup(folders: string[], options: { state?: StateStore; search?: FileSe
         files,
         search,
         state,
-        log: fakeLog(),
+        log: options.log ?? fakeLog(),
         debounceMs: 5,
     });
     const initialized = () => when(service.initialized, (i) => i);
+    /** After the first pass: until its sub-project search, or the latest one, ends. */
+    const searched = async () => {
+        await initialized();
+        return when(service.subProjectSearch, (s) => s !== "searching");
+    };
     /** Reports a file event and waits for the pass it starts. */
     const touch = async (file: string) => {
         files.touch(file);
@@ -52,7 +61,16 @@ function setup(folders: string[], options: { state?: StateStore; search?: FileSe
             check();
         });
     };
-    return { service, files, state, folders: folderState, initialized, touch, touchUntil };
+    return {
+        service,
+        files,
+        state,
+        folders: folderState,
+        initialized,
+        searched,
+        touch,
+        touchUntil,
+    };
 }
 
 describe("ProjectService", () => {
@@ -356,13 +374,131 @@ describe("ProjectService", () => {
         t.write("nested1/databricks.yml");
         t.write("double/nested2/bundle.yaml");
         t.write("node_modules/pkg/databricks.yml");
-        const { service, initialized } = setup([t.dir]);
+        const { service, searched } = setup([t.dir]);
         service.start();
-        await initialized();
+        await searched();
         expect(service.subProjects.value.map((p) => p.relative)).toEqual([
             path.join("double", "nested2"),
             "nested1",
         ]);
+        expect(service.subProjectSearch.value).toBe("done");
+    });
+
+    it("is initialized while the sub-project search runs, then lists what it found", async () => {
+        const t = tempDir();
+        t.write("nested/databricks.yml");
+        const search = heldFileSearch();
+        const { service, initialized, searched } = setup([t.dir], { search: search.search });
+        service.start();
+        await initialized();
+        expect(service.root.value).toBe(t.dir);
+        expect(service.subProjectSearch.value).toBe("searching");
+        expect(service.subProjects.value).toEqual([]);
+        search.release();
+        await searched();
+        expect(service.subProjectSearch.value).toBe("done");
+        expect(service.subProjects.value.map((p) => p.relative)).toEqual(["nested"]);
+    });
+
+    it("drops a sub-project search that a bundle written meanwhile made stale", async () => {
+        const t = tempDir();
+        t.write("nested/databricks.yml");
+        const search = heldFileSearch();
+        const { service, initialized, touch } = setup([t.dir], { search: search.search });
+        service.start();
+        await initialized();
+        t.write("databricks.yml", bundle("  dev: {}"));
+        await touch(t.path("databricks.yml"));
+        expect(service.active.value?.root).toBe(t.dir);
+        expect(service.subProjectSearch.value).toBeUndefined();
+        search.release();
+        await new Promise((r) => setTimeout(r, 20));
+        expect(service.subProjects.value).toEqual([]);
+        expect(service.subProjectSearch.value).toBeUndefined();
+    });
+
+    it("drops the old folder's sub-project search when the folders change during it", async () => {
+        const a = tempDir();
+        a.write("in-a/databricks.yml");
+        const b = tempDir();
+        b.write("in-b/databricks.yml");
+        const search = heldFileSearch();
+        const { service, folders, initialized, searched } = setup([a.dir], {
+            search: search.search,
+        });
+        service.start();
+        await initialized();
+        folders.set([b.dir]);
+        await new Promise((r) => setTimeout(r, 5));
+        await service.settled();
+        expect(service.root.value).toBe(b.dir);
+        expect(search.held()).toBe(2);
+        search.release();
+        await searched();
+        await new Promise((r) => setTimeout(r, 20));
+        expect(service.subProjects.value.map((p) => p.relative)).toEqual(["in-b"]);
+    });
+
+    it("searches another folder without a bundle from scratch", async () => {
+        const a = tempDir();
+        a.write("in-a/databricks.yml");
+        const b = tempDir();
+        b.write("in-b/databricks.yml");
+        const search = heldFileSearch();
+        const { service, folders, initialized, searched } = setup([a.dir], {
+            search: search.search,
+        });
+        service.start();
+        await initialized();
+        search.release();
+        await searched();
+        folders.set([b.dir]);
+        await new Promise((r) => setTimeout(r, 5));
+        await service.settled();
+        expect(service.subProjectSearch.value).toBe("searching");
+        expect(service.subProjects.value).toEqual([]);
+        search.release();
+        await searched();
+        expect(service.subProjects.value.map((p) => p.relative)).toEqual(["in-b"]);
+    });
+
+    it("keeps the sub-projects it found while it searches the same folder again", async () => {
+        const t = tempDir();
+        t.write("nested/databricks.yml");
+        const search = heldFileSearch();
+        const { service, initialized, searched, touch } = setup([t.dir], {
+            search: search.search,
+        });
+        service.start();
+        await initialized();
+        search.release();
+        await searched();
+        t.write("other/databricks.yml");
+        // A bundle file event with no bundle written: a pass for the same folder.
+        await touch(t.path("databricks.yml"));
+        expect(search.held()).toBe(1);
+        expect(service.subProjectSearch.value).toBe("done");
+        expect(service.subProjects.value.map((p) => p.relative)).toEqual(["nested"]);
+        search.release();
+        await new Promise((r) => setTimeout(r, 20));
+        expect(service.subProjects.value.map((p) => p.relative)).toEqual(["nested", "other"]);
+    });
+
+    it("logs a failed sub-project search and lists nothing, still initialized", async () => {
+        const t = tempDir();
+        const log = fakeLog();
+        const failing: FileSearch = {
+            find: async () => {
+                throw new Error("search failed");
+            },
+        };
+        const { service, searched } = setup([t.dir], { search: failing, log });
+        service.start();
+        await searched();
+        expect(service.subProjectSearch.value).toBe("failed");
+        expect(service.subProjects.value).toEqual([]);
+        expect(service.initialized.value).toBe(true);
+        expect(log.entries.map((e) => e.message)).toContain("Sub-project search failed");
     });
 
     it("follows the workspace folders", async () => {
