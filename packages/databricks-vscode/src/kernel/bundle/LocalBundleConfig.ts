@@ -1,7 +1,7 @@
 /**
  * What the extension reads from the bundle's YAML in-process, before the CLI
  * validates it ("Local bundle config"): the targets, with their
- * host, mode, `workspace.profile` and `default` flag. Ported from the old
+ * host, mode, `workspace.profile`, cluster and `default` flag. Ported from the old
  * `BundlePreValidateModel`. Everything else comes from `bundle validate`.
  */
 
@@ -14,6 +14,11 @@ export interface LocalTarget {
     /** `workspace.profile`, merged the same way. */
     readonly profile?: string;
     readonly mode?: TargetMode;
+    /**
+     * The target's `cluster_id` or `compute_id`, else its `bundle`'s, else the top-level
+     * `bundle`'s, as written: it may be a `${var.…}` reference that only validate resolves.
+     */
+    readonly clusterId?: string;
     readonly default: boolean;
 }
 
@@ -64,6 +69,7 @@ export function mergeBundleDocuments(documents: readonly unknown[]): YamlObject 
 export function localBundleConfig(documents: readonly unknown[]): LocalBundleConfig {
     const bundle = mergeBundleDocuments(documents);
     const topWorkspace = isObject(bundle.workspace) ? bundle.workspace : {};
+    const topBundle = isObject(bundle.bundle) ? bundle.bundle : {};
     const targets: LocalTarget[] = [];
     for (const [name, raw] of Object.entries(isObject(bundle.targets) ? bundle.targets : {})) {
         // `targets: {dev: }` parses as null: a target with no settings.
@@ -73,6 +79,7 @@ export function localBundleConfig(documents: readonly unknown[]): LocalBundleCon
             ...(isObject(target.workspace) ? target.workspace : {}),
         };
         const mode = asString(target.mode);
+        const targetBundle = isObject(target.bundle) ? target.bundle : {};
         targets.push({
             name,
             host: asString(workspace.host),
@@ -81,6 +88,9 @@ export function localBundleConfig(documents: readonly unknown[]): LocalBundleCon
                 mode === "development" || mode === "staging" || mode === "production"
                     ? mode
                     : undefined,
+            clusterId: [target, targetBundle, topBundle]
+                .flatMap((o) => [asString(o.cluster_id), asString(o.compute_id)])
+                .find((id) => id !== undefined),
             default: target.default === true,
         });
     }
