@@ -17,6 +17,7 @@ import {
     waitForResourcesGroup,
     waitForRunStatus,
 } from "./utils/explorer.ts";
+import { openOutputView } from "./utils/output-view.ts";
 import { elements, getViewSection } from "./utils/view.ts";
 import { WorkspaceClient, type PipelineUpdate } from "./utils/workspace-client.ts";
 
@@ -117,7 +118,7 @@ describe("Pipeline run variants and cancelling a run", async function () {
     }
 
     async function clearBundleLogs() {
-        const output = await (await browser.getWorkbench()).getBottomBar().openOutputView();
+        const output = await openOutputView();
         await output.selectChannel("Databricks Bundle Logs");
         await output.clearText();
     }

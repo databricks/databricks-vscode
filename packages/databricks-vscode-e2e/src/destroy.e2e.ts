@@ -1,9 +1,9 @@
 import assert from "node:assert";
-import type { Workbench } from "wdio-vscode-service";
 import { createProjectWithJob, getUniqueResourceName } from "./utils/bundle-fixtures.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import { waitForBundleExplorer, waitForBundleOutput, waitForDeployment } from "./utils/explorer.ts";
 import { WorkspaceClient } from "./utils/workspace-client.ts";
+import { openOutputView } from "./utils/output-view.ts";
 
 /*
  * Ported from the frozen suite. The imports differ: `WorkspaceClient` is a
@@ -12,7 +12,6 @@ import { WorkspaceClient } from "./utils/workspace-client.ts";
  * it and the fixtures take the host from the [DEFAULT] profile.
  */
 describe("Deploy and destroy", async function () {
-    let workbench: Workbench;
     let vscodeWorkspaceRoot: string;
     let jobName: string;
     let clusterId: string;
@@ -27,7 +26,6 @@ describe("Deploy and destroy", async function () {
         assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH env var doesn't exist");
 
         clusterId = process.env.TEST_DEFAULT_CLUSTER_ID;
-        workbench = await browser.getWorkbench();
         vscodeWorkspaceRoot = process.env.WORKSPACE_PATH;
         const job = await createProjectWithJob(
             getUniqueResourceName("deploy_and_destroy_bundle"),
@@ -52,7 +50,7 @@ describe("Deploy and destroy", async function () {
             ?.split("@")[0]
             .replaceAll(/[^a-zA-Z0-9]/g, "_")}]`;
 
-        const outputView = await workbench.getBottomBar().openOutputView();
+        const outputView = await openOutputView();
         await outputView.selectChannel("Databricks Bundle Logs");
         await outputView.clearText();
 

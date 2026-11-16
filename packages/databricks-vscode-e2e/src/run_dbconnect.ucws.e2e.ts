@@ -18,6 +18,7 @@ import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import { openFile } from "./utils/editor.ts";
 import { isTransientFileLockError, retryOnTransientError } from "./utils/retry.ts";
 import { getTreeViewItems } from "./utils/view.ts";
+import { openOutputView } from "./utils/output-view.ts";
 
 const execFile = promisify(execFileCb);
 
@@ -331,8 +332,7 @@ async function dumpNotebookDiagnostics(
     // returns nothing — so a failure here is logged and ignored, never fatal to
     // the rest of the dump.
     try {
-        const workbench = await browser.getWorkbench();
-        const view = await workbench.getBottomBar().openOutputView();
+        const view = await openOutputView();
         let channels: string[] = [];
         try {
             channels = await view.getChannelNames();
