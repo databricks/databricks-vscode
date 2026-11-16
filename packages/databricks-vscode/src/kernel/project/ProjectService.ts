@@ -254,11 +254,8 @@ export class ProjectService implements Disposable {
                     });
                 } else if (s.status === "error") {
                     this.deps.log.error("Sub-project search failed", s.error);
-                    this.current.set({
-                        ...this.current.value,
-                        subProjects: [],
-                        subProjectSearch: "failed",
-                    });
+                    // Keeps what an earlier search of this folder found: a new root starts empty.
+                    this.current.set({ ...this.current.value, subProjectSearch: "failed" });
                 }
             }),
         );

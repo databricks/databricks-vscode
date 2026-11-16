@@ -8,12 +8,22 @@ export const CONFIGURATION_VIEW_ID = "configurationView";
  */
 export const INITIALIZED = contextKey<boolean>("databricks.context.initialized");
 
-/** The folder has no root bundle, and the first search of the folders below it is running. */
-export const SEARCHING_SUB_PROJECTS = contextKey<boolean>(
-    "databricks.context.searchingSubProjects",
+/**
+ * Where the search for sub-projects is, while no project is open: "searching" until the first
+ * search of the folder ends, then "found" or "none" (a failed search too). Empty with a project
+ * open or before detection ends. One key, so the welcome texts never mix values set apart.
+ */
+export const SUB_PROJECT_SEARCH = contextKey<SubProjectSearchKey>(
+    "databricks.context.subProjectSearch",
 );
 
-/** The folder has no root bundle, but folders below it do: "Choose a project". Old name kept. */
+export type SubProjectSearchKey = "searching" | "found" | "none" | "";
+
+/**
+ * The folder has no root bundle, but folders below it do. Old name, still set
+ * for when-clauses outside the extension; the welcome texts read
+ * `SUB_PROJECT_SEARCH`, which says this and whether the search has ended.
+ */
 export const SUB_PROJECTS_AVAILABLE = contextKey<boolean>(
     "databricks.context.subProjectsAvailable",
 );

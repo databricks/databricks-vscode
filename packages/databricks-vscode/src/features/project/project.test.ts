@@ -20,6 +20,51 @@ import { SELECT_TARGET, TargetSection } from "./TargetSection";
 
 const tempDir = useTempDirs();
 
+/** The Project view's welcome entries about sub-projects, by their first words. */
+const SUB_PROJECT_WELCOMES = {
+    looking: "Looking for bundles (databricks.yml)",
+    choose: "Choose a Databricks project from a subfolder",
+    none: "No bundle (databricks.yml) was found",
+} as const;
+const welcomes = (
+    JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../../package.json"), "utf-8")) as {
+        contributes: { viewsWelcome: { view: string; contents: string; when: string }[] };
+    }
+).contributes.viewsWelcome.filter((w) => w.view === "configurationView");
+
+/**
+ * Which of those entries VS Code shows with these context keys, read from the
+ * manifest's when-clauses (a folder is open; terms are `k`, `!k`, `k == 'v'`).
+ */
+function shownWelcomes(keys: ReadonlyMap<string, unknown>): string[] {
+    const holds = (term: string) => {
+        if (term === "workspaceFolderCount > 0") {
+            return true;
+        }
+        const equals = /^([\w.]+) == '([^']*)'$/.exec(term);
+        if (equals) {
+            return keys.get(equals[1]!) === equals[2];
+        }
+        return term.startsWith("!") ? !keys.get(term.slice(1)) : Boolean(keys.get(term));
+    };
+    return Object.entries(SUB_PROJECT_WELCOMES)
+        .filter(([, start]) => {
+            const entry = welcomes.find((w) => w.contents.startsWith(start));
+            return entry !== undefined && entry.when.split(" && ").every(holds);
+        })
+        .map(([name]) => name);
+}
+
+/** What the view showed after each key was set, from `from` on, starting with `keys` (as set before). */
+function shownAlong(sets: readonly [string, unknown][], from: number, keys: Map<string, unknown>) {
+    const shown = [shownWelcomes(keys).join("+")];
+    for (const [key, value] of sets.slice(from)) {
+        keys.set(key, value);
+        shown.push(shownWelcomes(keys).join("+"));
+    }
+    return [...new Set(shown)];
+}
+
 function setup(
     folders: string[],
     options: { search?: FileSearch; settings?: Settings; host?: Host } = {},
@@ -274,25 +319,67 @@ describe("the project feature", () => {
             await initialized();
             await new Promise((r) => setImmediate(r));
             expect(contextKeys.get("databricks.context.initialized")).toBe(true);
-            expect(contextKeys.get("databricks.context.searchingSubProjects")).toBe(true);
-            expect(contextKeys.get("databricks.context.subProjectsAvailable")).toBe(false);
+            expect(shownWelcomes(contextKeys)).toEqual(["looking"]);
             const before = sets.length;
             search.release();
             await searched();
-            expect(contextKeys.get("databricks.context.searchingSubProjects")).toBe(false);
             expect(contextKeys.get("databricks.context.subProjectsAvailable")).toBe(true);
-            // In between, the keys never said "searched, found nothing": the "No bundle" welcome.
-            const seen = new Map(sets.slice(0, before));
-            for (const [key, value] of sets.slice(before)) {
-                seen.set(key, value);
-                expect(
-                    seen.get("databricks.context.searchingSubProjects") === false &&
-                        seen.get("databricks.context.subProjectsAvailable") === false,
-                    `after setting ${key}`,
-                ).toBe(false);
-            }
+            // After every single key change, one text, never "No bundle".
+            expect(shownAlong(sets, before, new Map(sets.slice(0, before)))).toEqual([
+                "looking",
+                "choose",
+            ]);
         },
     );
+
+    it("goes from one folder's projects to looking in another folder without showing anything else", async () => {
+        const a = tempDir();
+        a.write("in-a/databricks.yml");
+        const b = tempDir();
+        b.write("README.md", "");
+        const search = heldFileSearch();
+        const { kernel, folders, initialized, searched, contextKeys, sets } = setup([a.dir], {
+            search: search.search,
+        });
+        await initialized();
+        search.release();
+        await searched();
+        expect(shownWelcomes(contextKeys)).toEqual(["choose"]);
+        const before = sets.length;
+        folders.set([b.dir]);
+        await vi.waitFor(() => expect(kernel.project.root.value).toBe(b.dir));
+        await new Promise((r) => setImmediate(r));
+        expect(shownAlong(sets, before, new Map(sets.slice(0, before)))).toEqual([
+            "choose",
+            "looking",
+        ]);
+        search.release();
+        await searched();
+        expect(shownWelcomes(contextKeys)).toEqual(["none"]);
+    });
+
+    it("says it is looking, not that there is no bundle, when the root bundle goes", async () => {
+        const t = tempDir();
+        t.write("databricks.yml", "targets: {dev: {}}");
+        t.write("nested/databricks.yml");
+        const search = heldFileSearch();
+        const { kernel, initialized, contextKeys, sets, files } = setup([t.dir], {
+            search: search.search,
+        });
+        await initialized();
+        expect(kernel.project.active.value?.root).toBe(t.dir);
+        const before = sets.length;
+        fs.rmSync(t.path("databricks.yml"));
+        files.touch(t.path("databricks.yml"));
+        await vi.waitFor(() => expect(kernel.project.active.value).toBeUndefined());
+        await new Promise((r) => setImmediate(r));
+        // The bootstrap sets `databricks.context.project` from another listener: say it comes first.
+        const keys = new Map(sets.slice(0, before));
+        keys.set("databricks.context.project", false);
+        expect(shownAlong(sets, before, keys)).toEqual(["", "looking"]);
+        search.release();
+        await vi.waitFor(() => expect(shownWelcomes(contextKeys)).toEqual(["choose"]));
+    });
 
     it("lists the sub-projects in the picker and activates the chosen one", async () => {
         const t = tempDir();
@@ -389,6 +476,8 @@ describe("the project feature", () => {
         expect(events().find((e) => e.startsWith("bundleSubProjectSearch "))).toContain(
             `"event.success":"false"`,
         );
+        // The old event has no success field, so a failure isn't recorded as no sub-projects.
+        expect(events().filter((e) => e.startsWith("bundleSubProjects "))).toEqual([]);
     });
 
     it("doesn't record the first sub-project search when another folder turned up before it ended", async () => {

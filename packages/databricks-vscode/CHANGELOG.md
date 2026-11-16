@@ -24,7 +24,7 @@ The first pre-release of version 3, a rewrite of the extension. These notes comp
 - On Windows, non-ASCII text in the project's environment file and in notebooks run with `%run` reaches Python as written.
 - In fish, the new-project wizard quotes the parent folder correctly: a folder name with an apostrophe or a backslash no longer breaks the command.
 - On a workspace without a Unity Catalog metastore, the Unity Catalog view says so instead of showing an error.
-- In a folder without a bundle, the Project view no longer shows "Initializing..." while it searches the folders below for bundles, which in a large folder can take seconds. It says "Looking for Databricks projects in the workspace..." until the search ends, and the Connection and Models & AI tools views don't wait for it.
+- In a folder without a bundle, the Project view no longer shows "Initializing..." while it searches the folders below for bundles, which in a large folder can take seconds. It says "Looking for bundles (databricks.yml) in the open folder and its subfolders..." until the search ends, and the Connection and Models & AI tools views don't wait for it.
 
 ### Changed or removed
 

@@ -484,6 +484,29 @@ describe("ProjectService", () => {
         expect(service.subProjects.value.map((p) => p.relative)).toEqual(["nested", "other"]);
     });
 
+    it("keeps the sub-projects it found when a later search of the same folder fails", async () => {
+        const t = tempDir();
+        t.write("nested/databricks.yml");
+        let fail = false;
+        const search: FileSearch = {
+            find: async (base, pattern, exclude) => {
+                if (fail) {
+                    throw new Error("search failed");
+                }
+                return globFileSearch.find(base, pattern, exclude);
+            },
+        };
+        const { service, searched, touch } = setup([t.dir], { search });
+        service.start();
+        await searched();
+        expect(service.subProjects.value.map((p) => p.relative)).toEqual(["nested"]);
+        fail = true;
+        // A bundle file event with no bundle written: a pass for the same folder, so a new search.
+        await touch(t.path("databricks.yml"));
+        await vi.waitFor(() => expect(service.subProjectSearch.value).toBe("failed"));
+        expect(service.subProjects.value.map((p) => p.relative)).toEqual(["nested"]);
+    });
+
     it("logs a failed sub-project search and lists nothing, still initialized", async () => {
         const t = tempDir();
         const log = fakeLog();

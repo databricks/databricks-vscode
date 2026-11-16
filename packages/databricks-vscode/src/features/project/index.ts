@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Feature } from "../../kernel/feature";
+import type { ProjectService } from "../../kernel/project/ProjectService";
 import { when } from "../../platform/reactive";
 import { setting } from "../../platform/settings";
 import { LocalFolderSection, SELECT_PROJECT } from "./LocalFolderSection";
@@ -16,9 +17,10 @@ import {
 import {
     INITIALIZED,
     LEGACY_PROJECT,
-    SEARCHING_SUB_PROJECTS,
+    SUB_PROJECT_SEARCH,
     SUB_PROJECTS_AVAILABLE,
     TARGET_SET,
+    type SubProjectSearchKey,
 } from "./welcome";
 
 /** VS Code's own setting: whether its file search, and so the sub-project search, follows links. */
@@ -33,7 +35,7 @@ export const project: Feature = {
     id: "project",
     contextKeys: [
         INITIALIZED,
-        SEARCHING_SUB_PROJECTS,
+        SUB_PROJECT_SEARCH,
         SUB_PROJECTS_AVAILABLE,
         TARGET_SET,
         LEGACY_PROJECT,
@@ -67,11 +69,7 @@ export const project: Feature = {
         });
         const update = () => {
             void contextKeys.set(SUB_PROJECTS_AVAILABLE, service.subProjects.value.length > 0);
-            // After the line above, so a search that found projects never shows "No bundle".
-            void contextKeys.set(
-                SEARCHING_SUB_PROJECTS,
-                service.subProjectSearch.value === "searching",
-            );
+            void contextKeys.set(SUB_PROJECT_SEARCH, subProjectSearchKey(service));
             void contextKeys.set(TARGET_SET, service.target.value !== undefined);
             // Last: the views that wait for it (SSH Tunnel) then read the target too.
             void contextKeys.set(INITIALIZED, service.initialized.value);
@@ -121,8 +119,22 @@ export const project: Feature = {
                     count,
                     followSymlinks: ctx.kernel.settings.get(SEARCH_FOLLOW_SYMLINKS),
                 });
-                ctx.telemetry.record(BUNDLE_SUB_PROJECTS, { count });
+                // The old event has no success field: a failed search isn't "none found".
+                if (search === "done") {
+                    ctx.telemetry.record(BUNDLE_SUB_PROJECTS, { count });
+                }
             }
         });
     },
 };
+
+/** SUB_PROJECT_SEARCH for the last detection pass and its search. */
+function subProjectSearchKey(service: ProjectService): SubProjectSearchKey {
+    if (!service.initialized.value || service.active.value !== undefined) {
+        return "";
+    }
+    if (service.subProjectSearch.value === "searching") {
+        return "searching";
+    }
+    return service.subProjects.value.length > 0 ? "found" : "none";
+}

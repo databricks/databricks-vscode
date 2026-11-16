@@ -317,6 +317,7 @@ describe("the target's files, as the CLI receives them", () => {
         expect(w.kernel.project.subProjectSearch.value).toBe("searching");
         expect(connection.status).toBe("connected");
         search.release();
+        await when(w.kernel.project.subProjectSearch, (s) => s !== "searching");
     });
 
     it("passes each string, number and boolean override as BUNDLE_VAR_<name>, as written, and skips the rest", async () => {
