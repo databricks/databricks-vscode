@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import type { CustomTreeSection, Workbench } from "wdio-vscode-service";
+import type { CustomTreeSection } from "wdio-vscode-service";
 import { createProjectWithJob, getUniqueResourceName } from "./utils/bundle-fixtures.ts";
 import { getActionButton } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
@@ -9,6 +9,7 @@ import {
     waitForDeployment,
     waitForRunStatus,
 } from "./utils/explorer.ts";
+import { openOutputView } from "./utils/output-view.ts";
 
 /*
  * Ported from the frozen suite. The imports differ (the helpers live in
@@ -17,7 +18,6 @@ import {
  * the [DEFAULT] profile.
  */
 describe("Deploy and run job", async function () {
-    let workbench: Workbench;
     let resourceExplorerView: CustomTreeSection;
     let jobName: string;
 
@@ -29,8 +29,6 @@ describe("Deploy and run job", async function () {
             "TEST_DEFAULT_CLUSTER_ID env var doesn't exist",
         );
         assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH env var doesn't exist");
-
-        workbench = await browser.getWorkbench();
         jobName = (
             await createProjectWithJob(
                 getUniqueResourceName("deploy_and_run_job"),
@@ -46,7 +44,7 @@ describe("Deploy and run job", async function () {
     });
 
     it("should deploy and run the current job", async () => {
-        const outputView = await workbench.getBottomBar().openOutputView();
+        const outputView = await openOutputView();
         await outputView.selectChannel("Databricks Bundle Logs");
         await outputView.clearText();
 

@@ -4,6 +4,7 @@ import { waitForLogin } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import { getTabByTitle } from "./utils/editor.ts";
 import { getViewSection } from "./utils/view.ts";
+import { openOutputView } from "./utils/output-view.ts";
 
 /**
  * The Quickstart walkthrough (SHELL-09) and the "Databricks Logs" channel
@@ -54,8 +55,7 @@ describe("Quickstart and logs", async function () {
     });
 
     it("should log to the Databricks Logs channel (INFRA-04)", async () => {
-        const workbench = await browser.getWorkbench();
-        const output = await workbench.getBottomBar().openOutputView();
+        const output = await openOutputView();
         await browser.waitUntil(
             async () => {
                 try {
