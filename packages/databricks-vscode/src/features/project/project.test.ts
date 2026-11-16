@@ -6,9 +6,10 @@ import { ACTIVE_PROJECT_PATH, PROJECT_TARGETS } from "../../kernel/project/Proje
 import type { Host } from "../../kernel/host/Host";
 import type { FileSearch } from "../../platform/fileSearch";
 import { MutableState, when } from "../../platform/reactive";
+import type { Settings } from "../../platform/settings";
 import { StateStore } from "../../platform/state";
 import { FakeFileEvents } from "../../test-support/fakeFiles";
-import { fakeFeatureHost, fakeKernel, fakeMemento } from "../../test-support/fakes";
+import { fakeFeatureHost, fakeKernel, fakeMemento, fakeSettings } from "../../test-support/fakes";
 import { heldFileSearch } from "../../test-support/fileSearch";
 import { SERVERLESS_SESSION } from "../../test-support/sessionEnv";
 import { useTempDirs } from "../../test-support/tempDir";
@@ -19,7 +20,10 @@ import { SELECT_TARGET, TargetSection } from "./TargetSection";
 
 const tempDir = useTempDirs();
 
-function setup(folders: string[], options: { search?: FileSearch; host?: Host } = {}) {
+function setup(
+    folders: string[],
+    options: { search?: FileSearch; settings?: Settings; host?: Host } = {},
+) {
     vscode.folders = folders;
     const files = new FakeFileEvents();
     const state = new StateStore({ global: fakeMemento(), workspace: fakeMemento() });
@@ -344,6 +348,46 @@ describe("the project feature", () => {
         ]);
         expect(b.events().find((e) => e.startsWith("extensionInitialization"))).toContain(
             `"event.type":"unknown"`,
+        );
+    });
+
+    it("records initialization before the sub-project search ends, then the search, with VS Code's followSymlinks", async () => {
+        const t = tempDir();
+        t.write("nested1/databricks.yml");
+        const search = heldFileSearch();
+        const { initialized, searched, events } = setup([t.dir], {
+            search: search.search,
+            settings: fakeSettings({ "search.followSymlinks": false }),
+        });
+        const names = () => events().map((e) => e.split(" ")[0]);
+        await initialized();
+        await new Promise((r) => setImmediate(r));
+        expect(names()).toEqual(["extensionInitialization"]);
+        search.release();
+        await searched();
+        expect(names()).toEqual([
+            "extensionInitialization",
+            "bundleSubProjectSearch",
+            "bundleSubProjects",
+        ]);
+        const recorded = events().find((e) => e.startsWith("bundleSubProjectSearch "));
+        expect(recorded).toContain(`"event.success":"true"`);
+        expect(recorded).toContain(`"event.followSymlinks":"false"`);
+        expect(recorded).toContain(`"event.count":1`);
+        expect(recorded).toMatch(/"event.duration":\d/);
+    });
+
+    it("records a failed sub-project search as failed", async () => {
+        const t = tempDir();
+        const failing: FileSearch = {
+            find: async () => {
+                throw new Error("search failed");
+            },
+        };
+        const { searched, events } = setup([t.dir], { search: failing });
+        await searched();
+        expect(events().find((e) => e.startsWith("bundleSubProjectSearch "))).toContain(
+            `"event.success":"false"`,
         );
     });
 
