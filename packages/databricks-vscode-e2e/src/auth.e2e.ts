@@ -53,6 +53,10 @@ describe("Configure Databricks Extension", async function () {
         // The target keeps its only profile, DEFAULT, once it's saved for the target. So a second
         // profile for the host doesn't prompt, and the switch goes through the connected row's menu,
         // as a user does.
+        // The extension polls the config file once a second, then debounces it by 200 ms. The pause
+        // covers that, so the row shows whether it read NEW_PROFILE. A later read would still fail
+        // at the menu step below.
+        await browser.pause(3000);
         await waitForLogin("DEFAULT");
         const row = await getWorkspaceConnectionItem();
         assert(row, "The Workspace connection row doesn't exist");
