@@ -44,7 +44,7 @@ async function setup(options: Options = {}) {
     );
     t.write(
         "project/databricks.yml",
-        `bundle: {name: demo${options.fileClusterId ? `, cluster_id: ${options.fileClusterId}` : ""}}\ntargets:\n  dev: {default: true, mode: development, workspace: {host: ${A}}}\n`,
+        `bundle: {name: demo${options.fileClusterId ? `, cluster_id: ${JSON.stringify(options.fileClusterId)}` : ""}}\ntargets:\n  dev: {default: true, mode: development, workspace: {host: ${A}}}\n`,
     );
     if (options.overrides !== undefined) {
         t.write(
@@ -167,16 +167,40 @@ describe("ComputeService", () => {
         s.kernel.dispose();
     });
 
-    it("a detach before validate reports the files' cluster stores nothing", async () => {
-        const s = await setup({
-            fileClusterId: "c-1",
-            overrides: { clusterId: "c-2" },
-            validateGate: new Promise<void>(() => {}),
-        });
-        await s.service.select({ kind: "none" });
+    it("gets the default once validate reports no cluster for a target whose files name one", async () => {
+        let answer!: () => void;
+        const validateGate = new Promise<void>((resolve) => (answer = resolve));
+        const s = await setup({ fileClusterId: "${var.cluster}", validateGate });
         expect(s.service.effective.value).toBeUndefined();
-        expect(s.overridesFile().serverless).toBeUndefined();
+        answer();
+        await when(s.kernel.bundle.validated, (v) => v.status === "ready");
+        expect(s.service.effective.value).toEqual({ kind: "serverless", source: "default" });
         s.kernel.dispose();
+    });
+
+    it("a detach before validate holds whatever validate then reports", async () => {
+        for (const bundleClusterId of [undefined, "c-1"]) {
+            let answer!: () => void;
+            const validateGate = new Promise<void>((resolve) => (answer = resolve));
+            const s = await setup({
+                fileClusterId: "${var.cluster}",
+                ...(bundleClusterId !== undefined ? { bundleClusterId } : {}),
+                overrides: { clusterId: "c-2" },
+                validateGate,
+            });
+            await s.service.select({ kind: "none" });
+            expect(s.service.effective.value).toBeUndefined();
+            expect(s.overridesFile()).toMatchObject({ serverless: false });
+            answer();
+            await when(s.kernel.bundle.validated, (v) => v.status === "ready");
+            // No cluster: the detach keeps the default out. A cluster: it still applies.
+            expect(s.service.effective.value).toEqual(
+                bundleClusterId === undefined
+                    ? undefined
+                    : { kind: "cluster", clusterId: bundleClusterId, source: "bundle" },
+            );
+            s.kernel.dispose();
+        }
     });
 
     it("isn't serverless by default in a session window, whose compute is the tunnel's", async () => {

@@ -453,8 +453,7 @@ export class ComputeService implements Disposable {
         const fillsOnDetach =
             this.connection !== undefined &&
             this.deps.defaultServerless &&
-            (this.bundleClusterId() ?? "") === "" &&
-            !this.bundleClusterPending();
+            (this.bundleClusterId() ?? "") === "";
         await this.deps.saveOverrides(
             overridesFor(choice, this.effective.value, { fillsOnDetach }),
         );
