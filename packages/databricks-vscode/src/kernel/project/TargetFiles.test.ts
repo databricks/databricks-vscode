@@ -2,9 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { useTempDirs } from "../../test-support/tempDir";
-import { TargetFiles } from "./TargetFiles";
+import { TargetFiles, WriteQueues } from "./TargetFiles";
 
 const tempDir = useTempDirs();
+/** A target-file service for `dir`, with its own write queue unless one is given. */
+const at = (dir: string, writes = new WriteQueues()) => new TargetFiles(dir, writes);
 /** Written by the old extension's `OverrideableConfigModel`, plus a key neither knows. */
 const golden = fs.readFileSync(path.join(__dirname, "fixtures", "vscode.overrides.json"), "utf-8");
 
@@ -12,7 +14,7 @@ describe("TargetFiles", () => {
     it("reads a file the old extension wrote", async () => {
         const t = tempDir();
         t.write(".databricks/bundle/dev/vscode.overrides.json", golden);
-        expect(await new TargetFiles(t.dir).readOverrides("dev")).toEqual({
+        expect(await at(t.dir).readOverrides("dev")).toEqual({
             authProfile: "DEFAULT",
             clusterId: "0123-456789-abcdefgh",
             useClusterOverride: true,
@@ -25,7 +27,7 @@ describe("TargetFiles", () => {
     it("keeps the other keys, in the old format, when it writes one", async () => {
         const t = tempDir();
         const file = t.write(".databricks/bundle/dev/vscode.overrides.json", golden);
-        await new TargetFiles(t.dir).writeOverride("dev", "authProfile", "COPY");
+        await at(t.dir).writeOverride("dev", "authProfile", "COPY");
         const written = fs.readFileSync(file, "utf-8");
         expect(JSON.parse(written)).toEqual({ ...JSON.parse(golden), authProfile: "COPY" });
         // `JSON.stringify(data, null, 2)`, as the old writer did.
@@ -35,14 +37,14 @@ describe("TargetFiles", () => {
     it("removes a key written as undefined", async () => {
         const t = tempDir();
         t.write(".databricks/bundle/dev/vscode.overrides.json", golden);
-        const files = new TargetFiles(t.dir);
+        const files = at(t.dir);
         await files.writeOverride("dev", "authProfile", undefined);
         expect(await files.readOverrides("dev")).not.toHaveProperty("authProfile");
     });
 
     it("creates the file and its folders on the first write", async () => {
         const t = tempDir();
-        const files = new TargetFiles(t.dir);
+        const files = at(t.dir);
         expect(await files.readOverrides("new")).toEqual({});
         await files.writeOverride("new", "authProfile", "DEFAULT");
         expect(fs.existsSync(t.path(".databricks/bundle/new/vscode.overrides.json"))).toBe(true);
@@ -50,7 +52,7 @@ describe("TargetFiles", () => {
 
     it("loses no update when writes overlap", async () => {
         const t = tempDir();
-        const files = new TargetFiles(t.dir);
+        const files = at(t.dir);
         await Promise.all([
             files.writeOverride("dev", "authProfile", "A"),
             files.writeOverride("dev", "clusterId", "c"),
@@ -66,11 +68,13 @@ describe("TargetFiles", () => {
     it("loses no update when writes overlap from two instances for the same root", async () => {
         // As the project's sign-out and the connection's saved profile do.
         const t = tempDir();
+        // One queue per window, as the project service gives every instance.
+        const writes = new WriteQueues();
         await Promise.all([
-            new TargetFiles(t.dir).writeOverride("dev", "authProfile", "DEFAULT"),
-            new TargetFiles(t.dir).writeOverride("dev", "signedOut", true),
+            at(t.dir, writes).writeOverride("dev", "authProfile", "DEFAULT"),
+            at(t.dir, writes).writeOverride("dev", "signedOut", true),
         ]);
-        expect(await new TargetFiles(t.dir).readOverrides("dev")).toEqual({
+        expect(await at(t.dir, writes).readOverrides("dev")).toEqual({
             authProfile: "DEFAULT",
             signedOut: true,
         });
@@ -80,7 +84,7 @@ describe("TargetFiles", () => {
         const t = tempDir();
         t.write(".databricks/bundle/empty/vscode.overrides.json", "");
         t.write(".databricks/bundle/array/vscode.overrides.json", "[]");
-        const files = new TargetFiles(t.dir);
+        const files = at(t.dir);
         expect(await files.readOverrides("empty")).toEqual({});
         await expect(files.readOverrides("array")).rejects.toThrow(/JSON object/);
     });
@@ -93,7 +97,7 @@ describe("TargetFiles", () => {
                 ".databricks/bundle/dev/vscode.bundlevars.json",
                 JSON.stringify({ a: "1", b: "", c: 2, d: true, e: { x: 1 } }, null, 4),
             );
-            expect(await new TargetFiles(t.dir).readVariables("dev")).toEqual({
+            expect(await at(t.dir).readVariables("dev")).toEqual({
                 a: "1",
                 c: "2",
                 d: "true",
@@ -102,7 +106,7 @@ describe("TargetFiles", () => {
 
         it("reads no overrides without a file, or from an empty one, and rejects one that isn't a JSON object", async () => {
             const t = tempDir();
-            const files = new TargetFiles(t.dir);
+            const files = at(t.dir);
             expect(await files.readVariables("dev")).toEqual({});
             t.write(".databricks/bundle/empty/vscode.bundlevars.json", "  ");
             expect(await files.readVariables("empty")).toEqual({});
@@ -112,7 +116,7 @@ describe("TargetFiles", () => {
 
         it("creates the file with {} only when it doesn't exist, and deletes it", async () => {
             const t = tempDir();
-            const files = new TargetFiles(t.dir);
+            const files = at(t.dir);
             const file = await files.ensureVariablesFile("dev");
             expect(file).toBe(t.path(".databricks/bundle/dev/vscode.bundlevars.json"));
             expect(fs.readFileSync(file, "utf-8")).toBe("{}");
@@ -126,7 +130,7 @@ describe("TargetFiles", () => {
 
         it("is a separate file from the overrides", async () => {
             const t = tempDir();
-            const files = new TargetFiles(t.dir);
+            const files = at(t.dir);
             await files.writeOverride("dev", "authProfile", "A");
             await files.ensureVariablesFile("dev");
             await files.deleteVariables("dev");
@@ -137,6 +141,6 @@ describe("TargetFiles", () => {
     it("doesn't read the old root-level overrides file", async () => {
         const t = tempDir();
         t.write(".databricks/bundle/vscode.overrides.json", golden);
-        expect(await new TargetFiles(t.dir).readOverrides("dev")).toEqual({});
+        expect(await at(t.dir).readOverrides("dev")).toEqual({});
     });
 });

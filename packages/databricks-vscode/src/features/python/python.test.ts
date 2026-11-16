@@ -62,14 +62,21 @@ const EXTENSION = {
 const settle = (ms = 20) => new Promise((r) => setTimeout(r, ms));
 /**
  * The project's env file once it holds `expected`. Waiting for the file alone
- * can read it between its creation and its content, as on Windows.
+ * can read it between its creation and its content, as on Windows, where a
+ * write can take longer than vitest's 1 s default.
  */
 const envFileWith = (root: string, expected: string) =>
-    vi.waitFor(() => {
-        const content = fs.readFileSync(path.join(root, ".databricks", ".databricks.env"), "utf-8");
-        expect(content).toContain(expected);
-        return content;
-    });
+    vi.waitFor(
+        () => {
+            const content = fs.readFileSync(
+                path.join(root, ".databricks", ".databricks.env"),
+                "utf-8",
+            );
+            expect(content).toContain(expected);
+            return content;
+        },
+        { timeout: 5000 },
+    );
 /** A project venv's interpreter, in the layout `venvInterpreterPath` expects: `Scripts\python.exe` on Windows. */
 const VENV_PYTHON = process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python";
 /** The bootstrap under the fake `/extension`, joined as the extension joins it. */

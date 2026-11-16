@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Logger } from "../../platform/log";
+import { samePath } from "../../platform/paths";
 
 /** The schema's URI scheme, and the URI every bundle file is mapped to (the old ones). */
 const SCHEMA_SCHEME = "dabs";
@@ -87,9 +88,4 @@ export function registerSchemaContributor(
         },
         (uri) => (uri.startsWith(`${SCHEMA_SCHEME}:`) ? schema : undefined),
     );
-}
-
-function samePath(a: string, b: string): boolean {
-    const [x, y] = [path.normalize(a), path.normalize(b)];
-    return process.platform === "win32" ? x.toLowerCase() === y.toLowerCase() : x === y;
 }

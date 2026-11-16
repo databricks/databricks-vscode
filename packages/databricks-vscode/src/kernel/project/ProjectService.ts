@@ -19,6 +19,7 @@ import {
     OVERRIDES_GLOB,
     TargetFiles,
     VARIABLES_GLOB,
+    WriteQueues,
     type Overrides,
     type VariableOverrides,
 } from "./TargetFiles";
@@ -159,6 +160,8 @@ export class ProjectService implements Disposable {
 
     private watched?: { root: string; bundle: BundleFiles; targetFiles: Disposable[] };
     private readonly disposables: Disposable[] = [];
+    /** Every target-file write of this window goes through these, so overlapping writes to one root queue up. */
+    private readonly targetWrites = new WriteQueues();
     private timer?: ReturnType<typeof setTimeout>;
     private started = false;
 
@@ -210,10 +213,14 @@ export class ProjectService implements Disposable {
         this.detection.invalidate("start");
     }
 
+    private targetFilesAt(root: string): TargetFiles {
+        return new TargetFiles(root, this.targetWrites);
+    }
+
     /** The files of the active project, or undefined without one. */
     get targetFiles(): TargetFiles | undefined {
         const project = this.active.value;
-        return project === undefined ? undefined : new TargetFiles(project.root);
+        return project === undefined ? undefined : this.targetFilesAt(project.root);
     }
 
     /** Resolves once the pending detection pass, if any, has published. */
@@ -316,7 +323,7 @@ export class ProjectService implements Disposable {
         if (target === undefined) {
             return undefined;
         }
-        await new TargetFiles(root).writeOverride(target, "authProfile", profile);
+        await this.targetFilesAt(root).writeOverride(target, "authProfile", profile);
         if (this.active.value?.root === path.normalize(root)) {
             await this.redetect("authProfile saved");
         }
@@ -413,7 +420,7 @@ export class ProjectService implements Disposable {
         let overrides: Overrides | undefined;
         let variables: VariableOverrides | undefined;
         if (target !== undefined) {
-            const targetFiles = new TargetFiles(root);
+            const targetFiles = this.targetFilesAt(root);
             try {
                 overrides = await targetFiles.readOverrides(target);
             } catch (e) {

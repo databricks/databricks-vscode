@@ -1,7 +1,7 @@
-import path from "node:path";
 import { TreeItemCollapsibleState, workspace } from "vscode";
 import type { Feature } from "../../kernel/feature";
 import { OPEN_VARIABLES_FILE } from "../../kernel/project/commands";
+import { samePath } from "../../platform/paths";
 import { NodeGroupSection } from "../../platform/ui/nodeGroup";
 import { SECTION_ORDER } from "../../platform/ui/sections";
 import { NodeTreeDataProvider } from "../../platform/ui/tree";
@@ -90,8 +90,3 @@ export const bundleVariables: Feature = {
         );
     },
 };
-
-function samePath(a: string, b: string): boolean {
-    const [x, y] = [path.normalize(a), path.normalize(b)];
-    return process.platform === "win32" ? x.toLowerCase() === y.toLowerCase() : x === y;
-}
