@@ -89,6 +89,7 @@ export const project: Feature = {
         };
         ctx.subscriptions.push(
             service.initialized.onDidChange(update),
+            service.active.onDidChange(update),
             service.subProjectSearch.onDidChange(update),
             service.subProjects.onDidChange(update),
             service.target.onDidChange(update),

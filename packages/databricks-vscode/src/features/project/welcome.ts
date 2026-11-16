@@ -11,7 +11,8 @@ export const INITIALIZED = contextKey<boolean>("databricks.context.initialized")
 /**
  * Where the search for sub-projects is, while no project is open: "searching" until the first
  * search of the folder ends, then "found" or "none" (a failed search too). Empty with a project
- * open or before detection ends. One key, so the welcome texts never mix values set apart.
+ * open or before detection ends. One key, so the welcome texts never mix values set apart; they
+ * also check `databricks.context.project`, which the bootstrap sets from another listener.
  */
 export const SUB_PROJECT_SEARCH = contextKey<SubProjectSearchKey>(
     "databricks.context.subProjectSearch",

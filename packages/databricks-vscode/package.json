@@ -1944,12 +1944,12 @@
             {
                 "view": "configurationView",
                 "contents": "Looking for bundles (databricks.yml) in the open folder and its subfolders...",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectSearch == 'searching'"
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.project && databricks.context.subProjectSearch == 'searching'"
             },
             {
                 "view": "configurationView",
                 "contents": "Choose a Databricks project from a subfolder of the open folder:\n[Choose a project](command:databricks.bundle.selectActiveProjectFolder)",
-                "when": "workspaceFolderCount > 0 && databricks.context.initialized && databricks.context.subProjectSearch == 'found' && !databricks.context.configurationView.hasRows"
+                "when": "workspaceFolderCount > 0 && databricks.context.initialized && !databricks.context.project && databricks.context.subProjectSearch == 'found' && !databricks.context.configurationView.hasRows"
             },
             {
                 "view": "configurationView",

@@ -268,7 +268,9 @@ describe("a bundle project through every feature", () => {
         await vi.waitFor(() => expect(w.kernel.project.root.value).toBe(w.t.path("other")));
         expect(w.kernel.project.active.value).toBeUndefined();
         // "No bundle (databricks.yml) was found", not "Choose a project": the second folder isn't searched.
-        expect(w.keys.get("databricks.context.subProjectsAvailable")).toBe(false);
+        await vi.waitFor(() =>
+            expect(w.keys.get("databricks.context.subProjectSearch")).toBe("none"),
+        );
         expect(await w.rows("configurationView")).toEqual([]);
 
         vscode.nextOpenDialog = w.root;
