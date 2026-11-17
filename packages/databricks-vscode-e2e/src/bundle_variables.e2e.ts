@@ -291,7 +291,9 @@ describe("Bundle Variables", async function () {
             "dev_test",
             "vscode.bundlevars.json",
         );
-        fs.writeFileSync(overridesFile, JSON.stringify({ undeclaredVar: "from file" }));
+        const content = JSON.stringify({ undeclaredVar: "from file" });
+        fs.writeFileSync(overridesFile, content);
+        let written = Date.now();
         try {
             const section = (await getViewSection("PROJECT")) as CustomTreeSection | undefined;
             assert(section);
@@ -309,6 +311,13 @@ describe("Bundle Variables", async function () {
                         );
                         return true;
                     } catch {
+                        // On a busy CI runner VS Code's file watcher has missed the write once,
+                        // and nothing else reloads the project. Writing again gives it another
+                        // event; a watcher that never fires still fails the wait.
+                        if (Date.now() - written >= 5_000) {
+                            fs.writeFileSync(overridesFile, content);
+                            written = Date.now();
+                        }
                         return false;
                     }
                 },
