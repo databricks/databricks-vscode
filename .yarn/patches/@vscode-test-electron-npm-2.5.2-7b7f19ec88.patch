@@ -1,0 +1,14 @@
+diff --git a/out/download.js b/out/download.js
+index 8395bb7f6f0085c6714f272ca0ab72cdec8a2fb5..7224b0c3b5bfbfb8537ddbdfe26478b176facd58 100644
+--- a/out/download.js
++++ b/out/download.js
+@@ -231,6 +231,9 @@ async function downloadVSCodeArchive(options) {
+ async function unzipVSCode(reporter, extractDir, platform, { format, stream, length, sha256 }) {
+     const stagingFile = path.join((0, os_1.tmpdir)(), `vscode-test-${Date.now()}.zip`);
+     const checksum = (0, util_2.validateStream)(stream, length, sha256);
++    // Backport of microsoft/vscode-test#340: `checksum` is only awaited on some
++    // paths, so a mid-download stream error otherwise crashes the process.
++    checksum.catch(() => { });
+     if (format === 'zip') {
+         const stripComponents = (0, util_2.isPlatformServer)(platform) ? 1 : 0;
+         try {
