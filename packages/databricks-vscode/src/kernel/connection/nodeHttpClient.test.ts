@@ -192,6 +192,27 @@ describe("nodeHttpClient", () => {
         await expect(pending).rejects.toMatchObject({ name: "AbortError" });
     });
 
+    it("rejects at once when aborted before it has a connection, as through a proxy that doesn't answer", async () => {
+        // VS Code's patch gives the request its proxy agent, which hands over no socket until the proxy answers CONNECT.
+        const hanging = new https.Agent();
+        hanging.createConnection = () => undefined as never;
+        const request = https.request;
+        vi.spyOn(https, "request").mockImplementation(((
+            url: URL,
+            options: https.RequestOptions,
+            onResponse: (res: IncomingMessage) => void,
+        ) => request(url, { ...options, agent: hanging }, onResponse)) as never);
+        const controller = new AbortController();
+        const pending = send({ signal: controller.signal });
+        setTimeout(() => controller.abort(), 20);
+        await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+        // The SDK's timeout is an abort too.
+        await expect(send({ signal: AbortSignal.timeout(20) })).rejects.toMatchObject({
+            name: "TimeoutError",
+        });
+        expect(seen).toHaveLength(0);
+    });
+
     it("errors the body stream with AbortError when aborted mid-body", async () => {
         const controller = new AbortController();
         const response = await send({ url: `${base()}/hold`, signal: controller.signal });

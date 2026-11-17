@@ -179,7 +179,7 @@ export class CommandRegistry {
      * as buttons, running the one picked. Resolves when the notification is
      * dismissed or the action has run. A failed action is logged, and shown
      * too when it fails with a `UserFacingError` (an Install that couldn't
-     * install, say).
+     * install, say). A cancelled action is silent, as a cancelled command is.
      */
     async showError(error: UserFacingError): Promise<void> {
         const picked = await this.host.showErrorMessage(
@@ -189,6 +189,10 @@ export class CommandRegistry {
         try {
             await error.actions.find((a) => a.title === picked)?.run();
         } catch (e) {
+            if (isCancellation(e)) {
+                this.log.debug(`An action for ${error.code} was cancelled`);
+                return;
+            }
             this.log.error(`An action for ${error.code} failed`, e);
             if (e instanceof UserFacingError) {
                 await this.showError(e);

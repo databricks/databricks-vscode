@@ -149,7 +149,12 @@ function open(attempt: Attempt): Promise<IncomingMessage> {
                       onResponse,
                   )
                 : http.request(url, { method, headers }, onResponse);
-        const onAbort = () => req.destroy(abortReason(signal));
+        const onAbort = () => {
+            const reason = abortReason(signal);
+            req.destroy(reason);
+            // Without a socket yet, as while a proxy hasn't answered CONNECT, `destroy` emits no error until one comes.
+            reject(reason);
+        };
         req.on("error", (error) => {
             signal?.removeEventListener("abort", onAbort);
             reject(error);
