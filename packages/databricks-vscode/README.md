@@ -18,7 +18,7 @@ The extension is available from the [Visual Studio Marketplace](https://marketpl
 
 ## Getting started
 
-Open the Quickstart from the Command Palette with "Databricks: Show Quickstart". It walks you through connecting to your workspace, exploring data, using Databricks models, running code, and deploying jobs and pipelines. The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html) has the details.
+Open the Quickstart from the Command Palette with "Databricks: Show Quickstart". It walks you through connecting to your workspace, exploring data, using Databricks models through Unity Gateway, working on Databricks compute, deploying jobs and pipelines, and running Python with Databricks Connect. The [User Guide](https://docs.databricks.com/dev-tools/vscode-ext.html) has the details.
 
 Version 3 needs VS Code 1.128 or later. On an older VS Code, stay on version 2.
 

@@ -72,6 +72,8 @@ describe("walkthroughs", () => {
             "ai-tools",
             "tunnel",
             "deploy",
+            "python-without-project",
+            "python-with-project",
         ]);
     });
 

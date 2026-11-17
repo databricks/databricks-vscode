@@ -1835,7 +1835,7 @@
                     {
                         "id": "models",
                         "title": "Chat with Databricks models",
-                        "description": "The models your workspace serves through Unity Gateway show up in Chat, agent mode included. Pick one in Chat's model picker.\n[Choose a Databricks model](command:databricks.unityGateway.chooseModel)",
+                        "description": "Unity Gateway gives VS Code Chat your workspace's models, agent mode included. It has a connection of its own, the Unity Gateway connection in the Connection view. Your first sign-in sets it to the same workspace, and your project never changes it. Switch it there to use another workspace's models, then pick one under Databricks in Chat's model picker.\n[Unity Gateway](https://docs.databricks.com/unity-gateway/) describes the gateway and its models.\n[Choose a Databricks model](command:databricks.unityGateway.chooseModel)",
                         "when": "!databricks.context.unityGateway.unavailable",
                         "completionEvents": [
                             "onCommand:databricks.unityGateway.chooseModel"
@@ -1877,6 +1877,31 @@
                         ],
                         "media": {
                             "markdown": "resources/walkthrough/deploy.md"
+                        }
+                    },
+                    {
+                        "id": "python-without-project",
+                        "title": "Run Python and notebooks on Databricks",
+                        "description": "Databricks Connect runs your Python files and notebook cells on serverless compute or your cluster. It works in a project: a folder with a databricks.yml file. Open one, or create one from a template.\n[Databricks Connect](https://docs.databricks.com/dev-tools/vscode-ext/databricks-connect) explains the details.\n[Open folder](command:vscode.openFolder)\n[Create a new project](command:databricks.bundle.initNewProject)",
+                        "when": "!databricks.context.project",
+                        "completionEvents": [
+                            "onContext:databricks.context.project"
+                        ],
+                        "media": {
+                            "markdown": "resources/walkthrough/python.md"
+                        }
+                    },
+                    {
+                        "id": "python-with-project",
+                        "title": "Run Python and notebooks on Databricks",
+                        "description": "Databricks Connect runs your Python files and notebook cells on serverless compute or your cluster, and you debug them in VS Code. Set up Python environment installs the Databricks Connect version that matches your compute. Then run a file with Run on Databricks > Run current file with Databricks Connect.\n[Databricks Connect](https://docs.databricks.com/dev-tools/vscode-ext/databricks-connect) explains the details.\n[Set up Python environment](command:databricks.environment.setup)",
+                        "when": "databricks.context.project",
+                        "completionEvents": [
+                            "onCommand:databricks.run.dbconnect.run",
+                            "onCommand:databricks.run.dbconnect.debug"
+                        ],
+                        "media": {
+                            "markdown": "resources/walkthrough/python.md"
                         }
                     }
                 ]
