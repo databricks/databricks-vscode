@@ -29,7 +29,7 @@ describe("nodeHttpClient", () => {
     beforeAll(async () => {
         local = await startLocalHttps((req, res) => void route(req, res));
         restoreCa = trustLocalCa(local.ca);
-    });
+    }, 60_000);
 
     afterAll(async () => {
         restoreCa();

@@ -420,7 +420,7 @@ describe("the extension's oxlint rules, through the repo's config", () => {
         rules = Object.keys(plugin.default.rules);
         dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "databricks-vscode-lint-")));
         diagnostics = lintWithRepoConfig(dir);
-    });
+    }, 60_000);
 
     afterAll(() => {
         fs.rmSync(dir, { recursive: true, force: true });

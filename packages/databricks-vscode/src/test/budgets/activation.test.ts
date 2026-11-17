@@ -31,7 +31,9 @@ vi.mock("@vscode/extension-telemetry", () => ({
 }));
 
 const ACTIVATION_BUDGET_MS = 100;
-const tempDir = useTempDirs();
+// A test ends while the extension's JSON log file is still closing. On Windows a deleted file
+// keeps its name until its last handle closes, so the folder can't be removed until then.
+const tempDir = useTempDirs({ retryRemoval: true });
 
 /**
  * A local window, and a session window, which connects at once with the
