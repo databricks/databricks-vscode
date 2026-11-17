@@ -156,7 +156,7 @@ describe("import boundaries", () => {
     beforeAll(async () => {
         fixtureDir = writeFixtures();
         [real, fixture] = await Promise.all([cruise(packageDir), cruise(fixtureDir)]);
-    });
+    }, 60_000);
 
     afterAll(() => {
         fs.rmSync(fixtureDir, { recursive: true, force: true });

@@ -5,13 +5,16 @@ import { afterEach } from "vitest";
 
 /**
  * A temporary directory, removed after the test. `write` creates files
- * relative to it, with their parent folders.
+ * relative to it, with their parent folders. `retryRemoval` retries the
+ * removal for up to 3 s, for a test that ends while a file in it is still
+ * closing.
  */
-export function useTempDirs() {
+export function useTempDirs(options: { retryRemoval?: boolean } = {}) {
     const dirs: string[] = [];
+    const retry = options.retryRemoval ? { maxRetries: 10, retryDelay: 50 } : {};
     afterEach(() => {
         for (const dir of dirs.splice(0)) {
-            fs.rmSync(dir, { recursive: true, force: true });
+            fs.rmSync(dir, { recursive: true, force: true, ...retry });
         }
     });
     return () => {
