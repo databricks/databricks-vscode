@@ -280,15 +280,26 @@ describe("python feature", () => {
         });
         expect(fakePython.activations).toBe(0);
         await s.start();
-        const [group] = await s.rowsWhenSettled();
+        const group = await vi.waitFor(
+            async () => {
+                const [row] = await s.rows();
+                expect(row?.id).toBe(ENVIRONMENT_GROUP_ID);
+                return row!;
+            },
+            { timeout: 5000 },
+        );
         expect(fakePython.activations).toBe(1);
         expect(fakePython.lookups[0]).toBe(s.root);
         // The cluster's DBR 15 asks for Python 3.11 once it is read.
         await when(s.kernel.compute.attachedCluster, (c) => c?.details !== undefined);
-        expect((await s.rowsWhenSettled(group)).map((r) => r.label)).toEqual([
-            "Activate an environment with Python 3.11",
-            "Can't install databricks-connect without an active python environment",
-        ]);
+        await vi.waitFor(
+            async () =>
+                expect((await s.rows(group)).map((r) => r.label)).toEqual([
+                    "Activate an environment with Python 3.11",
+                    "Can't install databricks-connect without an active python environment",
+                ]),
+            { timeout: 5000 },
+        );
 
         s.packages.push({ name: "databricks-connect", version: "15.4.1" });
         fakePython.select(
@@ -300,8 +311,15 @@ describe("python feature", () => {
                 name: "dbx",
             }),
         );
-        const [readyGroup] = await s.rowsWhenSettled();
-        expect(readyGroup.contextValue).toBe("databricks.environment.root.success");
+        // The re-evaluation waits out a 200 ms debounce, then probes; wait for it, not a fixed time.
+        const readyGroup = await vi.waitFor(
+            async () => {
+                const [row] = await s.rows();
+                expect(row?.contextValue).toBe("databricks.environment.root.success");
+                return row!;
+            },
+            { timeout: 5000 },
+        );
         expect((await s.rows(readyGroup)).map((r) => r.label)).toEqual([
             "Active Environment: dbx",
             "Use python 3.11 to match DBR 15 requirements. Current Python version is 3.12.1.",
@@ -1043,7 +1061,14 @@ describe("python feature", () => {
             const { s, ipythonRuns } = await ready({ ipython: false });
             vscode.nextErrorChoice = "Install and try again";
             await s.run(VERIFY_NOTEBOOK_INIT_SCRIPT);
-            await settle(300);
+            // Wait for the whole retry, or it runs on after the test's temp dir is removed.
+            await vi.waitFor(
+                () =>
+                    expect(vscode.infos.map((i) => i.message)).toContain(
+                        "Successfully verified Databricks notebook init scripts",
+                    ),
+                { timeout: 5000 },
+            );
             expect(vscode.errors[0]?.message).toBe(
                 "Cannot verify databricks notebook init script. IPython is not installed in the current environment: .venv",
             );
@@ -1062,7 +1087,8 @@ describe("python feature", () => {
             s.settings["databricks.ipythonDir"] = s.t.write("not-a-dir", "");
             vscode.nextErrorChoice = "Install and try again";
             await s.run(VERIFY_NOTEBOOK_INIT_SCRIPT);
-            await settle(300);
+            // The retry's failure is reported last; wait for it so it can't land in the next test.
+            await vi.waitFor(() => expect(vscode.errors).toHaveLength(2), { timeout: 5000 });
             expect(s.kernel.runner.argv).toContainEqual([
                 "-m",
                 "pip",
@@ -1084,8 +1110,7 @@ describe("python feature", () => {
             vscode.activeNotebook = Uri.file(path.join(s.root, "a.ipynb"));
             vscode.notebookOpened.fire({});
             // The env file's write is coalesced first.
-            await settle(300);
-            expect(ipythonRuns()).toHaveLength(1);
+            await vi.waitFor(() => expect(ipythonRuns()).toHaveLength(1), { timeout: 5000 });
             vscode.activeNotebookChanged.fire({ notebook: { uri: vscode.activeNotebook } });
             await settle(300);
             expect(ipythonRuns()).toHaveLength(1);
