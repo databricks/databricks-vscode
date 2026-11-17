@@ -404,12 +404,11 @@ describe("ProjectService", () => {
         const t = tempDir();
         t.write("nested/databricks.yml");
         const search = heldFileSearch();
-        const { service, initialized, touch } = setup([t.dir], { search: search.search });
+        const { service, initialized, touchUntil } = setup([t.dir], { search: search.search });
         service.start();
         await initialized();
-        t.write("databricks.yml", bundle("  dev: {}"));
-        await touch(t.path("databricks.yml"));
-        expect(service.active.value?.root).toBe(t.dir);
+        const file = t.write("databricks.yml", bundle("  dev: {}"));
+        await touchUntil(file, () => expect(service.active.value?.root).toBe(t.dir));
         expect(service.subProjectSearch.value).toBeUndefined();
         search.release();
         await new Promise((r) => setTimeout(r, 20));

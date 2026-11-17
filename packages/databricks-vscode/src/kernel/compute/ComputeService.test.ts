@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MutableState, when } from "../../platform/reactive";
 import { apiCluster, FakeClusters, type ApiCluster } from "../../test-support/fakeClusters";
 import { fakeKernel, fakeSettings } from "../../test-support/fakes";
@@ -306,8 +306,8 @@ describe("ComputeService", () => {
             name: "name-c-1",
             state: "RUNNING",
         });
-        await tick(100);
-        expect(s.gets()).toBeGreaterThanOrEqual(3);
+        // Counts the reads in wall-clock time, which a slow Windows runner can stretch.
+        await vi.waitFor(() => expect(s.gets()).toBeGreaterThanOrEqual(3));
 
         subscription.dispose();
         const after = s.gets();
