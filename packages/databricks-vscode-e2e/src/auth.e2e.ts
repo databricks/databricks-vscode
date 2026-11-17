@@ -1,11 +1,6 @@
 import assert from "node:assert";
 import { getBasicBundleConfig, writeRootBundleConfig } from "./utils/bundle-fixtures.ts";
-import {
-    getWorkspaceConnectionItem,
-    waitForInput,
-    waitForLogin,
-    waitForWorkspaceConnection,
-} from "./utils/configuration.ts";
+import { getWorkspaceConnectionItem, waitForInput, waitForLogin } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import { getViewSection } from "./utils/view.ts";
 
@@ -55,12 +50,22 @@ describe("Configure Databricks Extension", async function () {
     });
 
     it("should change profiles", async () => {
-        // NEW_PROFILE is for DEFAULT's workspace too, so the target asks which to use: the
-        // workspace row reads "Select a profile", and clicking it picks one.
-        await waitForWorkspaceConnection("Select a profile");
+        // The target keeps its only profile, DEFAULT, once it's saved for the target. So a second
+        // profile for the host doesn't prompt, and the switch goes through the connected row's menu,
+        // as a user does.
+        // The extension polls the config file once a second, then debounces it by 200 ms. The pause
+        // covers that, so the row shows whether it read NEW_PROFILE. A later read would still fail
+        // at the menu step below.
+        await browser.pause(3000);
+        await waitForLogin("DEFAULT");
         const row = await getWorkspaceConnectionItem();
         assert(row, "The Workspace connection row doesn't exist");
         await row.select();
+
+        const menuInput = await waitForInput();
+        const switchPick = await menuInput.findQuickPick("Switch profile");
+        assert(switchPick, "Switch profile is absent in the connection menu");
+        await switchPick.select();
 
         const authMethodInput = await waitForInput();
         const newProfilePick = await authMethodInput.findQuickPick("NEW_PROFILE");

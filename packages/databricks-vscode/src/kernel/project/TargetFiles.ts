@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathKey } from "../../platform/paths";
 
 /**
  * The per-target choices in `.databricks/bundle/<target>/vscode.overrides.json`.
@@ -40,14 +41,41 @@ export type VariableOverrides = Readonly<Record<string, string>>;
 export const VARIABLES_GLOB = ".databricks/bundle/*/vscode.bundlevars.json";
 
 /**
+ * The pending writes per project root. The project service owns one and gives
+ * it to every `TargetFiles` it makes, so writes to a root run one at a time
+ * whichever instance makes them.
+ */
+export class WriteQueues {
+    private readonly pending = new Map<string, Promise<void>>();
+
+    run<T>(root: string, write: () => Promise<T>): Promise<T> {
+        const key = pathKey(root);
+        const result = (this.pending.get(key) ?? Promise.resolve()).then(write);
+        const done = result.then(
+            () => {},
+            () => {},
+        );
+        this.pending.set(key, done);
+        void done.then(() => {
+            if (this.pending.get(key) === done) {
+                this.pending.delete(key);
+            }
+        });
+        return result;
+    }
+}
+
+/**
  * Reads and writes one project's target files. The old root-level
  * `.databricks/bundle/vscode.overrides.json` isn't migrated.
- * Writes run one at a time, so read-modify-write can't lose an update.
+ * Writes go through the `WriteQueues` given, so read-modify-write can't lose
+ * an update to another write of the same root.
  */
 export class TargetFiles {
-    private queue: Promise<void> = Promise.resolve();
-
-    constructor(readonly root: string) {}
+    constructor(
+        readonly root: string,
+        private readonly writes: WriteQueues,
+    ) {}
 
     overridesFile(target: string): string {
         return path.join(this.root, ".databricks", "bundle", target, "vscode.overrides.json");
@@ -133,12 +161,7 @@ export class TargetFiles {
     }
 
     private enqueue<T>(write: () => Promise<T>): Promise<T> {
-        const result = this.queue.then(write);
-        this.queue = result.then(
-            () => {},
-            () => {},
-        );
-        return result;
+        return this.writes.run(this.root, write);
     }
 }
 

@@ -34,13 +34,16 @@ describe("Choose between profiles for one host", async function () {
 
     it("should open VS Code and dismiss notifications", async () => {
         assert(process.env.WORKSPACE_PATH, "WORKSPACE_PATH doesn't exist");
+        // Before the extension activates, so its first read of the config file has both profiles.
+        // Written later, COPY can reach the extension after the target has saved DEFAULT, its
+        // only profile then, and the target doesn't ask.
+        copyProfile("DEFAULT", "COPY");
         await dismissNotifications();
         // Opening the view activates the extension, which a folder without a bundle doesn't.
         assert(await getViewSection("PROJECT"));
     });
 
     it("should ask which profile to use when two match the target's host", async () => {
-        copyProfile("DEFAULT", "COPY");
         await writeRootBundleConfig(
             {
                 bundle: { name: target },

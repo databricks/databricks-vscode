@@ -60,6 +60,23 @@ const EXTENSION = {
     globalStoragePath: "/tmp/databricks-vscode-test-storage",
 };
 const settle = (ms = 20) => new Promise((r) => setTimeout(r, ms));
+/**
+ * The project's env file once it holds `expected`. Waiting for the file alone
+ * can read it between its creation and its content, as on Windows, where a
+ * write can take longer than vitest's 1 s default.
+ */
+const envFileWith = (root: string, expected: string) =>
+    vi.waitFor(
+        () => {
+            const content = fs.readFileSync(
+                path.join(root, ".databricks", ".databricks.env"),
+                "utf-8",
+            );
+            expect(content).toContain(expected);
+            return content;
+        },
+        { timeout: 5000 },
+    );
 /** A project venv's interpreter, in the layout `venvInterpreterPath` expects: `Scripts\python.exe` on Windows. */
 const VENV_PYTHON = process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python";
 /** The bootstrap under the fake `/extension`, joined as the extension joins it. */
@@ -483,12 +500,7 @@ describe("python feature", () => {
         it("writes the env file when the session starts while connected: a profile, the compute, no token", async () => {
             const s = await setup({ overrides: { clusterId: "c-1" } });
             await s.start();
-            const file = path.join(s.root, ".databricks", ".databricks.env");
-            for (let i = 0; i < 50 && !fs.existsSync(file); i++) {
-                await settle(20);
-            }
-            const content = fs.readFileSync(file, "utf-8");
-            expect(content).toContain("DATABRICKS_CONFIG_PROFILE=DEFAULT");
+            const content = await envFileWith(s.root, "DATABRICKS_CONFIG_PROFILE=DEFAULT");
             expect(content).toContain("DATABRICKS_CLUSTER_ID=c-1");
             expect(content).toContain(`DATABRICKS_TOKEN=${EOL}`);
             expect(content).not.toContain("dapi-default");
@@ -497,24 +509,17 @@ describe("python feature", () => {
         it("marks the serverless default in the env file, and a chosen serverless has no marker", async () => {
             const s = await setup();
             await s.start();
-            const file = path.join(s.root, ".databricks", ".databricks.env");
-            for (let i = 0; i < 50 && !fs.existsSync(file); i++) {
-                await settle(20);
-            }
-            const asDefault = fs.readFileSync(file, "utf-8");
-            expect(asDefault).toContain(`DATABRICKS_SERVERLESS_COMPUTE_ID=auto${EOL}`);
+            const asDefault = await envFileWith(
+                s.root,
+                `DATABRICKS_SERVERLESS_COMPUTE_ID=auto${EOL}`,
+            );
             expect(asDefault).toContain(`DATABRICKS_SERVERLESS_COMPUTE_DEFAULT=1${EOL}`);
         });
 
         it("writes no default marker for a chosen serverless compute", async () => {
             const s = await setup({ overrides: { serverless: true, serverlessVersion: "4" } });
             await s.start();
-            const file = path.join(s.root, ".databricks", ".databricks.env");
-            for (let i = 0; i < 50 && !fs.existsSync(file); i++) {
-                await settle(20);
-            }
-            const chosen = fs.readFileSync(file, "utf-8");
-            expect(chosen).toContain(`DATABRICKS_SERVERLESS_COMPUTE_ID=auto${EOL}`);
+            const chosen = await envFileWith(s.root, `DATABRICKS_SERVERLESS_COMPUTE_ID=auto${EOL}`);
             expect(chosen).not.toContain("DATABRICKS_SERVERLESS_COMPUTE_DEFAULT");
         });
 
