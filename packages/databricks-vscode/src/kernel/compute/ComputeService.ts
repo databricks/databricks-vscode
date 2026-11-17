@@ -197,16 +197,30 @@ export class ComputeService implements Disposable {
         return connection;
     }
 
-    /** The bundle's cluster for the active target, as validate reports it. */
-    private bundleClusterId(): string | undefined {
+    /** Validate's result for the active target, once it has reported on it. */
+    private currentValidated(): ValidatedBundle | undefined {
         const project = this.deps.project.value;
         const validated = this.deps.validated.latest;
-        const current =
-            validated !== undefined &&
+        return validated !== undefined &&
             validated.root === project.project?.root &&
-            validated.target === project.target;
-        const bundle = current ? validated.config.bundle : undefined;
+            validated.target === project.target
+            ? validated
+            : undefined;
+    }
+
+    /** The bundle's cluster for the active target, as validate reports it. */
+    private bundleClusterId(): string | undefined {
+        const bundle = this.currentValidated()?.config.bundle;
         return bundle?.compute_id ?? bundle?.cluster_id;
+    }
+
+    /** The target's files name a cluster, and validate hasn't reported on the target yet. */
+    private bundleClusterPending(): boolean {
+        const { project, target } = this.deps.project.value;
+        return (
+            this.currentValidated() === undefined &&
+            project?.config.targets.find((t) => t.name === target)?.clusterId !== undefined
+        );
     }
 
     private update() {
@@ -218,6 +232,7 @@ export class ComputeService implements Disposable {
                 : effectiveCompute({
                       overrides: this.deps.choosesCompute ? project.overrides : undefined,
                       bundleClusterId: this.bundleClusterId(),
+                      bundleClusterPending: this.bundleClusterPending(),
                       serverlessComputeId: connection?.serverlessComputeId,
                       defaultServerless: connection !== undefined && this.deps.defaultServerless,
                   }),

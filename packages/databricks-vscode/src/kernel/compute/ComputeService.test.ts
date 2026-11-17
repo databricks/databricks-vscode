@@ -19,6 +19,10 @@ const tempDir = useTempDirs();
 interface Options {
     /** `bundle.cluster_id` in validate's output. */
     bundleClusterId?: string;
+    /** `bundle.cluster_id` in databricks.yml. */
+    fileClusterId?: string;
+    /** Validate answers only once this resolves, and setup doesn't wait for it. */
+    validateGate?: Promise<void>;
     /** Adds `serverless_compute_id = auto` to the profile. */
     serverlessAuto?: boolean;
     overrides?: Record<string, unknown>;
@@ -40,7 +44,7 @@ async function setup(options: Options = {}) {
     );
     t.write(
         "project/databricks.yml",
-        `bundle: {name: demo}\ntargets:\n  dev: {default: true, mode: development, workspace: {host: ${A}}}\n`,
+        `bundle: {name: demo${options.fileClusterId ? `, cluster_id: ${JSON.stringify(options.fileClusterId)}` : ""}}\ntargets:\n  dev: {default: true, mode: development, workspace: {host: ${A}}}\n`,
     );
     if (options.overrides !== undefined) {
         t.write(
@@ -76,16 +80,19 @@ async function setup(options: Options = {}) {
         files: new FakeFileEvents(),
         settings: fakeSettings(options.settings ?? {}),
     });
-    kernel.runner.on(["bundle", "validate"], () => ({
-        stdout: JSON.stringify({
-            bundle: {
-                name: "demo",
-                target: "dev",
-                mode: "development",
-                ...(options.bundleClusterId ? { cluster_id: options.bundleClusterId } : {}),
-            },
-        }),
-    }));
+    kernel.runner.on(["bundle", "validate"], async () => {
+        await options.validateGate;
+        return {
+            stdout: JSON.stringify({
+                bundle: {
+                    name: "demo",
+                    target: "dev",
+                    mode: "development",
+                    ...(options.bundleClusterId ? { cluster_id: options.bundleClusterId } : {}),
+                },
+            }),
+        };
+    });
     kernel.runner.on(["bundle", "summary"], () => ({
         stdout: JSON.stringify({ bundle: { name: "demo", target: "dev" } }),
     }));
@@ -94,7 +101,11 @@ async function setup(options: Options = {}) {
         await tick(300);
     } else {
         await when(kernel.connection.state, (s) => s.status === "connected");
-        await when(kernel.bundle.validated, (s) => s.status === "ready");
+        if (options.validateGate === undefined) {
+            await when(kernel.bundle.validated, (s) => s.status === "ready");
+        } else {
+            await tick(100);
+        }
     }
     const service = kernel.compute;
     const overridesFile = () =>
@@ -126,6 +137,70 @@ describe("ComputeService", () => {
         expect(s.service.effective.value).toEqual({ kind: "serverless", source: "default" });
         expect(s.overridesFile().serverless).toBeUndefined();
         s.kernel.dispose();
+    });
+
+    it("has no default before validate reports the cluster the target's files name, then the cluster", async () => {
+        let answer!: () => void;
+        const validateGate = new Promise<void>((resolve) => (answer = resolve));
+        const s = await setup({
+            fileClusterId: "c-1",
+            bundleClusterId: "c-1",
+            serverlessAuto: true,
+            validateGate,
+        });
+        expect(s.kernel.bundle.validated.value.status).not.toBe("ready");
+        expect(s.service.effective.value).toBeUndefined();
+        answer();
+        await when(s.kernel.bundle.validated, (v) => v.status === "ready");
+        expect(s.service.effective.value).toEqual({
+            kind: "cluster",
+            clusterId: "c-1",
+            source: "bundle",
+        });
+        s.kernel.dispose();
+    });
+
+    it("is serverless by default before validate when the target's files name no cluster", async () => {
+        const s = await setup({ validateGate: new Promise<void>(() => {}) });
+        expect(s.kernel.bundle.validated.value.status).not.toBe("ready");
+        expect(s.service.effective.value).toEqual({ kind: "serverless", source: "default" });
+        s.kernel.dispose();
+    });
+
+    it("gets the default once validate reports no cluster for a target whose files name one", async () => {
+        let answer!: () => void;
+        const validateGate = new Promise<void>((resolve) => (answer = resolve));
+        const s = await setup({ fileClusterId: "${var.cluster}", validateGate });
+        expect(s.service.effective.value).toBeUndefined();
+        answer();
+        await when(s.kernel.bundle.validated, (v) => v.status === "ready");
+        expect(s.service.effective.value).toEqual({ kind: "serverless", source: "default" });
+        s.kernel.dispose();
+    });
+
+    it("a detach before validate holds whatever validate then reports", async () => {
+        for (const bundleClusterId of [undefined, "c-1"]) {
+            let answer!: () => void;
+            const validateGate = new Promise<void>((resolve) => (answer = resolve));
+            const s = await setup({
+                fileClusterId: "${var.cluster}",
+                ...(bundleClusterId !== undefined ? { bundleClusterId } : {}),
+                overrides: { clusterId: "c-2" },
+                validateGate,
+            });
+            await s.service.select({ kind: "none" });
+            expect(s.service.effective.value).toBeUndefined();
+            expect(s.overridesFile()).toMatchObject({ serverless: false });
+            answer();
+            await when(s.kernel.bundle.validated, (v) => v.status === "ready");
+            // No cluster: the detach keeps the default out. A cluster: it still applies.
+            expect(s.service.effective.value).toEqual(
+                bundleClusterId === undefined
+                    ? undefined
+                    : { kind: "cluster", clusterId: bundleClusterId, source: "bundle" },
+            );
+            s.kernel.dispose();
+        }
     });
 
     it("isn't serverless by default in a session window, whose compute is the tunnel's", async () => {

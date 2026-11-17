@@ -31,6 +31,8 @@ export interface ComputeInputs {
     readonly overrides?: Overrides;
     /** Validate's `bundle.compute_id ?? bundle.cluster_id`, for the active target. */
     readonly bundleClusterId?: string;
+    /** The target's files name a cluster that validate hasn't reported yet. */
+    readonly bundleClusterPending?: boolean;
     /** The connection profile's `serverless_compute_id`. */
     readonly serverlessComputeId?: string;
     /**
@@ -43,7 +45,10 @@ export interface ComputeInputs {
 /**
  * The effective compute, in this order: the explicit choice in the
  * overrides, then the bundle's cluster, then `serverless_compute_id = auto`
- * in the profile, then serverless by default. An explicit `serverless: false`
+ * in the profile, then serverless by default. Neither default applies while
+ * the bundle's cluster is pending, until validate reports on the target. Code
+ * that reads the profile itself, as Databricks Connect does, still sees its
+ * `serverless_compute_id`. An explicit `serverless: false`
  * (a cluster was attached or detached) turns the profile's default and the
  * serverless default off, as the old `ConnectionManager` did.
  * A pure function: `ComputeService.effective` re-derives it when an input
@@ -59,6 +64,9 @@ export function effectiveCompute(inputs: ComputeInputs): Compute | undefined {
     }
     if (inputs.bundleClusterId !== undefined && inputs.bundleClusterId !== "") {
         return { kind: "cluster", clusterId: inputs.bundleClusterId, source: "bundle" };
+    }
+    if (inputs.bundleClusterPending === true) {
+        return undefined;
     }
     if (overrides.serverless === undefined && inputs.serverlessComputeId === "auto") {
         return serverless(overrides, "profile");

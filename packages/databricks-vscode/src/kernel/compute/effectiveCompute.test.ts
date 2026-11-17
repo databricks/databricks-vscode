@@ -90,6 +90,16 @@ describe("effectiveCompute (COMP-03)", () => {
             { overrides: { serverless: false }, bundleClusterId: "b-1" },
             { kind: "cluster", clusterId: "b-1", source: "bundle" },
         ],
+        [
+            "no default while the bundle's cluster is pending",
+            { defaultServerless: true, serverlessComputeId: "auto", bundleClusterPending: true },
+            undefined,
+        ],
+        [
+            "chosen compute while the bundle's cluster is pending",
+            { overrides: { clusterId: "o-1" }, bundleClusterPending: true },
+            { kind: "cluster", clusterId: "o-1", source: "override" },
+        ],
         ["a profile value other than auto", { serverlessComputeId: "other" }, undefined],
         [
             "an empty cluster ID is no cluster",

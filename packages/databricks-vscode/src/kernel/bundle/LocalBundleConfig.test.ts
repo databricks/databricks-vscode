@@ -86,6 +86,26 @@ targets:
         ]);
     });
 
+    it("reads the target's cluster, else its bundle's, else the top-level bundle's, as written", () => {
+        const c = config(`
+bundle: {name: demo, cluster_id: top}
+targets:
+  own: {cluster_id: t-1, bundle: {cluster_id: b-1}}
+  legacy: {compute_id: t-2}
+  bundled: {bundle: {cluster_id: b-3}}
+  variable: {cluster_id: "\${var.cluster}"}
+  inherits:
+`);
+        expect(c.targets.map((t) => [t.name, t.clusterId])).toEqual([
+            ["own", "t-1"],
+            ["legacy", "t-2"],
+            ["bundled", "b-3"],
+            ["variable", "${var.cluster}"],
+            ["inherits", "top"],
+        ]);
+        expect(config(`targets: {dev: {mode: development}}`).targets[0]?.clusterId).toBeUndefined();
+    });
+
     it("reads workspace.profile without a host", () => {
         expect(
             config(`targets: {dev: {workspace: {profile: dev-profile}}}`).targets[0],
