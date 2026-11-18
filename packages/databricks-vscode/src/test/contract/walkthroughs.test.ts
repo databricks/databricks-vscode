@@ -11,6 +11,7 @@ import { QUICKSTART_WALKTHROUGH } from "../../features/onboarding/commands";
 
 const packageDir = path.resolve(__dirname, "../../..");
 const manifest = JSON.parse(fs.readFileSync(path.join(packageDir, "package.json"), "utf-8")) as {
+    activationEvents: string[];
     contributes: {
         commands: { command: string }[];
         views?: Record<string, { id: string }[]>;
@@ -62,12 +63,20 @@ describe("walkthroughs", () => {
         expect(walkthroughs[0]!.when).toBe("!remoteName");
     });
 
+    it("activates the extension when it opens, so the steps' context keys are set", () => {
+        // VS Code fires onWalkthrough:<id> as it shows the walkthrough. Without it, a step
+        // keyed on a context key, such as the models step's sign-in variant, shows until
+        // something else activates the extension.
+        expect(manifest.activationEvents).toContain(`onWalkthrough:${walkthroughs[0]!.id}`);
+    });
+
     it("has the getStarted walkthrough with its steps", () => {
         // A new id, so VS Code opens it on install for users who saw the old one.
         expect(walkthroughs.map((w) => w.id)).toEqual(["getStarted"]);
         expect(walkthroughs[0]!.steps.map((s) => s.id)).toEqual([
             "connect",
             "explore",
+            "models-sign-in",
             "models",
             "ai-tools",
             "tunnel",

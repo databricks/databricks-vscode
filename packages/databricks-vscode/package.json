@@ -1833,10 +1833,22 @@
                         }
                     },
                     {
+                        "id": "models-sign-in",
+                        "title": "Chat with Databricks models",
+                        "description": "Unity Gateway brings your workspace's models to VS Code Chat. It has its own connection in the Connection view. Sign in to it to use the models.\n[Unity Gateway](https://docs.databricks.com/unity-gateway/) describes the gateway and its models.\n[Sign in to Unity Gateway](command:databricks.unityGateway.signIn)",
+                        "when": "!databricks.context.unityGateway.unavailable && !databricks.context.unityGateway.hasSavedProfile",
+                        "completionEvents": [
+                            "onContext:databricks.context.unityGateway.hasSavedProfile"
+                        ],
+                        "media": {
+                            "markdown": "resources/walkthrough/chat.md"
+                        }
+                    },
+                    {
                         "id": "models",
                         "title": "Chat with Databricks models",
                         "description": "Unity Gateway brings your workspace's models to VS Code Chat. It has its own connection in the Connection view, where you can switch to another workspace.\n[Unity Gateway](https://docs.databricks.com/unity-gateway/) describes the gateway and its models.\n[Choose a Databricks model](command:databricks.unityGateway.chooseModel)",
-                        "when": "!databricks.context.unityGateway.unavailable",
+                        "when": "!databricks.context.unityGateway.unavailable && databricks.context.unityGateway.hasSavedProfile",
                         "completionEvents": [
                             "onCommand:databricks.unityGateway.chooseModel"
                         ],
@@ -2266,6 +2278,7 @@
         "onDebugResolve:debugpy",
         "onDebugResolve:python",
         "onFileSystem:databricks-wsfs",
+        "onWalkthrough:getStarted",
         "workspaceContains:**/bundle.yaml",
         "workspaceContains:**/bundle.yml",
         "workspaceContains:**/databricks.yaml",
