@@ -1,0 +1,1 @@
+<video src="python.mp4" title="Setting up the Python environment from the Project view, then running a file with Databricks Connect, which prints five rows of samples.nyctaxi.trips." autoplay loop muted playsinline width="100%"></video>
