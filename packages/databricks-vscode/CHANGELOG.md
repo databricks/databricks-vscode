@@ -1,4 +1,4 @@
-# Unreleased
+# Release: v3.1.0
 
 ## packages/databricks-vscode
 
