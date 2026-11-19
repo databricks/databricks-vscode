@@ -104,9 +104,9 @@ describe("Automatically refresh the bundle's resources", async function () {
             },
         );
 
-        // Poll as for the job: wdio-vscode-service's `openItem` reads a row's
-        // children right after clicking its twistie, without waiting for them
-        // to render, so a single lookup can miss a task that shows a moment later.
+        // Poll as for the job: wdio-vscode-service's `openItem` returns the rows
+        // rendered at that moment, without waiting for a row's children, so one
+        // lookup right after the job row shows can miss the task row under it.
         for (const task of jobDef.tasks!) {
             const taskKey = task.task_key as string;
             await browser.waitUntil(
