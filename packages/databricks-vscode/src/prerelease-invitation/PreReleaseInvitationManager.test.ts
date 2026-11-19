@@ -17,9 +17,9 @@ import {
     isInvitationHost,
 } from "./PreReleaseInvitationManager";
 
-const SWITCH = "Switch to Pre-Release";
+const SWITCH = "Switch to Pre-Release Version";
 const RELOAD = "Reload Window";
-const RELEASE_NOTES = "Release notes";
+const RELEASE_NOTES = "Release Notes";
 
 // Replaces a VS Code API function for one test. ts-mockito can't stub the
 // vscode namespace, so swap the functions, as the other tests do.

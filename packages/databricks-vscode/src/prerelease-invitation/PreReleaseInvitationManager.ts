@@ -21,8 +21,8 @@ const MIN_VSCODE_VERSION = "1.128.0";
 // Forks (Cursor, VSCodium, ...) have their own URI schemes and no version 3.
 const VS_CODE_URI_SCHEMES = ["vscode", "vscode-insiders"];
 
-const SWITCH = "Switch to Pre-Release";
-const RELEASE_NOTES = "Release notes";
+const SWITCH = "Switch to Pre-Release Version";
+const RELEASE_NOTES = "Release Notes";
 const RELOAD_WINDOW = "Reload Window";
 const RELEASE_NOTES_URL =
     "https://github.com/databricks/databricks-vscode/blob/release-v3.1.0/packages/databricks-vscode/CHANGELOG.md";
@@ -102,7 +102,7 @@ export class PreReleaseInvitationManager implements Disposable {
         this.record("shown");
 
         const choice = await window.showInformationMessage(
-            "Try the version 3 pre-release of the Databricks extension? It adds Unity Gateway models in VS Code Chat and a redesigned sidebar. You can switch back to version 2 anytime.",
+            "Version 3 of the Databricks extension is available as a pre-release, with Unity Gateway models in VS Code Chat and a redesigned sidebar. You can switch back to version 2 at any time.",
             SWITCH,
             RELEASE_NOTES
         );
