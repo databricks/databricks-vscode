@@ -102,7 +102,7 @@ export class PreReleaseInvitationManager implements Disposable {
         this.record("shown");
 
         const choice = await window.showInformationMessage(
-            "Version 3 of the Databricks extension is available as a pre-release, with Unity Gateway models in VS Code Chat and a redesigned sidebar. You can switch back to version 2 at any time.",
+            "Try v3 of the Databricks extension as a pre-release. Access Unity Gateway models in VS Code Chat and a redesigned sidebar. You can switch back to v2 anytime.",
             SWITCH,
             RELEASE_NOTES
         );
