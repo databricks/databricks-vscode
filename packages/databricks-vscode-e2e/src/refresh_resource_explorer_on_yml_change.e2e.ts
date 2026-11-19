@@ -104,10 +104,21 @@ describe("Automatically refresh the bundle's resources", async function () {
             },
         );
 
+        // Poll as for the job: wdio-vscode-service's `openItem` returns the rows
+        // rendered at that moment, without waiting for a row's children, so one
+        // lookup right after the job row shows can miss the task row under it.
         for (const task of jobDef.tasks!) {
-            assert(
-                await geTaskViewItem(resourceExplorerView, jobDef.name!, task.task_key as string),
-                `Task view item with name ${task.task_key as string} not found`,
+            const taskKey = task.task_key as string;
+            await browser.waitUntil(
+                async () => {
+                    const item = await geTaskViewItem(resourceExplorerView, jobDef.name!, taskKey);
+                    return item !== undefined;
+                },
+                {
+                    timeout: 20_000,
+                    interval: 2_000,
+                    timeoutMsg: `Task view item with name ${taskKey} not found`,
+                },
             );
         }
     });
