@@ -125,6 +125,12 @@ const StorageConfigurations = {
         defaultValue: false,
     }),
 
+    // Set once the version 3 pre-release invitation has been shown.
+    "databricks.prereleaseInvitation.shown": withType<boolean>()({
+        location: "global",
+        defaultValue: false,
+    }),
+
     // The ~/.databrickscfg profile of the Unity Gateway sign-in, with its host
     // and workspace id. Global because that sign-in is per user, separate from
     // each project's bundle sign-in. Both are checked on restore, since the

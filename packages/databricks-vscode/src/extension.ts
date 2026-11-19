@@ -48,6 +48,7 @@ import {
 } from "./workspace-fs";
 import {CustomWhenContext} from "./vscode-objs/CustomWhenContext";
 import {StateStorage} from "./vscode-objs/StateStorage";
+import {PreReleaseInvitationManager} from "./prerelease-invitation/PreReleaseInvitationManager";
 import path from "node:path";
 import {existsSync} from "node:fs";
 import {FeatureId, FeatureManager} from "./feature-manager/FeatureManager";
@@ -1123,6 +1124,14 @@ export async function activate(
             });
         })
     );
+
+    // Offers the version 3 pre-release once the bundle connection is up.
+    const preReleaseInvitation = new PreReleaseInvitationManager(
+        connectionManager,
+        stateStorage,
+        telemetry
+    );
+    context.subscriptions.push(preReleaseInvitation);
 
     const metadataService = await connectionManager.startMetadataService();
     context.subscriptions.push(metadataService);
