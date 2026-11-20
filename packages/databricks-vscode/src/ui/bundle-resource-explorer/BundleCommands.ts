@@ -27,6 +27,23 @@ function isRunnable(treeNode: ResourceData): treeNode is RunnableTreeNodes {
     return (RUNNABLE_BUNDLE_RESOURCES as string[]).includes(treeNode.type);
 }
 
+export function pipelineRefreshArgs(
+    tables: string[],
+    fullRefresh: boolean
+): string[] {
+    const flag = fullRefresh ? "--full-refresh" : "--refresh";
+    return tables.flatMap((table) => {
+        // Keep qualified SQL identifiers intact when a component needs quoting.
+        const selector = table.replace(/`(?:``|[^`])*`|[^.]+/g, (part) => {
+            if (/^`(?:``|[^`])*`$/.test(part) || !/[\s,:`]/.test(part)) {
+                return part;
+            }
+            return "`" + part.replace(/`/g, "``") + "`";
+        });
+        return [flag, selector];
+    });
+}
+
 export class BundleCommands implements Disposable {
     private disposables: Disposable[] = [];
 
@@ -286,10 +303,7 @@ export class BundleCommands implements Disposable {
         }
         return this.deployAndRun(
             treeNode,
-            [
-                result.fullRefresh ? "--full-refresh" : "--refresh",
-                result.tables,
-            ],
+            pipelineRefreshArgs(result.tables, result.fullRefresh),
             "partial-refresh"
         );
     }
