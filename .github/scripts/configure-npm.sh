@@ -5,6 +5,11 @@ set -euo pipefail
 
 JFROG_NPM_REGISTRY="https://databricks.jfrog.io/artifactory/api/npm/db-npm/"
 
+# The token is written verbatim into ~/.npmrc and ~/.yarnrc.yml below. It is
+# already masked by jfrog-oidc-token.sh, but mask it here too so this script
+# does not depend on that step having run first in the same job.
+echo "::add-mask::${JFROG_ACCESS_TOKEN}"
+
 # Configure npm CLI
 cat > ~/.npmrc << EOF
 registry=${JFROG_NPM_REGISTRY}

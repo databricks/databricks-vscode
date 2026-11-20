@@ -36,6 +36,7 @@ export enum Events {
     AITOOLS_UNINSTALL = "aitoolsUninstall",
     AITOOLS_CURSOR_PLUGIN_PROMPT = "aitoolsCursorPluginPrompt",
     AITOOLS_COPILOT_CLI_INSTALL = "aitoolsCopilotCliInstall",
+    PRERELEASE_INVITATION = "prereleaseInvitation",
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -55,6 +56,13 @@ export type WorkflowTaskType = "python" | "notebook" | "unknown";
 export type LaunchType = "run" | "debug";
 export type ComputeType = "cluster" | "serverless";
 export type AiToolsScope = "project" | "global";
+
+export type PreReleaseInvitationAnswer =
+    | "shown"
+    | "switch"
+    | "switchFailed"
+    | "releaseNotes"
+    | "dismissed";
 
 /**
  * Where an AI tools install was triggered from: the first-load init modal prompt
@@ -468,6 +476,16 @@ export class EventTypes {
         installed: {
             comment:
                 "true if GitHub Copilot CLI was usable once the installer terminal closed",
+        },
+    };
+    [Events.PRERELEASE_INVITATION]: EventType<{
+        answer: PreReleaseInvitationAnswer;
+    }> = {
+        comment:
+            "The one-time invitation to try the version 3 pre-release, shown to signed-in users of local VS Code.",
+        answer: {
+            comment:
+                "'shown', then 'switch' or 'switchFailed', 'releaseNotes', or 'dismissed' (closed)",
         },
     };
     [Events.PYTHON_ENV_SETUP_DETECTED]: EventType<{
