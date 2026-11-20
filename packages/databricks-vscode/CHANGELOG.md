@@ -1,3 +1,13 @@
+# Release: v2.24.0
+
+## packages/databricks-vscode
+
+## (2026-11-20)
+
+-   Handle GitHub Copilot detected only through VS Code's copilot shim (#2295) ([5e677a5](https://github.com/databricks/databricks-vscode/commit/5e677a5)), closes [#2295](https://github.com/databricks/databricks-vscode/issues/2295)
+-   Invite signed-in users to try the version 3 pre-release, once (#2331) ([5fc60f8](https://github.com/databricks/databricks-vscode/commit/5fc60f8)), closes [#2331](https://github.com/databricks/databricks-vscode/issues/2331)
+-   Update Databricks CLI to v1.27.0 (#2333) ([286b4e9](https://github.com/databricks/databricks-vscode/commit/286b4e9)), closes [#2333](https://github.com/databricks/databricks-vscode/issues/2333)
+
 # Release: v2.23.1
 
 ## packages/databricks-vscode
