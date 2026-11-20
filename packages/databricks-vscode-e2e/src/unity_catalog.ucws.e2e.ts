@@ -4,6 +4,7 @@ import { getActionButton, waitForLogin } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import { getTabByTitle } from "./utils/editor.ts";
 import { getBasicBundleConfig, writeRootBundleConfig } from "./utils/bundle-fixtures.ts";
+import { waitUntilSeen } from "./utils/wait.ts";
 import {
     findUCItem,
     getUCSection,
@@ -26,6 +27,52 @@ async function openSystemAccess(section: CustomTreeSection) {
         },
     );
     return children;
+}
+
+/**
+ * Clicks the `system` catalog row's inline action `label`. VS Code shows a row's inline actions
+ * only while the row is hovered, and the tree's virtual list re-renders rows as it settles after a
+ * scroll, reusing a row's element for another row. On Windows CI the button found right after the
+ * hover was hidden again by the time the click reached it ("did not become interactable"), so each
+ * try finds and hovers the row again, and clicks only a button that is clickable then.
+ */
+async function clickSystemAction(section: CustomTreeSection, label: string) {
+    let seen = "no try finished";
+    await waitUntilSeen(
+        async () => {
+            try {
+                const systemItem = await findUCItem(section, "system");
+                await systemItem.elem.scrollIntoView({ block: "nearest" });
+                await browser.pause(200);
+                await systemItem.elem.moveTo();
+                await browser.pause(500); // wait for hover action buttons to render
+                if ((await systemItem.getLabel()) !== "system") {
+                    seen = `the hovered row showed "${await systemItem.getLabel()}"`;
+                    return false;
+                }
+                const button = await getActionButton(systemItem, label);
+                if (!button) {
+                    seen = `'system' had no "${label}" action`;
+                    return false;
+                }
+                if (!(await button.isClickable())) {
+                    seen = `'system' had a "${label}" action that wasn't clickable`;
+                    return false;
+                }
+                await button.click();
+                return true;
+            } catch (e) {
+                seen = `a try failed: ${e instanceof Error ? e.message : String(e)}`;
+                return false;
+            }
+        },
+        {
+            timeout: 90_000,
+            interval: 1_000,
+            timeoutMsg: `Couldn't click "${label}" on 'system'`,
+        },
+        () => seen,
+    );
 }
 
 describe("Unity Catalog tree view", async function () {
@@ -202,15 +249,7 @@ describe("Unity Catalog tree view", async function () {
 
     it("should pin 'system' catalog and show Favorites group", async () => {
         const section = await getUCSection();
-        const systemItem = await findUCItem(section, "system");
-
-        await systemItem.elem.scrollIntoView();
-        await browser.pause(200);
-        await systemItem.elem.moveTo();
-        await browser.pause(500); // wait for hover action buttons to render
-        const pinBtn = await getActionButton(systemItem, "Add to Favorites");
-        assert(pinBtn, "'Add to Favorites' action button not found on 'system'");
-        await pinBtn.click();
+        await clickSystemAction(section, "Add to Favorites");
 
         await browser.waitUntil(
             async () => {
@@ -229,15 +268,7 @@ describe("Unity Catalog tree view", async function () {
 
     it("should unpin 'system' catalog and remove Favorites group", async () => {
         const section = await getUCSection();
-        const systemItem = await findUCItem(section, "system");
-
-        await systemItem.elem.scrollIntoView();
-        await browser.pause(200);
-        await systemItem.elem.moveTo();
-        await browser.pause(500); // wait for hover action buttons to render
-        const unpinBtn = await getActionButton(systemItem, "Remove from Favorites");
-        assert(unpinBtn, "'Remove from Favorites' action button not found on 'system'");
-        await unpinBtn.click();
+        await clickSystemAction(section, "Remove from Favorites");
 
         await browser.waitUntil(
             async () => {
