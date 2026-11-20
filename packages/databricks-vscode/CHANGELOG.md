@@ -4,9 +4,11 @@
 
 ## (2026-11-20)
 
--   Handle GitHub Copilot detected only through VS Code's copilot shim (#2295) ([5e677a5](https://github.com/databricks/databricks-vscode/commit/5e677a5)), closes [#2295](https://github.com/databricks/databricks-vscode/issues/2295)
--   Invite signed-in users to try the version 3 pre-release, once (#2331) ([5fc60f8](https://github.com/databricks/databricks-vscode/commit/5fc60f8)), closes [#2331](https://github.com/databricks/databricks-vscode/issues/2331)
--   Update Databricks CLI to v1.27.0 (#2333) ([286b4e9](https://github.com/databricks/databricks-vscode/commit/286b4e9)), closes [#2333](https://github.com/databricks/databricks-vscode/issues/2333)
+-   Deploy feature specs with Unity Catalog grants, set catalog isolation mode, and configure pipeline testing (Beta) in bundle YAML. The bundled Databricks CLI was updated from 1.24.0 to 1.27.0. Bundle deployments also retry transient file upload failures and preserve manually configured app compute sizes when the bundle omits them. [CLI 1.26.0](https://github.com/databricks/cli/releases/tag/v1.26.0) · [CLI 1.27.0](https://github.com/databricks/cli/releases/tag/v1.27.0)
+-   Selecting multiple pipeline tables in Bundle Resource Explorer sends a separate refresh flag for each table. If you pass arguments manually, replace `--refresh orders,payments` with `--refresh orders --refresh payments`. The same applies to `--full-refresh`. [#2333](https://github.com/databricks/databricks-vscode/pull/2333)
+-   Use Databricks `%pip` in Jupyter notebooks opened over SSH on serverless environment versions 5 and 6 and on dedicated clusters running recent Databricks Runtime versions. [CLI 1.25.0](https://github.com/databricks/cli/releases/tag/v1.25.0)
+-   Install Databricks AI tools for GitHub Copilot when VS Code provides the `copilot` launcher but the Copilot CLI still needs to be installed. The extension offers to install the CLI and retry. [#2295](https://github.com/databricks/databricks-vscode/pull/2295)
+-   Signed-in users with a connected bundle project can switch to the v3 pre-release from a one-time invitation in local VS Code or VS Code Insiders 1.128.0 and later. The invitation runs through December 2, 2026 (UTC). [#2331](https://github.com/databricks/databricks-vscode/pull/2331)
 
 # Release: v2.23.1
 
