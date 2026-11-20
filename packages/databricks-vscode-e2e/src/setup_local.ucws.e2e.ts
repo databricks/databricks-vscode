@@ -79,22 +79,12 @@ async function acceptFocusedQuickPick(input: InputBox, label: string) {
 }
 
 /**
- * Wait for uv to finish provisioning: the ground truth is the `.venv`
- * interpreter existing on disk. Provisioning first auto-installs uv (CI runners
- * lack it), then shells out to uv for a Python download + databricks-connect
- * install against a cold serverless target, so this is minutes, not seconds —
- * hence the generous budget, mirroring the serverless DBConnect specs. We gate on
- * the file rather than the completion toast, which can expire before a poll sees
- * it on the slow Windows shard.
+ * The budget for the whole uv setup. It first auto-installs uv (CI runners lack
+ * it), then shells out to uv for a Python download + databricks-connect install
+ * against a cold serverless target, so this is minutes, not seconds, mirroring
+ * the serverless DBConnect specs.
  */
-async function waitForVenvInterpreter(projectDir: string, timeoutMs = 420_000) {
-    const python = venvPython(projectDir);
-    await browser.waitUntil(async () => fileExists(python), {
-        timeout: timeoutMs,
-        interval: 2000,
-        timeoutMsg: `uv did not create the .venv interpreter at "${python}"`,
-    });
-}
+const SETUP_TIMEOUT_MS = 420_000;
 
 /**
  * Assert the config-view Python-environment row reports the ready end-state and
@@ -232,7 +222,13 @@ describe("Set up local Python environment (uv) on serverless", async function ()
         const presetInput = await waitForQuickInput();
         await acceptFocusedQuickPick(presetInput, "Full environment setup");
 
-        await waitForVenvInterpreter(projectDir);
+        // The row, not `.venv`, ends the wait: uv makes `.venv` before it installs
+        // Python and databricks-connect, and the extension marks the project ready
+        // only once the CLI is done. We gate on the row rather than the completion
+        // toast, which can expire before a poll sees it on the slow Windows shard.
+        await waitForPythonEnvReady(SETUP_TIMEOUT_MS);
+        const python = venvPython(projectDir);
+        assert(await fileExists(python), `uv did not create the .venv interpreter at "${python}"`);
 
         // The completion toast is informational and can expire before a poll
         // catches it; the persistent config-view row is the real end-state.
