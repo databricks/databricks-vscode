@@ -409,7 +409,9 @@ export class BundlePipelinesManager {
                 }
             });
         const picks = await waitForPicks(ui, disposables);
-        const selectedTables = picksToString(picks);
+        const selectedTables = picks
+            ?.filter((p) => p.isDataset)
+            .map((p) => p.label);
         disposables.forEach((d) => d.dispose());
         ui.dispose();
         isUIVisible = false;
@@ -532,13 +534,6 @@ function createPicks(datasets: Set<string>, manualValue?: string) {
         fullRefreshPick,
     ];
     return {allPicks, fullRefreshPick};
-}
-
-function picksToString(picks?: readonly Pick[]): string | undefined {
-    return picks
-        ?.filter((p) => p.isDataset)
-        .map((p) => p.label)
-        .join(",");
 }
 
 function stringToDatasets(str: string): Set<string> {
