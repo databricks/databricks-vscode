@@ -64,6 +64,16 @@ describe("Bundle in a sub folder", async function () {
             await subFoldersInput.selectQuickPick(folder);
 
             await waitForLogin("DEFAULT");
+            // Both bundles use the same target, so on the second switch the
+            // connection row already read this before it; wait for the folder.
+            await browser.waitUntil(
+                async () => (await getLocalFolderTreeItem(folder)) !== undefined,
+                {
+                    timeout: 60_000,
+                    interval: 2_000,
+                    timeoutMsg: `${folder} didn't become the active project`,
+                },
+            );
         });
 
         it(`should show a Local Folder configuration item for ${folder}`, async () => {
