@@ -53,7 +53,11 @@ export class JsonFileSink implements LogSink {
     }
 
     write(entry: LogEntry): void {
-        this.stream.write(JSON.stringify(entry, jsonReplacer()) + "\n");
+        // A write after `end()` destroys the stream, which drops the entries it
+        // hasn't flushed yet; late entries, after deactivation, go nowhere.
+        if (!this.stream.writableEnded) {
+            this.stream.write(JSON.stringify(entry, jsonReplacer()) + "\n");
+        }
     }
 
     dispose(): void {

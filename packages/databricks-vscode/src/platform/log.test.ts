@@ -63,6 +63,23 @@ describe("JsonFileSink", () => {
             "10",
         ]);
     });
+
+    it("keeps the entries it hasn't flushed yet when something logs after dispose", async () => {
+        const file = tempFile();
+        const sink = new JsonFileSink(file);
+        const log = new Log([sink], "x");
+        // The stream opens the file asynchronously, so this entry is still buffered.
+        log.info("before");
+        sink.dispose();
+        log.warn("after");
+        await vi.waitFor(() => expect(fs.readFileSync(file, "utf-8")).toMatch(/\n$/));
+        const lines = fs
+            .readFileSync(file, "utf-8")
+            .trim()
+            .split("\n")
+            .map((l) => JSON.parse(l).message);
+        expect(lines).toEqual(["before"]);
+    });
 });
 
 describe("ChannelSink", () => {
