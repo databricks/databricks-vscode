@@ -64,8 +64,13 @@ describe("Compute view and cluster lifecycle", async function () {
                 const item = await getConfigurationItem(
                     description === undefined ? "select compute" : "cluster",
                 );
-                last = item === undefined ? undefined : await item.getDescription();
-                return item !== undefined && (description === undefined || last === description);
+                // "Select compute" has no description, so its label is the whole check.
+                if (item === undefined || description === undefined) {
+                    return item !== undefined;
+                }
+                // A row without a description has no element for it, and getDescription throws.
+                last = await item.getDescription().catch(() => undefined);
+                return last === description;
             },
             {
                 timeout: 60_000,
