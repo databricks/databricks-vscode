@@ -1,3 +1,11 @@
+# Release: v2.24.1
+
+## packages/databricks-vscode
+
+## (2026-11-23)
+
+-   Show the version 3 pre-release invitation in each window until "Don't show again" (#2341) ([11f16f8](https://github.com/databricks/databricks-vscode/commit/11f16f8)), closes [#2341](https://github.com/databricks/databricks-vscode/issues/2341) [#2331](https://github.com/databricks/databricks-vscode/issues/2331)
+
 # Release: v2.24.0
 
 ## packages/databricks-vscode
