@@ -46,8 +46,9 @@ function stubGetter<T extends object>(
     });
 }
 
-function createStorage() {
-    const store = new Map<string, unknown>();
+// `saved` stands for global state left by an earlier version.
+function createStorage(saved: Array<[string, unknown]> = []) {
+    const store = new Map<string, unknown>(saved);
     const memento = {
         keys: () => [...store.keys()],
         get: <T>(key: string, defaultValue?: T) =>
@@ -100,6 +101,8 @@ function setUp(
     const errors: string[] = [];
     const commandCalls: unknown[][] = [];
     const recorded: unknown[] = [];
+    // The reload ends the extension host, so later writes would be lost.
+    const hiddenAtReload: unknown[] = [];
 
     // Like the real notification, only a button it offers can be the answer.
     stub(
@@ -119,6 +122,11 @@ function setUp(
     stub(env, "openExternal", async () => true);
     stub(commands, "executeCommand", async (...args: unknown[]) => {
         commandCalls.push(args);
+        if (args[0] === "workbench.action.reloadWindow") {
+            hiddenAtReload.push(
+                storage.get("databricks.prereleaseInvitation.hidden")
+            );
+        }
         if (
             args[0] === "workbench.extensions.installExtension" &&
             options.switchError
@@ -149,6 +157,7 @@ function setUp(
         errors,
         commandCalls,
         recorded,
+        hiddenAtReload,
     };
 }
 
@@ -272,6 +281,15 @@ describe("PreReleaseInvitationManager", () => {
         assert.strictEqual(second.prompts.length, 1);
     });
 
+    it("ignores the flag of the one-time invitation in 2.24.0", async () => {
+        const storage = createStorage([
+            ["databricks.prereleaseInvitation.shown", true],
+        ]);
+        const {manager, prompts} = setUp({answers: [undefined], storage});
+        await manager.showIfDue();
+        assert.strictEqual(prompts.length, 1);
+    });
+
     it("is not shown in a new window after Don't show again", async () => {
         const first = setUp({answers: [DONT_SHOW_AGAIN]});
         await first.manager.showIfDue();
@@ -317,8 +335,9 @@ describe("PreReleaseInvitationManager", () => {
     });
 
     it("is not shown in a new window after a switch", async () => {
-        const first = setUp({answers: [SWITCH, undefined]});
+        const first = setUp({answers: [SWITCH, RELOAD]});
         await first.manager.showIfDue();
+        assert.deepStrictEqual(first.hiddenAtReload, [true]);
         const second = setUp({answers: [undefined], storage: first.storage});
         await second.manager.showIfDue();
         assert.strictEqual(second.prompts.length, 0);
