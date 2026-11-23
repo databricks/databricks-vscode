@@ -21,8 +21,9 @@ const MIN_VSCODE_VERSION = "1.128.0";
 // Forks (Cursor, VSCodium, ...) have their own URI schemes and no version 3.
 const VS_CODE_URI_SCHEMES = ["vscode", "vscode-insiders"];
 
-const SWITCH = "Switch to Pre-Release Version";
+const SWITCH = "Switch to Pre-Release";
 const RELEASE_NOTES = "Release Notes";
+const DONT_SHOW_AGAIN = "Don't show again";
 const RELOAD_WINDOW = "Reload Window";
 const RELEASE_NOTES_URL =
     "https://github.com/databricks/databricks-vscode/blob/release-v3.1.0/packages/databricks-vscode/CHANGELOG.md";
@@ -44,11 +45,13 @@ export function isInvitationHost(host: {
 
 /**
  * Offers the version 3 pre-release to signed-in users of local VS Code, once
- * the bundle connection is up. Shown once, whatever the answer.
+ * the bundle connection is up. Shown once in each window until the user
+ * chooses "Don't show again" or switches.
  */
 export class PreReleaseInvitationManager implements Disposable {
     private readonly subscription: Disposable;
     private timer?: ReturnType<typeof setTimeout>;
+    private shownInWindow = false;
 
     constructor(
         private readonly connection: Pick<
@@ -88,23 +91,21 @@ export class PreReleaseInvitationManager implements Disposable {
                 vscodeVersion,
             }) ||
             Date.now() >= OFFERED_UNTIL ||
-            this.stateStorage.get("databricks.prereleaseInvitation.shown")
+            this.shownInWindow ||
+            this.stateStorage.get("databricks.prereleaseInvitation.hidden")
         ) {
             return;
         }
-        // Saved before the prompt, so closing it still counts as the showing.
-        await this.stateStorage.set(
-            "databricks.prereleaseInvitation.shown",
-            true
-        );
-        // Shown once, so the connection no longer matters.
+        this.shownInWindow = true;
+        // Shown once in this window, so the connection no longer matters.
         this.subscription.dispose();
         this.record("shown");
 
         const choice = await window.showInformationMessage(
             "Try v3 of the Databricks extension as a pre-release. Access Unity Gateway models in VS Code Chat and a redesigned sidebar. You can switch back to v2 anytime.",
             SWITCH,
-            RELEASE_NOTES
+            RELEASE_NOTES,
+            DONT_SHOW_AGAIN
         );
         switch (choice) {
             case SWITCH:
@@ -113,6 +114,10 @@ export class PreReleaseInvitationManager implements Disposable {
             case RELEASE_NOTES:
                 this.record("releaseNotes");
                 await UrlUtils.openExternal(RELEASE_NOTES_URL);
+                return;
+            case DONT_SHOW_AGAIN:
+                this.record("dontShowAgain");
+                await this.hide();
                 return;
             default:
                 this.record("dismissed");
@@ -138,6 +143,8 @@ export class PreReleaseInvitationManager implements Disposable {
             return;
         }
         this.record("switch");
+        // Someone who switches back to version 2 isn't invited again.
+        await this.hide();
         const choice = await window.showInformationMessage(
             "Reload the window to finish switching to version 3.",
             RELOAD_WINDOW
@@ -145,6 +152,13 @@ export class PreReleaseInvitationManager implements Disposable {
         if (choice === RELOAD_WINDOW) {
             await commands.executeCommand("workbench.action.reloadWindow");
         }
+    }
+
+    private async hide() {
+        await this.stateStorage.set(
+            "databricks.prereleaseInvitation.hidden",
+            true
+        );
     }
 
     private record(answer: PreReleaseInvitationAnswer) {

@@ -125,8 +125,9 @@ const StorageConfigurations = {
         defaultValue: false,
     }),
 
-    // Set once the version 3 pre-release invitation has been shown.
-    "databricks.prereleaseInvitation.shown": withType<boolean>()({
+    // Set when the user chooses "Don't show again" on the version 3
+    // pre-release invitation, or switches to the pre-release from it.
+    "databricks.prereleaseInvitation.hidden": withType<boolean>()({
         location: "global",
         defaultValue: false,
     }),

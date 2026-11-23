@@ -62,6 +62,7 @@ export type PreReleaseInvitationAnswer =
     | "switch"
     | "switchFailed"
     | "releaseNotes"
+    | "dontShowAgain"
     | "dismissed";
 
 /**
@@ -482,10 +483,10 @@ export class EventTypes {
         answer: PreReleaseInvitationAnswer;
     }> = {
         comment:
-            "The one-time invitation to try the version 3 pre-release, shown to signed-in users of local VS Code.",
+            "The invitation to try the version 3 pre-release, shown to signed-in users of local VS Code once in each window until they choose 'Don't show again' or switch.",
         answer: {
             comment:
-                "'shown', then 'switch' or 'switchFailed', 'releaseNotes', or 'dismissed' (closed)",
+                "'shown', then 'switch' or 'switchFailed', 'releaseNotes', 'dontShowAgain', or 'dismissed' (closed)",
         },
     };
     [Events.PYTHON_ENV_SETUP_DETECTED]: EventType<{

@@ -17,9 +17,10 @@ import {
     isInvitationHost,
 } from "./PreReleaseInvitationManager";
 
-const SWITCH = "Switch to Pre-Release Version";
+const SWITCH = "Switch to Pre-Release";
 const RELOAD = "Reload Window";
 const RELEASE_NOTES = "Release Notes";
+const DONT_SHOW_AGAIN = "Don't show again";
 
 // Replaces a VS Code API function for one test. ts-mockito can't stub the
 // vscode namespace, so swap the functions, as the other tests do.
@@ -45,8 +46,9 @@ function stubGetter<T extends object>(
     });
 }
 
-function createStorage() {
-    const store = new Map<string, unknown>();
+// `saved` stands for global state left by an earlier version.
+function createStorage(saved: Array<[string, unknown]> = []) {
+    const store = new Map<string, unknown>(saved);
     const memento = {
         keys: () => [...store.keys()],
         get: <T>(key: string, defaultValue?: T) =>
@@ -82,32 +84,49 @@ const managers: PreReleaseInvitationManager[] = [];
 
 /**
  * A manager whose prompts answer from `answers` in order. The VS Code test
- * host runs 1.138 locally, so the host check passes without stubbing.
+ * host runs 1.138 locally, so the host check passes without stubbing. Pass
+ * an earlier manager's `storage` to stand for a new window.
  */
 function setUp(
     options: {
         answers?: Array<string | undefined>;
         connected?: boolean;
         switchError?: Error;
+        storage?: StateStorage;
     } = {}
 ) {
-    const storage = createStorage();
+    const storage = options.storage ?? createStorage();
     const answers = [...(options.answers ?? [])];
     const prompts: string[] = [];
     const errors: string[] = [];
     const commandCalls: unknown[][] = [];
     const recorded: unknown[] = [];
+    // The reload ends the extension host, so later writes would be lost.
+    const hiddenAtReload: unknown[] = [];
 
-    stub(window, "showInformationMessage", async (message: string) => {
-        prompts.push(message);
-        return answers.shift();
-    });
+    // Like the real notification, only a button it offers can be the answer.
+    stub(
+        window,
+        "showInformationMessage",
+        async (message: string, ...buttons: string[]) => {
+            prompts.push(message);
+            const answer = answers.shift();
+            return answer !== undefined && buttons.includes(answer)
+                ? answer
+                : undefined;
+        }
+    );
     stub(window, "showErrorMessage", async (message: string) => {
         errors.push(message);
     });
     stub(env, "openExternal", async () => true);
     stub(commands, "executeCommand", async (...args: unknown[]) => {
         commandCalls.push(args);
+        if (args[0] === "workbench.action.reloadWindow") {
+            hiddenAtReload.push(
+                storage.get("databricks.prereleaseInvitation.hidden")
+            );
+        }
         if (
             args[0] === "workbench.extensions.installExtension" &&
             options.switchError
@@ -138,6 +157,7 @@ function setUp(
         errors,
         commandCalls,
         recorded,
+        hiddenAtReload,
     };
 }
 
@@ -240,17 +260,47 @@ describe("PreReleaseInvitationManager", () => {
         assert.strictEqual(prompts.length, 0);
     });
 
-    it("does not show again once shown, whatever the answer", async () => {
-        const {manager, prompts, storage} = setUp({
-            answers: [undefined],
+    it("is shown once in a window, even after a reconnect", async () => {
+        const {manager, connection, prompts} = setUp({
+            answers: [undefined, undefined],
         });
-        await manager.showIfDue();
+        await elapse(SHOW_DELAY_MS);
+        assert.strictEqual(prompts.length, 1);
+        connection.change("DISCONNECTED");
+        connection.change("CONNECTED");
+        await elapse(SHOW_DELAY_MS);
         await manager.showIfDue();
         assert.strictEqual(prompts.length, 1);
-        assert.strictEqual(
-            await storage.get("databricks.prereleaseInvitation.shown"),
-            true
-        );
+    });
+
+    it("is shown again in a new window after it was closed", async () => {
+        const first = setUp({answers: [undefined]});
+        await first.manager.showIfDue();
+        const second = setUp({answers: [undefined], storage: first.storage});
+        await second.manager.showIfDue();
+        assert.strictEqual(second.prompts.length, 1);
+    });
+
+    it("ignores the flag of the one-time invitation in 2.24.0", async () => {
+        const storage = createStorage([
+            ["databricks.prereleaseInvitation.shown", true],
+        ]);
+        const {manager, prompts} = setUp({answers: [undefined], storage});
+        await manager.showIfDue();
+        assert.strictEqual(prompts.length, 1);
+    });
+
+    it("is not shown in a new window after Don't show again", async () => {
+        const first = setUp({answers: [DONT_SHOW_AGAIN]});
+        await first.manager.showIfDue();
+        assert.deepStrictEqual(first.recorded, [
+            {answer: "shown"},
+            {answer: "dontShowAgain"},
+        ]);
+        assert.deepStrictEqual(first.commandCalls, []);
+        const second = setUp({answers: [undefined], storage: first.storage});
+        await second.manager.showIfDue();
+        assert.strictEqual(second.prompts.length, 0);
     });
 
     it("is not offered from 2026-12-03 (UTC)", async () => {
@@ -284,6 +334,15 @@ describe("PreReleaseInvitationManager", () => {
         ]);
     });
 
+    it("is not shown in a new window after a switch", async () => {
+        const first = setUp({answers: [SWITCH, RELOAD]});
+        await first.manager.showIfDue();
+        assert.deepStrictEqual(first.hiddenAtReload, [true]);
+        const second = setUp({answers: [undefined], storage: first.storage});
+        await second.manager.showIfDue();
+        assert.strictEqual(second.prompts.length, 0);
+    });
+
     it("does not reload when the reload prompt is closed", async () => {
         const {manager, prompts, commandCalls} = setUp({
             answers: [SWITCH, undefined],
@@ -305,11 +364,23 @@ describe("PreReleaseInvitationManager", () => {
         assert.deepStrictEqual(recorded.at(-1), {answer: "switchFailed"});
     });
 
-    it("opens the release notes", async () => {
-        const {manager, recorded} = setUp({
-            answers: [RELEASE_NOTES],
+    it("is shown again in a new window after a failed switch", async () => {
+        const first = setUp({
+            answers: [SWITCH],
+            switchError: new Error("gallery unreachable"),
         });
-        await manager.showIfDue();
-        assert.deepStrictEqual(recorded.at(-1), {answer: "releaseNotes"});
+        await first.manager.showIfDue();
+        const second = setUp({answers: [undefined], storage: first.storage});
+        await second.manager.showIfDue();
+        assert.strictEqual(second.prompts.length, 1);
+    });
+
+    it("opens the release notes, and is shown again in a new window", async () => {
+        const first = setUp({answers: [RELEASE_NOTES]});
+        await first.manager.showIfDue();
+        assert.deepStrictEqual(first.recorded.at(-1), {answer: "releaseNotes"});
+        const second = setUp({answers: [undefined], storage: first.storage});
+        await second.manager.showIfDue();
+        assert.strictEqual(second.prompts.length, 1);
     });
 });
