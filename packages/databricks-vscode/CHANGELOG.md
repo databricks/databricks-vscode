@@ -1,3 +1,11 @@
+# Release: v2.24.1
+
+## packages/databricks-vscode
+
+## (2026-11-23)
+
+-   The invitation to try the v3 pre-release now appears once in each new window, including for users who saw it in 2.24.0, until you choose "Don't show again" or switch. [#2341](https://github.com/databricks/databricks-vscode/pull/2341)
+
 # Release: v2.24.0
 
 ## packages/databricks-vscode
