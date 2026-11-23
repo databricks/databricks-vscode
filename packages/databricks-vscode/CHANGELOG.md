@@ -4,7 +4,7 @@
 
 ## (2026-11-23)
 
--   Show the version 3 pre-release invitation in each window until "Don't show again" (#2341) ([11f16f8](https://github.com/databricks/databricks-vscode/commit/11f16f8)), closes [#2341](https://github.com/databricks/databricks-vscode/issues/2341) [#2331](https://github.com/databricks/databricks-vscode/issues/2331)
+-   The invitation to try the v3 pre-release now appears once in each new window, including for users who saw it in 2.24.0, until you choose "Don't show again" or switch. [#2341](https://github.com/databricks/databricks-vscode/pull/2341)
 
 # Release: v2.24.0
 
