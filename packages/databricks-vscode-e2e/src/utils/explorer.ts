@@ -22,6 +22,43 @@ export async function getResourceViewItem(
     }
 }
 
+/**
+ * Waits for the `resourceType` row whose label holds `resourceName`. The
+ * Resources group can show before that row is readable, so one read
+ * (`getResourceViewItem`) can miss it. On a timeout, the error lists the rows
+ * the last read saw.
+ */
+export async function waitForResourceViewItem(
+    resourceExplorer: CustomTreeSection,
+    resourceType: "Jobs" | "Pipelines",
+    resourceName: string,
+    timeout = 20_000,
+) {
+    let found: Awaited<ReturnType<typeof getResourceViewItem>>;
+    let rows: string[] = [];
+    try {
+        await browser.waitUntil(
+            async () => {
+                try {
+                    const items = await resourceExplorer.openItem(RESOURCES, resourceType);
+                    rows = await Promise.all(items.map((item) => item.elem.getText()));
+                    found = items.find((_, i) => rows[i]!.includes(resourceName));
+                } catch (e) {
+                    rows = [`(reading the rows failed: ${String(e)})`];
+                }
+                return found !== undefined;
+            },
+            { timeout, interval: 1_000 },
+        );
+    } catch {
+        throw new Error(
+            `${resourceName} not found in ${RESOURCES} > ${resourceType} within ${timeout}ms; ` +
+                `its rows were: ${rows.length ? rows.map((r) => JSON.stringify(r)).join(", ") : "none"}`,
+        );
+    }
+    return found!;
+}
+
 export async function geTaskViewItem(
     resourceExplorerView: CustomTreeSection,
     resourceName: string,

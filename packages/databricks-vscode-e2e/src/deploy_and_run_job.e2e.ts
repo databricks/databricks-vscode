@@ -4,9 +4,9 @@ import { createProjectWithJob, getUniqueResourceName } from "./utils/bundle-fixt
 import { getActionButton } from "./utils/configuration.ts";
 import { dismissNotifications } from "./utils/dismiss-notifications.ts";
 import {
-    getResourceViewItem,
     waitForBundleExplorer,
     waitForDeployment,
+    waitForResourceViewItem,
     waitForRunStatus,
 } from "./utils/explorer.ts";
 import { openOutputView } from "./utils/output-view.ts";
@@ -48,8 +48,7 @@ describe("Deploy and run job", async function () {
         await outputView.selectChannel("Databricks Bundle Logs");
         await outputView.clearText();
 
-        const jobItem = await getResourceViewItem(resourceExplorerView, "Jobs", jobName);
-        assert(jobItem, `Job ${jobName} not found in resource explorer`);
+        const jobItem = await waitForResourceViewItem(resourceExplorerView, "Jobs", jobName);
 
         await jobItem.elem.moveTo();
         const deployAndRunButton = await getActionButton(
