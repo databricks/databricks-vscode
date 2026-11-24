@@ -15,7 +15,6 @@ jobs:
             labels: linux-ubuntu-latest
 
         permissions:
-            id-token: write
             contents: read
 
         environment: "test-trigger-is"
@@ -41,7 +40,6 @@ jobs:
             labels: linux-ubuntu-latest
 
         permissions:
-            id-token: write
             contents: read
 
         needs: check-token
@@ -85,7 +83,6 @@ jobs:
             labels: linux-ubuntu-latest-emu-access
 
         permissions:
-            id-token: write
             contents: read
 
         needs: [check-token, create-check]
@@ -124,7 +121,6 @@ jobs:
             labels: linux-ubuntu-latest
 
         permissions:
-            id-token: write
             checks: write
             contents: read
 
