@@ -10,6 +10,15 @@ ID_TOKEN=$(curl -sLS \
   -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
   "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=jfrog-github" | jq .value | tr -d '"')
 
+if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+  echo "FAIL: Could not extract GitHub OIDC ID token"
+  exit 1
+fi
+
+# The ID token is a bearer credential for the exchange below. Mask it so it
+# cannot appear in the (public) run logs.
+echo "::add-mask::${ID_TOKEN}"
+
 # Exchange for JFrog access token
 ACCESS_TOKEN=$(curl -sLS -XPOST -H "Content-Type: application/json" \
   "https://databricks.jfrog.io/access/api/v1/oidc/token" \
