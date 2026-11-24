@@ -1,0 +1,13 @@
+# Must be flagged: three unmasked credential writes in run blocks.
+name: fixture
+on: pull_request
+jobs:
+    fixture:
+        runs-on: ubuntu-latest
+        steps:
+            - id: login
+              run: echo "token=$(./login.sh)" >> "$GITHUB_OUTPUT"
+            - run: echo "API_TOKEN=${{ steps.login.outputs.token }}" >> $GITHUB_ENV
+            - run: |
+                  SECRET_VALUE=$(./fetch.sh)
+                  echo "value=$SECRET_VALUE" >> "${GITHUB_OUTPUT}"
