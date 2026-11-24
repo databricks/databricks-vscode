@@ -38,6 +38,11 @@ jobs:
             # needs PERF_VSCODE and the pinned extension pack members (DATABRICKS_E2E_EXTENSIONS);
             # other runners skip it.
             - run: yarn check
+            # configure-npm.sh wrote the JFrog token into these files. Remove them so
+            # the token does not outlive this job if the runner is ever reused.
+            - name: Remove JFrog npm credentials
+              if: always()
+              run: rm -f ~/.npmrc ~/.yarnrc.yml
 
     # One yarn command per job, so a pull request shows which one failed. fmt and build
     # repeat steps of `yarn check`; test and typecheck run what it skips.
@@ -60,6 +65,9 @@ jobs:
             - run: yarn install --immutable
             # `yarn fmt` rewrites the files; CI only checks them.
             - run: yarn fmt:check
+            - name: Remove JFrog npm credentials
+              if: always()
+              run: rm -f ~/.npmrc ~/.yarnrc.yml
 
     build:
         runs-on:
@@ -79,6 +87,9 @@ jobs:
               run: bash .github/scripts/configure-npm.sh
             - run: yarn install --immutable
             - run: yarn build
+            - name: Remove JFrog npm credentials
+              if: always()
+              run: rm -f ~/.npmrc ~/.yarnrc.yml
 
     test:
         runs-on:
@@ -102,6 +113,9 @@ jobs:
             # Every unit and contract test, with features/python/python.test.ts and the budgets in
             # src/test/budgets/ that `yarn check` skips, and the scripts/ tests.
             - run: yarn test
+            - name: Remove JFrog npm credentials
+              if: always()
+              run: rm -f ~/.npmrc ~/.yarnrc.yml
 
     # The same tests on Windows, which 2.x's unit tests also run on.
     test-windows:
@@ -126,6 +140,9 @@ jobs:
             - run: yarn install --immutable
             - run: yarn workspace databricks fetch:cli
             - run: yarn test
+            - name: Remove JFrog npm credentials
+              if: always()
+              run: rm -f ~/.npmrc ~/.yarnrc.yml
 
     typecheck:
         runs-on:
@@ -147,3 +164,6 @@ jobs:
             # The build, the extension's tests and the e2e package, which `yarn check` doesn't
             # typecheck.
             - run: yarn typecheck
+            - name: Remove JFrog npm credentials
+              if: always()
+              run: rm -f ~/.npmrc ~/.yarnrc.yml

@@ -66,3 +66,8 @@ jobs:
                   git commit -m "Release: v$VERSION"
                   git push origin "$branch"
                   gh pr create --base "$BASE" --head "$branch" --title "Release: v$VERSION" --body-file "$notes"
+            # configure-npm.sh wrote the JFrog token into these files. Remove them so
+            # the token does not outlive this job if the runner is ever reused.
+            - name: Remove JFrog npm credentials
+              if: always()
+              run: rm -f ~/.npmrc ~/.yarnrc.yml
