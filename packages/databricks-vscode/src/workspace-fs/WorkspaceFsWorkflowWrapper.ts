@@ -211,6 +211,13 @@ export class WorkspaceFsWorkflowWrapper {
         //Since this function is called only when notebook is a databricks notebook
         //we can assume that first line will be #Databricks notebook source.
         const originalCode = data.split(/\r?\n/).slice(1);
+        const metadata: string[] = [];
+        if (originalCode[0] === "# /// script") {
+            const metadataEnd = originalCode.indexOf("# ///", 1);
+            if (metadataEnd !== -1) {
+                metadata.push(...originalCode.splice(0, metadataEnd + 1));
+            }
+        }
 
         const bootstrapPath = this.extensionContext.asAbsolutePath(
             path.join("resources", "python", "notebook.workflow-wrapper.py")
@@ -230,8 +237,10 @@ export class WorkspaceFsWorkflowWrapper {
             )
             .map((cell) => ({source: cell, type: "code"}) as Cell);
         const rearrangedCells = rearrangeCells(cells);
-        // Add # Databricks notebook source to the beginning of the first cell
-        rearrangedCells.at(0)?.source.unshift("# Databricks notebook source");
+        // Keep environment metadata in the preamble, outside executable cells.
+        rearrangedCells
+            .at(0)
+            ?.source.unshift("# Databricks notebook source", ...metadata);
 
         const wrappedCode = rearrangedCells
             .map((cell) => cell.source.join("\n"))

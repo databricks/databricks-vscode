@@ -11,6 +11,8 @@ import {
     anything,
     objectContaining,
     verify,
+    spy,
+    reset,
 } from "ts-mockito";
 import {ExtensionContext} from "vscode";
 import {ConnectionManager} from "../configuration/ConnectionManager";
@@ -19,6 +21,7 @@ import {LocalUri, RemoteUri} from "../sync/SyncDestination";
 import path, {posix} from "path";
 import {readFile, writeFile} from "fs/promises";
 import {withFile} from "tmp-promise";
+import {workspaceConfigs} from "../vscode-objs/WorkspaceConfigs";
 
 describe(__filename, async () => {
     let mockWorkspaceService: workspace.WorkspaceService;
@@ -147,9 +150,12 @@ describe(__filename, async () => {
     describe("dbnb notebooks", () => {
         let originalFilePath: string;
         let wrappedFilePath: string;
+        let configsSpy: typeof workspaceConfigs;
 
         beforeEach(() => {
             createMocks();
+            configsSpy = spy(workspaceConfigs);
+            when(configsSpy.wsfsRearrangeCells).thenReturn(true);
             originalFilePath = posix.join(testDirPath, "remoteFile.py");
             wrappedFilePath = posix.join(
                 testDirPath,
@@ -191,6 +197,68 @@ describe(__filename, async () => {
             });
         });
 
+        afterEach(() => reset(configsSpy));
+
+        const metadata = [
+            "# /// script",
+            "# [tool.databricks.environment]",
+            '# environment_version = "5"',
+            '# dependencies = ["pandas==2.2.3"]',
+            "# ///",
+        ];
+
+        for (const rearrangeCells of [true, false]) {
+            for (const newline of ["\n", "\r\n"]) {
+                it(`should preserve metadata before the bootstrap and isolate an initial %run (rearrange=${rearrangeCells}, newline=${JSON.stringify(
+                    newline
+                )})`, async () => {
+                    when(configsSpy.wsfsRearrangeCells).thenReturn(
+                        rearrangeCells
+                    );
+                    await withFile(async (localFilePath) => {
+                        const preamble = [
+                            "# Databricks notebook source",
+                            ...metadata,
+                        ];
+                        const cells = [
+                            "# MAGIC %run ./setup",
+                            "# COMMAND ----------",
+                            "print('hello')",
+                        ];
+                        await writeFile(
+                            localFilePath.path,
+                            [...preamble, ...cells].join(newline),
+                            "utf-8"
+                        );
+
+                        await new WorkspaceFsWorkflowWrapper(
+                            instance(mockConnectionManager),
+                            instance(mockExtensionContext)
+                        ).createNotebookWrapper(
+                            new LocalUri(localFilePath.path),
+                            new RemoteUri(originalFilePath),
+                            new RemoteUri(testDirPath),
+                            "PY_DBNB"
+                        );
+
+                        const wrapperData = await getWrapperData(
+                            "notebook.workflow-wrapper.py",
+                            originalFilePath
+                        );
+                        verifyMockServiceCalledWithExpectedData(
+                            [
+                                ...preamble,
+                                ...wrapperData.split(/\r?\n/),
+                                "# COMMAND ----------",
+                                ...cells,
+                            ].join("\n"),
+                            wrappedFilePath
+                        );
+                    });
+                });
+            }
+        }
+
         it("should create wrapper for databricks python notebook", async () => {
             await withFile(async (localFilePath) => {
                 const comment = ["# Databricks notebook source"];
@@ -228,65 +296,71 @@ describe(__filename, async () => {
             });
         });
 
-        it("should rearrange kernel restart commands to the beginning", async () => {
-            await withFile(async (localFilePath) => {
-                const comment = ["# Databricks notebook source"];
-                const data = [
-                    "print('hello')",
-                    "print('world')",
-                    "# COMMAND ----------",
-                    "# MAGIC %pip install pandas",
-                    "# COMMAND ----------",
-                    "dbutils.library.restartPython()",
-                    "print('hello2')",
-                ];
-                await writeFile(
-                    localFilePath.path,
-                    comment.concat(data).join("\n"),
-                    "utf-8"
-                );
-
-                await new WorkspaceFsWorkflowWrapper(
-                    instance(mockConnectionManager),
-                    instance(mockExtensionContext)
-                ).createNotebookWrapper(
-                    new LocalUri(localFilePath.path),
-                    new RemoteUri(originalFilePath),
-                    new RemoteUri(testDirPath),
-                    "PY_DBNB"
-                );
-
-                const wrapperData = await getWrapperData(
-                    "notebook.workflow-wrapper.py",
-                    originalFilePath
-                );
-                const expected = comment
-                    .concat([
-                        "import os",
-                        `os.chdir(os.path.dirname('${
-                            new RemoteUri(originalFilePath).workspacePrefixPath
-                        }'))`,
-                        "# MAGIC %pip install pandas",
-                        "# COMMAND ----------",
-                        "dbutils.library.restartPython()",
-                        "# COMMAND ----------",
-                    ])
-                    .concat(wrapperData.split(/\r?\n/))
-                    .concat([
-                        "# COMMAND ----------",
+        for (const includeMetadata of [false, true]) {
+            it(`should rearrange kernel restart commands and preserve the preamble (metadata=${includeMetadata})`, async () => {
+                await withFile(async (localFilePath) => {
+                    const comment = [
+                        "# Databricks notebook source",
+                        ...(includeMetadata ? metadata : []),
+                    ];
+                    const data = [
                         "print('hello')",
                         "print('world')",
                         "# COMMAND ----------",
+                        "# MAGIC %pip install pandas",
+                        "# COMMAND ----------",
+                        "dbutils.library.restartPython()",
                         "print('hello2')",
-                    ])
-                    .join("\n");
+                    ];
+                    await writeFile(
+                        localFilePath.path,
+                        comment.concat(data).join("\n"),
+                        "utf-8"
+                    );
 
-                verifyMockServiceCalledWithExpectedData(
-                    expected,
-                    wrappedFilePath
-                );
+                    await new WorkspaceFsWorkflowWrapper(
+                        instance(mockConnectionManager),
+                        instance(mockExtensionContext)
+                    ).createNotebookWrapper(
+                        new LocalUri(localFilePath.path),
+                        new RemoteUri(originalFilePath),
+                        new RemoteUri(testDirPath),
+                        "PY_DBNB"
+                    );
+
+                    const wrapperData = await getWrapperData(
+                        "notebook.workflow-wrapper.py",
+                        originalFilePath
+                    );
+                    const expected = comment
+                        .concat([
+                            "import os",
+                            `os.chdir(os.path.dirname('${
+                                new RemoteUri(originalFilePath)
+                                    .workspacePrefixPath
+                            }'))`,
+                            "# MAGIC %pip install pandas",
+                            "# COMMAND ----------",
+                            "dbutils.library.restartPython()",
+                            "# COMMAND ----------",
+                        ])
+                        .concat(wrapperData.split(/\r?\n/))
+                        .concat([
+                            "# COMMAND ----------",
+                            "print('hello')",
+                            "print('world')",
+                            "# COMMAND ----------",
+                            "print('hello2')",
+                        ])
+                        .join("\n");
+
+                    verifyMockServiceCalledWithExpectedData(
+                        expected,
+                        wrappedFilePath
+                    );
+                });
             });
-        });
+        }
     });
 
     describe("ipynb notebooks", () => {
