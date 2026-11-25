@@ -21,3 +21,4 @@ jobs:
                   echo "TAG=$TAG" >> $GITHUB_ENV
                   echo "author=$AUTHOR" >> $GITHUB_OUTPUT
                   echo "key_id=$KEY_ID" >> $GITHUB_OUTPUT # secret-write-ok: public key ID, not the key
+            - run: echo "::add-mask::$INLINE_TOKEN" && echo "INLINE_TOKEN=$INLINE_TOKEN" >> $GITHUB_ENV

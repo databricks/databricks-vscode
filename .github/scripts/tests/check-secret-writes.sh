@@ -40,6 +40,10 @@ expect_passed() {
 expect_flagged jfrog-oidc-token.prefix.sh 23
 expect_flagged mask-after-write.sh 3
 expect_flagged unmasked-workflow.yml 9 10 13
+# A mask in another job (14), a mask later on the same line (15), a mask of a
+# different value (16), a mask of a transformed value (19), and a secrets.*
+# expression that can fall back to an unmasked output (20).
+expect_flagged review-findings.yml 14 15 16 19 20
 
 # The current, masked jfrog-oidc-token.sh.
 expect_passed "$FIXTURES/jfrog-oidc-token.masked.sh"
