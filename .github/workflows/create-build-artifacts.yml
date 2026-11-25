@@ -37,3 +37,8 @@ jobs:
                   # `.build` is a hidden folder, which upload-artifact leaves out by default.
                   include-hidden-files: true
                   if-no-files-found: error
+            # configure-npm.sh wrote the JFrog token into these files. Remove them so
+            # the token does not outlive this job if the runner is ever reused.
+            - name: Remove JFrog npm credentials
+              if: always()
+              run: rm -f ~/.npmrc ~/.yarnrc.yml

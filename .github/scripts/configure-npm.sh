@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Point npm and Yarn at the internal JFrog npm registry.
 # Reads JFROG_ACCESS_TOKEN from the environment (set by jfrog-oidc-token.sh).
+#
+# The token ends up in ~/.npmrc and ~/.yarnrc.yml. Yarn reads its user config
+# only from the home folder, so the files cannot move to $RUNNER_TEMP. Every job
+# that runs this script must end with an `if: always()` step that removes both.
 set -euo pipefail
 
 JFROG_NPM_REGISTRY="https://databricks.jfrog.io/artifactory/api/npm/db-npm/"
