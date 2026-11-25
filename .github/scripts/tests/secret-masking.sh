@@ -125,7 +125,9 @@ grep -qxF "::add-mask::$FAKE_JFROG_TOKEN" "$job/job.log" \
   || fail "no ::add-mask:: line for the JFrog token"
 grep -qxF "::add-mask::$pip_url" "$job/job.log" \
   || fail "no ::add-mask:: line for the composite PIP_INDEX_URL"
-echo "ok: real credential scripts mask the JFrog token and PIP_INDEX_URL before writing them"
+grep -qxF "::add-mask::$FAKE_ID_TOKEN" "$job/job.log" \
+  || fail "no ::add-mask:: line for the GitHub OIDC ID token"
+echo "ok: real credential scripts mask the OIDC ID token, the JFrog token and PIP_INDEX_URL"
 
 # --- 2. Controls: the checker must catch bad patterns and accept good ones ---
 controls="$WORK/controls"
