@@ -12,14 +12,22 @@
 #     credential (token, secret, password, credential, api_key, private_key,
 #     or a key/auth name segment), or
 #   - writes a key whose name looks like a credential with a non-literal value,
-# and that same reference was not passed to ::add-mask:: on an earlier line
-# of the same file. ${{ secrets.* }} and ${{ github.token }} are skipped:
-# Actions masks them automatically. Comment lines are ignored.
+# and that same reference was not passed to ::add-mask:: earlier in the same
+# job. A line is read as a sequence of commands split on ;, && and ||, so a
+# mask later on the same line does not count. Only a mask of exactly the
+# reference counts: "::add-mask::${TOKEN}" covers TOKEN, but
+# "::add-mask::prefix-${TOKEN}" does not. In workflow files the masks are
+# forgotten at each job boundary, because GitHub scopes masks to one job.
+# A plain ${{ secrets.NAME }} and ${{ github.token }} are skipped: Actions masks
+# them automatically. Compound expressions such as
+# ${{ secrets.A || steps.x.outputs.token }} are not skipped. Comment lines are
+# ignored.
 #
 # Not caught: multi-line writes (heredocs, { ...; } >> "$GITHUB_ENV"),
 # credentials hidden behind a non-credential name (e.g. PIP_INDEX_URL embeds
-# the token), and masks in a different file or an earlier step of another
-# file. tests/secret-masking.sh covers the existing scripts at runtime.
+# the token), ;, && or || inside quotes, and masks in a different file or an
+# earlier step of another file. tests/secret-masking.sh covers the existing
+# scripts at runtime.
 #
 # To allow a justified exception, end the line with
 #   # secret-write-ok: <reason>
@@ -56,56 +64,110 @@ looks_like_credential() {
   return "$rc"
 }
 
+# Only a bare secret or github.token is masked by Actions; an expression that
+# can fall back to something else is not.
 auto_masked() {
-  [[ "$1" == '${{secrets.'* || "$1" == '${{github.token}}' ]]
+  [[ "$1" =~ ^\$\{\{secrets\.[A-Za-z_][A-Za-z0-9_]*\}\}$ || "$1" == '${{github.token}}' ]]
+}
+
+# Prints the reference that ::add-mask:: in $1 masks, if it masks exactly one
+# reference and nothing else.
+mask_target() {
+  local arg="${1#*::add-mask::}"
+  arg="${arg%%[\"\']*}"
+  arg="${arg#"${arg%%[![:space:]]*}"}"
+  arg="${arg%"${arg##*[![:space:]]}"}"
+  if [[ "$arg" =~ ^\$\{\{[^}]*\}\}$ ]]; then
+    echo "${arg//[[:space:]]/}"
+  elif [[ "$arg" =~ ^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$ || "$arg" =~ ^\$([A-Za-z_][A-Za-z0-9_]*)$ ]]; then
+    echo "${BASH_REMATCH[1]}"
+  fi
+}
+
+# Prints the commands on line $1, one per line, split on ;, && and ||
+# outside ${{ }} expressions.
+commands() {
+  local s="$1" exprs=() i
+  while [[ "$s" =~ (\$\{\{[^}]*\}\}) ]]; do
+    exprs+=("${BASH_REMATCH[1]}")
+    s="${s/"${BASH_REMATCH[1]}"/$'\x01'$((${#exprs[@]} - 1))$'\x01'}"
+  done
+  s="${s//&&/$'\n'}"
+  s="${s//||/$'\n'}"
+  s="${s//;/$'\n'}"
+  for i in "${!exprs[@]}"; do
+    s="${s//$'\x01'$i$'\x01'/${exprs[$i]}}"
+  done
+  printf '%s\n' "$s"
+}
+
+check_sink() {
+  local file="$1" n="$2" cmd="$3" key ref flagged=false sink='$GITHUB_ENV'
+  grep -qE '\$\{?GITHUB_OUTPUT([^A-Za-z0-9_]|$)' <<< "$cmd" && sink='$GITHUB_OUTPUT'
+
+  key=""
+  [[ "$cmd" =~ ([A-Za-z_][A-Za-z0-9_-]*)= ]] && key="${BASH_REMATCH[1]}"
+  local key_is_credential=false
+  [[ -n "$key" ]] && looks_like_credential "$key" && key_is_credential=true
+
+  while IFS= read -r ref; do
+    [[ -z "$ref" || "$ref" == GITHUB_ENV || "$ref" == GITHUB_OUTPUT ]] && continue
+    auto_masked "$ref" && continue
+    if [[ "$key_is_credential" == true ]] || looks_like_credential "$ref"; then
+      if [[ "$masked" != *$'\n'"$ref"$'\n'* ]]; then
+        echo "$file:$n: $ref is written to $sink without an earlier ::add-mask:: of it in this job"
+        flagged=true
+      fi
+    fi
+  done < <(refs "$cmd")
+
+  if [[ "$key_is_credential" == true && "$flagged" == false ]] \
+    && [[ "$cmd" == *'$('* || "$cmd" == *'`'* ]]; then
+    echo "$file:$n: $key is written to $sink from a command substitution; assign it to a variable and ::add-mask:: it first"
+    flagged=true
+  fi
+
+  [[ "$flagged" == true ]] && FOUND=1
+  return 0
 }
 
 check_file() {
-  local file="$1" n=0 line trimmed key ref flagged sink
-  local masked=$'\n'
+  local file="$1" n=0 line trimmed cmd target allowed
+  local is_workflow=false in_jobs=false job_indent=""
+  [[ "$file" == *.yml || "$file" == *.yaml ]] && is_workflow=true
+  masked=$'\n'
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     n=$((n + 1))
     trimmed="${line#"${line%%[![:space:]]*}"}"
-    [[ "$trimmed" == \#* ]] && continue
+    [[ -z "$trimmed" || "$trimmed" == \#* ]] && continue
 
-    if [[ "$line" == *"::add-mask::"* ]]; then
-      while IFS= read -r ref; do
-        [[ -n "$ref" ]] && masked+="$ref"$'\n'
-      done < <(refs "${line#*::add-mask::}")
-      continue
-    fi
-
-    grep -qE "$SINK_RE" <<< "$line" || continue
-    grep -qE "$ALLOW_RE" <<< "$line" && continue
-
-    sink='$GITHUB_ENV'
-    grep -qE '\$\{?GITHUB_OUTPUT([^A-Za-z0-9_]|$)' <<< "$line" && sink='$GITHUB_OUTPUT'
-
-    key=""
-    [[ "$line" =~ ([A-Za-z_][A-Za-z0-9_-]*)= ]] && key="${BASH_REMATCH[1]}"
-    local key_is_credential=false
-    [[ -n "$key" ]] && looks_like_credential "$key" && key_is_credential=true
-
-    flagged=false
-    while IFS= read -r ref; do
-      [[ -z "$ref" || "$ref" == GITHUB_ENV || "$ref" == GITHUB_OUTPUT ]] && continue
-      auto_masked "$ref" && continue
-      if [[ "$key_is_credential" == true ]] || looks_like_credential "$ref"; then
-        if [[ "$masked" != *$'\n'"$ref"$'\n'* ]]; then
-          echo "$file:$n: $ref is written to $sink without an earlier ::add-mask:: of it in this file"
-          flagged=true
-        fi
+    # GitHub scopes masks to one job: forget them at each job key under jobs:.
+    if [[ "$is_workflow" == true ]]; then
+      if [[ "$line" =~ ^jobs:[[:space:]]*(#.*)?$ ]]; then
+        in_jobs=true job_indent="" masked=$'\n'
+        continue
+      elif [[ "$line" =~ ^[A-Za-z_] ]]; then
+        in_jobs=false
+      elif [[ "$in_jobs" == true && "$line" =~ ^([[:space:]]+)[A-Za-z0-9_-]+:[[:space:]]*(#.*)?$ ]]; then
+        [[ -z "$job_indent" ]] && job_indent="${#BASH_REMATCH[1]}"
+        [[ "${#BASH_REMATCH[1]}" == "$job_indent" ]] && masked=$'\n'
       fi
-    done < <(refs "$line")
-
-    if [[ "$key_is_credential" == true && "$flagged" == false ]] \
-      && [[ "$line" == *'$('* || "$line" == *'`'* ]]; then
-      echo "$file:$n: $key is written to $sink from a command substitution; assign it to a variable and ::add-mask:: it first"
-      flagged=true
     fi
 
-    [[ "$flagged" == true ]] && FOUND=1
+    allowed=false
+    grep -qE "$ALLOW_RE" <<< "$line" && allowed=true
+
+    while IFS= read -r cmd; do
+      if [[ "$cmd" == *"::add-mask::"* ]]; then
+        target="$(mask_target "$cmd")"
+        [[ -n "$target" ]] && masked+="$target"$'\n'
+        continue
+      fi
+      [[ "$allowed" == true ]] && continue
+      grep -qE "$SINK_RE" <<< "$cmd" || continue
+      check_sink "$file" "$n" "$cmd"
+    done < <(commands "$line")
   done < "$file"
   return 0
 }
