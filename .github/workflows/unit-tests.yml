@@ -96,3 +96,9 @@ jobs:
       - name: Python Unit Tests
         run: yarn run test:python
         working-directory: packages/databricks-vscode
+
+      # configure-npm.sh wrote the JFrog token into these files. Remove them so
+      # the token does not outlive this job if the runner is ever reused.
+      - name: Remove JFrog npm credentials
+        if: always()
+        run: rm -f ~/.npmrc ~/.yarnrc.yml
