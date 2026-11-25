@@ -1,0 +1,20 @@
+# Must be flagged: writes the checker used to accept.
+name: fixture
+on: pull_request
+jobs:
+  first:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::add-mask::$TOKEN"
+          echo "TOKEN=$TOKEN" >> "$GITHUB_OUTPUT"
+  second:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "TOKEN=$TOKEN" >> "$GITHUB_OUTPUT"
+      - run: echo "API_TOKEN=$API_TOKEN" >> "$GITHUB_ENV"; echo "::add-mask::$API_TOKEN"
+      - run: echo "::add-mask::$SAFE"; echo "OTHER_TOKEN=$OTHER_TOKEN" >> "$GITHUB_OUTPUT"
+      - run: |
+          echo "::add-mask::prefix-$RAW_TOKEN"
+          echo "RAW_TOKEN=$RAW_TOKEN" >> "$GITHUB_ENV"
+      - run: echo "LOGIN_TOKEN=${{ secrets.OPTIONAL_TOKEN || steps.login.outputs.token }}" >> "$GITHUB_ENV"
