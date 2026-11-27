@@ -226,7 +226,7 @@ describe("WorkflowRunner", () => {
         expect(s.records).toEqual([{ success: true, taskType: "python", computeType: "cluster" }]);
     });
 
-    it("runs a Python file serverless, with an environment (golden payload)", async () => {
+    it("runs a Python file serverless, with an environment and no auto-optimization retries (golden payload)", async () => {
         const s = setup({ compute: { kind: "serverless", source: "profile" } });
         const program = s.t.write("hello.py", "print('hello world')\n");
         await s.runner.run({ program }, new AbortController().signal);
@@ -242,6 +242,7 @@ describe("WorkflowRunner", () => {
                             parameters: [],
                         },
                         environment_key: "js_sdk_job_run_environment",
+                        disable_auto_optimization: true,
                     },
                 ],
                 environments: [
@@ -302,7 +303,7 @@ describe("WorkflowRunner", () => {
         ]);
     });
 
-    it("runs a Jupyter notebook serverless, without a cluster", async () => {
+    it("runs a Jupyter notebook serverless, without a cluster or auto-optimization retries", async () => {
         const s = setup({ compute: { kind: "serverless", source: "override" } });
         const program = s.t.write(
             "notebook.ipynb",
@@ -326,6 +327,7 @@ describe("WorkflowRunner", () => {
             },
             depends_on: [],
             libraries: [],
+            disable_auto_optimization: true,
         });
     });
 

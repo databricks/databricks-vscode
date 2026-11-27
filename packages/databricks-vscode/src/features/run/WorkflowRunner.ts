@@ -54,6 +54,11 @@ export interface WorkflowRunnerDeps {
 
 const TASK_KEY = "js_sdk_job_run";
 const ENVIRONMENT_KEY = "js_sdk_job_run_environment";
+/**
+ * Serverless auto-optimization retries a failed task unless it's turned off. A run from the editor
+ * should show its first failure at once, and a script may not be safe to run twice.
+ */
+const NO_AUTO_OPTIMIZATION = { disableAutoOptimization: true } as const;
 /** Where the run can't go further. */
 const TERMINAL = ["TERMINATED", "SKIPPED", "INTERNAL_ERROR"];
 
@@ -73,7 +78,7 @@ export function notebookSubmission(
         libraries: [],
         ...(clusterId !== undefined
             ? { spec: { $case: "existingClusterId", existingClusterId: clusterId } }
-            : {}),
+            : NO_AUTO_OPTIMIZATION),
     };
     return { tasks: [task] };
 }
@@ -89,7 +94,10 @@ export function pythonSubmission(
         task: { $case: "sparkPythonTask", sparkPythonTask: { pythonFile, parameters: [...args] } },
         ...(clusterId !== undefined
             ? { spec: { $case: "existingClusterId", existingClusterId: clusterId } }
-            : { environmentRef: { $case: "environmentKey", environmentKey: ENVIRONMENT_KEY } }),
+            : {
+                  environmentRef: { $case: "environmentKey", environmentKey: ENVIRONMENT_KEY },
+                  ...NO_AUTO_OPTIMIZATION,
+              }),
     };
     return {
         tasks: [task],
